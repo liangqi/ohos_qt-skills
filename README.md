@@ -1,8 +1,8 @@
 # OHOS Qt Skills
 
-Qt for HarmonyOS 开发的 Hermes Agent Skills 集合。
+Qt for HarmonyOS 开发的 AI Agent Skills 集合。
 
-本项目包含用于 Hermes Agent 的 Qt 鸿蒙化开发技能（Skills），帮助开发者快速创建和管理 Qt for HarmonyOS 项目。
+本项目包含用于 AI Agent 的 Qt 鸯蒙化开发技能（Skills），帮助开发者快速创建和管理 Qt for HarmonyOS 项目。
 
 ## 目录结构
 
@@ -31,20 +31,20 @@ ohos_qt-skills/
 
 ### 1. 安装 Skills
 
-将 skills 目录复制到 Hermes Agent 的 skills 目录：
+将 skills 目录复制到你的 AI Agent 配置目录：
 
 ```bash
-# 方法一：直接复制
-cp -r skills/* ~/.hermes/skills/
+# 方法一：直接复制到 agent 的 skills 目录
+cp -r skills/* <agent-config-dir>/skills/
 
-# 方法二：克隆仓库到 skills 目录
-git clone https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills.git ~/.hermes/skills/ohos_qt-skills
-# 然后在 config.yaml 中配置 skills 路径
+# 方法二：克隆仓库
+git clone https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills.git
+# 然后在 agent 配置文件中添加 skills 路径
 ```
 
-### 2. 在 Hermes Agent 中使用
+### 2. 在 AI Agent 中使用
 
-在 Hermes Agent 对话中，直接请求创建 Qt 鸿蒙应用：
+在 AI Agent 对话中，直接请求创建 Qt 鸿蒙应用：
 
 ```
 帮我生成一个俄罗斯方块的 demo 工程，使用 QML。
@@ -52,7 +52,7 @@ git clone https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills.git ~/.herme
 模板胶水代码路径：C:\Users\<username>\Downloads\ohostemplateforqtapplication.zip
 ```
 
-Hermes Agent 会自动加载 `create-qt-app` skill 并按照规范创建工程。
+Agent 会自动加载 `create-qt-app` skill 并按照规范创建工程。
 
 ## 开发贡献
 
@@ -85,7 +85,6 @@ Hermes Agent 会自动加载 `create-qt-app` skill 并按照规范创建工程�
 ## 相关链接
 
 - [Qt for HarmonyOS 官方文档](https://wiki.qt.io/Qt_for_HarmonyOS)
-- [Hermes Agent](https://github.com/nousresearch/hermes-agent)
 - [DevEco Studio](https://developer.huawei.com/consumer/cn/deveco-studio/)
 
 ## 许可证
