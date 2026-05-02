@@ -415,21 +415,18 @@ target_link_libraries(QtHarmonyApp PRIVATE
   Qt${QT_VERSION_MAJOR}::Widgets
 )
 
-# 手动复制Qt OHOS运行时库到libs目录（确保路径结构正确）
-# ABI目录由DevEco构建系统确定，常见值：arm64-v8a, armeabi-v7a
+# 链接Qt for HarmonyOS平台插件（自动部署libqohos.so到 libs/${ABI_DIR}/）
+target_link_libraries(QtHarmonyApp PRIVATE
+  Qt${QT_VERSION_MAJOR}::QOhosPlatformIntegrationPlugin
+)
+
+# 手动复制样式库到 libs/${ABI_DIR}/styles/（target_link_libraries无法保证子目录结构）
 set(ABI_DIR "arm64-v8a")
 set(LIBS_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../libs/${ABI_DIR}")
 
-# 获取Qt SDK路径（从CMAKE_PREFIX_PATH或Qt安装路径推断）
+# 获取Qt SDK路径（从Qt库路径推断）
 get_target_property(QT_CORE_LIB Qt${QT_VERSION_MAJOR}::Core LOCATION)
 get_filename_component(QT_LIB_DIR "${QT_CORE_LIB}" DIRECTORY)
-
-# 构建后复制libqohos.so到 libs/${ABI_DIR}/（不使用platforms子目录）
-add_custom_command(TARGET QtHarmonyApp POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E make_directory "${LIBS_OUTPUT_DIR}"
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different "${QT_LIB_DIR}/libqohos.so" "${LIBS_OUTPUT_DIR}/libqohos.so"
-  COMMENT "Copying libqohos.so to ${LIBS_OUTPUT_DIR}/"
-)
 
 # 构建后复制libqohosstyle.so到 libs/${ABI_DIR}/styles/
 add_custom_command(TARGET QtHarmonyApp POST_BUILD
@@ -489,20 +486,18 @@ target_link_libraries(QtHarmonyApp PRIVATE
   Qt${QT_VERSION_MAJOR}::Quick
 )
 
-# 手动复制Qt OHOS运行时库到libs目录（确保路径结构正确）
+# 链接Qt for HarmonyOS平台插件（自动部署libqohos.so到 libs/${ABI_DIR}/）
+target_link_libraries(QtHarmonyApp PRIVATE
+  Qt${QT_VERSION_MAJOR}::QOhosPlatformIntegrationPlugin
+)
+
+# 手动复制样式库到 libs/${ABI_DIR}/styles/（target_link_libraries无法保证子目录结构）
 set(ABI_DIR "arm64-v8a")
 set(LIBS_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../libs/${ABI_DIR}")
 
 # 获取Qt SDK路径（从Qt库路径推断）
 get_target_property(QT_CORE_LIB Qt${QT_VERSION_MAJOR}::Core LOCATION)
 get_filename_component(QT_LIB_DIR "${QT_CORE_LIB}" DIRECTORY)
-
-# 构建后复制libqohos.so到 libs/${ABI_DIR}/（不使用platforms子目录）
-add_custom_command(TARGET QtHarmonyApp POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E make_directory "${LIBS_OUTPUT_DIR}"
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different "${QT_LIB_DIR}/libqohos.so" "${LIBS_OUTPUT_DIR}/libqohos.so"
-  COMMENT "Copying libqohos.so to ${LIBS_OUTPUT_DIR}/"
-)
 
 # 构建后复制libqohosstyle.so到 libs/${ABI_DIR}/styles/
 add_custom_command(TARGET QtHarmonyApp POST_BUILD
@@ -520,10 +515,10 @@ add_custom_command(TARGET QtHarmonyApp POST_BUILD
 **关键点**：
 1. **交叉编译find_package问题**：OHOS工具链默认设置 `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY`，这会阻止CMake通过CMAKE_PREFIX_PATH找到Qt。必须在find_package前临时设置为BOTH，找到Qt后恢复原值。
 2. **库名匹配**：`add_library(QtHarmonyApp SHARED ...)` 生成的库名必须与 `QtAppConstants.ets` 中的 `APP_LIBRARY_NAME` 一致。
-3. **手动复制OHOS运行时库**：使用 `add_custom_command` 复制libqohos.so和libqohosstyle.so，确保路径结构正确：
-   - **libqohos.so** → 复制到 `libs/${ABI_DIR}/libqohos.so`（不使用platforms子目录）
-   - **libqohosstyle.so** → 复制到 `libs/${ABI_DIR}/styles/libqohosstyle.so`
-4. **Qt库路径获取**：通过 `get_target_property` 获取Qt库路径，推断Qt SDK lib目录。
+3. **OHOS平台插件部署**：
+   - **libqohos.so**：通过链接 `Qt${QT_VERSION_MAJOR}::QOhosPlatformIntegrationPlugin` 自动部署到 `libs/${ABI_DIR}/libqohos.so`（不使用platforms子目录）
+4. **OHOS样式插件部署**：
+   - **libqohosstyle.so**：使用 `add_custom_command` 手动复制到 `libs/${ABI_DIR}/styles/libqohosstyle.so`（target_link_libraries无法保证子目录结构）
 
 ---
 
@@ -607,9 +602,9 @@ sdk.dir=<DevEco SDK路径>  # ★ 开发者需要修改为实际路径，如 C:\
 
 Qt运行时库部署分为两部分：
 
-**自动部署（通过CMake自定义命令）**：
-- 平台插件：libqohos.so复制到 `libs/${ABI_DIR}/libqohos.so`
-- 样式插件：libqohosstyle.so复制到 `libs/${ABI_DIR}/styles/libqohosstyle.so`
+**自动部署**：
+- 平台插件：链接 `Qt5::QOhosPlatformIntegrationPlugin` → libqohos.so自动部署到 `libs/${ABI_DIR}/libqohos.so`
+- 样式插件：add_custom_command手动复制 → libqohosstyle.so到 `libs/${ABI_DIR}/styles/`
 - Qt核心库：通过 `find_package` + `target_link_libraries` 链接 → 构建时自动处理依赖
 
 **可能需要手动部署的库**：
@@ -628,8 +623,8 @@ Qt运行时库部署分为两部分：
 
 **验证Qt库部署**：构建后检查 `entry/libs/${ABI_DIR}/` 是否包含：
 - libQt5Core.so, libQt5Gui.so（自动部署）
-- libqohos.so（OHOS平台插件，由CMake自定义命令复制）
-- styles/libqohosstyle.so（OHOS样式插件，由CMake自定义命令复制）
+- libqohos.so（OHOS平台插件，链接Qt5::QOhosPlatformIntegrationPlugin自动部署）
+- styles/libqohosstyle.so（OHOS样式插件，add_custom_command手动复制）
 
 ---
 
@@ -641,8 +636,9 @@ Qt运行时库部署分为两部分：
 | SDK component missing | 在DevEco Studio中打开项目，让IDE自动配置SDK和工具链 |
 | Schema validate failed | 不要设置 compileSdkVersion，只设置 compatibleSdkVersion |
 | ArkTS编译错误 (Kit模块缺失) | runtimeOS 设置为 "HarmonyOS"，不要修改 OhosExportModules.ts |
-| dlopen failed / cannot locate symbol | 检查 CMakeLists.txt 的 add_custom_command 是否正确复制了 libqohos.so |
-| **平台插件加载失败** | 确保 libqohos.so 在 libs/${ABI_DIR}/ 目录下（不是platforms子目录） |
+| dlopen failed / cannot locate symbol | 检查 CMakeLists.txt 是否链接了 Qt${QT_VERSION_MAJOR}::QOhosPlatformIntegrationPlugin |
+| **平台插件加载失败** | 确保 libqohos.so 在 libs/${ABI_DIR}/ 目录下（通过链接Qt5::QOhosPlatformIntegrationPlugin自动部署） |
+| **样式插件加载失败** | 确保 add_custom_command 正确复制 libqohosstyle.so 到 libs/${ABI_DIR}/styles/ |
 | 库名不匹配 | 确保CMake的add_library名称与QtAppConstants.ets的APP_LIBRARY_NAME一致 |
 | **QML: module "QtQuick" is not installed** | 检查Qt SDK路径是否正确配置在CMAKE_PREFIX_PATH |
 | **QML应用黑屏** | 检查Qt模块是否正确链接，CMAKE_PREFIX_PATH配置是否正确 |
@@ -667,10 +663,11 @@ Qt运行时库部署分为两部分：
 1. 修改 `entry/build-profile.json5` 中的 `-DCMAKE_PREFIX_PATH` 为Qt SDK路径
 2. 配置鸿蒙SDK路径
 
-### Qt运行时库（自动部署）
+### Qt运行时库（自动部署+手动复制）
 
-Qt运行时库通过CMake自定义命令复制：
-- 确保 CMakeLists.txt 中包含 `add_custom_command` 复制 libqohos.so
+Qt运行时库部署方式：
+- libqohos.so：通过链接 `Qt5::QOhosPlatformIntegrationPlugin` 自动部署到 `libs/${ABI_DIR}/`
+- libqohosstyle.so：通过 `add_custom_command` 手动复制到 `libs/${ABI_DIR}/styles/`
 - 构建后检查 `entry/libs/${ABI_DIR}/` 确认库是否正确部署
 
 ---
@@ -694,7 +691,7 @@ Qt运行时库通过CMake自定义命令复制：
 - 开始前确认三个关键点（应用类型、工程目录、胶水代码模板）
 - Qt源码放在 `entry/src/main/cpp/` 目录
 - CMakeLists.txt中交叉编译时设置 `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH`
-- CMakeLists.txt中使用 `add_custom_command` 复制 libqohos.so 到 `libs/${ABI_DIR}/`
+- CMakeLists.txt中链接 `Qt${QT_VERSION_MAJOR}::QOhosPlatformIntegrationPlugin`（平台插件，自动部署libqohos.so）
 - CMakeLists.txt中使用 `add_custom_command` 复制 libqohosstyle.so 到 `libs/${ABI_DIR}/styles/`
 - 库名与 `QtAppConstants.ets` 中的 `APP_LIBRARY_NAME` 匹配
 - runtimeOS 设置为 "HarmonyOS"
@@ -723,10 +720,10 @@ Qt运行时库通过CMake自定义命令复制：
 │   │       └── common/
 │   │           └── QtAppConstants.ets # 配置库名 APP_LIBRARY_NAME
 │   ├── build-profile.json5           # ★ 模块级构建配置（externalNativeOptions）
-│   └── libs/arm64-v8a/               # Qt运行时库（CMake自定义命令复制）
-│       ├── libqohos.so               # OHOS平台插件（直接放在libs目录）
+│   └── libs/arm64-v8a/               # Qt运行时库
+│       ├── libqohos.so               # OHOS平台插件（链接Qt5::QOhosPlatformIntegrationPlugin自动部署）
 │       ├── styles/
-│       │   └── libqohosstyle.so      # OHOS样式插件
+│       │   └── libqohosstyle.so      # OHOS样式插件（add_custom_command手动复制）
 │       ├── libQt5Core.so             # Qt核心库（CMake自动部署）
 │       ├── libQt5Gui.so              # Qt GUI库（CMake自动部署）
 │       ├── libQt5Widgets.so          # Qt Widgets库（CMake自动部署）
@@ -751,10 +748,10 @@ Qt运行时库通过CMake自定义命令复制：
 │   │   │   └── common/
 │   │   │       └── QtAppConstants.ets
 │   ├── build-profile.json5
-│   └── libs/arm64-v8a/               # Qt运行时库（CMake自定义命令复制）
-│       ├── libqohos.so               # OHOS平台插件（直接放在libs目录）
+│   └── libs/arm64-v8a/               # Qt运行时库
+│       ├── libqohos.so               # OHOS平台插件（链接Qt5::QOhosPlatformIntegrationPlugin自动部署）
 │       ├── styles/
-│       │   └── libqohosstyle.so      # OHOS样式插件
+│       │   └── libqohosstyle.so      # OHOS样式插件（add_custom_command手动复制）
 │       ├── libQt5Core.so             # Qt核心库（CMake自动部署）
 │       ├── libQt5Gui.so              # Qt GUI库（CMake自动部署）
 │       ├── libQt5Qml.so              # QML引擎库（CMake自动部署）
@@ -767,6 +764,6 @@ Qt运行时库通过CMake自定义命令复制：
 
 **QML应用关键说明**：
 - **应用QML文件（main.qml）**：放在 `cpp/` 目录，通过 qml.qrc 编译进应用库
-- **Qt运行时库**：通过CMake链接Qt模块和自定义命令复制部署，无需手动复制
-- **OHOS平台插件**：libqohos.so 复制到 `libs/${ABI_DIR}/libqohos.so`（不使用platforms子目录）
-- **OHOS样式插件**：libqohosstyle.so 复制到 `libs/${ABI_DIR}/styles/libqohosstyle.so`
+- **Qt运行时库**：通过CMake链接Qt模块和自定义命令部署，无需手动复制
+- **OHOS平台插件**：链接 `Qt5::QOhosPlatformIntegrationPlugin` → libqohos.so自动部署到 `libs/${ABI_DIR}/libqohos.so`（不使用platforms子目录）
+- **OHOS样式插件**：使用 `add_custom_command` → libqohosstyle.so手动复制到 `libs/${ABI_DIR}/styles/libqohosstyle.so`
