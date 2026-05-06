@@ -1,15 +1,26 @@
 ---
 name: create-qt-app
-description: 生成Qt鸿蒙应用工程结构（QWidget或QML）。只负责创建工程目录、源码文件、CMake配置模板，不负责编译和SDK配置。开发者需要在DevEco Studio中配置Qt SDK路径、鸿蒙SDK路径，Qt运行时库通过CMake链接插件target自动部署。
+description: 生成Qt鸿蒙应用工程结构（QWidget或QML），或将已有Qt工程鸿蒙化。支持从零创建新工程和已有工程鸿蒙化两种场景。只负责创建工程目录、源码文件、CMake配置模板，不负责编译和SDK配置。开发者需要在DevEco Studio中配置Qt SDK路径、鸿蒙SDK路径，Qt运行时库通过CMake链接插件target自动部署。
 ---
 
 # Qt for HarmonyOS 工程生成器
+
+支持两种使用场景：
+
+## 场景一：从零创建新工程
 
 生成Qt鸿蒙应用工程结构（QWidget或QML），包含：
 - 工程目录结构（基于Qt官方OHOS模板）
 - Qt源码文件和QML界面
 - CMake配置模板（需开发者填写Qt SDK路径）
 - 胶水代码配置
+
+## 场景二：已有Qt工程鸿蒙化
+
+将已有的Qt工程（CMake/qmake/其他）转换为鸿蒙应用，包含：
+- 在工程根目录放置Qt胶水代码（OHOS模板）
+- 配置build-profile.json5指向已有工程的构建文件
+- 配置QtAppConstants.ets匹配应用库名
 
 **不包含**：
 - 编译和构建（需在DevEco Studio中完成）
@@ -69,7 +80,19 @@ description: 生成Qt鸿蒙应用工程结构（QWidget或QML）。只负责创�
 - 项目名应从工程目录名提取（如 `t3`），或通过 clarify 确认一个合适的项目名（如 `TetrisDemo`）
 - 使用 clarify 确认提取的参数是否正确
 
-### 确认点0：应用类型（新增！）
+### 确认点0：使用场景（新增！）
+```
+问题：请选择使用场景
+选项：
+  1. 从零创建新工程 - 创建全新的Qt鸿蒙应用工程
+  2. 已有Qt工程鸿蒙化 - 将已有的Qt工程转换为鸿蒙应用
+
+说明：
+- 从零创建：生成完整的工程结构，包含Qt源码模板
+- 已有工程鸿蒙化：在已有工程根目录放置胶水代码，配置构建文件路径
+```
+
+### 确认点0.1：应用类型（场景一需要）
 ```
 问题：请选择要创建的应用类型
 选项：
@@ -77,6 +100,20 @@ description: 生成Qt鸿蒙应用工程结构（QWidget或QML）。只负责创�
   2. QML - Qt Quick/QML应用（适合现代触摸UI、动画效果）
 
 说明：两种方式的CMake配置和运行时库部署有所不同
+```
+
+### 确认点0.2：已有工程类型（场景二需要）
+```
+问题：请选择已有工程的构建系统类型
+选项：
+  1. CMake工程 - 使用CMakeLists.txt构建
+  2. qmake工程 - 使用.pro文件构建（TODO：待完善）
+  3. 其他工程 - 其他构建系统（TODO：待完善）
+
+说明：
+- CMake工程：修改entry/build-profile.json5中的path指向根目录CMakeLists.txt
+- qmake工程：需要额外转换步骤（待完善）
+- 其他工程：需要额外转换步骤（待完善）
 ```
 
 ### 确认点1：工程目录
@@ -94,9 +131,19 @@ description: 生成Qt鸿蒙应用工程结构（QWidget或QML）。只负责创�
 
 **确认流程示例**：
 
+**场景一（从零创建）**：
 ```
-0. 先确认应用类型（QWidget 或 QML）
-1. 再确认工程目录
+0. 先确认使用场景：从零创建新工程
+0.1 再确认应用类型（QWidget 或 QML）
+1. 确认工程目录（新创建的目录）
+2. 最后确认胶水代码来源（下载或已有文件）
+```
+
+**场景二（已有工程鸿蒙化）**：
+```
+0. 先确认使用场景：已有Qt工程鸿蒙化
+0.2 再确认已有工程类型（CMake/qmake/其他）
+1. 确认工程目录（已有Qt工程的根目录）
 2. 最后确认胶水代码来源（下载或已有文件）
 ```
 
@@ -108,8 +155,14 @@ description: 生成Qt鸿蒙应用工程结构（QWidget或QML）。只负责创�
 
 ## 核心流程（6步）
 
+**场景一（从零创建）**：
 ```
 确认参数 → 下载模板 → 放入Qt源码 → 配置CMake模板 → 复制样式库 → 配置胶水代码
+```
+
+**场景二（已有工程鸿蒙化）**：
+```
+确认参数 → 下载模板 → 解压到工程根目录 → 配置build-profile.json5路径 → 复制样式库 → 配置胶水代码
 ```
 
 **后续步骤由开发者完成**：
@@ -117,6 +170,156 @@ description: 生成Qt鸿蒙应用工程结构（QWidget或QML）。只负责创�
 - 构建和运行（Qt运行时库通过CMake链接插件自动部署）
 
 ---
+
+## 场景二：已有Qt工程鸿蒙化
+
+本节描述如何将已有的Qt工程转换为鸿蒙应用。
+
+### Step H1: 下载Qt官方OHOS模板（胶水代码）
+
+与场景一相同，从 `http://codereview.qtcompany.cn:29416/template/` 下载最新模板。
+
+### Step H2: 解压模板到已有工程根目录
+
+**关键区别**：胶水代码放在已有工程根目录，而不是创建新目录。
+
+解压后的目录结构：
+```
+<已有工程根目录>/           # 原有Qt工程目录
+├── CMakeLists.txt          # 原有工程的CMake配置（或.pro文件）
+├── src/                    # 原有工程的源码目录
+├── ...                     # 其他原有文件
+│
+├── entry/                  # ★ 新增：OHOS胶水代码
+│   ├── src/main/
+│   │   ├── cpp/            # 空目录（不使用，原有源码在工程其他位置）
+│   │   └── ets/
+│   │       └── common/
+│   │           └── QtAppConstants.ets
+│   ├── build-profile.json5 # ★ 模块级构建配置（需修改path）
+│   └── libs/arm64-v8a/     # Qt运行时库位置
+├── qEmbeddedUiExtensionHost/
+├── build-profile.json5     # 项目级构建配置
+├── local.properties
+└── ...
+```
+
+### Step H3: 配置build-profile.json5（关键！）
+
+根据已有工程的构建系统类型，修改 `entry/build-profile.json5`：
+
+#### H3.1 CMake工程配置
+
+修改 `entry/build-profile.json5` 中的 `path`，使用工程根目录CMakeLists.txt的**绝对路径**：
+
+```json5
+{
+  "apiType": 'stageMode',
+  "buildOption": {
+    "externalNativeOptions": {
+      "path": "C:\\code\\MyQtApp\\CMakeLists.txt",  // ★ 使用绝对路径，指向工程根目录的CMakeLists.txt
+      "arguments": "-DCMAKE_PREFIX_PATH=<Qt SDK路径>",
+      "abiFilters": [
+        "arm64-v8a"
+      ]
+    }
+  },
+  // ... 其他配置保持不变
+}
+```
+
+**关键修改**：
+- `path`: 使用**绝对路径**（如 `C:\\code\\MyQtApp\\CMakeLists.txt`），而非相对路径
+- 路径中的反斜杠需要转义（`\\`）
+- 这样DevEco Studio会使用已有工程的CMakeLists.txt进行构建
+
+#### H3.2 qmake工程配置（TODO：待完善）
+
+qmake工程需要额外处理：
+
+**方案A：转换为CMake工程**
+- 使用 `qmake -query` 获取配置信息
+- 手动创建CMakeLists.txt替代.pro文件
+- 参考：https://wiki.qt.io/Qt_for_HarmonyOS/user_development/deveco_cmake_guide_cross_compile
+
+**方案B：使用qmake构建（待验证）**
+- TODO：需要验证DevEco Studio是否支持qmake构建
+- 可能需要创建CMake wrapper脚本
+
+```json5
+{
+  "apiType": 'stageMode',
+  "buildOption": {
+    "externalNativeOptions": {
+      // TODO：qmake工程的具体配置待完善
+      "path": "./CMakeLists.txt",  // 可能需要创建wrapper CMake
+      "arguments": "-DCMAKE_PREFIX_PATH=<Qt SDK路径>",
+      "abiFilters": [
+        "arm64-v8a"
+      ]
+    }
+  }
+}
+```
+
+#### H3.3 其他工程类型配置（TODO：待完善）
+
+对于使用其他构建系统的工程（如Meson、Bazel等）：
+
+**方案**：创建CMake wrapper或手动配置
+
+```json5
+{
+  "apiType": 'stageMode',
+  "buildOption": {
+    "externalNativeOptions": {
+      // TODO：其他构建系统的具体配置待完善
+      "path": "./CMakeLists.txt",  // wrapper CMake或空配置
+      "arguments": "-DCMAKE_PREFIX_PATH=<Qt SDK路径>",
+      "abiFilters": [
+        "arm64-v8a"
+      ]
+    }
+  }
+}
+```
+
+### Step H4: 复制OHOS样式库
+
+与场景一相同，手动复制 `libqohosstyle.so` 到 `entry/libs/arm64-v8a/styles/`。
+
+### Step H5: 配置胶水代码
+
+#### H5.1 配置Qt应用库名
+
+编辑 `entry/src/main/ets/common/QtAppConstants.ets`：
+
+```typescript
+export const APP_LIBRARY_NAME = 'lib<你的应用名>.so';
+```
+
+**重要**：库名必须与已有工程CMakeLists.txt中的 `add_library()` 目标名匹配。
+
+#### H5.2 项目级构建配置
+
+`build-profile.json5`（项目根目录）配置与场景一相同。
+
+#### H5.3 SDK路径配置
+
+`local.properties` 配置与场景一相同。
+
+### 已有工程鸿蒙化的注意事项
+
+1. **不要修改原有工程的源码目录结构**
+2. **确保原有CMakeLists.txt正确链接Qt模块**：
+   - 需要链接 `Qt${QT_VERSION_MAJOR}::QOhosPlatformIntegrationPlugin`（平台插件）
+   - 需要设置交叉编译时的 `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH`
+3. **库名匹配**：`QtAppConstants.ets` 中的 `APP_LIBRARY_NAME` 必须与原有工程的库名一致
+4. **entry/src/main/cpp/ 目录为空**：原有源码在工程其他位置，不需要放入cpp目录
+
+---
+
+## 场景一：从零创建新工程
 
 ## Step 1: 下载Qt官方OHOS模板（胶水代码）
 
@@ -628,6 +831,8 @@ Qt运行时库部署分为两部分：
 
 ## 常见问题
 
+### 场景一（从零创建）常见问题
+
 | 问题 | 解决方案 |
 |------|----------|
 | find_package(Qt5)失败 | 在CMakeLists.txt中交叉编译时设置 `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH` |
@@ -643,29 +848,70 @@ Qt运行时库部署分为两部分：
 | **QML: Cannot assign to non-existent property "focus"** | Window元素没有focus属性，键盘事件处理需要放在内部Item或FocusScope中，使用Item { focus: true; Keys.onXPressed: ... } |
 | **源工程资源文件丢失** | 创建占位资源文件（如简单PNG图片），并在resources.qrc中引用，确保CMake编译通过 |
 
+### 场景二（已有工程鸿蒙化）常见问题
+
+| 问题 | 解决方案 |
+|------|----------|
+| **构建找不到源文件** | 检查 `entry/build-profile.json5` 的 `path` 是否使用绝对路径指向根目录CMakeLists.txt |
+| **原有工程CMakeLists.txt缺少OHOS配置** | 添加交叉编译时的 `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH` 设置，链接 `Qt${QT_VERSION_MAJOR}::QOhosPlatformIntegrationPlugin` |
+| **库名不匹配** | 修改 `QtAppConstants.ets` 的 `APP_LIBRARY_NAME` 为原有工程的库名（如 `libMyApp.so`） |
+| **qmake工程如何转换** | TODO：待完善，建议转换为CMake工程或创建CMake wrapper |
+| **其他构建系统如何处理** | TODO：待完善，建议创建CMake wrapper脚本 |
+| **原有工程目录结构混乱** | 确保胶水代码放在根目录，不要修改原有源码位置 |
+| **构建时找不到Qt模块** | 确保原有CMakeLists.txt正确使用 `find_package(Qt...)` 并设置 `CMAKE_PREFIX_PATH` |
+
 ---
 
 ## 替换为你的Qt应用（最小操作步骤）
 
+### 场景一：从零创建后替换源码
+
 **本skill生成工程结构后，开发者需要完成以下步骤：**
 
-### 修改源码
+#### 修改源码
 
 1. 将你的Qt源码放入 `entry/src/main/cpp/`
 2. 修改 `CMakeLists.txt` 更新源文件列表和Qt模块依赖
 3. QML应用：更新 `qml.qrc` 添加你的QML文件
 4. 确保库名与 `QtAppConstants.ets` 中的 `APP_LIBRARY_NAME` 一致
 
-### 配置SDK路径（在DevEco Studio中）
+#### 配置SDK路径（在DevEco Studio中）
 
 1. 修改 `entry/build-profile.json5` 中的 `-DCMAKE_PREFIX_PATH` 为Qt SDK路径
 2. 配置鸿蒙SDK路径
 
-### Qt运行时库部署
+#### Qt运行时库部署
 
 Qt运行时库部署方式：
 - libqohos.so：链接 `Qt5::QOhosPlatformIntegrationPlugin` 自动部署到 `libs/${ABI_DIR}/`
 - libqohosstyle.so：Step 4手动复制到 `libs/${ABI_DIR}/styles/`
+- 构建后检查目录确认库是否正确部署
+
+### 场景二：已有工程鸿蒙化后配置
+
+**已有工程添加胶水代码后，开发者需要完成以下步骤：**
+
+#### 配置build-profile.json5
+
+1. **CMake工程**：修改 `entry/build-profile.json5` 的 `path` 为工程根目录CMakeLists.txt的**绝对路径**（如 `C:\\code\\MyQtApp\\CMakeLists.txt`）
+2. **qmake工程**：TODO（待完善）
+3. **其他工程**：TODO（待完善）
+
+#### 配置SDK路径（在DevEco Studio中）
+
+1. 修改 `entry/build-profile.json5` 中的 `-DCMAKE_PREFIX_PATH` 为Qt SDK路径
+2. 配置鸿蒙SDK路径
+
+#### 配置库名匹配
+
+1. 查看原有工程的CMakeLists.txt中的 `add_library()` 目标名
+2. 修改 `entry/src/main/ets/common/QtAppConstants.ets` 的 `APP_LIBRARY_NAME` 为对应库名
+
+#### Qt运行时库部署
+
+Qt运行时库部署方式：
+- libqohos.so：确保原有CMakeLists.txt链接 `Qt5::QOhosPlatformIntegrationPlugin`
+- libqohosstyle.so：Step H4手动复制到 `libs/${ABI_DIR}/styles/`
 - 构建后检查目录确认库是否正确部署
 
 ---
@@ -685,8 +931,8 @@ Qt运行时库部署方式：
 - 库名：使用 `lib` 前缀 + 项目名 + `.so`（如 `libTetrisDemo.so`）
 - 禁止在项目名中使用中文、空格、特殊字符
 
-**必须**：
-- 开始前确认三个关键点（应用类型、工程目录、胶水代码模板）
+**场景一（从零创建）必须**：
+- 开始前确认关键点（使用场景、应用类型、工程目录、胶水代码模板）
 - Qt源码放在 `entry/src/main/cpp/` 目录
 - CMakeLists.txt中交叉编译时设置 `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH`
 - CMakeLists.txt中链接 `Qt${QT_VERSION_MAJOR}::QOhosPlatformIntegrationPlugin`（平台插件，自动部署libqohos.so）
@@ -694,6 +940,19 @@ Qt运行时库部署方式：
 - 库名与 `QtAppConstants.ets` 中的 `APP_LIBRARY_NAME` 匹配
 - runtimeOS 设置为 "HarmonyOS"
 - **QML应用**：应用QML文件放在 `cpp/` 目录并通过 qml.qrc 编译
+
+**场景二（已有工程鸿蒙化）必须**：
+- 开始前确认关键点（使用场景、已有工程类型、工程目录、胶水代码模板）
+- 胶水代码解压到已有工程根目录（不创建新目录）
+- **CMake工程**：修改 `entry/build-profile.json5` 的 `path` 为工程根目录CMakeLists.txt的**绝对路径**（如 `C:\\code\\MyQtApp\\CMakeLists.txt`）
+- **qmake工程**：TODO（待完善）
+- **其他工程**：TODO（待完善）
+- 确保原有CMakeLists.txt链接 `Qt${QT_VERSION_MAJOR}::QOhosPlatformIntegrationPlugin`
+- 确保原有CMakeLists.txt设置交叉编译时的 `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH`
+- 库名与 `QtAppConstants.ets` 中的 `APP_LIBRARY_NAME` 匹配（使用原有工程的库名）
+- Step H4手动复制 libqohosstyle.so 到 `libs/${ABI_DIR}/styles/`
+- runtimeOS 设置为 "HarmonyOS"
+- **不要修改原有工程的源码目录结构**
 
 **开发者自己配置**（skill生成占位符）：
 - Qt SDK路径：修改 `entry/build-profile.json5` 中的 `-DCMAKE_PREFIX_PATH`
@@ -705,7 +964,7 @@ Qt运行时库部署方式：
 
 ## 目录结构总结
 
-### QWidget应用
+### 场景一：从零创建 - QWidget应用
 
 ```
 <工程目录>/                           # 模板项目根目录（ohostemplateforqtapplication）
@@ -731,7 +990,7 @@ Qt运行时库部署方式：
 └── local.properties                  # SDK路径配置
 ```
 
-### QML应用
+### 场景一：从零创建 - QML应用
 
 ```
 <工程目录>/                           # 模板项目根目录
@@ -759,6 +1018,62 @@ Qt运行时库部署方式：
 ├── build-profile.json5
 └── local.properties
 ```
+
+### 场景二：已有工程鸿蒙化 - CMake工程
+
+```
+<已有工程根目录>/                     # 原有Qt工程目录
+├── CMakeLists.txt                    # ★ 原有工程的CMake配置（需添加OHOS配置）
+├── src/                              # 原有工程的源码目录
+│   ├── main.cpp                      # 原有源码
+│   ├── widget.cpp
+│   └── ...
+├── ...                               # 其他原有文件
+│
+├── entry/                            # ★ 新增：OHOS胶水代码
+│   ├── src/main/
+│   │   ├── cpp/                      # 空目录（不使用）
+│   │   └── ets/
+│   │       └── common/
+│   │           └── QtAppConstants.ets # ★ 配置库名（需匹配原有工程库名）
+│   ├── build-profile.json5           # ★ path使用绝对路径指向根目录CMakeLists.txt
+│   └── libs/arm64-v8a/               # Qt运行时库
+│       ├── libqohos.so               # OHOS平台插件
+│       ├── styles/
+│       │   └── libqohosstyle.so      # OHOS样式插件（Step H4手动复制）
+│       └── libMyApp.so               # ★ 应用库（原有工程库名）
+├── qEmbeddedUiExtensionHost/
+├── build-profile.json5               # 项目级构建配置
+└── local.properties                  # SDK路径配置
+```
+
+### 场景二：已有工程鸿蒙化 - qmake工程（TODO）
+
+```
+<已有工程根目录>/                     # 原有Qt工程目录
+├── MyApp.pro                         # ★ 原有工程的qmake配置
+├── src/                              # 原有工程的源码目录
+│   ├── main.cpp
+│   └── ...
+├── ...                               # 其他原有文件
+│
+├── entry/                            # ★ 新增：OHOS胶水代码
+│   ├── src/main/
+│   │   ├── cpp/                      # 空目录或wrapper CMake
+│   │   └── ets/
+│   │       └── common/
+│   │           └── QtAppConstants.ets
+│   ├── build-profile.json5           # ★ TODO：qmake配置待完善
+│   └── libs/arm64-v8a/
+├── qEmbeddedUiExtensionHost/
+├── build-profile.json5
+└── local.properties
+```
+
+**qmake工程转换方案（待完善）**：
+- 方案A：创建CMake wrapper替代.pro文件
+- 方案B：使用qmake生成CMake配置
+- 方案C：手动创建CMakeLists.txt
 
 **QML应用关键说明**：
 - **应用QML文件（main.qml）**：放在 `cpp/` 目录，通过 qml.qrc 编译进应用库
