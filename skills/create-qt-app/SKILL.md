@@ -57,7 +57,20 @@ description: 生成Qt鸿蒙应用工程结构（QWidget或QML），或将已有Q
 
 ## 前置确认（必须！）
 
-**在开始任何操作之前，必须通过对话确认以下三点：**
+### 快速模式：从 compile-qt-tool 调用
+
+> 当本 skill 由 `compile-qt-tool`（§4.2）调用时，当前目录下应已存在 `qt_env.md`。
+>
+> **检测到 `qt_env.md` → 进入快速模式**：
+> 1. 从 `qt_env.md` 读取已确认的路径（胶水工程模版路径、Qt 编译产物路径等）
+> 2. **跳过下方确认点 1、确认点 2**，直接进入「核心流程」
+> 3. 仅需向用户确认 **确认点 0（使用场景）** 和 **确认点 0.1/0.2（应用/工程类型）**
+>
+> **未检测到 `qt_env.md` → 独立模式**：按下方完整流程逐项确认。
+
+### 独立模式：完整确认流程
+
+**在开始任何操作之前，必须通过对话确认以下要点：**
 
 使用 `clarify` 工具，依次向用户确认：
 
@@ -175,9 +188,9 @@ description: 生成Qt鸿蒙应用工程结构（QWidget或QML），或将已有Q
 
 本节描述如何将已有的Qt工程转换为鸿蒙应用。
 
-### Step H1: 下载Qt官方OHOS模板（胶水代码）
+### Step H1: 获取Qt官方OHOS模板（胶水代码）
 
-与场景一相同，从 `http://codereview.qtcompany.cn:29416/template/` 下载最新模板。
+与场景一 Step 1 相同。快速模式下直接从 `qt_env.md` 读取已确认的模版路径。
 
 ### Step H2: 解压模板到已有工程根目录
 
@@ -321,23 +334,27 @@ export const APP_LIBRARY_NAME = 'lib<你的应用名>.so';
 
 ## 场景一：从零创建新工程
 
-## Step 1: 下载Qt官方OHOS模板（胶水代码）
+## Step 1: 获取Qt官方OHOS模板（胶水代码）
 
 模板下载地址：`http://codereview.qtcompany.cn:29416/template/`
 
-**选择最新日期的模板**：
+> **快速模式**：若 `qt_env.md` 中已记录胶水工程模版路径且状态为 ☑，直接使用该路径，跳过下载步骤。
+
+**独立模式 — 选择最新日期的模板**：
 ```bash
 # 获取最新模板文件名
-curl -s "http://codereview.qtcompany.cn:29416/template/" | grep -o 'ohostemplateforqtapplication_[0-9]*\.zip' | sort -r | head -1
+curl -s "http://codereview.qtcompany.cn:29416/template/" \
+  | grep -o 'ohostemplateforqtapplication_[0-9]*\.zip' \
+  | sort -r | head -1
 
 # 下载到工程目录
 curl -O "http://codereview.qtcompany.cn:29416/template/ohostemplateforqtapplication_YYYYMMDD.zip"
 
-# 使用Python解压（WSL可能没有unzip）
+# 解压
 python3 -c "import zipfile; zipfile.ZipFile('ohostemplateforqtapplication_*.zip').extractall('.')"
 ```
 
-解压后的目录结构（模板项目根目录）：
+解压后的目录结构（模板项目根目录）与 `compile-qt-tool` §2 中描述一致：
 ```
 <工程目录>/
 ├── entry/
@@ -518,6 +535,8 @@ cd entry/src/main/cpp
 ## Step 3: 配置CMake（关键！）
 
 ### 3.1 配置 entry/build-profile.json5
+
+> 此配置与 `compile-qt-tool` §2「配置 CMake」中的内容相同，是两个 skill 共享的关键配置项。
 
 **这是最关键的配置**，在模块级构建配置中指定CMake和Qt路径：
 
