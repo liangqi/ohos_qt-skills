@@ -8,27 +8,39 @@
 
 **名称**: `create-qt-app`
 
-**描述**: 生成 Qt 鸿蒙应用工程结构（QWidget 或 QML）。只负责创建工程目录、源码文件、CMake 配置模板，不负责编译和 SDK 配置。
+**描述**: 生成 Qt 鸿蒙应用工程结构（QWidget 或 QML），或将已有 Qt 工程鸿蒙化。支持从零创建新工程和已有工程鸿蒙化两种场景。
 
 **位置**: `skills/create-qt-app/SKILL.md`
 
 **功能**:
-- 创建 Qt 鸿蒙工程目录结构
-- 生成 QWidget 或 QML 应用源码
-- 配置 CMake 构建模板
-- 配置胶水代码（QtAppConstants.ets）
+- **场景一：从零创建新工程**
+  - 创建 Qt 鸿蒙工程目录结构
+  - 生成 QWidget 或 QML 应用源码
+  - 配置 CMake 构建模板
+  - 配置胶水代码（QtAppConstants.ets）
+- **场景二：已有 Qt 工程鸿蒙化**
+  - 在已有工程根目录放置胶水代码
+  - 配置 build-profile.json5 指向已有工程的构建文件
+  - 支持 CMake/qmake/其他工程类型
 
 **使用示例**:
 ```
+场景一（从零创建）：
 帮我生成一个俄罗斯方块的 demo 工程，使用 QML。
 工程目录放到：C:\Users\lzh\Documents\TetrisDemo
 模板胶水代码路径：C:\Users\lzh\Downloads\ohostemplateforqtapplication.zip
+
+场景二（已有工程鸿蒙化）：
+帮我将已有的 Qt CMake 工程转换为鸿蒙应用。
+工程目录：C:\code\MyQtApp
+胶水代码模板：下载最新模板
 ```
 
 **关键配置点**:
-1. 应用类型（QWidget / QML）
-2. 工程目录路径
-3. 胶水代码模板来源
+1. 使用场景（从零创建 / 已有工程鸿蒙化）
+2. 应用类型或已有工程类型
+3. 工程目录路径
+4. 胶水代码模板来源
 
 **后续步骤**（开发者完成）:
 - 在 DevEco Studio 中配置 Qt SDK 路径
@@ -36,6 +48,44 @@
 - 部署 Qt 运行时库（核心库 + QML 插件）
 - 签名配置
 - 构建运行
+
+---
+
+### build-run-qt-app
+
+**名称**: `build-run-qt-app`
+
+**描述**: 使用 DevEco MCP 工具链编译、运行 Qt 鸿蒙应用并查看日志。支持项目构建、应用启动、日志获取、UI 操作等功能。
+
+**位置**: `skills/build-run-qt-app/SKILL.md`
+
+**功能**:
+- 项目构建（build_project）
+- 应用启动（start_app）
+- 日志获取（get_hilog_or_faultlog_recent）
+- UI 树获取（get_app_ui_tree）
+- UI 操作（perform_ui_action）
+- 项目同步（project_sync）
+
+**前置条件**:
+- 安装配置 DevEco MCP 工具链
+- DevEco Studio 已正确安装
+- Qt 工程的 CMake 配置正确
+
+**使用示例**:
+```
+帮我编译运行 Qt 鸿蒙应用：
+工程目录：C:\code\MyQtApp
+构建模式：debug
+查看日志级别：Info
+```
+
+**核心流程**:
+1. 项目同步（可选）
+2. 项目构建
+3. 启动应用
+4. 查看日志
+5. UI 测试（可选）
 
 ---
 
@@ -47,7 +97,6 @@
 |-------|------|------|
 | deploy-qt-runtime | 自动部署 Qt 运行时库到 libs 目录 | 🚧 计划中 |
 | qt-harmonyos-debug | Qt 鸿蒙应用调试辅助 | 🚧 计划中 |
-| convert-qt-project | 将现有 Qt 项目转换为鸿蒙版本 | 🚧 计划中 |
 
 ---
 
