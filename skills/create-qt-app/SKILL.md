@@ -175,7 +175,7 @@ description: 生成Qt鸿蒙应用工程结构（QWidget或QML），或将已有Q
 
 **场景二（已有工程鸿蒙化）**：
 ```
-确认参数 → 下载模板 → 解压到工程根目录 → 配置build-profile.json5路径 → 复制样式库 → 配置胶水代码
+确认参数 → 获取胶水工程 → 在工程根目录创建HarmonyOS文件夹、胶水工程迁移 → 配置胶水工程build-profile.json5路径 → 复制样式库 → 配置胶水工程
 ```
 
 **后续步骤由开发者完成**：
@@ -192,12 +192,10 @@ description: 生成Qt鸿蒙应用工程结构（QWidget或QML），或将已有Q
 
 与场景一 Step 1 相同。快速模式下直接从 `qt_env.md` 读取已确认的模版路径。
 
-### Step H2: 在工程根目录创建HarmonyOS文件、如果已存在不需要创建
+### Step H2: 在工程根目录创建HarmonyOS文件夹、如果已存在不需要创建
 
-查看HarmonyOS文件夹内是否有胶水工程、如果没有则通过qt_env.md路径进行迁移
+查看HarmonyOS文件夹内是否有胶水工程、如果没有则通过qt_env.md路径进行将整个胶水工程文件夹复制移动到HarmonyOS文件夹内
 
-
-```
 
 ### Step H3: 配置胶水工程build-profile.json5（关键！）
 
