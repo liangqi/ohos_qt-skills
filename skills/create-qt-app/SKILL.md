@@ -192,38 +192,20 @@ description: 生成Qt鸿蒙应用工程结构（QWidget或QML），或将已有Q
 
 与场景一 Step 1 相同。快速模式下直接从 `qt_env.md` 读取已确认的模版路径。
 
-### Step H2: 解压模板到已有工程根目录
+### Step H2: 在工程根目录创建HarmonyOS文件、如果已存在不需要创建
 
-**关键区别**：胶水代码放在已有工程根目录，而不是创建新目录。
+查看HarmonyOS文件夹内是否有胶水工程、如果没有则通过qt_env.md路径进行迁移
 
-解压后的目录结构：
-```
-<已有工程根目录>/           # 原有Qt工程目录
-├── CMakeLists.txt          # 原有工程的CMake配置（或.pro文件）
-├── src/                    # 原有工程的源码目录
-├── ...                     # 其他原有文件
-│
-├── entry/                  # ★ 新增：OHOS胶水代码
-│   ├── src/main/
-│   │   ├── cpp/            # 空目录（不使用，原有源码在工程其他位置）
-│   │   └── ets/
-│   │       └── common/
-│   │           └── QtAppConstants.ets
-│   ├── build-profile.json5 # ★ 模块级构建配置（需修改path）
-│   └── libs/arm64-v8a/     # Qt运行时库位置
-├── qEmbeddedUiExtensionHost/
-├── build-profile.json5     # 项目级构建配置
-├── local.properties
-└── ...
+
 ```
 
-### Step H3: 配置build-profile.json5（关键！）
+### Step H3: 配置胶水工程build-profile.json5（关键！）
 
 根据已有工程的构建系统类型，修改 `entry/build-profile.json5`：
 
 #### H3.1 CMake工程配置
 
-修改 `entry/build-profile.json5` 中的 `path`，使用工程根目录CMakeLists.txt的**绝对路径**：
+修改胶水工程的 `entry/build-profile.json5` 中的 `path`，使用工程根目录CMakeLists.txt的**绝对路径**：
 
 ```json5
 {
@@ -299,13 +281,13 @@ qmake工程需要额外处理：
 
 ### Step H4: 复制OHOS样式库
 
-与场景一相同，手动复制 `libqohosstyle.so` 到 `entry/libs/arm64-v8a/styles/`。
+与场景一相同，手动复制 `libqohosstyle.so` 到胶水工程的 `entry/libs/arm64-v8a/styles/`。
 
 ### Step H5: 配置胶水代码
 
 #### H5.1 配置Qt应用库名
 
-编辑 `entry/src/main/ets/common/QtAppConstants.ets`：
+编辑胶水工程的 `entry/src/main/ets/common/QtAppConstants.ets`：
 
 ```typescript
 export const APP_LIBRARY_NAME = 'lib<你的应用名>.so';
