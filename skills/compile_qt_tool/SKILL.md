@@ -222,7 +222,6 @@ python3 -c "import zipfile; zipfile.ZipFile('ohostemplateforqtapplication_*.zip'
 | 1 | 鸿蒙化分支源码路径确认 | 用户提供的分支源码路径 | `ls <路径>/qtbase/src` 确认存在 | ☐ |
 | 2 | Qt 编译产物路径确认 | `5.12.12` / `5.15.16` 编译产物路径 | `ls <路径>/lib/libQt5Core.so` 确认存在 | ☐ |
 | 3 | 胶水工程模版 | 模版下载路径及解压确认 | `ls <路径>/entry/build-profile.json5` 确认存在 | ☐ |
-| 4 | CMake 配置 | `build-profile.json5` 中路径配置正确 | 读取 json5 文件验证 path 和 arguments 字段 | ☐ |
 
 - 每项确认完成后将状态标记为 ☑
 - **所有检查项均为 ☑ 后，方可进入下一步骤**
