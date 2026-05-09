@@ -25,9 +25,21 @@ description: 使用DevEco MCP工具链编译、运行Qt鸿蒙应用并查看日�
 
 **在使用本skill之前，必须先安装配置DevEco MCP工具链。**
 
-### 安装方式一：npx安装（推荐）
+DevEco Toolbox 是一个工具集（依赖于 [DevEco Studio](https://developer.huawei.com/consumer/cn/download/)）。在不打开 DevEco Studio 的情况下，可以在 Trae、Cursor、VS Code 等 AI IDE 中完成鸿蒙应用开发的大多数工作。
 
-在AI IDE的MCP配置文件中添加以下配置：
+DevEco Toolbox 包含两个可执行文件：
+- `deveco-toolbox` — 用于可视化配置
+- `deveco-mcp-server` — 主要的 MCP 服务
+
+### 安装方式一：npx 安装（推荐）
+
+从 v0.1.4 版本开始，支持通过 npx 配置鸿蒙工具箱 MCP，该方法将拉取最新版本 Toolbox 与 MCP Server。
+
+> **提示**：在 CLI 上使用推荐配置项目级 MCP。支持智能查找当前目录下的鸿蒙工程（多鸿蒙工程不适用），可在父目录使用 MCP 进行作业。无法获取项目根路径时可通过 `init_project_path` 工具更改初始化路径。
+
+#### 各 IDE 配置示例
+
+**Trae CN**（项目级 `.trae/mcp.json`）：
 
 ```json
 {
@@ -36,11 +48,126 @@ description: 使用DevEco MCP工具链编译、运行Qt鸿蒙应用并查看日�
       "command": "npx",
       "args": [
         "-y",
-        "deveco-mcp-server"
+        "@deveco-codegenie/mcp@beta"
+      ],
+      "env": {
+        "DEVECO_PATH": "path/to/your/deveco"
+      }
+    }
+  }
+}
+```
+
+**Trae 国际版**：
+
+```json
+{
+  "servers": {
+    "deveco-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@deveco-codegenie/mcp@beta"
+      ],
+      "env": {
+        "DEVECO_PATH": "path/to/your/deveco"
+      }
+    }
+  }
+}
+```
+
+**Cursor**（需指定 `PROJECT_PATH`，`${workspaceFolder}` 可能不支持时需手动替换）：
+
+```json
+{
+  "mcpServers": {
+    "deveco-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@deveco-codegenie/mcp@beta"
       ],
       "env": {
         "PROJECT_PATH": "${workspaceFolder}",
-        "DEVECO_PATH": "C:\\Program Files\\Huawei\\DevEco Studio"
+        "DEVECO_PATH": "path/to/your/deveco"
+      }
+    }
+  }
+}
+```
+
+**VS Code / Gemini Code Assist**：
+
+```json
+{
+  "mcpServers": {
+    "deveco-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@deveco-codegenie/mcp@beta"
+      ],
+      "env": {
+        "PROJECT_PATH": "path/to/your/project",
+        "DEVECO_PATH": "path/to/your/deveco"
+      }
+    }
+  }
+}
+```
+
+**Claude Desktop**：
+
+```json
+{
+  "mcpServers": {
+    "deveco-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@deveco-codegenie/mcp@beta"
+      ],
+      "env": {
+        "DEVECO_PATH": "path/to/your/deveco"
+      }
+    }
+  }
+}
+```
+
+**Gemini CLI**：
+
+```json
+{
+  "mcpServers": {
+    "deveco-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@deveco-codegenie/mcp@beta"
+      ],
+      "env": {
+        "PROJECT_PATH": ".",
+        "DEVECO_PATH": "path/to/your/deveco"
+      }
+    }
+  }
+}
+```
+
+**OpenCode**：
+
+```json
+{
+  "mcp": {
+    "deveco-mcp": {
+      "command": ["npx", "-y", "@deveco-codegenie/mcp@beta"],
+      "type": "local",
+      "enabled": true,
+      "environment": {
+        "PROJECT_PATH": ".",
+        "DEVECO_PATH": "path/to/your/deveco"
       }
     }
   }
@@ -48,29 +175,10 @@ description: 使用DevEco MCP工具链编译、运行Qt鸿蒙应用并查看日�
 ```
 
 **参数说明**：
-- `PROJECT_PATH`: 工程路径，使用 `${workspaceFolder}` 变量或指定具体路径
-- `DEVECO_PATH`: DevEco Studio安装路径
+- `PROJECT_PATH`: 工程路径。可不填写，通过调用 `init_project_path` 工具初始化。部分 IDE 支持 `${workspaceFolder}` 自动解析
+- `DEVECO_PATH`: DevEco Studio 安装路径（无需到 bin 一层）
 
-**FAQ**：如果npx配置失败提示 "Platform package deveco-mcp-server-xxx not found"，请使用以下配置：
-
-```json
-{
-  "mcpServers": {
-    "deveco-mcp": {
-      "command": "npx",
-      "args": [
-        "--registry=https://registry.npmjs.org",
-        "-y",
-        "deveco-mcp-server"
-      ],
-      "env": {
-        "PROJECT_PATH": "${workspaceFolder}",
-        "DEVECO_PATH": "C:\\Program Files\\Huawei\\DevEco Studio"
-      }
-    }
-  }
-}
-```
+> **注意**：若 IDE 暂不支持项目路径解析，请手动将 `PROJECT_PATH` 设为实际项目路径。在大型工程下，工具箱会占用部分内存。
 
 ### 安装方式二：二进制安装
 
@@ -78,12 +186,21 @@ description: 使用DevEco MCP工具链编译、运行Qt鸿蒙应用并查看日�
 
 - GitHub Releases: https://github.com/open-deveco/deveco-mcp/releases
 
-#### Windows安装步骤
+#### Windows 安装步骤
 
-1. 下载zip包并解压
-2. 尽量避免在安装路径中包含特殊字符或中文
+1. 下载 zip 包并解压（文件夹应包含 `deveco-toolbox.exe`、`deveco-mcp-server.exe` 和 `arkts-lang-server` 目录）
+2. 尽量避免在安装路径中包含特殊字符或中文，部分 AI IDE 不支持解析此类路径
 
-#### MCP配置
+#### macOS 安装步骤
+
+1. 下载并安装 dmg 程序
+2. 打开终端执行以下命令：
+
+```bash
+xattr -cr /Applications/DevEco\ Toolbox.app
+```
+
+#### 二进制 MCP 配置（Windows 示例）
 
 ```json
 {
@@ -102,31 +219,46 @@ description: 使用DevEco MCP工具链编译、运行Qt鸿蒙应用并查看日�
 }
 ```
 
-**注意**：如果IDE不支持 `${workspaceFolder}` 变量替换，需要手动替换为指定路径。
+**注意**：如果 IDE 不支持 `${workspaceFolder}` 变量替换，需要手动替换为指定路径。
 
-### 安装方式三：DevEco Toolbox可视化配置
+### 安装方式三：DevEco Toolbox 可视化配置
 
-1. 下载并安装DevEco Toolbox（https://github.com/open-deveco/deveco-toolbox/releases）
-2. Windows: 下载zip包并解压，点击 `deveco-toolbox.exe` 启动
-3. 启动后会自动探测DevEco Studio路径
-4. 界面上有添加到Trae和Cursor的按钮，点击即可配置MCP
+1. 下载并安装 DevEco Toolbox（https://github.com/open-deveco/deveco-toolbox/releases）
+   - **macOS**: 下载 dmg 文件双击安装后，终端执行 `xattr -cr /Applications/DevEco\ Toolbox.app`
+   - **Windows**: 下载 zip 包并解压，点击 `deveco-toolbox.exe` 启动
+2. 启动后会自动探测本机安装的 DevEco Studio 路径，若未检测到需手动指定
+3. 在可选配置中，可单独配置模拟器路径和镜像路径
+4. 界面上已放置"添加到 Trae"和"添加到 Cursor"的按钮，点击即可将 MCP 配置添加到对应 IDE 中。如果是其他 IDE，可通过复制 MCP JSON 配置的方式手动添加
 
-### 验证MCP安装成功
+### ArkTS 语法校验插件（可选）
 
-安装完成后，在AI IDE中应能看到以下MCP工具：
+DevEco Toolbox 附带 ArkTS 语法校验插件，基于鸿蒙官方 DevEco Studio 编辑器的 LSP 语言服务器开发，支持语法高亮、代码 Hover 提示、定义跳转和引用查找。
 
-| 工具名称 | 主要功能 |
-|---------|---------|
-| `harmonyos_knowledge_search` | 查询鸿蒙云端知识库 |
-| `check_ets_files` | 对ets文件进行语法检查 |
-| `check_cpp_files` | 对C/C++文件进行语法检查 |
-| `build_project` | 进行项目构建 |
-| `start_app` | 在模拟器或真机中启动应用 |
-| `get_app_ui_tree` | 获取app当前页面的UI树 |
-| `perform_ui_action` | 执行UI操作（点击、滑动、输入等） |
-| `get_hilog_or_faultlog_recent` | 获取hilog/faultlog日志 |
-| `project_sync` | 执行项目同步（ohpm install） |
-| `create_harmony_project` | 创建鸿蒙模板工程 |
+**安装方式**：
+- **方式一**：在 Toolbox 中一键安装到 Trae CN / Cursor
+- **方式二**：手动安装 — 在 Toolbox 所在目录找到 ArkTS 高亮插件 vsix，将插件拖到对应 IDE 插件市场进行安装
+
+**使用方式**：打开 IDE 后，右下角有一个状态指示，当插件初始化完成后变为白色，表示可以正常校验 ArkTS 语法。
+
+### 验证 MCP 安装成功
+
+安装完成后，在 AI IDE 中应能看到以下 MCP 工具：
+
+| 工具名称 | 主要功能 | 备注 |
+|---------|---------|------|
+| `harmonyos_knowledge_search` | 查询鸿蒙云端知识库 | |
+| `check_ets_files` | 对 ets 文件进行语法检查 | |
+| `check_cpp_files` | 对 C/C++ 文件进行语法检查 | |
+| `build_project` | 进行项目构建 | |
+| `start_app` | 在模拟器或真机中启动应用 | |
+| `get_app_ui_tree` | 获取 app 当前页面的 UI 树 | |
+| `perform_ui_action` | 执行 UI 操作（点击、滑动、输入等） | |
+| `verify_ui` | UI 验证 | 可选 |
+| `get_hilog_or_faultlog_recent` | 获取 hilog/faultlog 日志 | |
+| `project_sync` | 执行项目同步（ohpm install） | |
+| `init_project_path` | 初始化/更改项目路径 | 可选 |
+
+> **注意**：若出现 MCP 可用工具缺失问题，通常由 LSP 初始化未完成导致，重新启动 MCP 即可解决。
 
 ---
 
@@ -523,5 +655,6 @@ localPath: 'C:\\screenshots\\test.png'
 
 - DevEco Toolbox GitHub: https://github.com/open-deveco/deveco-toolbox
 - DevEco MCP Releases: https://github.com/open-deveco/deveco-mcp/releases
-- 飞书指导文档: https://my.feishu.cn/wiki/open-deveco/deveco-toolbox
+- 飞书指导文档: https://my.feishu.cn/wiki/Swg4wVCfQikeSHkiyRXcPBainOb
 - 问题反馈: https://github.com/open-deveco/deveco-toolbox/issues
+- 飞书答疑群: 搜索「鸿蒙 MCP 官方交流群」加入
