@@ -175,8 +175,10 @@ description: 生成Qt鸿蒙应用工程结构（QWidget或QML），或将已有Q
 
 **场景二（已有工程鸿蒙化）**：
 ```
-确认参数 → 获取胶水工程 → 在工程根目录创建HarmonyOS文件夹、胶水工程迁移 → 配置胶水工程build-profile.json5路径 → 复制样式库 → 配置胶水工程
+确认参数 → 获取胶水工程 → 创建HarmonyOS目录 → 胶水工程放入HarmonyOS目录 → 配置build-profile.json5路径 → 复制样式库 → 配置胶水代码
 ```
+
+> **设计理念**：鸿蒙只是众多平台之一（如 Windows、Linux、macOS），胶水代码应独立存放于 `HarmonyOS/` 目录，保持原有工程结构整洁，便于多平台管理。
 
 **后续步骤由开发者完成**：
 - 在DevEco Studio中配置Qt SDK路径和鸿蒙SDK路径
@@ -192,25 +194,51 @@ description: 生成Qt鸿蒙应用工程结构（QWidget或QML），或将已有Q
 
 与场景一 Step 1 相同。快速模式下直接从 `qt_env.md` 读取已确认的模版路径。
 
-### Step H2: 在工程根目录创建HarmonyOS文件夹、如果已存在不需要创建
+### Step H2: 创建 HarmonyOS 目录并放入胶水工程
 
-查看HarmonyOS文件夹内是否有胶水工程、如果没有则通过qt_env.md路径进行将整个胶水工程文件夹复制移动到HarmonyOS文件夹内
+**设计理念**：鸿蒙是众多平台之一，胶水代码应独立存放，不干扰原有工程结构。
+
+1. 在已有工程根目录创建 `HarmonyOS/` 目录（若已存在则跳过）
+2. 将整个胶水工程（模板解压后的所有内容）复制到 `HarmonyOS/` 目录内
+
+**操作示例**：
+```bash
+# 在已有工程根目录
+mkdir -p HarmonyOS
+
+# 将胶水工程复制到 HarmonyOS 目录
+cp -r /path/to/ohostemplateforqtapplication/* HarmonyOS/
+```
+
+**结构示意**：
+```
+<已有工程根目录>/
+├── CMakeLists.txt           # 原有工程
+├── src/                     # 原有源码
+├── ...
+│
+└── HarmonyOS/               # ★ 新增：鸿蒙平台胶水代码目录
+    ├── entry/
+    ├── qEmbeddedUiExtensionHost/
+    ├── build-profile.json5
+    └── local.properties
+```
 
 
-### Step H3: 配置胶水工程build-profile.json5（关键！）
+### Step H3: 配置胶水工程 build-profile.json5（关键！）
 
-根据已有工程的构建系统类型，修改 `entry/build-profile.json5`：
+根据已有工程的构建系统类型，修改 `HarmonyOS/entry/build-profile.json5`：
 
 #### H3.1 CMake工程配置
 
-修改胶水工程的 `entry/build-profile.json5` 中的 `path`，使用工程根目录CMakeLists.txt的**绝对路径**：
+修改胶水工程的 `HarmonyOS/entry/build-profile.json5` 中的 `path`，使用工程根目录CMakeLists.txt的**绝对路径**：
 
 ```json5
 {
   "apiType": 'stageMode',
   "buildOption": {
     "externalNativeOptions": {
-      "path": "C:\\code\\MyQtApp\\CMakeLists.txt",  // ★ 使用绝对路径，指向工程根目录的CMakeLists.txt
+      "path": "C:\\code\\MyQtApp\\CMakeLists.txt",  // ★ 使用绝对路径，指向工程根目录的CMakeLists.txt（不是HarmonyOS目录下的）
       "arguments": "-DCMAKE_PREFIX_PATH=<Qt SDK路径>",
       "abiFilters": [
         "arm64-v8a"
@@ -222,9 +250,9 @@ description: 生成Qt鸿蒙应用工程结构（QWidget或QML），或将已有Q
 ```
 
 **关键修改**：
-- `path`: 使用**绝对路径**（如 `C:\\code\\MyQtApp\\CMakeLists.txt`），而非相对路径
+- `path`: 使用**绝对路径**指向**工程根目录**的 CMakeLists.txt（如 `C:\\code\\MyQtApp\\CMakeLists.txt`），而非 HarmonyOS 目录下的路径
 - 路径中的反斜杠需要转义（`\\`）
-- 这样DevEco Studio会使用已有工程的CMakeLists.txt进行构建
+- DevEco Studio 会使用原有工程的 CMakeLists.txt 进行构建
 
 #### H3.2 qmake工程配置（TODO：待完善）
 
@@ -239,13 +267,15 @@ qmake工程需要额外处理：
 - TODO：需要验证DevEco Studio是否支持qmake构建
 - 可能需要创建CMake wrapper脚本
 
+修改 `HarmonyOS/entry/build-profile.json5`：
+
 ```json5
 {
   "apiType": 'stageMode',
   "buildOption": {
     "externalNativeOptions": {
       // TODO：qmake工程的具体配置待完善
-      "path": "./CMakeLists.txt",  // 可能需要创建wrapper CMake
+      "path": "C:\\code\\MyQtApp\\wrapper.CMakeLists.txt",  // 可能需要创建wrapper CMake
       "arguments": "-DCMAKE_PREFIX_PATH=<Qt SDK路径>",
       "abiFilters": [
         "arm64-v8a"
@@ -261,13 +291,15 @@ qmake工程需要额外处理：
 
 **方案**：创建CMake wrapper或手动配置
 
+修改 `HarmonyOS/entry/build-profile.json5`：
+
 ```json5
 {
   "apiType": 'stageMode',
   "buildOption": {
     "externalNativeOptions": {
       // TODO：其他构建系统的具体配置待完善
-      "path": "./CMakeLists.txt",  // wrapper CMake或空配置
+      "path": "C:\\code\\MyQtApp\\wrapper.CMakeLists.txt",  // wrapper CMake或空配置
       "arguments": "-DCMAKE_PREFIX_PATH=<Qt SDK路径>",
       "abiFilters": [
         "arm64-v8a"
@@ -279,36 +311,38 @@ qmake工程需要额外处理：
 
 ### Step H4: 复制OHOS样式库
 
-与场景一相同，手动复制 `libqohosstyle.so` 到胶水工程的 `entry/libs/arm64-v8a/styles/`。
+与场景一相同，手动复制 `libqohosstyle.so` 到胶水工程的 `HarmonyOS/entry/libs/arm64-v8a/styles/`。
 
 ### Step H5: 配置胶水代码
 
 #### H5.1 配置Qt应用库名
 
-编辑胶水工程的 `entry/src/main/ets/common/QtAppConstants.ets`：
+编辑胶水工程的 `HarmonyOS/entry/src/main/ets/common/QtAppConstants.ets`：
 
 ```typescript
 export const APP_LIBRARY_NAME = 'lib<你的应用名>.so';
 ```
 
-**重要**：库名必须与已有工程CMakeLists.txt中的 `add_library()` 目标名匹配。
+**重要**：库名必须与已有工程根目录 CMakeLists.txt 中的 `add_library()` 目标名匹配。
 
 #### H5.2 项目级构建配置
 
-`build-profile.json5`（项目根目录）配置与场景一相同。
+`HarmonyOS/build-profile.json5`（HarmonyOS目录内的项目级配置）与场景一相同。
 
 #### H5.3 SDK路径配置
 
-`local.properties` 配置与场景一相同。
+`HarmonyOS/local.properties` 配置与场景一相同。
 
 ### 已有工程鸿蒙化的注意事项
 
-1. **不要修改原有工程的源码目录结构**
-2. **确保原有CMakeLists.txt正确链接Qt模块**：
+1. **胶水代码独立存放于 HarmonyOS 目录**：不干扰原有工程结构，便于多平台管理
+2. **不要修改原有工程的源码目录结构**
+3. **确保原有CMakeLists.txt正确链接Qt模块**：
    - 需要链接 `Qt${QT_VERSION_MAJOR}::QOhosPlatformIntegrationPlugin`（平台插件）
    - 需要设置交叉编译时的 `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH`
-3. **库名匹配**：`QtAppConstants.ets` 中的 `APP_LIBRARY_NAME` 必须与原有工程的库名一致
-4. **entry/src/main/cpp/ 目录为空**：原有源码在工程其他位置，不需要放入cpp目录
+4. **库名匹配**：`HarmonyOS/entry/src/main/ets/common/QtAppConstants.ets` 中的 `APP_LIBRARY_NAME` 必须与原有工程的库名一致
+5. **HarmonyOS/entry/src/main/cpp/ 目录为空**：原有源码在工程其他位置，不需要放入cpp目录
+6. **用 DevEco Studio 打开 HarmonyOS 目录**：而不是打开工程根目录
 
 ---
 
@@ -1020,8 +1054,11 @@ Qt运行时库部署方式：
 
 ### 场景二：已有工程鸿蒙化 - CMake工程
 
+> **设计理念**：鸿蒙是众多平台之一，胶水代码独立存放于 `HarmonyOS/` 目录，保持原有工程结构整洁。
+
 ```
 <已有工程根目录>/                     # 原有Qt工程目录
+│
 ├── CMakeLists.txt                    # ★ 原有工程的CMake配置（需添加OHOS配置）
 ├── src/                              # 原有工程的源码目录
 │   ├── main.cpp                      # 原有源码
@@ -1029,44 +1066,51 @@ Qt运行时库部署方式：
 │   └── ...
 ├── ...                               # 其他原有文件
 │
-├── entry/                            # ★ 新增：OHOS胶水代码
-│   ├── src/main/
-│   │   ├── cpp/                      # 空目录（不使用）
-│   │   └── ets/
-│   │       └── common/
-│   │           └── QtAppConstants.ets # ★ 配置库名（需匹配原有工程库名）
-│   ├── build-profile.json5           # ★ path使用绝对路径指向根目录CMakeLists.txt
-│   └── libs/arm64-v8a/               # Qt运行时库
-│       ├── libqohos.so               # OHOS平台插件
-│       ├── styles/
-│       │   └── libqohosstyle.so      # OHOS样式插件（Step H4手动复制）
-│       └── libMyApp.so               # ★ 应用库（原有工程库名）
-├── qEmbeddedUiExtensionHost/
-├── build-profile.json5               # 项目级构建配置
-└── local.properties                  # SDK路径配置
+└── HarmonyOS/                        # ★ 鸿蒙平台胶水代码目录（独立存放）
+    ├── entry/
+    │   ├── src/main/
+    │   │   ├── cpp/                  # 空目录（不使用）
+    │   │   └── ets/
+    │   │       └── common/
+    │   │           └── QtAppConstants.ets  # ★ 配置库名（需匹配原有工程库名）
+    │   ├── build-profile.json5       # ★ path使用绝对路径指向根目录CMakeLists.txt
+    │   └── libs/arm64-v8a/           # Qt运行时库
+    │       ├── libqohos.so           # OHOS平台插件
+    │       ├── styles/
+    │       │   └── libqohosstyle.so  # OHOS样式插件（Step H4手动复制）
+    │       └── libMyApp.so           # ★ 应用库（原有工程库名）
+    ├── qEmbeddedUiExtensionHost/
+    ├── build-profile.json5           # 项目级构建配置（HarmonyOS目录内）
+    └── local.properties              # SDK路径配置（HarmonyOS目录内）
 ```
+
+**关键点**：
+- 用 DevEco Studio 打开 **`HarmonyOS/` 目录**，而非工程根目录
+- `HarmonyOS/entry/build-profile.json5` 的 `path` 指向**工程根目录**的 CMakeLists.txt
 
 ### 场景二：已有工程鸿蒙化 - qmake工程（TODO）
 
 ```
 <已有工程根目录>/                     # 原有Qt工程目录
+│
 ├── MyApp.pro                         # ★ 原有工程的qmake配置
 ├── src/                              # 原有工程的源码目录
 │   ├── main.cpp
 │   └── ...
 ├── ...                               # 其他原有文件
 │
-├── entry/                            # ★ 新增：OHOS胶水代码
-│   ├── src/main/
-│   │   ├── cpp/                      # 空目录或wrapper CMake
-│   │   └── ets/
-│   │       └── common/
-│   │           └── QtAppConstants.ets
-│   ├── build-profile.json5           # ★ TODO：qmake配置待完善
-│   └── libs/arm64-v8a/
-├── qEmbeddedUiExtensionHost/
-├── build-profile.json5
-└── local.properties
+└── HarmonyOS/                        # ★ 鸿蒙平台胶水代码目录
+    ├── entry/
+    │   ├── src/main/
+    │   │   ├── cpp/                  # 空目录或wrapper CMake
+    │   │   └── ets/
+    │   │       └── common/
+    │   │           └── QtAppConstants.ets
+    │   ├── build-profile.json5       # ★ TODO：qmake配置待完善
+    │   └── libs/arm64-v8a/
+    ├── qEmbeddedUiExtensionHost/
+    ├── build-profile.json5
+    └── local.properties
 ```
 
 **qmake工程转换方案（待完善）**：
