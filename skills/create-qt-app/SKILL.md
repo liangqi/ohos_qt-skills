@@ -333,6 +333,37 @@ export const APP_LIBRARY_NAME = 'lib<你的应用名>.so';
 
 `HarmonyOS/local.properties` 配置与场景一相同。
 
+#### H5.4 配置应用包名（重要！）
+
+编辑 `HarmonyOS/AppScope/app.json5`：
+
+```json5
+{
+  "app": {
+    "bundleName": "com.example.<AppName>",  // ★ 修改为项目的应用包名
+    "vendor": {
+      "name": "YourName",
+      "code": "000"
+    },
+    "version": {
+      "code": 1000000,
+      "name": "1.0.0"
+    }
+  }
+}
+```
+
+**bundleName 命名规范**：
+| 规则 | 说明 |
+|------|------|
+| 格式 | `com.<公司/组织名>.<应用名>` 或 `org.<组织名>.<应用名>` |
+| 示例 | `com.example.tetrisdemo`、`org.mycompany.qtapp` |
+| 禁止 | 使用中文、空格、特殊字符、过长名称 |
+
+**重要**：
+- `bundleName` 是应用的唯一标识，必须全局唯一
+- 建议使用原有项目名作为最后一部分
+
 ### 已有工程鸿蒙化的注意事项
 
 1. **胶水代码独立存放于 HarmonyOS 目录**：不干扰原有工程结构，便于多平台管理
@@ -817,6 +848,38 @@ sdk.dir=<DevEco SDK路径>  # ★ 开发者需要修改为实际路径，如 C:\
 ```
 
 **注意**：SDK路径需要在DevEco Studio中配置或手动填写。
+
+### 5.4 配置应用包名（重要！）
+
+编辑 `AppScope/app.json5`：
+
+```json5
+{
+  "app": {
+    "bundleName": "com.example.<AppName>",  // ★ 修改为项目的应用包名
+    "vendor": {
+      "name": "YourName",
+      "code": "000"
+    },
+    "version": {
+      "code": 1000000,
+      "name": "1.0.0"
+    }
+  }
+}
+```
+
+**bundleName 命名规范**：
+| 规则 | 说明 |
+|------|------|
+| 格式 | `com.<公司/组织名>.<应用名>` 或 `org.<组织名>.<应用名>` |
+| 示例 | `com.example.tetrisdemo`、`org.mycompany.qtapp` |
+| 禁止 | 使用中文、空格、特殊字符、过长名称 |
+
+**重要**：
+- `bundleName` 是应用的唯一标识，必须全局唯一
+- 建议使用项目名或应用名作为最后一部分（如 `tetrisdemo`）
+- 开发调试时可使用 `com.example.xxx`，正式发布需改为真实的组织名
 
 ---
 
