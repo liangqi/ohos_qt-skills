@@ -324,10 +324,23 @@ qmake工程需要额外处理：
 编辑胶水工程的 `HarmonyOS/entry/src/main/ets/common/QtAppConstants.ets`：
 
 ```typescript
-export const APP_LIBRARY_NAME = 'lib<你的应用名>.so';
+export const APP_LIBRARY_NAME = 'lib<MyApp>.so';
 ```
 
-**重要**：库名必须与已有工程根目录 CMakeLists.txt 中的 `add_library()` 目标名匹配。
+**重要：库名必须与 Qt 编译产物的最终库名完全一致！**
+
+| 检查项 | 说明 |
+|--------|------|
+| **来源** | 库名来源于原有工程编译生成的 `.so` 文件名 |
+| **验证方式** | 编译完成后，执行 `ls HarmonyOS/entry/libs/arm64-v8a/*.so` 查看实际生成的库名 |
+| **大小写** | 必须完全一致，`libMyApp.so` ≠ `libmyapp.so` |
+| **前缀** | 必须带 `lib` 前缀（CMake 自动添加） |
+| **后缀** | 必须带 `.so` 后缀 |
+
+**对于已有工程**：
+- 查看原有工程根目录 CMakeLists.txt 中的 `add_library()` 目标名
+- 目标名 `MyApp` → 编译产物 `libMyApp.so`
+- `APP_LIBRARY_NAME` 必须设置为 `'libMyApp.so'`（与实际文件名完全一致）
 
 #### H5.2 项目级构建配置
 
@@ -799,9 +812,36 @@ cp <Qt_SDK路径>/lib/styles/libqohosstyle.so "$TARGET_DIR"
 export const APP_LIBRARY_NAME = 'libQtHarmonyApp.so';
 ```
 
-**重要**：库名必须与CMakeLists.txt中的 `add_library()` 目标名匹配：
-- CMake: `add_library(QtHarmonyApp SHARED ...)` → 生成 `libQtHarmonyApp.so`
-- ArkTS: `APP_LIBRARY_NAME = 'libQtHarmonyApp.so'`
+**重要：库名必须与 Qt 编译产物的最终库名完全一致！**
+
+| 检查项 | 说明 |
+|--------|------|
+| **来源** | 库名来源于 `entry/libs/arm64-v8a/` 目录下 Qt 编译生成的 `.so` 文件名 |
+| **验证方式** | 编译完成后，执行 `ls entry/libs/arm64-v8a/*.so` 查看实际生成的库名 |
+| **大小写** | 必须完全一致，`libQtHarmonyApp.so` ≠ `libqtHarmonyApp.so` |
+| **前缀** | 必须带 `lib` 前缀（CMake 自动添加） |
+| **后缀** | 必须带 `.so` 后缀 |
+
+**库名对应关系**：
+
+```
+CMakeLists.txt:
+  add_library(QtHarmonyApp SHARED ...)  // 目标名: QtHarmonyApp
+
+编译产物:
+  entry/libs/arm64-v8a/libQtHarmonyApp.so  // 实际文件名: lib + 目标名 + .so
+
+QtAppConstants.ets:
+  APP_LIBRARY_NAME = 'libQtHarmonyApp.so'  // ★ 必须与实际文件名完全一致
+```
+
+**常见错误**：
+| 错误示例 | 正确示例 | 问题 |
+|----------|----------|------|
+| `'QtHarmonyApp.so'` | `'libQtHarmonyApp.so'` | 缺少 `lib` 前缀 |
+| `'libQtHarmonyApp'` | `'libQtHarmonyApp.so'` | 缺少 `.so` 后缀 |
+| `'libqtharmonyapp.so'` | `'libQtHarmonyApp.so'` | 大小写不一致 |
+| `'libMyApp.so'` | `'libQtHarmonyApp.so'` | 与实际编译产物不符 |
 
 ### 5.2 项目级构建配置
 
@@ -942,7 +982,7 @@ Qt运行时库部署分为两部分：
 | dlopen failed / cannot locate symbol | 检查 CMakeLists.txt 是否链接了 Qt${QT_VERSION_MAJOR}::QOhosPlatformIntegrationPlugin |
 | **平台插件加载失败** | 确保 libqohos.so 在 libs/${ABI_DIR}/ 目录下（通过链接Qt5::QOhosPlatformIntegrationPlugin自动部署） |
 | **样式插件加载失败** | 确保 Step 4 正确复制 libqohosstyle.so 到 libs/${ABI_DIR}/styles/ |
-| 库名不匹配 | 确保CMake的add_library名称与QtAppConstants.ets的APP_LIBRARY_NAME一致 |
+| **库名不匹配** | `APP_LIBRARY_NAME` 必须与编译产物文件名完全一致（含 `lib` 前缀和 `.so` 后缀）。编译后执行 `ls entry/libs/arm64-v8a/*.so` 查看实际库名 |
 | **QML: module "QtQuick" is not installed** | 检查Qt SDK路径是否正确配置在CMAKE_PREFIX_PATH |
 | **QML应用黑屏** | 检查Qt模块是否正确链接，CMAKE_PREFIX_PATH配置是否正确 |
 | **QML: Cannot assign to non-existent property "focus"** | Window元素没有focus属性，键盘事件处理需要放在内部Item或FocusScope中，使用Item { focus: true; Keys.onXPressed: ... } |
@@ -954,7 +994,7 @@ Qt运行时库部署分为两部分：
 |------|----------|
 | **构建找不到源文件** | 检查 `entry/build-profile.json5` 的 `path` 是否使用绝对路径指向根目录CMakeLists.txt |
 | **原有工程CMakeLists.txt缺少OHOS配置** | 添加交叉编译时的 `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH` 设置，链接 `Qt${QT_VERSION_MAJOR}::QOhosPlatformIntegrationPlugin` |
-| **库名不匹配** | 修改 `QtAppConstants.ets` 的 `APP_LIBRARY_NAME` 为原有工程的库名（如 `libMyApp.so`） |
+| **库名不匹配** | `APP_LIBRARY_NAME` 必须与编译产物文件名完全一致。编译后执行 `ls HarmonyOS/entry/libs/arm64-v8a/*.so` 查看实际库名，确保含 `lib` 前缀和 `.so` 后缀 |
 | **qmake工程如何转换** | TODO：待完善，建议转换为CMake工程或创建CMake wrapper |
 | **其他构建系统如何处理** | TODO：待完善，建议创建CMake wrapper脚本 |
 | **原有工程目录结构混乱** | 确保胶水代码放在根目录，不要修改原有源码位置 |
