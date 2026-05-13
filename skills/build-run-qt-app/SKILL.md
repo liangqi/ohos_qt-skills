@@ -163,16 +163,20 @@ DevEco Toolbox 包含两个可执行文件：
 **OpenCode**：
 
 ```json
-{
-  "mcp": {
-    "deveco-mcp": {
-      "command": ["npx", "-y", "@deveco-codegenie/mcp@beta"],
-      "type": "local",
-      "enabled": true,
-      "environment": {
-        "PROJECT_PATH": ".",
-        "DEVECO_PATH": "path/to/your/deveco"
-      }
+
+"mcp": {
+  "deveco-mcp": {
+    "command": [
+      "npx",
+      "-y",
+      "@deveco-codegenie/mcp@beta"
+    ],
+    "type": "local",
+    "enabled": true,
+    "timeout": 20000,
+    "environment": {
+      "PROJECT_PATH": ".",
+      "DEVECO_PATH": "path/to/your/deveco"
     }
   }
 }
