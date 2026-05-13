@@ -173,7 +173,7 @@ DevEco Toolbox 包含两个可执行文件：
     ],
     "type": "local",
     "enabled": true,
-    "timeout": 20000,
+    "timeout": 900000,
     "environment": {
       "PROJECT_PATH": ".",
       "DEVECO_PATH": "path/to/your/deveco"
