@@ -279,21 +279,26 @@ python3 -c "import zipfile; zipfile.ZipFile('ohostemplateforqtapplication_*.zip'
 
 **Step B：查找仓库中的 Qt5 版本**
 
-在当前仓库中查找可能的 Qt5 兼容版本：
+> 很多项目的 Qt5 版本**名字里不含 `qt5`**（如 `v1.0.0`、`master`），**不能仅靠名字 grep**，必须检查构建文件内容。
 
 ```bash
-# 查找含 qt5 / Qt5 / 5.x 的分支
+# 1. 名称快速筛选
 git branch -a | grep -iE 'qt5|5\.[0-9]+'
-
-# 查找含 qt5 / Qt5 / 5.x 的 tag
 git tag -l | grep -iE 'qt5|5\.[0-9]+'
 
-# 如果没有明确命名，查看所有 tag 的时间和描述
-git tag -l --sort=-creatordate | head -20
+# 2. 列出全部 tag 和分支（不可跳过）
+git tag -l --sort=-creatordate
+git branch -a
+
+# 3. 对每个 tag/分支，用 git show 检查构建文件是否引用 Qt5（免切换）
+git show <ref>:CMakeLists.txt 2>/dev/null | grep -iE 'find_package\(Qt5|Qt5::'
+git show <ref>:<项目名>.pro 2>/dev/null | grep -iE 'QT\s*\+='
 ```
 
-- 若**未找到**任何 Qt5 分支或 tag → 记录到 `qt_env.md`："仓库无 Qt5 版本，需手动适配"，**向用户报告并等待决策**
-- 若**找到**候选分支/tag → 按以下优先级选取后进入 Step C
+**判定规则**：构建文件含 `find_package(Qt5` / `Qt5::` → Qt5 兼容；仅含 `find_package(Qt6` 且无 Qt5 回退 → Qt6 不兼容。每个 tag/分支的检查结果记入 `qt_env.md`。
+
+- 若**找到** Qt5 兼容版本 → 按以下优先级选取后进入 Step C
+- 若**全部遍历后均未找到** → 记录到 `qt_env.md`："仓库无 Qt5 版本（已检查全部 N 个 tag 和 M 个分支），需手动适配"，**向用户报告并等待决策**
 
 **选取优先级**（tag 和分支同时存在时）：
 
