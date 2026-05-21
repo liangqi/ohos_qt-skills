@@ -5,7 +5,7 @@ description: 生成Qt鸿蒙应用工程结构（QWidget或QML），或将已有Q
 
 # Qt for HarmonyOS 工程生成器
 
-> **⚠️ 铁律继承（强制）**：在执行本 skill 的任何步骤之前，**必须先读取** `../compile_qt_tool/SKILL.md` 的第 10–140 行（`### 0、铁律` 完整章节），并在本 skill 执行期间**全程遵守**其中的所有铁律。
+> **⚠️ 铁律继承（强制）**：在执行本 skill 的任何步骤之前，**必须先读取** `../qt-ohos-project-analyzer/SKILL.md` 的第 10–140 行（`### 0、铁律` 完整章节），并在本 skill 执行期间**全程遵守**其中的所有铁律。
 >
 > 铁律优先级 **高于** 本 skill 的任何指令。若本 skill 的操作与铁律冲突，以铁律为准。
 
@@ -61,9 +61,9 @@ description: 生成Qt鸿蒙应用工程结构（QWidget或QML），或将已有Q
 
 ## 前置确认（必须！）
 
-### 快速模式：从 compile-qt-tool 调用
+### 快速模式：从 qt-ohos-project-analyzer 调用
 
-> 当本 skill 由 `compile-qt-tool`（§4.2）调用时，当前目录下应已存在 `qt_env.md`。
+> 当本 skill 由 `qt-ohos-project-analyzer`（§4.2）调用时，当前目录下应已存在 `qt_env.md`。
 >
 > **检测到 `qt_env.md` → 进入快速模式**：
 > 1. 从 `qt_env.md` 读取已确认的路径（胶水工程模版路径、Qt 编译产物路径等）
@@ -416,7 +416,7 @@ curl -O "http://codereview.qtcompany.cn:29416/template/ohostemplateforqtapplicat
 python3 -c "import zipfile; zipfile.ZipFile('ohostemplateforqtapplication_*.zip').extractall('.')"
 ```
 
-解压后的目录结构（模板项目根目录）与 `compile-qt-tool` §2 中描述一致：
+解压后的目录结构（模板项目根目录）与 `qt-ohos-project-analyzer` §2 中描述一致：
 ```
 <工程目录>/
 ├── entry/
@@ -598,7 +598,7 @@ cd entry/src/main/cpp
 
 ### 3.1 配置 entry/build-profile.json5
 
-> 此配置与 `compile-qt-tool` §2「配置 CMake」中的内容相同，是两个 skill 共享的关键配置项。
+> 此配置与 `qt-ohos-project-analyzer` §2「配置 CMake」中的内容相同，是两个 skill 共享的关键配置项。
 
 **这是最关键的配置**，在模块级构建配置中指定CMake和Qt路径：
 

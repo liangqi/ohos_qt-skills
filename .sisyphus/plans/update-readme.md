@@ -6,13 +6,13 @@
 
 ## 关系说明
 
-compile-qt-tool 是总开关，编排整个流程，调用另外两个子 skill：
+qt-ohos-project-analyzer 是总开关，编排整个流程，调用另外两个子 skill：
 - 需要创建工程时 → 调用 create-qt-app
 - 需要编译运行时 → 调用 build-run-qt-app
 
 ## 各 Skill 主要功能（精简版）
 
-### compile-qt-tool（总开关）
+### qt-ohos-project-analyzer（总开关 / 鸿蒙化项目分析器）
 
 1. 铁律定义 — 所有 skill 共享的流程纪律
 2. 需求沟通 + MCP 工具链就绪检查
@@ -43,10 +43,10 @@ Qt for HarmonyOS 开发的 AI Agent Skills 集合——帮助开发者将 Qt 项
 
 ## 三个 Skill 的关系
 
-**`compile-qt-tool` 是总开关**，编排整个鸿蒙化编译流程，在需要时调用另外两个子 skill：
+**`qt-ohos-project-analyzer` 是总开关**，编排整个鸿蒙化编译流程，在需要时调用另外两个子 skill：
 
 ```
-compile-qt-tool（总开关）
+qt-ohos-project-analyzer（总开关 / 鸿蒙化项目分析）
   ├── 调用 → create-qt-app（工程生成）
   └── 调用 → build-run-qt-app（编译运行）
 ```
@@ -57,7 +57,7 @@ compile-qt-tool（总开关）
 
 ## 各 Skill 主要功能
 
-### compile-qt-tool — 总开关 / 编排器
+### qt-ohos-project-analyzer — 总开关 / 鸿蒙化项目分析器
 
 1. **铁律定义** — 所有 skill 共享的流程纪律（禁止推测、知识库优先、修复必须沉淀等）
 2. **MCP 工具链就绪检查** — 阻断性前置条件，未安装则暂停引导安装
@@ -84,7 +84,7 @@ compile-qt-tool（总开关）
 ```
 ohos_qt-skills/
 ├── skills/
-│   ├── compile_qt_tool/      # 总开关
+│   ├── qt-ohos-project-analyzer/  # 总开关 / 鸿蒙化项目分析器
 │   ├── create-qt-app/        # 工程生成
 │   └── build-run-qt-app/     # 编译运行
 │   └── INDEX.md
@@ -97,13 +97,13 @@ ohos_qt-skills/
 
 | Skill | 角色 | 主要功能 | 状态 |
 |-------|------|---------|------|
-| [compile-qt-tool](skills/compile_qt_tool/SKILL.md) | **总开关** | 铁律 + 环境确认 + 依赖梳理 + 编排编译流程 + 验证交付 | ✅ |
+| [qt-ohos-project-analyzer](skills/qt-ohos-project-analyzer/SKILL.md) | **总开关** | 鸿蒙化项目分析：铁律 + 环境确认 + 依赖梳理 + 编排编译流程 + 验证交付 | ✅ |
 | [create-qt-app](skills/create-qt-app/SKILL.md) | 子 skill | 从零创建 / 已有工程鸿蒙化，生成工程结构和配置 | ✅ |
 | [build-run-qt-app](skills/build-run-qt-app/SKILL.md) | 子 skill | 编译、启动、日志查看、UI 测试 | ✅ |
 
 ## 如何使用
 
-**通过总开关（推荐）**：直接调用 compile-qt-tool，它自动编排调用子 skill。
+**通过总开关（推荐）**：直接调用 qt-ohos-project-analyzer，它自动编排调用子 skill。
 
 **单独使用子 skill**：工程已就绪时只用 build-run-qt-app 编译运行；只需创建工程时只用 create-qt-app。
 

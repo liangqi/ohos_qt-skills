@@ -1,11 +1,11 @@
 ---
-name: compile-qt-tool
-description: Use when compiling Qt-dependent open-source projects for OpenHarmony/OHOS, including Qt OHOS branch and artifact checks, glue template setup, dependency audits, build planning, compiler/linker/package error analysis, and fix recording.
+name: qt-ohos-project-analyzer
+description: 鸿蒙化项目分析器——分析依赖Qt框架的开源项目在OHOS平台上的移植可行性，包括Qt版本兼容性评估、模块依赖梳理、三方库审计、构建系统适配、环境就绪比对、编译计划制定，以及编译过程中的错误分析与修复沉淀。
 metadata:
-  short-description: Compile Qt projects for OHOS
+  short-description: Qt-OHOS project analyzer
 ---
 
-# 依赖 Qt 框架的开源项目鸿蒙化编译工具
+# Qt-OHOS 鸿蒙化项目分析器
 
 ### 0、铁律
 
