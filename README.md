@@ -11,6 +11,46 @@ qt-ohos-project-analyzer（总开关 / 鸿蒙化项目分析）
   ├── 调用 → create-qt-app（工程生成）
   └── 调用 → build-run-qt-app（编译运行）
 ```
+子 skill 也可以独立使用，但在总开关编排下会进入**快速模式**（跳过重复确认、共享环境信息）。 
+ 
+ 
+ --- 
+ 
+ 
+ ## 各 Skill 主要功能 
+ 
+ 
+ ### qt-ohos-project-analyzer — 总开关 / 编排器 
+ 
+ 
+ 1. **铁律定义** — 所有 skill 共享的流程纪律（禁止推测、知识库优先、修复必须沉淀等） 
+ 2. **MCP 工具链就绪检查** — 阻断性前置条件，未安装则暂停引导安装 
+ 3. **Qt/OHOS 前置环境确认** — 确认分支源码路径、编译产物路径、胶水模版 → 生成 `qt_env.md` 
+ 4. **依赖梳理** — Qt 版本兼容性评估、模块依赖、三方库、构建系统 
+ 5. **编排编译** — 调用 create-qt-app 创建工程 → 调用 build-run-qt-app 编译运行 → 双重交验确认 → 输出总结文档 
+ 
+ 
+ ### create-qt-app — 工程生成 
+ 
+ 
+ 1. **从零创建新工程** — 下载模板 → 放 Qt 源码（QWidget/QML）→ 配置 CMake → 复制样式库 → 配置胶水代码 
+ 2. **已有 Qt 工程鸿蒙化** — 在工程根目录创建 `HarmonyOS/` 子目录放胶水代码，不干扰原有结构 
+ 
+ 
+ ### build-run-qt-app — 编译运行 
+ 
+ 
+ 1. **DevEco MCP 安装配置** — 覆盖 Trae、Cursor、VS Code 等多种 IDE 
+ 2. **项目构建** — 调用 build_project，含构建失败排查流程（知识库优先 → 错误分类 → 修复沉淀） 
+ 3. **应用启动 + 日志查看** — 调用 start_app + get_hilog_or_faultlog_recent 
+ 4. **UI 测试**（可选）— UI 树获取 + UI 操作（点击/滑动/输入/截图） 
+ 
+ 
+ --- 
+ 
+ 
+ ## 目录结构
+```
 ohos_qt-skills/
 ├── README.md                   # 项目说明
 ├── skills/                     # Skills 目录
