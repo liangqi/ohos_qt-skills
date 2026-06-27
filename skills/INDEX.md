@@ -89,6 +89,129 @@
 
 ---
 
+## 扩展 Skills
+
+以下 Skills 用于集成鸿蒙系统 API 到 Qt 鸿蒙应用，需配合 AKI 桥接框架使用。
+
+### aki-bridge-generator
+
+**名称**: `aki-bridge-generator`
+
+**描述**: 使用 AKI（Application Kit Interface）框架为 Qt 鸿蒙应用生成 C++↔ArkTS 桥接代码。基于实战经验，强调 SafetyCallback 跨线程同步调用、JSBIND_GLOBAL 全局函数模式（适配 Qt Q_OBJECT 单例）、SafetyCallback 指针成员管理、TaskRunner 初始化、windowId 传递、AKI 类型声明等关键实践。
+
+**位置**: `skills/aki-bridge-generator/SKILL.md`
+
+**功能**:
+- **桥接方向确认** — C++→ArkTS / ArkTS→C++ / 双向桥接
+- **接口设计** — Qt Q_OBJECT 单例 Bridge 类 + SafetyCallback 指针成员 + JSBIND_GLOBAL 全局函数模式
+- **生成 C++ 桥接代码** — Bridge 类实现（SafetyCallback setter delete+new 模式）、QMetaObject 线程转发
+- **生成 AKI JSBinding** — JSBIND_GLOBAL + JSBIND_FUNCTION 声明、JSBIND_ADDON 注册、CMakeLists.txt 配置
+- **生成 ArkTS 调用代码** — import 方式、SafetyCallback 回调注册、init() 初始化、TaskRunner 创建
+- **配置类型声明** — index.d.ts + oh-package.json5 + entry devDependencies（7 层一致性检查）
+
+**核心概念**:
+- SafetyCallback vs std::function（跨线程安全：SafetyCallback 使用 napi_threadsafe_function + std::promise/future）
+- JSBIND_GLOBAL vs JSBIND_CLASS（Qt Q_OBJECT 单例必须用 JSBIND_GLOBAL，避免实例冲突）
+- SafetyCallback 指针成员管理（nullptr 初始化 / delete 析构 / delete+new setter）
+- 线程安全模型（C++ Qt主线程 ↔ SafetyCallback ↔ ArkTS JS线程，JS→C→QtMainThread 必须通过消息队列）
+
+**使用示例**:
+```
+帮我为 Qt 鸿蒙应用生成 AKI 桥接代码，需要调用鸿蒙 NFC API。
+桥接方向：C++ → ArkTS（双向）
+需桥接的接口：
+  - NfcBridge::startNfcDiscovery()
+  - NfcBridge::stopNfcDiscovery()
+  - NfcBridge::onNfcTagDetected(tagInfo)
+工程目录：C:\code\NfcApp
+```
+
+**关键配置点**:
+1. 桥接方向（C++→ArkTS / ArkTS→C++ / 双向）
+2. 需桥接的 C++ 接口签名列表
+3. 工程目录路径（桥接代码放在 entry/src/main/cpp/）
+4. Bridge 类是否为 Qt Q_OBJECT 单例（决定 JSBIND_GLOBAL vs JSBIND_CLASS）
+5. AKI 源码集成方式（add_subdirectory）
+
+**前置条件**:
+- Qt 鸿蒙工程已创建（使用 `create-qt-app` skill）
+- AKI 框架源码已获取（https://gitcode.com/CPF-ApplicationTPC/aki）
+
+**核心流程**:
+1. 确认桥接方向与接口列表
+2. 设计桥接接口（Bridge 类 + SafetyCallback 指针成员）
+3. 生成 C++ 桥接代码（share_bridge.h/cpp）
+4. 生成 AKI JSBinding（share_aki_binding.cpp）
+5. 生成 ArkTS 调用代码（ShareBridgeProxy.ets）
+6. 配置 AKI 类型声明（index.d.ts + oh-package.json5）
+
+---
+
+### hmos-share-integration
+
+**名称**: `hmos-share-integration`
+
+**描述**: 集成鸿蒙碰一碰分享和手势分享（隔空传送）功能到 Qt 鸿蒙应用。通过 AKI 框架将 harmonyShare（华为分享）API 桥接到 Qt C++ 层，实现碰一碰/手势分享文件分享、链接分享、沙箱接收（dataReceive）。所有代码基于实际开发验证（knocksharedemo）。
+
+**位置**: `skills/hmos-share-integration/SKILL.md`
+
+**功能**:
+- **碰一碰/手势分享发送端**
+  - 注册 knockShare/gesturesShare 监听（需 windowId）
+  - SharableTarget.share() 文件分享（utd + uri）
+  - SharableTarget.share() 链接分享（HYPERLINK utd + content）
+  - SharableTarget.reject() 拒绝分享
+  - SharableTarget.updateShareData() 更新预览图
+- **沙箱接收端（dataReceive）**
+  - 注册 dataReceive 监听（RecvCapabilityRegistry + windowId）
+  - ReceivableTarget.receive() 接收数据流程
+  - 取消监听 off('dataReceive')（必须传入 RecvCapabilityRegistry）
+- **AKI 桥接集成** — ShareBridge C++ 桥接类 + JSBinding + ShareBridgeProxy.ets
+
+**关键教训**（开发踩坑总结）:
+1. RecvCapabilityRegistry 类型（NOT ReceivableTargetConfig）— capabilities 必填，maxSupportedCount 必须 > 0
+2. ReceivableTarget 回调流程（NOT SharableData）— 必须调用 receive() 才能接收数据
+3. off('dataReceive') 必须传入 RecvCapabilityRegistry 参数
+4. windowId 必须从 Qt 侧获取（QtOhosExtras::tryGetNativeWindowId），不能从 ArkTS 侧获取
+5. @kit.ShareKit 是系统 Kit，绝不能在 oh-package.json5 dependencies 中声明
+6. JSON5 文件必须为合法标准 JSON（禁止尾部逗号、单引号、注释）
+7. modules.xml 必须注册 entry.iml 和 qEmbeddedUiExtensionHost.iml
+8. receiveDir 使用 context.filesDir，在 QAbility.onCreate 设置
+9. targetSdkVersion = 6.0.0(20) 硬约束
+10. 设备类型限制：API≤22 仅 PC/2in1，≥23 支持 tablet
+
+**使用示例**:
+```
+帮我把碰一碰分享功能集成到 Qt 鸿蒙应用中。
+分享角色：发送端 + 接收端
+分享类型：文件分享 + 链接分享
+Qt UI 类型：QWidget
+目标设备：tablet + 2in1
+工程目录：C:\code\ShareDemo
+```
+
+**关键配置点**:
+1. 分享角色（发送端 / 接收端 / 两者都要）
+2. 分享类型（文件分享 / 链接分享 / 手势分享）
+3. Qt UI 类型（QWidget / QML）
+4. 目标设备类型（tablet+2in1 / phone）
+5. 工程目录路径
+
+**前置条件**:
+- Qt 鸿蒙工程已创建（使用 `create-qt-app` skill）
+- AKI 框架已集成到项目（使用 `aki-bridge-generator` skill）
+- DevEco MCP 工具链已配置（用于构建和测试）
+
+**核心流程**:
+1. 确认需求与场景（分享角色、类型、设备）
+2. 设计桥接方案（API 路径设计、数据流设计）
+3. 创建 ArkTS 侧代码（ShareBridgeProxy.ets + QAbility.ets）
+4. 创建 AKI JSBinding 声明（share_bridge.h/cpp + share_aki_binding.cpp）
+5. Qt 侧集成（windowId 获取、回调注册、消息队列转发）
+6. 配置权限与依赖（module.json5、oh-package.json5、modules.xml、CMakeLists.txt）
+
+---
+
 ## 规划中的 Skills
 
 以下 Skills 正在开发或计划开发中：
