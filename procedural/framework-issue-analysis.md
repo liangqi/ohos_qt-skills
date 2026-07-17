@@ -4,7 +4,7 @@ type: procedural
 domain: workflow
 tags: [workflow, qt, harmonyos, debugging, framework, analysis, logging, upstream-submission]
 created: 2026-06-02
-updated: 2026-06-09
+updated: 2026-07-04
 status: active
 audience: public
 refs: [semantic-harmonyos-dev-fundamentals,semantic-qt-harmonyos-api,semantic-qt-harmonyos-build,semantic-qt-harmonyos-overview]
@@ -69,12 +69,12 @@ summary: >
 
 **创建 Demo 工程**：
 
-> **⚠️ 复现 demo 必须使用鸿蒙工程迁移中的胶水代码模板 ZIP 创建工程结构，禁止手动创建目录。**
-> 模板 ZIP 路径见 `ENV.md` 的 `<TEMPLATE_ZIP>`。
+> **⚠️ 复现 demo 必须使用鸿蒙工程迁移中的胶水代码模板创建工程结构，禁止手动创建目录。**
+> 模板路径见 `ENV.md` 的 `OHOS_TEMPLATE_SRC`（即 `<QT_SRC>/qtbase/src/harmonyos/templates`，源码内置）。
 
 ```bash
-# 从模板 ZIP 解压生成工程
-python3 -c "import zipfile; zipfile.ZipFile('<<TEMPLATE_ZIP>路径>').extractall('<demo目标目录>')"
+# 从 Qt 源码树复制内置模板到 demo 目录（5.15 / 5.12 源码树内均有，内容相同）
+cp -r <QT5_15_SRC>/qtbase/src/harmonyos/templates/. "<demo目标目录>/"
 ```
 
 解压后将 Qt C++ 源码放入 `entry/src/main/cpp/`，配置 `CMakeLists.txt`、`QtAppConstants.ets` 和 `build-profile.json5`，与迁移工作流一致。
@@ -119,7 +119,7 @@ python3 -c "import zipfile; zipfile.ZipFile('<<TEMPLATE_ZIP>路径>').extractall
 | 头文件缺失 | `'QMainWindow' file not found` | 缺少 `find_package` 组件或 `target_link_libraries` |
 | 链接错误 | `undefined reference to ...` | 补充链接库（`QOhosPlatformIntegrationPlugin` 等） |
 | 交叉编译 find_package | `find_package` 找到主机库而非目标库 | 检查 `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH` 设置 |
-| 鸿蒙模板缺失 | `QtAppConstants.ets` 未找到 | 确认从 OHOS 模板 ZIP 正确解压 |
+| 鸿蒙模板缺失 | `QtAppConstants.ets` 未找到 | 确认从源码内置模板（`qtbase/src/harmonyos/templates`）正确复制 |
 | 库名不匹配 | 运行时加载失败 | `CMakeLists.txt` 中 `add_library` 名必须与 `QtAppConstants.ets` 的 `APP_LIBRARY_NAME` 一致 |
 
 **修复原则**：
@@ -405,11 +405,9 @@ git reset HEAD
 
 ## 供应链
 
-> 详见 工作流供应链 §[I] 框架问题分析
-
 | 维度 | 详情 |
 |------|------|
-| **上游来源** | ① 自驱动（日常测试/代码审查发现的框架异常） ② 商业 Qt 客户直接反馈（或经 [P]/[K] 转入） ③ 版本发布前的已知问题清单 |
+| **上游来源** | ① 自驱动（日常测试/代码审查发现的框架异常） ② 商业 Qt 客户直接反馈 ③ 版本发布前的已知问题清单 |
 | **上游输入** | bug 描述、复现步骤、日志/截图、Qt 版本和环境信息、原始工程代码（如有） |
 | **下游接收方** | **The Qt Company (Tqtc)** 框架团队 |
 | **交付件** | `<WORK_DIR>/<bug-name>/`：ISSUE.md + patches/ + demo/ + README.md |
@@ -425,7 +423,6 @@ git reset HEAD
 - [[qt-harmonyos-api]] — API 兼容性差异
 - [[qt-harmonyos-platform-limits]] — 已知平台限制（避免将已知限制误判为 bug）
 - [[harmonyos-dev-fundamentals]] — hdc 工具使用
-- 工作流供应链 — 工作流供应链总览（上下游关系和对接人清单）
 
 ## 内容来源
 

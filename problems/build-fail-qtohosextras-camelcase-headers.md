@@ -7,6 +7,7 @@ created: 2026-06-03
 updated: 2026-06-03
 status: solved
 audience: public
+summary: "Qt5.12 SDK 编译报 QtOhosExtras CamelCase 头文件不存在（如 QOhosAppContext）"
 severity: medium
 error_code: N/A
 error_message: "fatal error: 'QtOhosExtras/QOhosAppContext' file not found"

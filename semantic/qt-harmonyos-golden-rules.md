@@ -4,12 +4,12 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, golden-rules, quick-reference, porting, checklist]
 created: 2026-06-03
-updated: 2026-06-25
+updated: 2026-07-07
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-porting-workflow, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-lifecycle, semantic-qt-harmonyos-api-mapping, semantic-qt-harmonyos-code-patterns, semantic-qt-harmonyos-window-model, semantic-qt-ohos-extras, semantic-qt-harmonyos-build, semantic-qt-harmonyos-third-party-libs]
 summary: >
-  Qt 鸿蒙化铁律速查：33 条黄金规则覆盖构建部署、窗口管理、API/枚举路径、
+  Qt 鸿蒙化铁律速查：34 条黄金规则覆盖构建部署、窗口管理、API/枚举路径、
   平台限制、生命周期、跨平台守卫。每条含严重度（🔴🟠🟡🟢）、"为什么"和出处。
   Agent 执行任何 Qt for HarmonyOS 任务前应先扫描此页。
 ---
@@ -30,7 +30,7 @@ summary: >
 
 ---
 
-## 一、构建与部署（11 条）
+## 一、构建与部署（12 条）
 
 | # | 严重度 | 规则 | 为什么 | 出处 |
 |---|:------:|------|--------|------|
@@ -45,6 +45,7 @@ summary: >
 | B9 | 🔴 | qmake 的 `unix` 分支**必须**追加 `:!ohos`（`unix:!android:!macx:!ohos`） | 否则 ohos 同时命中 unix 分支，编译出错误的 Linux 代码 | [[qt-harmonyos-code-patterns]] §模式7 |
 | B10 | 🔴 | QML 应用**必须**启用 `CMAKE_AUTORCC ON` | 不启用则 qml.qrc 不编译，QML 文件不打包，运行时黑屏 | [[qt-harmonyos-project-structure]] §4.2 |
 | B11 | 🔴 | `bundleName` 格式**必须**为 `com.<公司>.<应用名>`，**禁止**中文/空格/特殊字符 | 格式不合法导致打包和签名失败 | [[qt-harmonyos-project-structure]] §8 |
+| B12 | 🟠 | SQL 驱动插件 `libqsqlite.so`**必须**手动复制到 `libs/${ABI_DIR}/sqldrivers/`（与 B7 `libqohosstyle.so`→`styles/`、`libqsvg.so`→`imageformats/` 同类） | 动态分类插件无法靠 `target_link_libraries` 部署，`QFactoryLoader` 按子目录 dlopen 加载；漏部署则 `addDatabase("QSQLITE")` driver 为 null，`open()` 在碰文件系统前即返回 false（`lastError="Driver not loaded"`）。注意 OHOS SDK 文件名是 `libqsqlite.so`（非桌面 `libqsqlsqlite.so`） | [[qt-harmonyos-project-structure]] §6.2, [runtime-fail-sqlite-open-database](../problems/runtime-fail-sqlite-open-database.md) |
 
 ---
 
@@ -123,8 +124,6 @@ summary: >
     ├─ QtOhosExtras 怎么用？ → ohos-extras
     ├─ 框架 bug/根因定位？   → procedural/framework-issue-analysis
     ├─ 验证修复/回归测试？   → procedural/framework-fix-verification
-    ├─ 客户问题/商业支持？   → procedural/commercial-qt-harmonyos-support
-    ├─ 疑似系统问题/上报？   → procedural/commercial-qt-harmonyos-bug-triage
     ├─ Qt 6 相关？           → qt6-status
     ├─ 三方库/依赖？         → third-party-libs
     └─ DevEco/MCP/工具链？   → deveco-mcp-toolchain

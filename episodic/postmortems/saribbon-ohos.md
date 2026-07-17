@@ -153,7 +153,7 @@ project/saribbon-ohos/
 - [[procedural-qt-app-harmonyos-migration]] — Qt 应用鸿蒙化迁移流程
 - [[semantic-qt-harmonyos-modules]] — Qt OHOS 模块支持状态
 - [[semantic-qt-harmonyos-build]] — Qt OHOS 构建指南
-- [[episodic-postmortems-coin3d-quarter-ohos]] — Coin3D Quarter OHOS 迁移（类似项目）
+- [[episodic-projects-coin3d-quarter-ohos]] — Coin3D Quarter OHOS 迁移（类似项目）
 
 ## 文件清单
 

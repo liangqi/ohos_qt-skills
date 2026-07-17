@@ -2,9 +2,9 @@
 id: semantic-qt-harmonyos-platform-limits
 type: semantic
 domain: tech
-tags: [qt, harmonyos, platform-limits, chmod, symlink, dlopen, timezone, font, xcomponent]
+tags: [qt, harmonyos, platform-limits, chmod, symlink, dlopen, timezone, font, xcomponent, zink, rgba8, mipmap]
 created: 2026-06-02
-updated: 2026-06-16
+updated: 2026-07-14
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-api]
@@ -12,7 +12,9 @@ summary: >
   鸿蒙平台限制汇总：chmod/setPermissions 不可用、symlink 禁止第三方使用、
   stat() 系统路径 EACCES、dlopen() 拒绝可写路径、无 tzdata（时区用 ICU）、
   无等宽字体（需自带）、XComponent（SURFACE 类型）在 API 20 弃用、
-  MUSL 不能加载 stripped ELF。每条含华为确认状态和 QTBUG 编号。
+  MUSL 不能加载 stripped ELF。OpenGL/ZINK 渲染：glGenerateMipmap 对 RGBA8 alpha
+  纹理失败→mipmap 不完整→采样黑（alpha-PNG 实体关 mipmap）；Qt.platform.os 返回
+  "linux" 非 "ohos"（QML 守卫用 Qt.platform.pluginName）。每条含华为确认状态和 QTBUG 编号。
 ---
 
 # 鸿蒙平台限制
@@ -117,3 +119,21 @@ summary: >
 
 - [HarmonyOS Platform Limitations](https://wiki.qt.io/Qt_for_HarmonyOS/platform_limitations)
 - [HarmonyOS MUSL 特殊符号不导出](https://developer.huawei.com/consumer/en/doc/harmonyos-references/musl-peculiar-symbol)
+
+## OpenGL / ZINK 渲染
+
+> OHOS Qt5.12 通过 Mesa ZINK（OpenGL-over-Vulkan，`NEED_OPENGL=1`）提供 OpenGL Desktop；main.cpp `QSurfaceFormat(3,2 CoreProfile)` → Qt3D 选 gl3 shader。ZINK 在 GL→Vulkan 翻译层有若干静默坑。
+
+### glGenerateMipmap 对 RGBA8 alpha 纹理失败（mipmap 不完整→采样黑）
+- **状态**：实测确认（planets-qml 真机，2026-07-14）
+- **表现**：Qt3D/QtQuick `Texture2D` 用 **RGBA8 alpha-PNG** + `generateMipMaps:true` + `LinearMipMapLinear` 时，实体贴图**纯黑**（光照/阴影正常）；同配置下 **RGB8 JPG 正常**。hilog **无 GL 错误**（OpenGL 规范：不完整纹理按设计静默返回 `(0,0,0,1)`，不报错）
+- **原因**：ZINK 用 `vkCmdBlitImage` 实现 `glGenerateMipmap`，对 **GL_RGBA8（alpha 通道）** mipmap 生成失败/坏 mipchain → 纹理不完整 → `LinearMipMapLinear` 采样返回黑。**GL_RGB8（无 alpha）mipmap 正常**。ZINK 把 RGB8/RGBA8 都映射到 `VK_FORMAT_R8G8B8A8_UNORM`，故不对称在 GL 级 completeness/mip-blit 层，不在 VkImage 创建
+- **判别**：纯黑（而非彩色带+透明缺口）是关键——alpha-PNG 不透明区有色，若仅 blending-off 会显示彩色带；纯黑说明贴图采样返回 0 = 不完整
+- **Workaround**：alpha-PNG 实体关 mipmap（`generateMipMaps:false` + `minificationFilter:Texture.Linear`，**两者必须同时改**，否则 base-level-only 配 mipmap min filter 仍不完整→仍黑）；JPG 实体保留 mipmap。详见 [problems/render-black-rgba8-zink-mipmap](../problems/render-black-rgba8-zink-mipmap.md)
+- **关联次要缺陷**：透明实体（`opacity<1`）还需显式 `BlendEquation`+`BlendEquationArguments`+`NoDepthMask` RenderState——Qt3D 的 `opacity` 只是 shader uniform，**不会自动开 GL_BLEND**。这是独立缺陷，不是黑的成因
+
+### Qt.platform.os 在 OHOS 返回 "linux"（不是 "ohos"）
+- **状态**：源码确认
+- **原因**：`qsystemdetection.h:115-117` 同时定义 `Q_OS_OHOS` 和 `Q_OS_LINUX`（同 Android 模式）；`qqmlplatform.cpp` 无 `Q_OS_OHOS` 分支 → 落回 `Q_OS_LINUX` → `Qt.platform.os` 返回 **"linux"**
+- **影响**：QML 里用 `Qt.platform.os === "ohos"` 守卫会**永不触发**（静默 bug）
+- **Workaround**：QML 检测 OHOS 用 `Qt.platform.pluginName === "ohos"`（QPA 插件 key 是 "ohos"，经 `Qt.platform.pluginName` 暴露）

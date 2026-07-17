@@ -4,7 +4,7 @@ type: problem
 domain: runtime
 tags: [ohos, threading, qcoreapplication, assertion, qthread, mainthread, theMainThread, startup-lifecycle]
 created: 2026-06-13
-updated: 2026-06-13
+updated: 2026-07-04
 status: open
 audience: public
 severity: high
@@ -121,7 +121,7 @@ QtMainThread:
 
 ## OHOS 胶水代码生命周期参考
 
-基于模板 `ohostemplateforqtapplication_20260525.zip`：
+基于 Qt 源码内置模板（`<QT_SRC>/qtbase/src/harmonyos/templates`，旧版 `ohostemplateforqtapplication_*.zip` 已退役）：
 
 ### ArkTS 生命周期 → C++ 回调映射
 
@@ -262,4 +262,4 @@ int main(int argc, char *argv[])
 |----------|------|
 | 🛠️ 工作经验 | 伙伴反馈的实际崩溃案例，源码级调用链分析 |
 | 🔍 框架源码 | Qt 5.15 OHOS 分支 qcoreapplication.cpp、qthread_unix.cpp、QPA 插件 |
-| 📄 胶水代码模板 | `ohostemplateforqtapplication_20260525.zip` ArkTS 生命周期 |
+| 📄 胶水代码模板 | Qt 源码内置模板（`qtbase/src/harmonyos/templates`）ArkTS 生命周期 |

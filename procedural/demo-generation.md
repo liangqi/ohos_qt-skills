@@ -4,14 +4,14 @@ type: procedural
 domain: workflow
 tags: [workflow, demo, qt, rendering, testing, opengl, project-creation]
 created: 2026-06-12
-updated: 2026-06-12
+updated: 2026-07-02
 status: active
 audience: public
 refs: [procedural-qt-app-harmonyos-migration,semantic-qt-harmonyos-build,semantic-qt-harmonyos-project-structure]
 summary: >
   独立 Demo 生成工作流（六步闭环）：需求理解→技术设计→工程创建→代码编写→编译验证→文档沉淀。
   适用于用户直接要求"写一个 demo"/"生成测试工程"等独立 demo 创建场景。
-  区别于框架问题分析 [I] 和系统问题验证 [P] 中嵌入的复现 demo 生成。
+  区别于框架问题分析中嵌入的复现 demo 生成。
 ---
 
 # Demo 生成工作流
@@ -29,9 +29,8 @@ summary: >
 
 **不触发的场景**（属于其他工作流）：
 
-- 作为 bug 分析的一部分创建复现 demo → 使用 [I] `framework-issue-analysis.md`
-- 作为系统问题验证的一部分创建对照 demo → 使用 [P] `commercial-qt-harmonyos-bug-triage.md`
-- 迁移整个应用到鸿蒙 → 使用 [A] `qt-app-harmonyos-migration.md`
+- 作为 bug 分析的一部分创建复现 demo → 使用 `framework-issue-analysis.md`
+- 迁移整个应用到鸿蒙 → 使用 `qt-app-harmonyos-migration.md`
 
 ---
 
@@ -97,7 +96,7 @@ summary: >
 └── main.cpp           ← 完整代码
 ```
 
-**鸿蒙平台（CMake + 模板 ZIP）**：
+**鸿蒙平台（CMake + 胶水模板）**：
 ```
 <INTERNAL_DEMO><demo-name>/
 ├── CMakeLists.txt
@@ -106,8 +105,8 @@ summary: >
 └── README.md
 ```
 
-> 鸿蒙工程必须使用 OHOS 模板 ZIP 创建，路径见 `ENV.md` 的 `<TEMPLATE_ZIP>`。
-> 详见 [[qt-app-harmonyos-migration]] 阶段 1.2 和 [[qt-harmonyos-project-structure]]。
+> 鸿蒙工程必须从 Qt 源码内置胶水模板创建（路径见 `ENV.md` 的 `OHOS_TEMPLATE_SRC`，即 `<QT_SRC>/qtbase/src/harmonyos/templates`）。
+> 详见 [[qt-app-harmonyos-migration]] 阶段 1.3 和 [[qt-harmonyos-project-structure]]。
 
 ---
 
@@ -130,7 +129,7 @@ summary: >
 | **功能演示** | 突出单个 API/功能的用法 | QtOhosExtras startAbility 调用 |
 | **渲染测试** | 视觉效果 + 性能指标（FPS） | 多层控件叠加 + OpenGL 渲染 |
 | **API 对照** | Before/After 对比 | QProcess → posix_spawnp 替换 |
-| **Bug 复现** | 最小化复现代码 + 复现步骤 | 嵌入 [I] 工作流，不走此流程 |
+| **Bug 复现** | 最小化复现代码 + 复现步骤 | 嵌入框架问题分析工作流，不走此流程 |
 | **性能基准** | 计时 + 数据统计 | 大量控件创建/布局性能 |
 
 ### 文件头模板
@@ -178,7 +177,7 @@ mingw32-make.exe -j8      # Windows MinGW
 
 ### 5.3 编译失败处理
 
-如果编译失败，参考 [E] 构建排障 流程：
+如果编译失败，参考构建排障流程：
 1. 检查 `QT +=` 是否包含所有需要的模块
 2. 检查 `#include` 是否完整
 3. 检查 API 兼容性（Qt 5.12 vs 5.15 vs 6.x）
@@ -232,16 +231,15 @@ mingw32-make.exe -j8      # Windows MinGW
 
 | 场景 | 使用工作流 |
 |------|-----------|
-| 独立创建功能/渲染/性能 demo | **[Q] Demo 生成**（本流程） |
-| Bug 分析中的复现 demo | [I] 框架问题分析 → 阶段一 |
-| 系统问题验证中的对照 demo | [P] 系统问题验证 → Qt Demo 复现阶段 |
-| 整个应用迁移到鸿蒙 | [A] 应用移植 |
+| 独立创建功能/渲染/性能 demo | **Demo 生成**（本流程） |
+| Bug 分析中的复现 demo | 框架问题分析 → 阶段一 |
+| 整个应用迁移到鸿蒙 | 应用移植 |
 
 ---
 
 ## 供应链
 
-> 详见 工作流供应链 §[Q] Demo 生成
+> 详见 工作流供应链 §Demo 生成
 
 | 维度 | 详情 |
 |------|------|
@@ -250,7 +248,7 @@ mingw32-make.exe -j8      # Windows MinGW
 | **下游接收方** | 内部使用（测试验证）/ 宣传演示 / 客户展示 |
 | **交付件** | `<INTERNAL_DEMO><demo-name>/`：完整工程 + README（可选） |
 | **交付件路径** | `<WORK_ROOT>/lzh-skill/<INTERNAL_DEMO>` |
-| **分流规则** | 无（独立交付）；如发现框架 bug → 转入 [I]；如需鸿蒙化 → 转入 [A] |
+| **分流规则** | 无（独立交付）；如发现框架 bug → 转入框架问题分析；如需鸿蒙化 → 转入应用移植 |
 
 ---
 

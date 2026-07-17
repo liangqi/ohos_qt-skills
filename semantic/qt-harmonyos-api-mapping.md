@@ -2,16 +2,16 @@
 id: semantic-qt-harmonyos-api-mapping
 type: semantic
 domain: tech
-tags: [qt, harmonyos, api, mapping, porting, qprocess, window, filesystem, sharing]
+tags: [qt, harmonyos, api, mapping, porting, qprocess, window, filesystem, sharing, context-menu, touch]
 created: 2026-06-02
-updated: 2026-06-25
+updated: 2026-07-06
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-api, semantic-qt-harmonyos-code-patterns, semantic-qt-ohos-extras]
 summary: >
-  Qt鸿蒙API迁移映射表：12大类Before/After对照——进程管理、应用间通信、
+  Qt鸿蒙API迁移映射表：13大类Before/After对照——进程管理、应用间通信、
   窗口管理、关闭事件、文件系统、启动参数、拖放、主题外观、时区、线程、
-  分享、应用接续。每类含映射表和代码示例。
+  分享、应用接续、触摸长按上下文菜单。每类含映射表和代码示例。
 ---
 
 # Qt → HarmonyOS API 迁移映射表
@@ -479,6 +479,37 @@ QObject::connect(context, &QOhosAbilityContext::continueRequestReceived,
 
 ---
 
+## 13. 触摸长按上下文菜单 (Touch Long-Press Context Menu)
+
+HarmonyOS 触摸屏默认**不**为长按生成 `QContextMenuEvent`（桌面平台鼠标右键自动触发）。需通过 QtOhosExtras 显式启用。
+
+| Other Platform Behavior | HarmonyOS Replacement | Notes |
+|---|---|---|
+| 右键自动产生 `QContextMenuEvent` | `QOhosAppContext::enableContextMenuEventOnLongPress()` | 启用后长按触发，reason 为 `Other` |
+
+### Before
+
+```cpp
+// 桌面：右键即收到 contextMenuEvent，无需额外设置
+QApplication app(argc, argv);
+// QWidget::contextMenuEvent() 自动被右键触发
+```
+
+### After
+
+```cpp
+#include <QtOhosExtras>
+
+QApplication app(argc, argv);
+// 必须在 exec() 前调用一次，全局生效
+QtOhosExtras::QOhosAppContext::instance()->enableContextMenuEventOnLongPress();
+// 此后触摸长按会以 QContextMenuEvent::Other 触发 contextMenuEvent()
+```
+
+> **注意**：长按产生的 `QContextMenuEvent::reason()` 为 `QContextMenuEvent::Other`（非 `Mouse`）。若处理函数按 reason 过滤，需同时接受 `Other`。详见 [[qt-ohos-extras]] §触摸长按。
+
+---
+
 ## 快速参考：条件编译宏
 
 ```cpp
@@ -503,6 +534,7 @@ QObject::connect(context, &QOhosAbilityContext::continueRequestReceived,
 10. **线程** — 守卫 `pthread_cancel` 相关调用
 11. **分享** — 集成 ShareKit
 12. **接续** — 实现 `continueRequestReceived`，控制状态大小
+13. **触摸长按** — 调用 `enableContextMenuEventOnLongPress()` 启用长按触发右键菜单（exec 前调用一次）
 
 ## 参考来源
 

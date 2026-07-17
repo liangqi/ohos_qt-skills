@@ -7,6 +7,7 @@ created: 2026-06-10
 updated: 2026-06-10
 status: solved
 audience: public
+summary: "Windows Git Bash 下 curl 调 API 请求体中文显示为乱码（编码非 UTF-8）"
 severity: medium
 
 # ====== 检索关键字 ======

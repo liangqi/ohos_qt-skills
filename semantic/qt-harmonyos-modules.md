@@ -52,6 +52,7 @@ summary: >
 | 模块 | 5.12 | 5.15 | 备注 |
 |------|------|------|------|
 | Qt 3D (全子模块) | ✅ | ✅ | 近实时 2D/3D 渲染 |
+| Qt Data Visualization | ✅ | ✅ | 3D 数据可视化（wiki 标 Completed；5.15.16 源码无 ohos{} scope + warning_clean，需补 `ohos{ -Wno-deprecated-declarations -Wno-misleading-indentation }` patch 才能在 API 26 SDK 编，同 qt3d/qtcharts 警告抑制模式） |
 | Qt Bluetooth | ✅ | ✅ | 蓝牙硬件访问 |
 | Qt Concurrent | ✅ | ✅ | 多线程（不用底层原语） |
 | Qt Graphical Effects | ✅ | ✅ | Quick 2 图形效果 |

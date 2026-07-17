@@ -7,6 +7,7 @@ created: 2026-06-04
 updated: 2026-06-04
 status: solved
 audience: public
+summary: "hvigor ProcessLibs 阶段报 Duplicated files found（同 .so 在 obj/ 与 libs/ 重复）"
 severity: medium
 
 # ====== 检索关键字 ======
@@ -67,7 +68,7 @@ ld.lld: error: <LOCAL_PATH> is incompatible with elf_x86_64
 
 ### 原因
 
-模板 ZIP 默认 `abiFilters` 包含 `["x86_64", "arm64-v8a"]`，
+源码内置模板默认 `abiFilters` 包含 `["x86_64", "arm64-v8a"]`，
 但 Qt SDK 只提供 arm64-v8a 预编译库。
 
 ### 解决方案

@@ -4,7 +4,7 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, cmake, project-structure, project-creation, template, glue-code, deveco]
 created: 2026-06-02
-updated: 2026-06-30
+updated: 2026-07-07
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-build, semantic-qt-harmonyos-modules]
@@ -53,20 +53,11 @@ templates/
 └── README.md
 ```
 
-### 2.2 旧方式（备用）：从 Gerrit 下载 ZIP
+### 2.2 旧方式（已退役）：从 Gerrit 下载 ZIP
 
-模板下载地址：`http://<QT_INTERNAL_GERRIT>/template/`
-
-```bash
-# 获取最新模板文件名
-curl -s "http://<QT_INTERNAL_GERRIT>/template/" \
-  | grep -o 'ohostemplateforqtapplication_[0-9]*\.zip' \
-  | sort -r | head -1
-
-# 下载并解压
-curl -O "http://<QT_INTERNAL_GERRIT>/template/ohostemplateforqtapplication_YYYYMMDD.zip"
-python3 -c "import zipfile; zipfile.ZipFile('ohostemplateforqtapplication_*.zip').extractall('.')"
-```
+> **此方式已退役**：新版 Qt 鸿蒙分支已将胶水模板内置于源码树（见 §2.1），无需再从 Gerrit 下载 ZIP。
+> 旧的外部 ZIP 模板变量在 `ENV.md` 中保留仅为兼容旧 `ENV.md`，不应再使用。
+> 模板统一从 `<QT_SRC>/qtbase/src/harmonyos/templates` 复制。
 
 ## 3. 目录结构
 
@@ -304,22 +295,25 @@ export const APP_LIBRARY_NAME = 'libQtHarmonyApp.so';
 
 | 库 | 来源 | 目标路径 |
 |----|------|----------|
-| `libqohosstyle.so` | `<Qt_SDK>/lib/styles/libqohosstyle.so` | `libs/${ABI_DIR}/styles/libqohosstyle.so` |
-| `libqsvg.so`（SVG 图像格式插件） | `<Qt_SDK>/lib/imageformats/libqsvg.so` | `libs/${ABI_DIR}/imageformats/libqsvg.so` |
+| `libqohosstyle.so` | `<Qt_SDK>/plugins/styles/libqohosstyle.so` | `libs/${ABI_DIR}/styles/libqohosstyle.so` |
+| `libqsvg.so`（SVG 图像格式插件） | `<Qt_SDK>/plugins/imageformats/libqsvg.so` | `libs/${ABI_DIR}/imageformats/libqsvg.so` |
+| `libqsqlite.so`（SQL 驱动插件，QSqlDatabase） | `<Qt_SDK>/plugins/sqldrivers/libqsqlite.so` | `libs/${ABI_DIR}/sqldrivers/libqsqlite.so` |
 
 ```bash
 TARGET_DIR=<工程目录>/entry/libs/arm64-v8a/styles/
 mkdir -p "$TARGET_DIR"
-cp <Qt_SDK路径>/lib/styles/libqohosstyle.so "$TARGET_DIR"
+cp <Qt_SDK路径>/plugins/styles/libqohosstyle.so "$TARGET_DIR"
 
 # SVG 图像格式插件：QML Image / QImageReader 加载 .svg 必需
 mkdir -p <工程目录>/entry/libs/arm64-v8a/imageformats/
-cp <Qt_SDK路径>/lib/imageformats/libqsvg.so <工程目录>/entry/libs/arm64-v8a/imageformats/
+cp <Qt_SDK路径>/plugins/imageformats/libqsvg.so <工程目录>/entry/libs/arm64-v8a/imageformats/
 ```
 
 > `libqohosstyle.so` 无法通过 `target_link_libraries` 部署，因为它需要放在 `styles/` 子目录下。
 >
 > **⚠️ `libqsvg.so` 同理且更隐蔽**——它是**图像格式插件**（`QSvgPlugin:QImageIOPlugin`），运行时由 `QImageReader` 动态加载，必须放在 `imageformats/` 子目录下，无法通过 `target_link_libraries` 部署。**漏部署后果**：`QML Image { source: "*.svg" }` 与 `QImageReader`/`QPixmap::loadFromData(bytes,"SVG")` **静默失败**（`Image.status=Error`、`sourceSize=0x0`、不抛异常），而直接用 `QSvgRenderer`/`QSvgWidget`（编译进 `libQt5Svg`）却正常——极易误判为 QtSvg 损坏。诊断：`QImageReader::supportedImageFormats()` 不含 `"svg"` 即插件未加载。验证工程可使用 SVG 显示验证 QML OHOS demo。
+
+> **⚠️ `libqsqlite.so` 同理且更易误判**——它是 **SQL 驱动插件**（`QSQLiteDriverPlugin`，`MODULE IMPORTED` 动态插件），运行时由 `QFactoryLoader` 按 `sqldrivers/` 子目录 dlopen 加载，**无法通过 `target_link_libraries` 部署**（链接 `Qt5::Sql` 只部署 `libQt5Sql.so` 主库，驱动插件是独立的运行时 dlopen 插件，非 NEEDED 依赖，HVigor 不会自动打包）。**漏部署后果**：`QSqlDatabase::addDatabase("QSQLITE")` 拿到 null driver，`db->open()` 在检查 `d->driver` 为空时**直接返回 false（根本不调用 `sqlite3_open`、不碰文件系统）**，`lastError()` = `"Driver not loaded"`。注意 OHOS SDK 驱动文件名是 **`libqsqlite.so`**（非桌面 `libqsqlsqlite.so`）。诊断：`addDatabase` 后检查 `db->lastError().text()` 含 "Driver not loaded"，或设备 `hdc shell find /data/storage/el1/bundle -name 'libqsqlite*'` 无命中。详见 [runtime-fail-sqlite-open-database](../problems/runtime-fail-sqlite-open-database.md)。
 
 ## 7. QML 应用特殊配置
 
@@ -361,6 +355,32 @@ entry/src/main/cpp/
       }
   }
   ```
+
+### 7.4 QML 模块部署到 resfile/qml（运行时 import 模块必需）
+
+QML 应用若 `import` 了 Qt SDK 自带 QML 模块（Qt3D / QtQuick.Controls / QtQuick.Layouts / QtDataVisualization / QtQuick.Scene3D 等），编译期 `find_package` + `target_link_libraries` 只部署 Qt C++ 库到 HAP `libs/`，**不部署 QML 类型插件**（`qml/<Module>/` 下的 .so + qmldir）。运行时 QQmlEngine 找不到模块 → hilog 报 `module "Qt3D"/"QtQuick" is not installed` → QML 树加载失败 → 黑屏（进程存活不崩溃）。
+
+**机制**（源码 `qtbase/src/plugins/platforms/ohos/qohosjsmain.cpp`）：
+- QPA 启动设环境变量 `QML2_IMPORT_PATH = resourceDir + "/qml"`（:1784）
+- `resourceDir` 默认 = `bundleCodeDir + "/entry/resources/resfile"`（:1731-1733）
+
+即 QPA 期望 QML 模块在 HAP 的 `entry/src/main/resources/resfile/qml/`（设备路径 `bundle/entry/resources/resfile/qml/`）。
+
+**部署**：复制 Qt OHOS SDK 的整个 `qml/` 目录到工程 `entry/src/main/resources/resfile/qml/`：
+
+```bash
+mkdir -p "<工程>/entry/src/main/resources/resfile/qml"
+cp -r "<QT_OHOS_SDK>/qml/." "<工程>/entry/src/main/resources/resfile/qml/"
+```
+
+- hvigor 自动打包 `entry/src/main/resources/resfile/` 下所有文件作为 resfile 资源进 HAP
+- resfile 是 OHOS **只读**资源目录，dlopen 允许（P3 铁律 dlopen 拒可写路径，resfile 只读 OK），QML 插件 .so 能正常 dlopen 加载
+- 全量复制最简（SDK `qml/` ~15MB，866 文件）；裁剪需覆盖应用所有 `import` 模块子目录 + 传递依赖（如 Qt3D/Core|Render|Input|Extras|Logic|Animation、QtQuick、QtQuick.2、QtQml、Qt、builtins.qmltypes）
+- 重新构建 HAP + 安装启动，hilog 不再报 "not installed"，QML 树正常加载渲染
+
+> **注意**：resfile ≠ rawfile。Qt6 OHOS（qtcreator postmortem）曾用 `rawfile/` 部署 + 运行时读 resfile 路径；但 Qt5.12 QPA `resourceDir` 默认直接是 `resfile`，故 Qt5 应放 `resfile/qml/`。若 `appStartupObj.resourceDir` 被显式设置则用设置值。
+
+详见 problems/_lookup.md 错误速查表。
 
 ## 8. 应用包名配置
 
@@ -406,6 +426,7 @@ entry/src/main/cpp/
 | 平台插件加载失败 | 确认 `libqohos.so` 在 `libs/${ABI_DIR}/` |
 | 样式插件加载失败 | 确认 `libqohosstyle.so` 在 `libs/${ABI_DIR}/styles/` |
 | QML Image / QImageReader 加载 SVG 静默失败（`Image.status=Error`、`sourceSize=0x0`），但 `QSvgRenderer`/`QSvgWidget` 正常 | 部署 `libqsvg.so` 到 `libs/${ABI_DIR}/imageformats/`（见 §6.2） |
+| `QSqlDatabase: QSQLITE driver not loaded` / `db->open()` 返回 false / "无法创建本地数据库" | 部署 `libqsqlite.so` 到 `libs/${ABI_DIR}/sqldrivers/`（见 §6.2，OHOS 文件名 `libqsqlite.so`）；同时 `setDatabaseName` 用 `QStandardPaths::writableLocation(AppLocalDataLocation)` 绝对路径（OHOS CWD 不可写） |
 | 库名不匹配 | 编译后 `ls libs/arm64-v8a/*.so` 检查实际文件名 |
 | QML module not installed | 检查 `CMAKE_PREFIX_PATH` 配置 |
 | QML 应用黑屏 | 检查 Qt 模块链接和 `CMAKE_PREFIX_PATH` |

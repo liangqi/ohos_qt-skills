@@ -2,12 +2,12 @@
 id: semantic-qt-ohos-js-thread-gateway
 type: semantic
 domain: tech
-tags: [qt, harmonyos, ohos, qpa, threading, node-api, arkts, napi, private-api]
+tags: [qt, harmonyos, ohos, qpa, threading, node-api, arkts, napi, private-api, oauth, sync]
 created: 2026-06-26
-updated: 2026-06-26
+updated: 2026-07-03
 status: active
 audience: public
-refs: [semantic-qt-harmonyos-overview, semantic-qt-ohos-extras, problem-ohos-mainthread-mismatch, semantic-qt-harmonyos-qt6-status]
+refs: [semantic-qt-harmonyos-overview, semantic-qt-ohos-extras, problem-ohos-mainthread-mismatch, semantic-qt-harmonyos-qt6-status, episodic-quit-deadlock-tsfn]
 summary: >
   Qt↔ArkTS/JS 线程桥接的私有 API：QOhosJsThreadGateway 命名空间（invoke/runAndWait/eval/
   evalWithPromise/invokeAndWaitForContinue）是把 Qt 线程的调用安全 marshal 到唯一 JS 主线程的入口，
@@ -144,6 +144,29 @@ task 拿到的 `QOhosJsState &` 提供：
 | 同上但只要副作用不要值 | `QOhosJsThreadGateway::invokeAndWaitForContinue` |
 | JS 线程（NAPI 回调里） → Qt 线程 | `QtOhos::invokeInQtThread` |
 | 跨线程持有 QObject 引用并安全访问 | `QtOhos::QThreadSafeRef<T>` |
+
+## 用例：同步化异步 Ability 结果（OAuth 场景）
+
+`startAbilityForResult` 在 OHOS SDK 里**没有 sync 变体**（源码 grep `interface_sdk-js` 全树 0 命中），Stage `UIAbility` 也无 `onAbilityResult` 生命周期覆写；`QtOhosExtras` **有** `startAbilityForResult`（异步，返回 `requestId` 经 `startAbilityForResultResponseReceived` 信号回调），但**无同步阻塞变体**（[[qt-ohos-extras]]）。要在 Qt 侧同步等结果（OAuth 授权码、选择器回传等），用 `evalWithPromise<T>` 在 **worker 线程**上阻塞等 ArkTS Promise resolve：
+
+```cpp
+// worker 线程（GUI 线程绝不能调）
+QString code = QOhosJsThreadGateway::evalWithPromise<QString>(
+    [&](QOhosJsState &js, QOhosTaskPromise<QString> p) {
+        auto br = std::move(p).makeThenCatchBranches(Q_FUNC_INFO);
+        js.evalToPromiseOrRejectOnThrow("globalThis.__qtStartOAuthForResult('...')")
+          .then(std::move(br.thenFunc))
+          .catch(std::move(br.catchFunc));
+    });
+```
+
+**三个硬约束**：
+
+1. **必须 worker 线程**：`evalWithPromise` 内部 `std::future::wait()` 真阻塞，GUI 线程调 = UI 冻 + appfreeze；JS 主线程调 = tsfn 回调不 fire = 死锁（[[ohos-mainthread-mismatch]]）。
+2. **context 暴露**：`startAbilityForResult` 是 `UIAbilityContext` 实例方法，eval 上下文拿不到——caller 宿主 Ability 须先注册全局 helper（如 `globalThis.__qtStartOAuthForResult = async (wantJson) => await ctx.startAbilityForResult(...)`），纯 ArkTS NEXT 下 `globalThis` 受限时改走 NAPI tsfn 回调注入（`napi_create_reference` 持函数引用）。`evalWithPromise` 对模块级调用（`@ohos.wifiManager.getLinkedInfo()`）开箱即用，对实例方法须自己暴露符号。
+3. **超时兜底**：OAuth 期间宿主 Ability 未销毁，tsfn 正常 pump；但绝不在退出路径上依赖 tsfn——[[quit-deadlock-tsfn]] 证明 Ability destroy 阶段 ArkTS 运行时不 pump tsfn 回调，Promise 永不 settle，阻塞调用 hang ~2min。`wait_for(timeout)` + `std::make_shared<std::promise<T>>`（防 broken_promise）是硬性要求。OHOS musl 无 `pthread_cancel`，阻塞调用无法强制打断。
+
+**替代方案**：搬运既有同步 `doOAuth()` 且不想绑 Qt 私有 API 时，手写 NAPI tsfn + `std::promise<QString>` + requestCode-keyed `OAuthStore` 单例，同样在 worker 线程 `wait_for`。**别用嵌套 `QEventLoop`** 做 sync-from-async：OHOS 上 mid-wait 重入 + 依赖 JS 线程 pump tsfn，脆弱；Qt 自家 gateway 故意用 `std::promise::wait()` 而非嵌套 loop。
 
 ## 源码引用（Qt 5.15.16 / tqtc/harmonyos-5.15.16）
 

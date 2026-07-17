@@ -4,15 +4,15 @@ type: semantic
 domain: tech
 tags: [qt, qt6, harmonyos, ohos, status, cmake]
 created: 2026-06-03
-updated: 2026-06-03
+updated: 2026-07-13
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-build, semantic-qt-harmonyos-modules, semantic-qt-harmonyos-platform-limits, semantic-qt-ohos-project-analyzer-workflow]
 summary: >
   Qt 6 鸿蒙化状态：qtbase dev 已合并 HarmonyOS 支持（Gerrit 733351），
   最低 SDK API 20（HarmonyOS 6.0.0），CMake 构建系统。
-  从 Qt6 源码验证：QStandardPaths 映射（4 枚举已确认）、QPA 插件 API 变更
-  （关闭事件私有化、枚举值改变）、QtOhosExtras 功能内联到 QPA 插件。
+  **Qt 6.12.0 Windows superbuild 已验证（2026-07-13）**：MinGW host + OHOS Clang target，
+  gallery demo 真机运行通过（"Widget Gallery Qt 6.12.0"）。
   Qt5→Qt6 关键差异（QStandardPaths、CMake API、QML、QPA API）。
 ---
 
@@ -154,11 +154,15 @@ Qt 6 模块适配状态**独立于 Qt 5**，当前仅 qtbase 模块已合并。
 2. 查找项目的 Qt 5 兼容分支或 tag
 3. 使用 `QT_VERSION_CHECK` 宏做条件编译
 
-### 策略 B：使用 Qt 6 dev 分支（前沿，风险较高）
+### 策略 B：使用 Qt 6.12 superbuild（✅ 推荐，Windows 已验证）
 
-1. 基于 qtbase dev 分支编译 Qt 6 for OHOS
-2. 仅 qtbase 模块可用，非 qtbase 模块需等待适配
-3. 需要处理上述 Qt 5→6 API 差异
+> **2026-07-13 验证**：Qt 6.12.0（`c7581743`）在 Windows + MinGW g++ 13.1.0 host + OHOS Clang 15.0.4 target（API 23, HarmonyOS 6.1.0）上**可编译**，superbuild 一次 configure 全部子模块（qtbase/qtsvg/qtimageformats/qtshadertools/qtlanguageserver/qtdeclarative），gallery demo 已在 HUAWEI MateBook 14 真机运行通过（"Widget Gallery Qt 6.12.0"）。需 4 项 Windows 额外配置 + DT_NEEDED patch，无需源码补丁。
+
+1. 基于 Qt **6.12.0**（`c7581743`）用 superbuild 方式编译，MinGW g++ 13.1.0 作 host 编译器（无需源码补丁）。
+2. Windows 额外配置（wiki 未提及）：手动指定 `NodeAddonApi_INCLUDE_DIR`、`EGL/GLESv2/Fontconfig` 的 `_INCLUDE_DIR` + `_LIBRARY`（共 7 个 CMake 变量），设置 `DEVECO_SDK_HOME` + `JAVA_HOME` 环境变量。
+3. **业务库/应用构建后必做运行时检查**：Python 脚本二进制 patch 所有 `.so` 的 DT_NEEDED，移除 Windows 绝对路径前缀（developer build CMake 写入绝对路径 → 设备 dlopen 失败）。
+4. 模块：**qtbase + qtsvg + qtimageformats + qtshadertools + qtlanguageserver + qtdeclarative（含 Quick/QuickControls2）** 全部构建验证通过。非 qtbase 模块（Multimedia/3D/Charts 等）仍未适配。
+5. 处理 Qt5→6 API 差异（关闭事件 API 私有化、QStandardPaths `AppLocalDataLocation` 映射 `filesDir`→`preferencesDir`、CMake `qt_add_executable`）。
 
 ## 已知问题与待验证项
 
@@ -173,6 +177,10 @@ Qt 6 模块适配状态**独立于 Qt 5**，当前仅 qtbase 模块已合并。
 | 7 | `AppLocalDataLocation` 映射变更 | ✅ 已验证：Qt5 `filesDir` → Qt6 `preferencesDir`（破坏性变更） |
 | 8 | 关闭事件公开 API 缺失 | ✅ 已验证：Qt6 `CloseRootCause` 为私有 API，无公开 `getCloseEventRootCause()` |
 | 9 | qtbase Test/Sql/Concurrent/OpenGL 模块在 OHOS 上的状态 | ✅ 已验证：Test 有 OHOS hilog 集成（`qOhosLogMessage`），Sql/Concurrent/OpenGL 无需 OHOS 特定代码 |
+| 10 | Qt 6.12 在 Windows+OHOS NDK musl 是否可构建 | ✅ **已验证（2026-07-13）**：6.12.0 superbuild + MinGW g++ 13.1.0 host 可编译，无需源码补丁。gallery demo 真机运行通过。原 -isystem musl BLOCKER（llvm-mingw clang 22 + API 24 + per-module 路径，见 [build-fail-qt6-libcpp-musl-isystem]）在此组合下未复现，三变量未逐一隔离 |
+| 11 | Qt6 `.so` 的 `DT_NEEDED` 含 Windows 绝对路径 | ✅ 已验证：Qt6 `.so` 无 SONAME + Windows 交叉编译 imported target 以绝对路径参与链接 → NEEDED 记录绝对 Windows 路径 → 设备 dlopen 失败。**必须用 `patch_needed.py` 改裸名**（业务库 + Qt 库自身），`llvm-readelf -d` 验证（见 problems/_lookup.md 速查表）|
+| 12 | Qt6 业务库 `main` 的动态可见性 | ✅ 已验证：target 用 `CXX_VISIBILITY_PRESET hidden` 时 `main` 是 local symbol，`dlsym("main")` 失败。**给 `main` 加 `__attribute__((visibility("default")))`**，`llvm-readelf --dyn-syms` 验证 `GLOBAL DEFAULT`（见 problems/_lookup.md 速查表）|
+| 13 | Qt6 OHOS native file picker 的初始 URI 与文件筛选 | ✅ 已验证：`DocumentViewPicker` 的 `defaultFilePathUri` 和 `fileSuffixFilters` 均为可选字段；不可传入应用私有目录或 `qmake*` 这类无扩展名 glob。空初始路径/无可表示的后缀筛选时必须省略对应字段（见 [runtime-fail-file-dialog-invalid-default-uri]）|
 
 ## 参考来源
 

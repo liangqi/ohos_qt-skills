@@ -7,6 +7,12 @@
 
 ---
 
+## 🗂️ 项目根目录
+
+| 变量名 | 你的值 | 说明 |
+|--------|--------|------|
+| `WORK_ROOT` | `<YOUR_WORK_ROOT>` | 所有工作目录的父目录（`demos/`、`project/`、`shared/` 等子目录的根） |
+
 ## 🔧 Qt 源码路径
 
 > QtOhosExtras 模块（`qtohosextras/`）是 Qt 源码树内的子目录，不是独立仓库。

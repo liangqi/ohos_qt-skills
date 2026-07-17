@@ -4,7 +4,7 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, build, configure, cmake, deveco, mingw, perl]
 created: 2026-06-02
-updated: 2026-06-02
+updated: 2026-07-03
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview]
@@ -152,6 +152,52 @@ Preferences → Environment → System → Change：
 ```
 NATIVE_OHOS_SDK=<SDK路径>/native
 ```
+
+## Qt5 源码增量编译与 install
+
+> 应用诊断补丁/加日志后，需重新编译 Qt 并 install 到 SDK，demo 才能链到带改动的 libqohos.so。
+> 初次 configure 全量编译见上文 §Configure 命令；本节聚焦**增量编译 + install**（日常排查框架问题的高频操作）。
+
+### Windows（主力环境）
+
+从 **PowerShell 或 cmd** 执行；若在 bash/git-bash，加 `SHELL=cmd.exe` 覆盖——`mingw32-make` 默认调 `/usr/bin/sh` 会把反斜杠路径（`C:\...`）当转义吞掉，`SHELL=cmd.exe` 强制用 cmd.exe 作 shell，bash/PowerShell/cmd 三端通吃：
+
+```powershell
+# build 目录从 ENV.md 取（QT5_12_BUILD；5.15 用 ${QT_BUILD_ROOT}/build_5.15.16_arm64-v8a）
+cd ${QT5_12_BUILD}
+mingw32-make.exe SHELL=cmd.exe -j64 install
+```
+
+`install` 目标把编译产物（含改过的 `libqohos.so`、Qt5 模块 .so）传播到已安装 SDK（`QT5_12_OHOS_SDK`，真实值见 ENV.md）。之后重新编译 demo，它链到的就是带日志/改动的 libqohos.so。
+
+### macOS
+
+```bash
+cd <QT_BUILD_DIR>   # 如 tqtc-qt5/build_arm64-v8a
+make -j16 install
+```
+
+### 完整链路（patch → 日志生效）
+
+```
+qtbase 工作树改源码（加 qOhosPrintfWarning 等）
+  → mingw32-make install（PowerShell）
+    → SDK 下 libqohos.so 更新
+      → demo 重新 hvigorw assembleHap
+        → lib<app>.so 链入新 libqohos.so
+          → 部署设备 → hilog 抓日志
+```
+
+### 常见坑
+
+| 现象 | 根因 | 解决 |
+|------|------|------|
+| 改了源码但 hilog 无新日志 | 只 `make` 没 `install`，SDK 下 libqohos.so 未更新 | 必须带 `install` 目标 |
+| bash/git-bash 里 mingw32-make 报路径错误 | mingw32-make 调 `/usr/bin/sh` 吞反斜杠路径 | 加 `SHELL=cmd.exe` 参数，或切 PowerShell/cmd |
+| demo 链到的还是旧 libqohos.so | install 后没重新编译 demo | install 后重跑 `hvigorw assembleHap` |
+| `mingw32-make: command not found` | MINGW_ROOT 未加 PATH | ENV.md 的 `MINGW_ROOT` 加 PATH |
+
+> 编译 Qt 源码加日志排查框架问题的完整流程见 [[framework-issue-analysis]] 阶段二。
 
 ## 参考来源
 

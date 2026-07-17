@@ -1,0 +1,14 @@
+# 个人本地配置（不入库）
+ENV.local.md
+TODO.local.md
+
+# 构建产物
+dist/
+build/
+outputs/
+*.hap
+*.so
+
+# 临时/工具目录
+_temp/
+screenshot/

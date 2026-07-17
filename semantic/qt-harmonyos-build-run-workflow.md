@@ -4,7 +4,7 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, deveco-mcp, build, run, hilog, ui-test, troubleshooting, workflow]
 created: 2026-06-02
-updated: 2026-06-02
+updated: 2026-07-02
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-build, semantic-qt-harmonyos-overview, semantic-harmonyos-dev-fundamentals]
@@ -96,6 +96,29 @@ DevEco Toolbox = `deveco-toolbox`（可视化配置）+ `deveco-mcp-server`（MC
 - CMakeLists.txt 须正确配置 Qt SDK 路径（`CMAKE_PREFIX_PATH`）
 - `entry/build-profile.json5` 的 `externalNativeOptions.path` 须指向 CMakeLists.txt
 - 首次构建建议 `clean: true`
+
+#### hvigorw CLI 替代法（无 MCP init_project_path 时）
+
+`build_project` 工具无 project path 参数，`init_project_path` 在部分 MCP 工具集不可用。此时可**命令行直调 hvigorw** 编译任意路径工程（批量编译/CI 场景必备）：
+
+```bash
+# 前置：工程 HarmonyOS/ 下有 local.properties（sdk.dir=C:\\Program Files\\Huawei\\DevEco Studio\\sdk）
+export PATH="/c/Program Files/Huawei/DevEco Studio/jbr/bin:/c/Program Files/Huawei/DevEco Studio/tools/node:$PATH"
+export DEVECO_SDK_HOME="C:\Program Files\Huawei\DevEco Studio\sdk"
+cd "<工程目录>/HarmonyOS"
+node "/c/Program Files/Huawei/DevEco Studio/tools/hvigor/bin/hvigorw.js" assembleHap \
+  --mode module -p product=default -p buildMode=debug --no-daemon
+```
+
+关键环境：
+- `DEVECO_SDK_HOME` 必须设（否则 `Configuration Error: Invalid value of 'DEVECO_SDK_HOME'`）
+- PATH 必须含 DevEco JBR（`jbr/bin`，java，PackageHap/SignHap 需要；否则 `spawn java ENOENT`）+ DevEco node（`tools/node`，运行 hvigorw.js）
+- 模板不含 hvigorw 包装器；直接 `node .../hvigorw.js`（引擎在 `tools/hvigor/{hvigor,hvigor-ohos-plugin}`）
+- 模板根需有 `local.properties`：`sdk.dir=C:\\Program Files\\Huawei\\DevEco Studio\\sdk`
+
+成功标志：`BUILD SUCCESSFUL` 且产物 `entry-default-unsigned.hap` 生成于 `entry/build/default/` 下（**编译工作流以未签名 HAP 为完成标志，签名是独立的后续步骤**；如需 signed HAP 需独立配置签名，不在编译工作流范围）。
+
+> 2026-07-02 批量移植 10 个 Qt 开源应用用此法全部编译通过（10/10 unsigned HAP）。
 
 ### Step 3: 启动应用
 

@@ -4,9 +4,10 @@ title: Qt6 OHOS target 构建卡在 libc++/musl 不兼容（-isystem sysroot/usr
 type: problem
 tags: [qt6, ohos, build, libcxx, musl, cmake, isystem, nullptr_t]
 created: 2026-06-25
-updated: 2026-06-25
-status: open
+updated: 2026-07-13
+status: solved
 audience: public
+summary: "Qt6 OHOS target 构建卡在 libc++/musl 不兼容（-isystem sysroot/usr/include 注入致 musl 遮蔽 clang builtin）"
 severity: blocker
 domain: build
 error_message: "no member named 'nullptr_t' in the global namespace; use of undeclared identifier '__promote'; call to 'hypot' is ambiguous (libcxx-ohos c++/v1/cstddef, cmath; -isystem sysroot/usr/include 注入致 musl 遮蔽 clang builtin)"
@@ -14,6 +15,14 @@ refs: [semantic-qt-harmonyos-qt6-status]
 ---
 
 # Qt6 for OHOS target 构建卡在 libc++/musl 不兼容
+
+## 已绕过（2026-07-13，未定位根因）
+
+> **状态更新**：本 BLOCKER 在推荐构建组合下**不再复现**，但根因（Qt cmake 向 target CXX 命令注入 `-isystem sysroot/usr/include`）**未修复**，仅被绕过。
+
+- **原失败组合**（2026-06-25 复现）：Qt 6.12.0 `c7581743` + **llvm-mingw clang 22** host + **API 24** SDK + per-module `qt-cmake -G Ninja -S qtbase` 路径 → build.ninja 含 904 处 `-isystem sysroot/usr/include` → musl `<stddef.h>`/`<math.h>` 遮蔽 clang builtin → `nullptr_t`/`__promote` 崩。
+- **现可用组合**（2026-07-13 验证）：同 `c7581743` + **MinGW g++ 13.1.0** host + **API 23** SDK + `qt5/configure.bat -submodules` **superbuild** 路径 → 可编译，gallery demo 真机运行通过。详见 [[qt-harmonyos-qt6-status]] §策略 B。
+- **三个变量同时改变**（host 编译器 / SDK 版本 / 构建路径），**未逐一隔离确认是哪个解的**。若在原失败组合下构建，本页「根因」「已验证的修复」仍适用。
 
 ## error_message
 
@@ -71,6 +80,8 @@ clang++ --target=aarch64-linux-ohos --sysroot=$S -std=gnu++17 -c test_mem.cpp   
 | `CMAKE_SYSROOT` 移除（QtOHOSToolchainFixes 改 `--sysroot` 走 flags） | 无关——OHOS toolchain 本身不注入 -isystem（standalone 0），是 Qt 注入的 |
 
 ## 解决方案（待选其一）
+
+> **实际已绕过**：改用 superbuild + MinGW g++ + API 23 组合（见上方「已绕过」段）。下列 4 项为当时未绕过时的备选，保留备查。
 
 1. **装 API 20 稳定 OHOS SDK**（之前成功构建所用，无此 libc++/musl 问题）→ 用 DevEco SDK Manager 装 API 20，重跑 target 构建。
 2. **定位 Qt 注入 `arg_SYSTEM_INCLUDE_DIRECTORIES` 的值的来源**并去除 sysroot/usr/include（需在 Qt cmake 里找 `qt_internal_add_module`/Platform 目标是否给 OHOS 加默认 SYSTEM include）。

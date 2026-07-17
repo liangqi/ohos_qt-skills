@@ -7,6 +7,7 @@ created: 2026-06-03
 updated: 2026-06-03
 status: solved
 audience: public
+summary: "运行时 dlopen 加载 .so 失败返回 EINVAL（路径在 el2 沙箱可写区）"
 severity: high
 
 # ====== 检索关键字（Agent 快速匹配用）======

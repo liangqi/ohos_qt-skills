@@ -7,6 +7,7 @@ created: 2026-06-03
 updated: 2026-06-03
 status: solved
 audience: public
+summary: "编译报错 QtOhosExtras::AbilityClose/WindowStageClose/InternalClose 枚举找不到（API 路径变更）"
 severity: high
 
 # ====== 检索关键字（Agent 快速匹配用）======

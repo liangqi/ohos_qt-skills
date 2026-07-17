@@ -7,6 +7,7 @@ created: 2026-06-03
 updated: 2026-06-03
 status: solved
 audience: public
+summary: "CMake configure 报 find_package 找不到 OhosExtras/Qt5OhosExtras 包（缺 FindOhosExtras.cmake）"
 severity: high
 
 # ====== 检索关键字（Agent 快速匹配用）======

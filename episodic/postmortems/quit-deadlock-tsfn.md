@@ -4,7 +4,7 @@ type: episodic
 domain: postmortem
 tags: [bug, quit, deadlock, TSFN, ThreadSafeFunction, handleAbilityOnDestroy, Promise, N-API, HarmonyOS]
 created: 2026-06-09
-updated: 2026-06-09
+updated: 2026-07-13
 status: active
 audience: public
 refs: [procedural-framework-issue-analysis,semantic-qt-harmonyos-lifecycle]
@@ -12,7 +12,8 @@ summary: >
   退出死锁复盘：<STAKEHOLDER>(<PRODUCT>) qApp->quit()后应用卡死~2分钟。
   根因：HarmonyOS在Ability销毁阶段不处理N-API ThreadSafeFunction回调，
   导致qWindowDestroyPromise的resolve回调永远不被执行，Promise永不resolve。
-  修复：客户补丁通过原子变量+并行轮询绕过TSFN机制，已在生产环境验证。
+  修复：外部补丁通过原子变量+并行轮询绕过TSFN机制，已验证有效。
+  关联确认：退出流程中sensor插件触发崩溃，伙伴确认移除即规避（2026-07-13）。
 ---
 
 # 退出死锁：qApp->quit() 后 handleAbilityOnDestroy Promise 永不 resolve
@@ -21,19 +22,19 @@ summary: >
 
 | 项目 | 内容 |
 |------|------|
-| 客户 | <PRODUCT> |
+| 外部 | <PRODUCT> |
 | 现象 | 调用 `qApp->quit()` 后应用卡死约 2 分钟才退出 |
 | Qt 版本 | 5.12.12 (tqtc/harmonyos-5.12.12, commit 613336de) |
 | 设备 | 真机 |
 | 根因 | HarmonyOS ArkTS runtime 在 Ability 销毁阶段不处理 TSFN 回调 |
-| 修复 | 客户补丁：原子变量 + 并行轮询绕过 TSFN |
+| 修复 | 外部补丁：原子变量 + 并行轮询绕过 TSFN |
 
 ## 时间线
 
 | 日期 | 阶段 | 产出 |
 |------|------|------|
-| 2026-06-05 | 收到客户反馈 | 初始排查方案（TROUBLESHOOTING_GUIDE.md） |
-| 2026-06-05 | 客户回复根因 | WINDOW_DESTROYED 时序问题 + 补丁代码 |
+| 2026-06-05 | 收到外部反馈 | 初始排查方案（TROUBLESHOOTING_GUIDE.md） |
+| 2026-06-05 | 外部确认的根因 | WINDOW_DESTROYED 时序问题 + 补丁代码 |
 | 2026-06-08 | 日志深度分析 | 确认 TSFN 回调阻塞是真正根因 |
 | 2026-06-08 | Demo 复现 | 堆分配 QApplication（不 delete）精确复现 |
 | 2026-06-09 | 交付件整理 | <WORK_DIR>/quit-deadlock/（ISSUE.md + patch + demo） |
@@ -105,7 +106,7 @@ int main(int argc, char *argv[]) {
 
 ## 修复方案
 
-### 客户补丁（已验证有效）
+### 外部补丁（已验证有效）
 
 **核心思路**：绕过 TSFN，用原子变量 + 并行轮询直接检测 Qt 线程状态。
 
@@ -127,8 +128,33 @@ int main(int argc, char *argv[]) {
 1. **不要假设 delete app 能解决所有退出问题** — 根因可能在更底层的运行时行为
 2. **日志中的"缺失"比"存在"更有诊断价值** — 三条关键日志的"不存在"直接指向了死锁点
 3. **跨线程通信机制（TSFN）在系统生命周期特定阶段可能失效** — 这是 HarmonyOS 平台特有限制
-4. **Demo 复现必须精确匹配客户场景** — 局部变量 QApplication 无法复现，必须堆分配
+4. **Demo 复现必须精确匹配实际场景** — 局部变量 QApplication 无法复现，必须堆分配
 5. **提交 Tqtc 的交付件必须包含可复现问题的 demo** — 已写入工作流铁律
+
+## 关联崩溃确认：退出流程中 sensor 插件触发崩溃
+
+> 2026-07-13 与伙伴确认。与本文 quit-deadlock 同属 Ability 销毁阶段的退出路径问题，并入本页沉淀。
+
+| 项目 | 内容 |
+|------|------|
+| 外部 | 同上文 quit-deadlock 伙伴 |
+| 现象 | 应用退出流程中触发崩溃 |
+| 根因 | 应用集成的 sensor 插件（来源未确认：Qt Sensors 模块后端 / 伙伴自研 / 第三方，未深查）在退出阶段触发崩溃 |
+| 验证 | 伙伴确认：去掉 sensor 插件后崩溃消失 |
+| 确认日期 | 2026-07-13 |
+
+### 确认结论
+
+跟伙伴确认：**sensor 插件去掉后不会崩了**。
+
+- 崩溃发生在应用退出流程中，与本文 quit-deadlock 同属 Ability 销毁阶段这一高风险退出窗口
+- quit-deadlock 已揭示 HarmonyOS 在 Ability 销毁阶段不 pump TSFN 回调，多条正常路径在该窗口失效/异常；sensor 插件在此窗口触发的崩溃属同类退出阶段问题
+- sensor 插件具体来源未进一步深查——移除即规避，伙伴已接受此解法
+
+### 待办（若后续需保留 sensor 功能）
+
+- 深查该 sensor 插件在退出阶段崩溃的具体机理：析构顺序 / TSFN 残留回调 / 后端硬件资源释放时序，参照本页退出路径分析
+- 退出阶段是 HarmonyOS + Qt 的高风险窗口：凡涉及回调投递、跨线程、动态资源释放的插件，在该窗口都应做防御性处理（参照本页"原子变量 + 并行轮询绕过 TSFN"思路）
 
 ## 交付件
 
@@ -136,7 +162,7 @@ int main(int argc, char *argv[]) {
 <WORK_DIR>/quit-deadlock/
 ├── ISSUE.md              # 中英双语根因分析
 ├── patches/
-│   └── 0001-*.patch      # 客户补丁（git diff 格式）
+│   └── 0001-*.patch      # 外部补丁（git diff 格式）
 ├── demo/
 │   ├── ohos-repro/       # OHOS 完整工程（可编译部署）
 │   └── qt-repro/         # 桌面版（代码审查用）
@@ -146,7 +172,6 @@ int main(int argc, char *argv[]) {
 ## 相关上下文
 
 - [[framework-issue-analysis]] — 框架问题分析工作流
-- 工作流供应链 — 工作流供应链
 - [[qt-harmonyos-lifecycle]] — 生命周期详解
-- 客户日志：`<customer-log-dir>/destroyError20260608_*.log`
+- 外部日志：`<log-dir>/destroyError20260608_*.log`
 - Demo 源码：`<demos-dir>/quit-signal-repro/`

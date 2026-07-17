@@ -4,7 +4,7 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, ohos, porting, workflow, dependency-analysis, build-orchestration, verification]
 created: 2026-06-02
-updated: 2026-06-02
+updated: 2026-07-02
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-build, semantic-qt-harmonyos-overview, semantic-qt-harmonyos-platform-limits]
@@ -437,7 +437,7 @@ git show <ref>:<项目名>.pro 2>/dev/null | grep -iE 'QT\s*\+='
 | 原始项目 | <项目名> <版本> — <功能描述> |
 | 目标平台 | OpenHarmony (OHOS) |
 | Qt 版本 | Qt 5.15.16 (harmonyos 分支) |
-| 胶水模板 | `ohostemplateforqtapplication_YYYYMMDD` |
+| 胶水模板 | `<QT_SRC>/qtbase/src/harmonyos/templates`（源码内置） |
 | 构建工具 | DevEco MCP + CMake + Hvigor |
 | 目标产物 | `entry-default-signed.hap` |
 

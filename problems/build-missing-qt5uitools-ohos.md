@@ -42,6 +42,8 @@ OHOS Qt SDK（`<LOCAL_PATH>` 和 `<LOCAL_PATH>`）不包含 `Qt5UiTools` cmake �
 
 Qt5UiTools 提供 `QUiLoader`（运行时加载 .ui 文件），在多数项目中仅 examples 使用，核心库通常不依赖。
 
+> **⚠️ 根因修正（2026-07-08 lzh 确认）**：wiki 标 QtHelp/QtUiTools/QtDesigner **Completed**（已鸿蒙化），但 **qttools 模块的依赖只能在鸿蒙PC上主机编译（host build on HarmonyOS PC），Windows 交叉编译搞不定**。所以从 Windows 交叉编译的 OHOS Qt5 SDK（如 `<QT5_15_OHOS_SDK>`、`<QT5_15_OHOS_SDK_FULL>`）天然不含 Qt5UiTools/Qt5Help——这不是 SDK 打包遗漏，是**构建方式限制**。要补齐需在鸿蒙PC上主机编译 qttools 后部署。
+
 ## OHOS SDK 可用的 Qt5 模块
 
 通过 `ls lib/cmake/` 确认：
@@ -87,7 +89,7 @@ Qt5UiTools 提供 `QUiLoader`（运行时加载 .ui 文件），在多数项目�
    set(QUARTER_QT_TARGETS Qt5::Widgets Qt5::OpenGL)
    ```
 
-3. **如果需要 UiTools 功能**：从 Qt 源码树手动编译 QtUiTools 模块并安装到 OHOS SDK
+3. **如果需要 UiTools 功能**：**只能在鸿蒙PC上主机编译 qttools**（host build on HarmonyOS PC），产物部署到 SDK。**Windows 交叉编译搞不定**（qttools 依赖决定，2026-07-08 lzh 确认）——不要尝试从 Windows 定向 qmake `qttools/src/assistant` 或 `src/designer/src/uitools` 交叉编译。
 
 ## 经验
 

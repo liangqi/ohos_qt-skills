@@ -4,7 +4,7 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, third-party, cross-compile, cmake, vcpkg, dependency]
 created: 2026-06-03
-updated: 2026-06-03
+updated: 2026-07-07
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-build, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-platform-limits, semantic-qt-ohos-project-analyzer-workflow]
@@ -34,6 +34,8 @@ summary: >
 | **替换/降级** | 不兼容且无法 patch 的库 | 🔴 高 — 需要寻找替代方案 |
 
 ---
+
+> **📦 arm64 OHOS 预编译 bottle 来源 = Harmonybrew**：若某三方库已有 arm64_ohos 预编译包，可直接下载 .so 跳过本节交叉编译——见 [[fetch-ohos-third-party-lib]] 的一键拉取脚本（含依赖递归、sha256 校验、qmake/CMake 链接片段）。无 bottle 时继续按下文源码交叉编译。
 
 ## 2. OHOS NDK 交叉编译
 

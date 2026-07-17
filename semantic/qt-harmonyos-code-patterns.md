@@ -4,17 +4,17 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, code-patterns, porting, before-after, examples]
 created: 2026-06-02
-updated: 2026-06-02
+updated: 2026-07-07
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-api-mapping, semantic-qt-harmonyos-porting-workflow, semantic-qt-ohos-extras]
 summary: >
-  Qt鸿蒙移植12组Before/After代码模式速查：子进程→NoUi、启动外部应用→StartAbility、
+  Qt鸿蒙移植14组Before/After代码模式速查：子进程→NoUi、启动外部应用→StartAbility、
   独立对话框→tagged子窗口、关闭事件处理、文件权限守卫、参数解析、
-  平台构建配置、深色模式、拖放、等宽字体、浮窗、分享数据。
+  平台构建配置、深色模式、拖放、等宽字体、浮窗、分享数据、Qt6→Qt5 shim移植(不改原src)。
 ---
 
-# Qt 鸿蒙移植 12 组 Before/After 代码模式
+# Qt 鸿蒙移植 14 组 Before/After 代码模式
 
 > 来源：[Code Patterns: Before/After Porting Examples](https://wiki.qt.io/Qt_for_HarmonyOS/code_patterns)
 > 关联：[[qt-harmonyos-api-mapping]]、[[qt-harmonyos-porting-workflow]]、[[qt-ohos-extras]]
@@ -35,6 +35,8 @@ summary: >
 | 10 | 等宽字体 | systemFont → 自带 .ttf 注册 |
 | 11 | 浮窗 | 无 → setShowWindowAsFloatWindowHint() |
 | 12 | 分享数据 | 无 → ShareKit 集成 |
+| 13 | Qt6→Qt5 shim 移植 | Qt6-only API/不可用三方库 → 独立 shim 层替代（不改原 src） |
+| 14 | 数据库文件路径 | 相对文件名 → QStandardPaths 沙箱可写绝对路径 |
 
 ---
 
@@ -407,6 +409,103 @@ void MainWindow::shareFile(const QString &filePath) {
 ```
 
 > `createFileRecord()` 从 `QFileInfo` 构造分享记录，`shareDataWithShareKit()` 调起系统分享面板。第二个参数为回调，传 `nullptr` 表示不关心结果。
+
+---
+
+## 模式 13：Qt6 应用 → Qt5 OHOS shim 移植（不改原 src）
+
+> 目标 Qt6 的应用移植到 Qt 5.15 OHOS 时，Qt6-only API / 不可用三方库（qcoro C++20 协程、exiv2 等）通过**独立 shim 层**替代，**不修改应用原始 src/**。源自 vooki-image-viewer 鸿蒙化实战。
+
+**布局**（场景二 OhosExampleApp 变体）：
+```
+<app>/                     # 原始仓库，不动
+├── src/...                # 原始源码
+└── OhosExampleApp/        # shim 层 + OHOS 入口
+    ├── CMakeLists.txt     # 用 shim .cpp 替换原始 .cpp（排除原始、加入 shim）
+    ├── main.cpp           # extern "C" int main
+    ├── ImageLoaderShim.cpp      # 替代 src/processing/ImageLoader.cpp
+    ├── Application.cpp          # stub：Qt6 QLibraryInfo 新 API → Qt5
+    ├── MetadataExtractorStub.cpp # 禁用 EXIF（exiv2 不可用）
+    ├── ohos_compat.h            # std::ranges 等 OHOS NDK libc++ 缺失设施 shim
+    ├── qcoro_shim/              # qcoro Task/Future 协程最小骨架
+    └── exiv2_stub/exiv2/exiv2.hpp  # exiv2 占位头
+```
+
+**CMakeLists 替换模式**（用 shim 替代原始 .cpp，include 路径指向 ../src 使 shim 能引用原始头）：
+```cmake
+# 排除含 Qt6-only API 的原始文件
+set(OHOS_SOURCES
+    main.cpp
+    ImageLoaderShim.cpp        # 替代 ../src/processing/ImageLoader.cpp
+    Application.cpp            # stub
+    MetadataExtractorStub.cpp  # stub
+)
+# Q_OBJECT 头若被 shim 经 ../src include 引用，必须显式列入 add_library
+# （否则 AUTOMOC 跨目录不生成/不链接 moc → undefined vtable/staticMetaObject）
+set(OHOS_HEADERS
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/processing/Application.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/processing/MetadataExtractor.h
+)
+add_library(Ohos<App> SHARED ${OHOS_SOURCES} ${OHOS_HEADERS} ...)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../src)
+```
+
+**shim .cpp 模式**（移除 Qt6-only 调用，逻辑降级）：
+```cpp
+// ImageLoaderShim.cpp —— 替代 ImageLoader.cpp
+#include "processing/ImageLoader.h"
+// Qt6: QImageReader::setAllocationLimit(512); // Qt5.15 无此 API，且仅是内存上限，省略安全
+QImage ImageLoader::load(const QString &path) { /* 用 Qt5 API 实现 */ }
+```
+
+**适用场景与限制**：
+- Qt6-only API（如 `QImageReader::setAllocationLimit`、`QLibraryInfo` 新路径 API）→ shim 替代或降级
+- 不可用三方库（exiv2/qcoro）→ stub 占位（功能降级，编译通过；运行时该功能不可用）
+- OHOS NDK libc++ 缺失（`std::ranges`）→ `ohos_compat.h` 提供 min-max shim
+- **原则**：shim 只在 OhosExampleApp/ 层，原始 src/ 不动——便于上游同步、隔离 OHOS 特定逻辑
+- **不适用**：若应用核心功能强依赖 Qt6 专有模块（如 QtQuick3D、QtMultimedia6 新 API），shim 无法替代，需评估真迁移或阻塞
+
+> AUTOMOC/AUTOUIC 跨目录陷阱：Q_OBJECT 头若被 shim 经 `../src` include 引用，必须显式列入 `add_library`（否则 AUTOMOC 跨目录不生成/不链接 moc → undefined vtable/staticMetaObject）；.ui 在独立子目录时设 `CMAKE_AUTOUIC_SEARCH_PATHS`。
+
+---
+
+## 模式 14：数据库文件路径 → 沙箱可写绝对路径
+
+鸿蒙应用以共享库方式加载（`argv[0]` 是 .so 路径，见铁律 L2），进程 CWD 多落在只读 `el1/bundle` 区或不可预期路径。SQLite/配置文件用相对路径将无法创建，`open()` 返回 false。必须用 `QStandardPaths::writableLocation(AppLocalDataLocation)` 拼接绝对路径——该枚举在 OHOS 映射 `preferencesDir`（`/data/storage/el2/` 下可写沙箱），桌面端返回 `~/.local/share/<Org>/<App>`，统一使用无需 `#ifdef`。
+
+**Before (Desktop-friendly but breaks on OHOS)**
+```cpp
+QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
+db.setDatabaseName("myapp.db");   // 裸文件名，依赖 CWD 可写
+if (!db.open()) {
+    QMessageBox::information(nullptr, "错误", "无法创建本地数据库 !");
+    exit(-1);
+}
+```
+
+**After (HarmonyOS-aware, unified cross-platform)**
+```cpp
+#include <QStandardPaths>
+#include <QDir>
+
+QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
+QString dataDir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+if (dataDir.isEmpty()) dataDir = QDir::currentPath();   // 兜底
+QDir().mkpath(dataDir);
+db.setDatabaseName(dataDir + QDir::separator() + "myapp.db");
+if (!db.open()) {
+    qWarning() << "DB open failed:" << db.lastError().text() << "path:" << db.databaseName();
+    QMessageBox::information(nullptr, "错误",
+        QString("无法创建本地数据库 !\n路径: %1\n错误: %2").arg(db.databaseName(), db.lastError().text()));
+    exit(-1);
+}
+```
+
+> **关键约束**：
+> - `AppLocalDataLocation` 在 OHOS 映射 `preferencesDir`（el2 可写沙箱，文件 IO 允许，仅 `.so` dlopen 被拒——故放 `.db` 安全，见 [[qt-harmonyos-platform-limits]] §dlopen）
+> - `exit(-1)` 在 OHOS 会被 `libappspawn_helper.z.so` 拦截转 `SIGABRT` cppcrash（`LastFatalMessage: Unexpected call: exit(-1)`），如需静默退出改 `QCoreApplication::exit()`
+> - **驱动插件独立问题**：即使路径正确，若 `libqsqlite.so` 未部署到 `libs/<abi>/sqldrivers/`，`open()` 仍返回 false（driver null，不碰文件系统）——见 [[qt-harmonyos-project-structure]] §6.2 + [runtime-fail-sqlite-open-database](../problems/runtime-fail-sqlite-open-database.md)
+> - 桌面端建议补 `QCoreApplication::setOrganizationName()/setApplicationName()`，使路径含合理 `<App>` 段（OHOS 端由 bundleName 决定不受影响）
 
 ---
 
