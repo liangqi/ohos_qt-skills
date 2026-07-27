@@ -4,7 +4,7 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, window, mainwindow, subwindow, tagging, floating, embedded]
 created: 2026-06-02
-updated: 2026-06-30
+updated: 2026-07-16
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-api, semantic-qt-ohos-extras, semantic-qt-harmonyos-code-patterns]
@@ -482,6 +482,46 @@ case WINDOW_SHOWN:
 | 5 | `QWindowPrivate::destroy` `qwindow.cpp:1909` | kernel | `close()`/析构 → `setVisible(false)` |
 | 6 | **`WINDOW_SHOWN` HACK** `qohosfloatingwindow.cpp:202` | **OHOS 系统→Qt（唯一系统路径）** | hide 后系统重新拉起，状态纠偏 |
 | 7 | `QOhosView` 子窗口创建 `qohosview.cpp:429` | QPA 自驱动 | 建 subwindow 时父窗口若隐藏则自动 `setVisible(true)` |
+
+### WMS 与 Qt 可见性状态机独立性（2026-07-16 新增）
+
+> **⚠️ 重要**：鸿蒙系统的窗口可见性管理（WMS）和 Qt 的可见性状态（WA_WState_Hidden）是**两套独立的状态机**。
+
+系统可以通过 WMS 直接改变窗口可见性（如 GoForeground、文件加速推送窗口到前台），**不经过 Qt 的 show()/setVisible(true) 路径**，导致 Qt 侧 Hidden 标志与系统实际状态不一致。
+
+```
+┌─────────────┐     ┌─────────────┐
+│  系统 WMS    │     │   Qt 层面    │
+│             │     │             │
+│ 窗口可见     │     │ Hidden=1    │
+│ (GoForeground)│    │ (认为隐藏)   │
+│             │     │ 不渲染      │
+└─────────────┘     └─────────────┘
+       │                   │
+       └───── 状态不一致 ───┘
+              → 白屏
+```
+
+**影响场景**：
+- 文件加速（task_manager_service 后台预启动应用，应用 hide() 后系统推送窗口到前台）
+- 系统 Dock 恢复（某些时序下）
+
+**排查建议**：遇到白屏问题时，先检查应用侧是否正确调用了 `show()`/`setVisible(true)`，再考虑 Qt QPA 层修复。详见 白屏问题复盘。
+
+### WINDOW_HIDDEN/SHOWN 事件不可靠场景（2026-07-16 新增）
+
+> **⚠️ 重要**：`WINDOW_HIDDEN`/`WINDOW_SHOWN` 事件在以下场景**不会触发**：
+> - 文件加速（task_manager_service 后台预启动）
+> - 系统直接通过 WMS 管理窗口可见性时
+
+**不应依赖这些事件作为状态同步的唯一触发源。**
+
+设备日志实证（万兴图示文件加速场景，32 文件 ~160MB hilog）：
+- `WINDOW_HIDDEN` 出现次数：**0**
+- `WINDOW_SHOWN` 出现次数：**0**
+- `OHOS-HIDE-DEBUG`（QWidget instrumentation）：**780+ 次**（证明 patched libqohos.so 已部署）
+
+详见 白屏问题复盘 和 万兴白屏复盘。
 
 ### 易混淆点（visible / visibility / exposed / appState）
 

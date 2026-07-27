@@ -4,10 +4,10 @@ type: procedural
 domain: workflow
 tags: [workflow, demo, qt, rendering, testing, opengl, project-creation]
 created: 2026-06-12
-updated: 2026-07-02
+updated: 2026-07-23
 status: active
 audience: public
-refs: [procedural-qt-app-harmonyos-migration,semantic-qt-harmonyos-build,semantic-qt-harmonyos-project-structure]
+refs: [procedural-qt-app-harmonyos-migration,semantic-qt-harmonyos-build,semantic-qt-harmonyos-project-structure,problem-runtime-crash-ohos-deviceinfo-global-expression]
 summary: >
   独立 Demo 生成工作流（六步闭环）：需求理解→技术设计→工程创建→代码编写→编译验证→文档沉淀。
   适用于用户直接要求"写一个 demo"/"生成测试工程"等独立 demo 创建场景。
@@ -80,7 +80,7 @@ summary: >
 ### 3.1 确定工程目录
 
 ```
-<WORK_ROOT>/lzh-skill/<INTERNAL_DEMO><demo-name>/
+lzh-skill/<INTERNAL_DEMO><demo-name>/
 ```
 
 `<demo-name>` 命名规范：简短描述性名称，用 `-` 分隔单词（如 `render-layers`、`mediaplayer-duration-test`）。
@@ -107,6 +107,15 @@ summary: >
 
 > 鸿蒙工程必须从 Qt 源码内置胶水模板创建（路径见 `ENV.md` 的 `OHOS_TEMPLATE_SRC`，即 `<QT_SRC>/qtbase/src/harmonyos/templates`）。
 > 详见 [[qt-app-harmonyos-migration]] 阶段 1.3 和 [[qt-harmonyos-project-structure]]。
+
+> ⚠️ **陷阱：源码树模板的 OhosExportModules.ts 是陈旧最小版，直接用必崩**
+>
+> `qtbase/src/harmonyos/templates` 的 `OhosExportModules.ts` 日期早于所链 libqohos，只有 5 个 `@kit.*` lazy import + factories API（`getOhosExportModulesFactories` 返回箭头工厂），**缺所有 `@ohos.*` eager import**。libqohos 启动/recreate 时裸 eval `"@ohos.deviceInfo"` 会被 ArkTS 运行时拒（未注册为"已知模块路径"）→ Napi::Error `global expression doesn't start with known module path: '@ohos.deviceInfo'` → SIGABRT。且 factories API 与 515 代际 libqohos 的 objects API（`makeJsModulesMap` + 读 `"modules"` 字段）错配，@kit.*/LocalStorage/QEmbeddedComponentCreator 会被静默丢弃。
+>
+> **必做检查点**（创建工程后立即）：
+> 1. `strings <SDK>/plugins/platforms/libqohos.so | grep -E "^modules$|^modulesFactories$"` → 定 API（modules=objects / modulesFactories=factories）
+> 2. 用 **qView-ohos 钦定完整版**替换 `entry/src/main/ets/qability/OhosExportModules.ts` + `QtUtils.ets`（26 个 `@ohos.*` + 13 个 `@kit.*` **eager default-import**，objects API，`getModulesMapForQt`），并同步改 `QAbilityStage.ets`/`QChildProcess.ets` 的 `getModulesFactoriesMapForQt()` → `getModulesMapForQt()`
+> 3. 详见 [[problem-runtime-crash-ohos-deviceinfo-global-expression]]（含 @ohos.deviceInfo 崩溃谱两代际判据）
 
 ---
 
@@ -247,7 +256,7 @@ mingw32-make.exe -j8      # Windows MinGW
 | **上游输入** | demo 目标描述、功能需求、目标平台/版本 |
 | **下游接收方** | 内部使用（测试验证）/ 宣传演示 / 客户展示 |
 | **交付件** | `<INTERNAL_DEMO><demo-name>/`：完整工程 + README（可选） |
-| **交付件路径** | `<WORK_ROOT>/lzh-skill/<INTERNAL_DEMO>` |
+| **交付件路径** | `lzh-skill/<INTERNAL_DEMO>` |
 | **分流规则** | 无（独立交付）；如发现框架 bug → 转入框架问题分析；如需鸿蒙化 → 转入应用移植 |
 
 ---

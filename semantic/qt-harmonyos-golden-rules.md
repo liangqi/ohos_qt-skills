@@ -4,12 +4,12 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, golden-rules, quick-reference, porting, checklist]
 created: 2026-06-03
-updated: 2026-07-07
+updated: 2026-07-16
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-porting-workflow, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-lifecycle, semantic-qt-harmonyos-api-mapping, semantic-qt-harmonyos-code-patterns, semantic-qt-harmonyos-window-model, semantic-qt-ohos-extras, semantic-qt-harmonyos-build, semantic-qt-harmonyos-third-party-libs]
 summary: >
-  Qt 鸿蒙化铁律速查：34 条黄金规则覆盖构建部署、窗口管理、API/枚举路径、
+  Qt 鸿蒙化铁律速查：35 条黄金规则覆盖构建部署、窗口管理、API/枚举路径、
   平台限制、生命周期、跨平台守卫。每条含严重度（🔴🟠🟡🟢）、"为什么"和出处。
   Agent 执行任何 Qt for HarmonyOS 任务前应先扫描此页。
 ---
@@ -49,7 +49,7 @@ summary: >
 
 ---
 
-## 二、窗口管理（5 条）
+## 二、窗口管理（6 条）
 
 | # | 严重度 | 规则 | 为什么 | 出处 |
 |---|:------:|------|--------|------|
@@ -58,6 +58,7 @@ summary: >
 | W3 | 🟡 | 无 parent 的 `QDialog` 会被系统视为**新主窗口**，必须 tagging 或传 parent。**关键概念**：Subwindow 的"子"是系统层面的归属关系（Dock/任务栏可见性），**不是** Qt widget 的父子关系——即使 `QWidget` 没有 Qt parent，也可以通过 tagging 成为 subwindow | 否则出现独立 Dock 图标和 Alt+Tab 条目 | [[qt-harmonyos-window-model]] §概念, §Pattern 3 |
 | W4 | 🟡 | 首个窗口**不能**启动时直接全屏，必须先 `show()` 再 `showFullScreen()` | 鸿蒙要求先完成 Ability 初始化 | [[qt-harmonyos-window-model]] §全屏 |
 | W5 | 🟡 | 主窗口 `hide()` 回退为最小化（无系统托盘时） | 与桌面平台行为不同 | [[qt-harmonyos-api]] §hide |
+| W6 | 🟠 | **不要依赖 `WINDOW_HIDDEN`/`WINDOW_SHOWN` 事件作为窗口状态同步的唯一触发源**——这些事件在文件加速/预加载场景下不触发（设备日志实证 0 次匹配）。系统可通过 WMS 直接管理窗口可见性，不走 Qt 窗口事件回调 | WMS 与 Qt 可见性状态机独立，系统推送窗口到前台时 Qt 侧 Hidden 标志可能未清除→白屏 | [[qt-harmonyos-window-model]] §WMS与Qt可见性状态机独立性, 白屏问题复盘 |
 
 ---
 
@@ -69,7 +70,7 @@ summary: >
 | A2 | 🟠 | 主题枚举**必须**用完整路径：`QtOhosExtras::QOhosAppContext::ColorThemeMode::FollowSystemSetting`（缺 `QOhosAppContext::` 层级编译不过）。**Qt6**：枚举可能已移动或私有化 | 嵌套于 `QOhosAppContext` 的 enum class，短路径编译不过 | [[qt-harmonyos-lifecycle]] §主题, [[qt-harmonyos-qt6-status]] |
 | A3 | 🟠 | UI 信号在 `QOhosUiAbilityContext` 上（不是 `QOhosAbilityContext`）：`newWantReceived`、`continueRequestReceived`、`newWantInfoReceived`。**Qt6**：信号类可能已重构 | 基类 `QOhosAbilityContext` 无这些信号 | [[qt-harmonyos-lifecycle]] §接续/分享, [[qt-harmonyos-qt6-status]] |
 | A4 | 🟢 | 工厂方法在 `QOhosAbilityContext` 上：`getDefaultInstance()`、`getInstanceForMainWindow()`。**Qt6**：类可能已不存在 | 这些是基类的静态方法 | [[qt-harmonyos-lifecycle]] §接续, [[qt-harmonyos-qt6-status]] |
-| A5 | 🟢 | `#include` 路径统一使用 CamelCase 风格：`<QtOhosExtras/QOhosAppContext>`（不是 `<QtOhosExtras/qohosappcontext.h>`）。**Qt6**：模块不存在，头文件路径无效 | KB 内部统一约定 | [[qt-harmonyos-lifecycle]], [[qt-harmonyos-qt6-status]] |
+| A5 | 🟠 | qtohosextras 头文件**只有小写**，`#include` **必须**用小写：`<QtOhosExtras/qohosappcontext.h>`（**不是** CamelCase `<QtOhosExtras/QOhosAppContext>`）。注意：与 QtCore 不同，qtohosextras **不安装 CamelCase 转发头**（实测 2026-07-23：install 后 `include/QtOhosExtras/` 下只有 `qohos*.h`，无 `QOhos*` 转发头 → CamelCase 编译报 `file not found`）。QtCore 等核心模块有 CamelCase 转发头（`QString` 等），qtohosextras 无。**Qt6**：模块不存在，头文件路径无效 | 实测：qtohosextras install 不生成 CamelCase 转发头；旧版 A5 "统一 CamelCase" 对 qtohosextras **不成立**，已修正 | [[qt-harmonyos-lifecycle]], [[qt-harmonyos-qt6-status]] |
 | A6 | 🟠 | `getCloseEventRootCause()` 是**自由函数**（`QtOhosExtras::getCloseEventRootCause(event)`），不是成员方法。**Qt6**：函数已私有化（`_p.h`） | 位于 QOhosWindowUtils 头文件 | [[qt-ohos-extras]] §关闭事件, [[qt-harmonyos-qt6-status]] |
 
 ---

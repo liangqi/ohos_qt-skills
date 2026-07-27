@@ -86,7 +86,7 @@ summary: >
 
 > **📋 TODO 同步点**：更新 `<LOCAL_TODO>` 中该任务的「进展」列 → `阶段一进行中：项目目录已创建，模板解压中`
 
-**每个迁移项目在 `<WORK_ROOT>/project` 下独立建文件夹**（路径见 `ENV.md`）：
+**每个迁移项目在 `${PROJECTS_ROOT}` 下独立建文件夹**（路径见 `ENV.md`）：
 
 ```bash
 # 创建项目目录（以原始应用名 + -ohos 命名）
@@ -107,11 +107,11 @@ mkdir -p "<MIGRATION_PROJECT_ROOT>/<app-name>-ohos"
 > 新版 Qt 鸿蒙分支已将胶水模板**内置于源码树** `qtbase/src/harmonyos/templates`，
 > 无需再从 Gerrit 下载 ZIP（旧 ZIP 方式已退役为备用）。
 
-**获取模板**（模板路径见 `ENV.md` 的 `OHOS_TEMPLATE_SRC`，即 `<QT_SRC>/qtbase/src/harmonyos/templates`），复制到项目目录 `<WORK_ROOT>/project/<app-name>-ohos/`：
+**获取模板**（模板路径见 `ENV.md` 的 `OHOS_TEMPLATE_SRC`，即 `<QT_SRC>/qtbase/src/harmonyos/templates`），复制到项目目录 `${PROJECTS_ROOT}/<app-name>-ohos/`：
 
 ```bash
 # 从 Qt 源码树复制内置模板到项目目录（推荐，5.15 / 5.12 源码树内均有，内容相同）
-cp -r <QT5_15_SRC>/qtbase/src/harmonyos/templates/. "<WORK_ROOT>/project/<app-name>-ohos/"
+cp -r <QT5_15_SRC>/qtbase/src/harmonyos/templates/. "${PROJECTS_ROOT}/<app-name>-ohos/"
 # Qt 5.12 对应：<QT5_12_SRC>/qtbase/src/harmonyos/templates
 ```
 
@@ -406,10 +406,10 @@ glm-5.2 安全分类器间歇不可用时，主循环的 Bash/Write/Agent 调用
 
 ### 5.7 批量交付件
 
-- `<WORK_ROOT>/project/<batch>/_BATCH_REPORT.md` — 全量结果表（row × 状态 × 产物 × 错误）。
-- `<WORK_ROOT>/project/<batch>/_results/<row>.json` — 每项目迁移+编译报告。
-- `<WORK_ROOT>/project/<batch>/_assessments/<row>.json` — 每项目 triage 评估。
-- `<WORK_ROOT>/project/<batch>/_RUNBOOK.md` / `_playbook.md` — 批次用的迁移配方（供所有 port agent 遵循）。
+- `${PROJECTS_ROOT}/<batch>/_BATCH_REPORT.md` — 全量结果表（row × 状态 × 产物 × 错误）。
+- `${PROJECTS_ROOT}/<batch>/_results/<row>.json` — 每项目迁移+编译报告。
+- `${PROJECTS_ROOT}/<batch>/_assessments/<row>.json` — 每项目 triage 评估。
+- `${PROJECTS_ROOT}/<batch>/_RUNBOOK.md` / `_playbook.md` — 批次用的迁移配方（供所有 port agent 遵循）。
 
 ---
 
@@ -417,7 +417,7 @@ glm-5.2 安全分类器间歇不可用时，主循环的 Bash/Write/Agent 调用
 
 - [ ] **阶段零预检完成**（Qt 版本按代码非声明、SDK 选型 Qt5/Qt6、模块可用性、项目类型→Playbook A/B、平台绑定、foreach、三方依赖）
 - [ ] 可行性评估完成（模块依赖、平台 API、UI 复杂度）
-- [ ] 项目目录已创建于 `<WORK_ROOT>/project/<app-name>-ohos/`
+- [ ] 项目目录已创建于 `${PROJECTS_ROOT}/<app-name>-ohos/`
 - [ ] 胶水代码模板已从源码内置路径（`<QT_SRC>/qtbase/src/harmonyos/templates`）复制至项目目录
 - [ ] 应用显示名称已修改（`app_name` + `QAbility_label` 改为应用名）
 - [ ] 8 步决策树逐项处理
@@ -438,7 +438,7 @@ glm-5.2 安全分类器间歇不可用时，主循环的 Bash/Write/Agent 调用
 | **上游输入** | 原始 Qt 工程/源码、目标功能需求、Qt 版本信息 |
 | **下游接收方** | **商业 Qt 客户** / 内部（宣传 demo） |
 | **交付件** | 可行性评估报告 → 迁移后的鸿蒙工程 → 编译产物 (.hap) |
-| **交付件路径** | `<WORK_ROOT>/project/<app-name>-ohos/`（见 `ENV.md`） |
+| **交付件路径** | `${PROJECTS_ROOT}/<app-name>-ohos/`（见 `ENV.md`） |
 | **分流规则** | 无；**知识积累**：每次迁移后更新 KB（API 映射 → `api-mapping.md`、代码模式 → `code-patterns.md`、问题经验 → `problems/`） |
 
 ---

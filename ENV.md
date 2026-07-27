@@ -11,7 +11,7 @@
 
 | 变量名 | 你的值 | 说明 |
 |--------|--------|------|
-| `WORK_ROOT` | `<YOUR_WORK_ROOT>` | 所有工作目录的父目录（`demos/`、`project/`、`shared/` 等子目录的根） |
+| `QT5_12_SRC` | `workspace/qt-src/qt5.12` | Qt 5.12 源码（KB 相对路径） |
 
 ## 🔧 Qt 源码路径
 

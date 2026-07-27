@@ -133,7 +133,7 @@ OH_ArkUI_XComponentSurfaceConfig_Dispose(config)
 - **全量解耦不可盲改**：涉及无障碍子系统，无法本地测试，风险极高。在界定互斥边界前不要尝试。
 - **触摸迁移工作量**：即使只迁触摸到 `NODE_TOUCH_EVENT`，也需新写 `qohosnativetoucheventshandler.{h,cpp}`，移植多点触摸/tool type/tilt/display 坐标/历史点逻辑（约 200+ 行），且无法本地验证。
 - **API 版本**：SurfaceHolder/SurfaceConfig 需 API 19/22+；`NODE_TOUCH_EVENT` 在 `native_node.h` 值为 0（基础枚举）。
-- 已有的分析文档：`<WORK_ROOT>/<INTERNAL_DEMO>`（含 mermaid 时序图）。
+- 已有的分析文档：`${DEMOS_ROOT}/<INTERNAL_DEMO>`（含 mermaid 时序图）。
 
 ## 相关
 

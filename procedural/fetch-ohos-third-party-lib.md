@@ -47,27 +47,27 @@ summary: >
 ## 快速开始
 
 ```bash
-# 拉取 abseil 及其运行时依赖，解压到 <WORK_ROOT>/ohos-libs
-bash _scripts/fetch-ohos-bottle.sh -f abseil -o <WORK_ROOT>/ohos-libs
+# 拉取 abseil 及其运行时依赖，解压到 ${DELIVERABLES_ROOT}/ohos-libs
+bash _scripts/fetch-ohos-bottle.sh -f abseil -o ${DELIVERABLES_ROOT}/ohos-libs
 ```
 
-预期产出（`<WORK_ROOT>/ohos-libs` 是 `-o` 解析后的绝对路径；进度/信息行打到 stderr，✅ 摘要与链接片段打到 stdout）：
+预期产出（`${DELIVERABLES_ROOT}/ohos-libs` 是 `-o` 解析后的绝对路径；进度/信息行打到 stderr，✅ 摘要与链接片段打到 stdout）：
 
 ```
 ✅ abseil 20260526.0
-   lib/     <WORK_ROOT>/ohos-libs/abseil/20260526.0/lib
-   include/ <WORK_ROOT>/ohos-libs/abseil/20260526.0/include
-   cmake/   <WORK_ROOT>/ohos-libs/abseil/20260526.0/lib/cmake
+   lib/     ${DELIVERABLES_ROOT}/ohos-libs/abseil/20260526.0/lib
+   include/ ${DELIVERABLES_ROOT}/ohos-libs/abseil/20260526.0/include
+   cmake/   ${DELIVERABLES_ROOT}/ohos-libs/abseil/20260526.0/lib/cmake
 
 # qmake (.pro) — 链接 abseil
-LIBS += -L<WORK_ROOT>/ohos-libs/abseil/20260526.0/lib \
+LIBS += -L${DELIVERABLES_ROOT}/ohos-libs/abseil/20260526.0/lib \
         -labsl_base -labsl_city -labsl_clock -labsl_hash -labsl_raw_hash_set -labsl_status -labsl_strings -labsl_throw_delegate
 
 # CMake — abseil 提供 abslConfig.cmake
 cmake -S . -B build_ohos \
   -DCMAKE_TOOLCHAIN_FILE=$NATIVE_OHOS_SDK/build/cmake/ohos.toolchain.cmake \
   -DOHOS_ARCH=arm64-v8a \
-  -DCMAKE_PREFIX_PATH=<WORK_ROOT>/ohos-libs/abseil/20260526.0 \
+  -DCMAKE_PREFIX_PATH=${DELIVERABLES_ROOT}/ohos-libs/abseil/20260526.0 \
   -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH
 ```
 
@@ -138,11 +138,11 @@ abseil 无运行时依赖，故不触发递归。ffmpeg（14 个依赖）会递�
 
 ## 链接到 Qt
 
-脚本在摘要中动态生成 qmake `-l` 列表（扫 `lib/lib*.so`，剥 `lib` 前缀与 `.so[.N]` 后缀）与 CMake 片段（仅当 `lib/cmake/<pkg>/<pkg>Config.cmake` 存在）。以下是 abseil 的实际产出，`<WORK_ROOT>/ohos-libs` 代指 `-o` 解析后的绝对路径：
+脚本在摘要中动态生成 qmake `-l` 列表（扫 `lib/lib*.so`，剥 `lib` 前缀与 `.so[.N]` 后缀）与 CMake 片段（仅当 `lib/cmake/<pkg>/<pkg>Config.cmake` 存在）。以下是 abseil 的实际产出，`${DELIVERABLES_ROOT}/ohos-libs` 代指 `-o` 解析后的绝对路径：
 
 ```makefile
 # qmake (.pro) — 链接 abseil
-LIBS += -L<WORK_ROOT>/ohos-libs/abseil/20260526.0/lib \
+LIBS += -L${DELIVERABLES_ROOT}/ohos-libs/abseil/20260526.0/lib \
         -labsl_base -labsl_city -labsl_clock -labsl_hash -labsl_raw_hash_set -labsl_status -labsl_strings -labsl_throw_delegate
 ```
 
@@ -151,7 +151,7 @@ LIBS += -L<WORK_ROOT>/ohos-libs/abseil/20260526.0/lib \
 cmake -S . -B build_ohos \
   -DCMAKE_TOOLCHAIN_FILE=$NATIVE_OHOS_SDK/build/cmake/ohos.toolchain.cmake \
   -DOHOS_ARCH=arm64-v8a \
-  -DCMAKE_PREFIX_PATH=<WORK_ROOT>/ohos-libs/abseil/20260526.0 \
+  -DCMAKE_PREFIX_PATH=${DELIVERABLES_ROOT}/ohos-libs/abseil/20260526.0 \
   -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH
 ```
 
@@ -209,7 +209,7 @@ cmake -S . -B build_ohos \
 | **上游输入** | formula `.rb`（版本/sha256/依赖元数据）+ bottle `.tar.gz`（arm64-OpenHarmony 预编译 `.so`）|
 | **下游接收方** | Qt 鸿蒙化项目（应用移植）/ CI 流水线 |
 | **交付件** | `<out-dir>/<formula>/<version>/{lib,include,lib/cmake}` + qmake/CMake 链接片段 |
-| **交付件路径** | `<WORK_ROOT>/ohos-libs/`（见 `ENV.md`）|
+| **交付件路径** | `${DELIVERABLES_ROOT}/ohos-libs/`（见 `ENV.md`）|
 | **分流规则** | 无 bottle → 回退源码交叉编译（[[qt-harmonyos-third-party-libs]] §2）|
 
 ---
