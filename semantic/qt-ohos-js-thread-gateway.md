@@ -4,7 +4,7 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, ohos, qpa, threading, node-api, arkts, napi, private-api, oauth, sync]
 created: 2026-06-26
-updated: 2026-07-03
+updated: 2026-07-27
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-ohos-extras, problem-ohos-mainthread-mismatch, semantic-qt-harmonyos-qt6-status, episodic-quit-deadlock-tsfn]
@@ -58,7 +58,23 @@ void QOhosJsThreadGateway::runAndWait(
 - 都在 `QtCore/private/qcore_ohos_p.h`，头文件顶部明确 **"not part of the Qt API. It may change from version to version without notice, or even be removed."**
 - 符号靠 `Q_CORE_EXPORT` 从 QtCore 导出，可链接，但**无 ABI/API 兼容性承诺**
 - Qt 自身在大量内部模块使用：字体库（`qohosplatformfontdatabase.cpp`）、QStandardPaths（`qstandardpaths_ohos.cpp`）、wifi bearer（`qohoswifi.cpp`）、QPA 插件自身
-- 应用层若要用：需 `#include <QtCore/private/qcore_ohos_p.h>`、链接 Qt 私有头（CMake `Qt5::CorePrivate` / `find_package(Qt5Core COMPONENTS Private)`），并自担升级风险
+- 应用层若要用：需 `#include <QtCore/private/qcore_ohos_p.h>`、链接 Qt 私有头（CMake `Qt5::CorePrivate` / `find_package(Qt5 ... COMPONENTS ... Private)`），并自担升级风险
+
+## ⚠️ 构建前置条件（易漏，本文示例全部命中）
+
+本页所有示例（及任何直接命名 `QNapi::*` 类型的 TU）除 `Qt5::CorePrivate` 外还**必须**满足两条，否则编译/链接失败（2026-07-27 实证 Qt 5.15.16 full SDK 安装树）：
+
+1. **node-addon-api 的 `napi.h`**：`qcore_ohos_p.h` → `qnapi_p.h:24 #include <napi.h>`。5.15.16 full SDK **不含** `napi.h`（`find` 全树 0 命中）；`Qt5::CorePrivate` target 只携带 `Qt5Core_OWN_PRIVATE_INCLUDE_DIRS`（私有头目录），**不带** node-addon-api 路径（`Qt5CoreConfigExtras.cmake` 无 `3rdparty`/`node-addon` 条目）。必须从 Qt5 源码树 `qtbase/src/3rdparty/node-addon-api/` 取，手动 `target_include_directories(<tgt> PRIVATE <path>/node-addon-api)`，或设 `QT5_SRC_3RDPARTY` 环境变量。
+2. **链接 `ace_napi.z`**：node-addon-api 是 header-only 内联封装，`napi_*` C 函数由 OHOS 运行时 `libace_napi.z.so` 提供（sysroot `<OHOS_SDK_NATIVE>/sysroot/usr/lib/aarch64-linux-ohos/libace_napi.z.so`）。`Qt5::Core` **不传递**此依赖（`Qt5CoreConfigExtras.cmake` 无 `INTERFACE_LINK_LIBRARIES` 含 ace_napi），应用须在 `target_link_libraries` 显式加 `ace_napi.z`，否则 `undefined reference to napi_*`。
+
+> 💡 仅当应用代码完全不用 `QNapi::*` 类型、只用 `jsState.eval<T>(expr)` 取 POD 返回时，理论上 napi.h 仍被 `qcore_ohos_p.h` 传递包含（躲不开）；ace_napi.z 链接则任何使用本网关的 TU 都需要。
+
+## 取主窗口 / Window id 的现行写法（5.15.16，易写错）
+
+- **主窗口**：`jsState.defaultWindowStageOrEmpty().call<QNapi::Object>("getMainWindowSync")`（同步，`@ohos.window.d.ts` `WindowStage.getMainWindowSync(): Window`；源码 `qohosqabilityinstancesmanager.cpp:312` / `qohoswindowproxydatafactory.cpp:267` 同款）。
+- **Window id 访问**：`window.get<QNapi::Number>("getWindowProperties().id")`，**不是** `.get<QNapi::Number>("id")`——5.15.16 的 Window 对象 `id` 非直接属性，须经 `getWindowProperties().id`（源码 `qohoswindowproxy.cpp:489/518`）。
+- **子窗口枚举**：`windowStage.call<QNapi::Promise>("getSubWindow")` **无参**，返回 `Promise<Array<Window>>`（`@ohos.window.d.ts:8480`），在 `onThen` 内按 `getWindowProperties().id` 匹配。**不要**给 `getSubWindow` 传 id 入参（旧代码传了会被忽略）。
+- **GC 警告**：`getSubWindow` 异步，`onThen` 在另一 JS turn 执行。在其中要用的 `QNapi::Object`（如 policy）**必须在该回调内用 `info.Env()` 当场构造**，不能从外层 task 按值捕获——非 persistent 的 `napi_value` 跨 turn 会被 GC。同步路径（如 `getMainWindowSync` 后立即 `call`）无此问题。
 
 ## 5 个入口（全部在 `QOhosJsThreadGateway` 命名空间）
 

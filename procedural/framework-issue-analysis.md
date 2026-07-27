@@ -278,7 +278,7 @@ hdc shell hilog | grep "\[OHOS\]"
 
 > **⚠️ 铁律**：提交给 Tqtc 的交付件**必须包含可复现问题的 demo**。没有复现 demo 的 issue 报告不具备说服力，Tqtc 可能拒绝处理。
 
-在 `<WORK_ROOT>/<WORK_DIR>`（见 `ENV.md`）下创建以 bug 名命名的子目录（如 `leave-event-fix`），包含以下交付物：
+在 `${DELIVERABLES_ROOT}/<WORK_DIR>`（见 `ENV.md`）下创建以 bug 名命名的子目录（如 `leave-event-fix`），包含以下交付物：
 
 ```
 <WORK_DIR>/<bug-name>/
@@ -411,7 +411,7 @@ git reset HEAD
 | **上游输入** | bug 描述、复现步骤、日志/截图、Qt 版本和环境信息、原始工程代码（如有） |
 | **下游接收方** | **The Qt Company (Tqtc)** 框架团队 |
 | **交付件** | `<WORK_DIR>/<bug-name>/`：ISSUE.md + patches/ + demo/ + README.md |
-| **交付件路径** | `<WORK_ROOT>/<WORK_DIR>`（见 `ENV.md`） |
+| **交付件路径** | `${DELIVERABLES_ROOT}/<WORK_DIR>`（见 `ENV.md`） |
 | **分流规则** | 无（本工作流产出的就是最终交付件，直接提交上游） |
 
 ---

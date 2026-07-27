@@ -4,7 +4,7 @@ type: meta
 domain: quality
 tags: [knowledge-base, dashboard, quality]
 created: 2026-06-27
-updated: 2026-07-17
+updated: 2026-07-27
 status: active
 refs: [semantic-qt-harmonyos-golden-rules]
 summary: >
@@ -14,7 +14,7 @@ summary: >
 
 # 知识库仪表盘（开发者版）
 
-> **总活跃页面**：35 | **归档页面**：1 | **元页面**：2
+> **总活跃页面**：37 | **归档页面**：1 | **元页面**：2
 
 本知识库是 **Qt for HarmonyOS 移植参考**，覆盖 API 映射、窗口模型、生命周期、平台限制、构建部署、常见错误。完整页面清单见 [_map](_map.md)，按标签浏览见 [_tags](_tags.md)，任务路由见 [_task-routing](_task-routing.md)。
 
@@ -22,7 +22,7 @@ summary: >
 
 ## 分域统计
 
-### semantic（21 活跃）
+### semantic（23 活跃）
 
 语义知识——概念、API 参考、平台限制、模块状态、构建/工程/工作流。核心入口：
 - [golden-rules](../semantic/qt-harmonyos-golden-rules.md) — 33 条铁律速查
@@ -42,7 +42,7 @@ summary: >
 
 开发者版不含个人偏好页。
 
-> **problems/** 错误知识库，共 23 条目——编译/构建/运行时实际报错与解决方案，速查入口 [_lookup](../problems/_lookup.md)。
+> **problems/** 错误知识库，共 26 条目——编译/构建/运行时实际报错与解决方案，速查入口 [_lookup](../problems/_lookup.md)。
 
 ---
 

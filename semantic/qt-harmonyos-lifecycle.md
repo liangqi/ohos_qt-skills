@@ -464,6 +464,18 @@ int main(int argc, char *argv[]) {
 
 > **要点**：无 UI 子进程中**不要创建 `QApplication` / `QGuiApplication`**，也不要初始化任何 GUI 相关资源。
 
+### 获取子进程 PID 与 kill 子进程（待上游补丁）
+
+当前 `startNoUiChildProcess` 是 `static void`，**不返回 PID、无法 kill 子进程**。原因：底层 OHOS `childProcessManager.startChildProcess` 是**异步回调**，PID 在 AsyncCallback 里才得到（原仅用于 setup-data 文件 IPC 的 key 后丢弃）；且 `childProcessManager` **只有 start、没有 stop/abort/kill**（`appManager.killProcessesByBundleName` 只能按 bundle 杀整 app）。
+
+中望3D 诉求（补丁待上游合入）新增：
+- `Q_SIGNAL noUiChildProcessStarted(int pid, const QString &libraryName, const QStringList &args)` — 异步派发 PID（`Qt::QueuedConnection`，需事件循环在跑；PID 先于 setup-data 到达）
+- `Q_SIGNAL noUiChildProcessStartFailed(const QString &libraryName)` — 启动失败（与 started 二选一，避免伙伴永挂）
+- `static killNoUiChildProcess(int pid)` — `::kill(pid, SIGKILL)`（native，OHOS 无 stop API）
+- `static isNoUiChildProcessRunning(int pid)` — `::kill(pid, 0)` 存活探测
+
+> **kill 可行性**：native `::kill(pid,SIGKILL)` 是本库已验证模式（`killCurrentProcess`、`kill(pid,0)` 存活检查），但 APP_SPAWN_FORK 子进程的 **SELinux/MAC 域 + AMS 注册表 desync**（SIGKILL 绕过 AbilityManagerService，槽残留致下次 `16000062`）为**设备级未决**，须真机验证。`startNoUiChildProcess` 签名不变（向后兼容）。
+
 ## 参数传递 (Passing Arguments to main)
 
 鸿蒙平台的 `argv` 组装规则与桌面平台有显著差异。

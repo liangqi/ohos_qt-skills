@@ -635,7 +635,7 @@ target_link_libraries(<DemoName> PRIVATE
 
 ```powershell
 # 从已有 Playbook A 项目复制 HarmonyOS/ 目录（路径用 ENV.md 实际值，勿硬编码）
-$base = "<WORK_ROOT>/<batch-dir>"
+$base = "${PROJECTS_ROOT}/<batch-dir>"
 robocopy "$base\<APP_NAME>\HarmonyOS" "$base\NewProject\HarmonyOS" /E /XD build .hvigor .cxx node_modules
 
 # 替换占位符、签名、bundleName（同 §1 / §3 流程）
