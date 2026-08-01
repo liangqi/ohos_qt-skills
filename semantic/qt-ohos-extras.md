@@ -2,9 +2,9 @@
 id: semantic-qt-ohos-extras
 type: semantic
 domain: tech
-tags: [qt, harmonyos, ohos, ohosextras, ability, want, startability, context-menu, touch, long-press, window, cornerradius, permissions, share, fileshare, continuation, multimedia, startoptions]
+tags: [qt, harmonyos, ohos, ohosextras, ability, want, startability, context-menu, touch, long-press, window, cornerradius, permissions, share, fileshare, continuation, multimedia, startoptions, serialport, startrequest, nativewindow, colortheme]
 created: 2026-06-02
-updated: 2026-07-15
+updated: 2026-07-21
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-api, semantic-qt-ohos-js-thread-gateway, semantic-qt-harmonyos-lifecycle, semantic-qt-harmonyos-qt6-status, semantic-qt-harmonyos-window-model]
@@ -73,6 +73,8 @@ QtOhosExtras 是 Qt for HarmonyOS 的专有扩展模块，提供与鸿蒙系统�
 
 > ⚠️ **纠正历史错误**：本页曾断言"无 `startAbilityForResult`"。源码 `qohosabilitycontext.h:79-80` **明确提供** `QOhosAbilityContext::startAbilityForResult` 两个重载（异步，返回 `requestId`，结果经信号回调）。要**同步阻塞**等结果时才需 [[qt-ohos-js-thread-gateway]] 的 `evalWithPromise` 同步化（QtOhosExtras 无同步阻塞变体，见末尾「已纠正」）。
 
+> **子进程选型**（2026-07-21 按领域经验补注）：启动子进程不能一刀切——**无界面**用 `QProcess`（可用，保持不改）；**有界面+Qt**用 `startAppProcess()`/`startNewAbilityInstance()`；**有界面+非Qt**用 `startAbility(want)`；**无界面需原生托管**用 `startNoUiChildProcess()`。决策树见 [[qt-harmonyos-api-mapping]] §1。（旧版 KB 笼统说"QProcess 不可用"是不准确的。）
+
 **命名空间级自由函数**：
 
 | 函数 | 用途 |
@@ -130,9 +132,12 @@ QtOhosExtras 是 Qt for HarmonyOS 的专有扩展模块，提供与鸿蒙系统�
 | `enableContextMenuEventOnLongPress()` | 启用触摸长按触发 `QContextMenuEvent`（默认仅鼠标右键） |
 | `getBundleInfo()` → `QSharedPointer<QOhosBundleInfo>` | 应用包信息 |
 | `restartApp()` / `restartApp(const QOhosWant&)` | 重启应用（`Q_NORETURN`） |
+| `hasSerialPortAccessRight(const QString &portName)` / `requestSerialPortAccessRightIfNeeded(const QString &portName)` | ★ 串口访问权限查询/按需申请（源码 `qohosappcontext.h:53-54`；官方 demo `serialportpermissions`，`QT += serialport`） |
 
 **枚举**：`enum class ColorThemeMode { LightTheme, DarkTheme, FollowSystemSetting }`
-**信号**：`permissionRequestResponseReceived` / `...WithResultReceived` / `...OnSettingResponseReceived` / `fontSizeScaleChanged(double)` / `darkThemeActiveChanged(bool)`
+**信号**：`permissionRequestResponseReceived` / `...WithResultReceived` / `...OnSettingResponseReceived` / `fontSizeScaleChanged(double)` / `darkThemeActiveChanged(bool)` / ★ `serialPortAccessRightResponseReceived(QString portName, QSharedPointer<QObject> accessRightContext)`
+
+> ⚠️ **串口权限约束**（官方 demo `serialportpermissions`）：`accessRightContext` 须保持存活，销毁即撤销权限（示例把它存进 `PermissionWindow` 成员，窗口关闭即撤销）。`QSerialPort` 前置需 `QT += serialport`。
 
 > ⚠️ **`enableContextMenuEventOnLongPress` 注意**（源码 `qohosappcontext.cpp:501-513`）：
 > - **调用时机**：`app.exec()` 之前调用一次，全局生效（非 per-widget）。
@@ -166,6 +171,28 @@ QtOhosExtras 是 Qt for HarmonyOS 的专有扩展模块，提供与鸿蒙系统�
 - `QOhosStartOptions::StartupVisibility { STARTUP_HIDE, STARTUP_SHOW }`
 - `QOhosStartOptions::WindowMode { WINDOW_MODE_SPLIT_PRIMARY, WINDOW_MODE_SPLIT_SECONDARY, WINDOW_MODE_FULLSCREEN }`
 - `QOhosStartOptions::SupportWindowMode { FULL_SCREEN, SPLIT, FLOATING }`
+
+### 启动请求 `QOhosStartRequest`（`qohosstartrequest.h` · `qohosbundlemanager.h`）
+
+> ⚠️ **2026-07-21 示例补全新增**：旧版 KB 未录。源码头文件 `qohosstartrequest.h` + `qohosbundlemanager.h`；官方 demo `abilitycontext/startoptions` 演示。
+
+**工厂**：`QtOhosExtras::createStartRequest(const QOhosStartOptions &options)` → `QSharedPointer<QOhosStartRequest>`
+
+**`QOhosStartRequest` 类**（QObject，不可直接构造，用工厂创建）：
+
+| 信号 | 用途 |
+|------|------|
+| `requestSucceeded(QOhosElementName elementName, QString message)` | 启动成功回调（completion handler） |
+| `requestFailed(QOhosElementName elementName, QString message)` | 启动失败回调 |
+
+**`QOhosElementName` 结构体**（`qohosbundlemanager.h`，`Q_DECLARE_METATYPE`）：`deviceId / bundleName / abilityName / uri / shortName / moduleName`
+
+**配套 `startAbility` / `startAbilityForResult` 重载**（命名空间级 + `QOhosAbilityContext` 方法，均接收 `QOhosStartRequest`）：
+- `startAbility(const QOhosWant&, const QOhosStartRequest&)` — 带 completion 回调的启动
+- `QOhosAbilityContext::startAbilityForResult(const QOhosWant&, const QOhosStartRequest&)` — 带回调的等结果启动
+- `startAppProcess(processId, requestWant, const QOhosStartRequest&)` — 带回调的启动应用进程
+
+> **何时用 StartRequest**：普通 `startAbility(want, startOptions)` 是 fire-and-forget（只知 `operationStatus->success()`）。要拿到启动最终结果（成功/失败 + ElementName）用 `createStartRequest` + `startAbility(want, *startRequest)`，结果经 `requestSucceeded`/`requestFailed` 信号回调。用法见 [[qt-ohos-extras-examples]] §4。
 
 ### Want / WantInfo（`qohoswant.h`）
 
@@ -278,12 +305,15 @@ QtOhosExtras 是 Qt for HarmonyOS 的专有扩展模块，提供与鸿蒙系统�
 | 🛠️ Qt 源码 | `qtohosextras/src/ohosextras/*.h`（5.15.16 commit `962aa625` + 5.12.12 commit `613336de`，逐字一致）—— 2026-07-15 全量扫描 |
 | 🛠️ Qt 源码 | `qtohosextras/examples/qtohosextras/windowcornerradius/main.cpp` — `setWindowCornerRadius` 官方 demo |
 | 📦 安装头文件 | `<LOCAL_PATH>/include/QtOhosExtras/` |
+| 🛠️ Qt 源码示例 | `qtohosextras/examples/qtohosextras/`（24 个 example 全量，2026-07-21 扫描）— 详见 [[qt-ohos-extras-examples]]，串口/StartRequest API 即由示例补全 |
 
 ## 相关上下文
 
 - [[qt-harmonyos-overview]] — QPA 插件架构总览
 - [[qt-harmonyos-api]] — 平台差异（`winId()` vs `tryGetNativeWindowId`）
+- [[qt-ohos-extras-examples]] — ★ 24 个官方示例菜谱（功能→API→代码模式），开发者问"如何实现某功能"时先查此页
 - [[qt-ohos-js-thread-gateway]] — Qt↔ArkTS 私有桥接；同步化 `startAbilityForResult` 结果（异步信号→同步等值）
 - [[qt-harmonyos-lifecycle]] — 生命周期、Want 接续、设备迁移
 - [[qt-harmonyos-window-model]] — 窗口模型（浮窗、popup、XComponent 承载）
 - [[qt-harmonyos-qt6-status]] — Qt6 中本模块私有化
+refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-api, semantic-qt-ohos-js-thread-gateway, semantic-qt-harmonyos-lifecycle, semantic-qt-harmonyos-qt6-status, semantic-qt-harmonyos-window-model, semantic-qt-ohos-extras-examples]

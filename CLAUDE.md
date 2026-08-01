@@ -50,8 +50,8 @@ problems/    → 错误知识库：实际编译/部署/运行时报错与解决�
 | 窗口显示异常/对话框行为不对 | `semantic/qt-harmonyos-window-model` + golden-rules §二 |
 | 生命周期/closeEvent/接续/分享 | `semantic/qt-harmonyos-lifecycle` |
 | QtOhosExtras 怎么用 | `semantic/qt-ohos-extras` |
-| 分析 Qt 应用 bug/加日志/根因定位 | `procedural/framework-issue-analysis` |
-| 验证修复/回归测试 | `procedural/framework-fix-verification` |
+| 判断问题是否出在 Qt 鸿蒙框架层 | `golden-rules` + `qt-harmonyos-platform-limits` + `qt-harmonyos-api` + 先查 `problems/_lookup.md` |
+| Qt 应用行为异常的排查思路 | `qt-harmonyos-build-run-workflow` §构建失败排查四步法 + `problems/_lookup.md` |
 | 写个 demo/测试工程 | `procedural/demo-generation` |
 | 三方库/依赖/交叉编译 | `semantic/qt-harmonyos-third-party-libs` |
 | 遇到执行报错 | **先读 `problems/_lookup.md`**，按错误码/错误信息/症状搜索 |

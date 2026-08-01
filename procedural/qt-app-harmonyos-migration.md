@@ -4,7 +4,7 @@ type: procedural
 domain: workflow
 tags: [workflow, qt, harmonyos, porting, migration, ohos]
 created: 2026-06-02
-updated: 2026-07-07
+updated: 2026-07-21
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-api-mapping,semantic-qt-harmonyos-build-run-workflow,semantic-qt-harmonyos-code-patterns,semantic-qt-harmonyos-lifecycle,semantic-qt-harmonyos-porting-workflow,semantic-qt-harmonyos-project-structure,semantic-qt-harmonyos-window-model]
@@ -251,7 +251,7 @@ grep -rn "winId\|setMask\|showFullScreen" src/
 
 按 [[qt-harmonyos-api-mapping]] 的 12 大类逐一替换：
 
-1. **进程管理**：`QProcess` → `QtOhosExtras::startNoUiChildProcess` / `startAbility`
+1. **进程管理**：`QProcess` 按场景选 — 无界面保留不改；有界面 Qt 用 `startAppProcess`，有界面非 Qt 用 `startAbility`；需原生托管用 `startNoUiChildProcess`（见 [[qt-harmonyos-api-mapping]] §1 决策树）
 2. **应用间通信**：`QDesktopServices::openUrl` → `startAbility(want)`
 3. **窗口管理**：独立 QDialog → 设置 parent 或 tagSubWindow
 4. **文件系统**：移除 `setPermissions`、`symlink` 调用

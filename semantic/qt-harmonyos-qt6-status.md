@@ -4,7 +4,7 @@ type: semantic
 domain: tech
 tags: [qt, qt6, harmonyos, ohos, status, cmake]
 created: 2026-06-03
-updated: 2026-07-25
+updated: 2026-07-27
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-build, semantic-qt-harmonyos-modules, semantic-qt-harmonyos-platform-limits, semantic-qt-ohos-project-analyzer-workflow]
@@ -173,7 +173,7 @@ Qt 6 模块适配状态**独立于 Qt 5**，当前仅 qtbase 模块已合并。
 
 ### 策略 B'：使用 Qt 6.12 预构建安装器 SDK（✅ 推荐，比源码 superbuild 更省事）
 
-> **2026-07-25 验证（两批共 15 应用 14 成功）**：Qt 6.12.0 beta2 预构建安装器（Qt 在线安装器勾选 `Qt 6.12.0 → HarmonyOS arm64_v8a` + `MinGW 64-bit` + `CMake + Ninja`）装的 SDK（`C:/Qt-installer/6.12.0/harmonyos_arm64_v8a`）批量编译清单未鸿蒙化 Qt6 应用。**第 1 批** 5 纯 Widgets 应用 4 成功（QtPass/GitQlient/pgModeler/qView，对抗验证 real=true，详见 第 1 批编译复盘）。**第 2 批** 10 应用（扩展到 opengl/qml/uitools/svg 模块）**10/10 全成功**（MathMod/SolveSpace/CopyQ/SQLiteStudio/LibreCAD 等，含 2 重试成功 + 2 编译边界 stub + 1 Qt5→6 移植，详见 第 2 批编译复盘）。**关键修正：预构建是完整 Qt6.12 发行版**（50+ 模块 .so + qml runtime 全在，仅缺 WebEngine/DBus/Wayland/Pdf/Script），非旧记的"37 模块/qtbase+5"。
+> **2026-07-25 验证（两批共 15 应用 14 成功）**：Qt 6.12.0 beta2 预构建安装器（Qt 在线安装器勾选 `Qt 6.12.0 → HarmonyOS arm64_v8a` + `MinGW 64-bit` + `CMake + Ninja`）装的 SDK（Qt6.12 预构建安装器 SDK）批量编译清单未鸿蒙化 Qt6 应用。**第 1 批** 5 纯 Widgets 应用 4 成功（QtPass/GitQlient/pgModeler/qView，对抗验证 real=true，详见 第 1 批编译复盘）。**第 2 批** 10 应用（扩展到 opengl/qml/uitools/svg 模块）**10/10 全成功**（MathMod/SolveSpace/CopyQ/SQLiteStudio/LibreCAD 等，含 2 重试成功 + 2 编译边界 stub + 1 Qt5→6 移植，详见 第 2 批编译复盘）。**关键修正：预构建是完整 Qt6.12 发行版**（50+ 模块 .so + qml runtime 全在，仅缺 WebEngine/DBus/Wayland/Pdf/Script），非旧记的"37 模块/qtbase+5"。
 
 **比源码 superbuild（策略 B）消除 3 大坑**（对照 NotepadNext Qt6 移植复盘）：
 1. **无需 patch_dt_needed**：预构建 libQt6Core.so 的 NEEDED 已全裸名（libicui18n/libicuuc/libicudata/libz/libc++_shared/libc 等），业务 .so 链接 Qt 库后 NEEDED 也裸名。源码 superbuild 用 `-developer-build` 写绝对 Windows 路径需 patch（NotepadNext 教训）。
@@ -202,6 +202,13 @@ cmake --build . -j8   # 业务 .so（qt_add_executable 自动 MODULE + main GLOB
 
 路径见 Qt6.12 预构建 QtC 配置流程（QtC IDE 流，本批 CLI 化其配方）+ ENV.local.md 的 Qt6.12 预构建路径。源码 superbuild 见 Qt6.12 源码 superbuild 流程。
 
+> ⚠️ **2026-07-27 第 3 批（16 应用 8 成功 8 阻断）补四条经验**（见 第 3 批编译复盘）：
+> - **"模块层可行" ≠ "应用可编译"**：预构建再推翻 3 个旧"模块缺失"阻断（Serial-Studio 旧"Quick absent"→Quick 全在编译成功；QCTools 旧"Multimedia missing"→Multimedia 现齐，真阻断=FFmpeg native；Contour 旧"Quick hard-requires"→Quick 现齐，真阻断=DBus+xcb）。翻案后真阻断常是 native 重型库（FFmpeg/DBus+xcb），非 Qt 模块。收到"Quick/Multimedia/3D absent"类应用应：① 先验模块层（预构建大概率已齐）；② 再验 native 重型依赖层。
+> - **DBus 缺失是预构建确定性硬墙**（见已知问题 #18）：无条件 REQUIRED DBus 的应用不可编译、不可 stub、不可 `-DCMAKE_DISABLE`；可选 DBus（`Q_OS_OHOS` 守护跳过）可编译。
+> - **C++23 deducing-this/ranges 是编译器能力缺口**（见已知问题 #19）：OHOS clang 15.0.4 不支持 P0847（需 Clang18+），非 stub 可解，硬天花板。
+> - **`#ifdef Q_OS_LINUX` 不可信**（见已知问题 #20）：Qt6 OHOS 同时定义 Q_OS_OHOS+Q_OS_LINUX，desktop-only 功能守护须用 `Q_OS_LINUX && !Q_OS_OHOS`。
+> - 编译边界 stub 扩展：Merkaartor（GDAL/PROJ C++ 类层级 stub）、Drawpile（libav/libwebp/libzip/KArchive/libsodium stub）。第 3 批累计预构建 3 批 31 应用 22 成功。
+
 ## 已知问题与待验证项
 
 | # | 项目 | 状态 |
@@ -223,6 +230,9 @@ cmake --build . -j8   # 业务 .so（qt_add_executable 自动 MODULE + main GLOB
 | 15 | 编译边界（compile-only）stub 模式是否可行 | ✅ **已验证（2026-07-25）**：功能阻断应用（Qt 模块全在，运行时非功能，如 QPS /proc process-control、Veyon VNC/X11 注入）用 no-op stub（header-only INTERFACE + no-op cmake 模块 + STATIC IMPORTED .a）让 .so 链接 load 干净，产出 `编译✓/运行✗` HAP。stubs 必须加 `CMAKE_FIND_ROOT_PATH`（`ohos.toolchain` 的 `MODE_PACKAGE=ONLY` 要求），非仅 CMAKE_PREFIX_PATH（第 2 批编译复盘 决策 3）|
 | 16 | Qt5→6 移植的 QRegExp 兼容方案 | ✅ **已验证（2026-07-25，LibreCAD）**：Qt6 移除 QRegExp，多文件用 QRegExp 自身 API（indexIn/cap/pos/setPatternSyntax）时，写 `QRegExp` 作 `QRegularExpression` 子类的 forwarding header，经 `-I` **前置**于 Qt5Compat 的 -isystem，免逐文件 API 改写。配套 8 个机械 Qt5→6 fix（setCodec→setEncoding、DataLocation→AppDataLocation、QPrinter paper→QPageSize、QActionGroup include、modifier operator+→\|、setMargin→setContentsMargins、QTabletEvent PointerType→QPointingDevice、int/char→QChar 包裹）（第 2 批编译复盘 决策 4）|
 | 17 | harmonydeployqt6 `--hvigor` 参数路径要求 | ✅ **已验证（2026-07-25）**：`--hvigor <wrapper.bat>` 必须传**绝对路径**——相对路径报 'Failed to start hvigorw'（harmonydeployqt6 从生成的 project dir cwd 调 hvigor）。`harmonydeployqt6` 无 `--sdk-root` flag，stale sdk-root 在 deployment json input 里手改（第 2 批编译复盘 翻车点 1/3）|
+| 18 | DBus 缺失是预构建确定性硬墙 | ✅ **已验证（2026-07-27 第 3 批，flameshot/Contour/deepin-terminal）**：预构建缺 Qt6DBus。**无条件 REQUIRED DBus 的应用不可编译**——不可 stub（QDBusAbstractAdaptor/Interface 是 Q_OBJECT 基类需 moc + 全 QDBus API）、不可 `-DCMAKE_DISABLE_FIND_PACKAGE_Qt6DBus`（对 component `find_package` 无效）。flameshot（request.h 顶层无条件 `#include <QtDBus>` + Q_OBJECT 继承 + `!MACOS&&!WIN` 路径触发）、Contour（`find_package(Qt6 DBus REQUIRED)` 无 option 守护）、deepin-terminal（DBus core 源）。**对比可选 DBus 可编译**：Open-Typer/Serial-Studio/qlementine 用 `Q_OS_OHOS` 守护跳过 DBus，编译成功。判定规则：grep 源码 `#include <QtDBus>` 顶层无条件 + Q_OBJECT 继承 + find_package DBus REQUIRED 无守护 → 三者命中任一即不可编译（第 3 批编译复盘 决策 2）|
+| 19 | OHOS clang 是否支持 C++23 deducing-this/ranges 适配器 | ✅ **已验证（2026-07-27 第 3 批，creeper-qt）**：OHOS native clang **15.0.4 不实现 C++23 deducing-this（P0847R7）**（需 Clang 18.0+），无 -std flag 可在 15 上开启（实测 `-std=gnu++2b` 下 `auto f(this auto& self)` 报 expected parameter declarator，20 errors）；libc++ 同样缺 C++23 ranges 适配器（`std::views::zip`/`cartesian_product`）。用这些特性的应用需等 OHOS NDK 升级 Clang18+/libc++19+ 或源码层降级（deducing-this→CRTP、ranges→手写循环）。**编译器能力缺口**，非 Qt 模块/平台限制，非 stub 可解（第 3 批编译复盘 决策 3）|
+| 20 | Qt6 OHOS Q_OS_LINUX 守护是否可靠 | ✅ **已验证（2026-07-27 第 3 批，Open-Typer/Serial-Studio）**：Qt6 `qsystemdetection.h` 在 OHOS 上**同时定义 `Q_OS_OHOS` 和 `Q_OS_LINUX`**。源码用裸 `#ifdef Q_OS_LINUX` 守护 desktop-only 功能（DBus/systemd/X11/procfs）时，OHOS 上也触发 → 编译失败（DBus 预构建缺失）。**正确守护**：`#if defined(Q_OS_LINUX) && !defined(Q_OS_OHOS)`。Qt6 OHOS 独有（Qt5 qsystemdetection 可能不双定义）。grep `Q_OS_LINUX` 是 DBus 类阻断的早期信号（第 3 批编译复盘 决策 5）|
 
 ## 参考来源
 

@@ -8,7 +8,7 @@ updated: 2026-06-24
 status: open
 audience: public
 severity: high
-refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-window-model, procedural-framework-issue-analysis]
+refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-window-model]
 summary: >
   设置 XComponent surface opaque（OH_ArkUI_XComponentSurfaceConfig_SetIsOpaque）时，
   OH_ArkUI_SurfaceHolder_Create 返回 null。系统侧确认 SurfaceHolder（Node API）与
@@ -140,4 +140,3 @@ OH_ArkUI_XComponentSurfaceConfig_Dispose(config)
 - 分析文档：`<LOCAL_PATH>`
 - 计划文件：`<LOCAL_PATH>`
 - [[semantic-qt-harmonyos-window-model]]
-- [[procedural-framework-issue-analysis]]

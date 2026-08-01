@@ -7,7 +7,7 @@ created: 2026-06-09
 updated: 2026-07-13
 status: active
 audience: public
-refs: [procedural-framework-issue-analysis,semantic-qt-harmonyos-lifecycle]
+refs: [semantic-qt-harmonyos-lifecycle]
 summary: >
   退出死锁复盘：<STAKEHOLDER>(<PRODUCT>) qApp->quit()后应用卡死~2分钟。
   根因：HarmonyOS在Ability销毁阶段不处理N-API ThreadSafeFunction回调，
@@ -171,7 +171,7 @@ int main(int argc, char *argv[]) {
 
 ## 相关上下文
 
-- [[framework-issue-analysis]] — 框架问题分析工作流
+- 框架问题分析工作流
 - [[qt-harmonyos-lifecycle]] — 生命周期详解
 - 外部日志：`<log-dir>/destroyError20260608_*.log`
 - Demo 源码：`<demos-dir>/quit-signal-repro/`

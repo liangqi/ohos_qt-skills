@@ -4,7 +4,7 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, api, mapping, porting, qprocess, window, filesystem, sharing, context-menu, touch]
 created: 2026-06-02
-updated: 2026-07-06
+updated: 2026-07-21
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-api, semantic-qt-harmonyos-code-patterns, semantic-qt-ohos-extras]
@@ -22,15 +22,26 @@ summary: >
 
 ## 1. 进程管理 (Process Management)
 
-HarmonyOS 对子进程的创建有严格限制，传统 `QProcess`、`system()`、`exec*()` 均不可用或不被推荐。需根据场景选择 QtOhosExtras 提供的替代接口。
+HarmonyOS 上启动子进程/外部程序，要按"子进程是否有界面"与"是否 Qt 程序"分场景选择，**不能一刀切**。旧版 KB 笼统断言"QProcess 不可用/不推荐"是不准确的（2026-07-21 按领域经验修正，见本节末「来源与修正」）。
+
+**决策树**：
+
+| 子进程场景 | 推荐方案 | 说明 |
+|---|---|---|
+| **无界面**（后台/计算任务） | `QProcess` **可用**，保持原样 | ★ 鸿蒙沙箱内可 fork/exec 无界面二进制；无需改 QProcess |
+| 有界面 + Qt 程序 | `QtOhosExtras::startAppProcess()` / `startNewAbilityInstance()` | 用 Qt extra 接口让子进程以带 UI 的 Ability 形态运行 |
+| 有界面 + 非 Qt 程序 | `QtOhosExtras::startAbility(want)` | Want 模型启动任意 Ability（含系统/第三方应用） |
+| 无界面但需鸿蒙原生托管 | `QtOhosExtras::QOhosAppContext::startNoUiChildProcess(libName, args)` | 子进程以 `.so` 形式经 Child Process Manager 托管，无 `QApplication`/GUI 管线 |
 
 | Other Platform API | HarmonyOS Replacement | Notes |
 |---|---|---|
-| `QProcess::start(program)` | `QtOhosExtras::QOhosAppContext::startNoUiChildProcess(libName, args)` | 仅用于后台/计算任务，不可启动 GUI 子进程 |
+| `QProcess::start(program)` 无界面 | `QProcess` 原样可用 | ★ 无界面子进程 QProcess 不需替换 |
+| `QProcess::start(program)` 有界面且 Qt | `QtOhosExtras::startAppProcess(name, want)` / `startNewAbilityInstance(widget)` | 用 extra 接口启动带 UI 的 Qt 子进程 |
+| `QProcess::start(program)` 有界面非 Qt | `QtOhosExtras::startAbility(want)` | Want 模型启动目标 Ability |
+| `QProcess::start(program)` 无界面需托管 | `QtOhosExtras::QOhosAppContext::startNoUiChildProcess(libName, args)` | 鸿蒙原生 .so 子进程（Child Process Manager） |
 | `QProcess::startDetached(program)` | `QtOhosExtras::startAppProcess(name, want)` | 启动新的应用进程 |
-| `QProcess` for GUI child | `QtOhosExtras::startAbility(want)` | 使用 Ability/Want 模型替代 |
-| `system()`, `popen()` | Not recommended | 改用 `startNoUiChildProcess` |
-| `exec*()` family | Not recommended | 改用 `startNoUiChildProcess` |
+| `QProcess` for GUI child | `QtOhosExtras::startAbility(want)` / `startAppProcess()` | 有界面子进程用 Ability/Want 或 extra 接口，不能用裸 QProcess 起 GUI |
+| `system()`, `popen()`, `exec*()` | 无界面计算可继续用；有界面改 `startAbility`/`startAppProcess` | 不再一刀切"不可用" |
 
 ### Before
 
@@ -43,6 +54,17 @@ QString output = proc.readAllStandardOutput();
 
 ### After
 
+无界面（保持 QProcess，无需改）：
+
+```cpp
+// QProcess 原样保留——无界面计算子进程在鸿蒙沙箱内可正常运行
+QProcess proc;
+proc.start("worker", {"--task", "compute"});
+proc.waitForFinished();
+```
+
+无界面但用鸿蒙原生托管（需 .so 子进程）：
+
 ```cpp
 #include <QOhosAppContext>
 
@@ -50,8 +72,10 @@ QtOhosExtras::QOhosAppContext::startNoUiChildProcess(
     "libWorker.so",
     QStringList{"--task", "compute"}
 );
-// 注意：子进程以 .so 库形式加载，而非独立可执行文件
+// 子进程以 .so 库形式加载，经 Child Process Manager 托管（无 GUI 管线）
 ```
+
+> **来源与修正**（2026-07-21）：本节原写"QProcess 均不可用或不被推荐"，按领域经验修正——**无界面子进程 QProcess 可用**，一刀切替换为 `startNoUiChildProcess` 是误导。`startNoUiChildProcess` 是鸿蒙原生 .so 托管方式（备选/需进程托管时），并非 QProcess 的唯一替代。来源：用户（领域专家）经验；与 [[qt-harmonyos-dev-guide]] `uiless_child_process` 互参（该 wiki 讲的是原生托管方式，非禁止 QProcess）。
 
 ---
 

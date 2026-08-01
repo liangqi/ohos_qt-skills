@@ -4,13 +4,13 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, api, porting, qprocess, qwindow, dialog, modality, fullscreen, platform]
 created: 2026-06-02
-updated: 2026-06-25
+updated: 2026-07-21
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-ohos-extras]
 summary: >
-  Qt 鸿蒙化 API 兼容性要点：argv 参数差异、QProcess 不可用（改用 startAbility/
-  startNoUiChildProcess）、窗口模型差异（QDialog/Popup 为子窗口）、
+  Qt 鸿蒙化 API 兼容性要点：argv 参数差异、子进程按场景选（无界面 QProcess 可用/有界面 Qt 用 startAppProcess/有界面非Qt 用 startAbility）、
+  窗口模型差异（QDialog/Popup 为子窗口）、
   modality 仅子窗口有效、winId() 非原生句柄、hide() 语义不同、
   setMask() 仅子窗口、closeEvent 可能来自系统生命周期。
   平台判断：Qt.platform.os 在鸿蒙返回 "linux"（上游 os() 缺 Q_OS_OHOS 分支），临时用 pluginName，建议上游修复。
@@ -122,10 +122,14 @@ const bool isHarmony = QSysInfo::productType() == "ohos";  // qglobal.cpp:2718 �
   - `QtOhosExtras::startAppProcess()` — 启动应用进程
 
 ### QProcess
-- **QProcess 不是鸿蒙上启动子进程的推荐方案**
-- 不要假设 `start()`、`startDetached()`、`execute()` 行为与桌面一致
-- 后台任务用 `startNoUiChildProcess()`
-- 独立 UI 实例用 `startAbility()`
+按场景选择，**不一刀切**（2026-07-21 按领域经验修正，旧版"QProcess 不可用/不推荐"不准确）：
+- **无界面子进程** → `QProcess` **可用**，保持原样（鸿蒙沙箱内可 fork/exec 无界面二进制）
+- **有界面 + Qt 程序** → `QtOhosExtras::startAppProcess()` / `startNewAbilityInstance()`（Qt extra 接口，子进程以带 UI 的 Ability 形态运行）
+- **有界面 + 非 Qt 程序** → `QtOhosExtras::startAbility(want)`（Want 模型启动任意 Ability）
+- **无界面但需鸿蒙原生托管** → `startNoUiChildProcess()`（.so 子进程经 Child Process Manager 托管）
+- 不要用裸 `QProcess` 启动**带界面**的子进程（GUI 必须经 Ability 框架）
+
+> 详见 [[qt-harmonyos-api-mapping]] §1 进程管理（决策树 + Before/After）。
 
 ### 无 UI 子进程
 - `QtOhosExtras::QOhosAppContext::startNoUiChildProcess()` — 使用鸿蒙 Child Process Manager

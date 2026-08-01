@@ -4,7 +4,7 @@ type: procedural
 domain: workflow
 tags: [workflow, qt, harmonyos, completion, functional-test, test-case, source-scan, human-test-loop, app-harmonyos]
 created: 2026-07-16
-updated: 2026-07-16
+updated: 2026-07-21
 status: active
 audience: public
 refs: [procedural-qt-ohos-run-test, procedural-qt-app-harmonyos-migration, procedural-framework-fix-verification, procedural-framework-issue-analysis, procedural-demo-generation, semantic-qt-ohos-project-analyzer-workflow, semantic-qt-harmonyos-golden-rules, semantic-qt-harmonyos-api-mapping]
@@ -70,7 +70,7 @@ evidence: [<APP_NAME>完善测试报告, <WORKLOG>]
 | P1 | 文件操作 | `QFileDialog`/`QFile`/`save`/`open` |
 | P1 | 数据模型 | `QTableView`/`QListView`/`QSql*Model` |
 | P2 | 设置/配置 | `QSettings`/`QComboBox`/`QCheckBox` |
-| P2 | 平台相关 API | `QProcess`/`chmod`/`symlink`（需 [[qt-harmonyos-api-mapping]] 替换） |
+| P2 | 平台相关 API | `QProcess`(按场景:无界面保留/有界面改 startAppProcess 或 startAbility)/`chmod`/`symlink`（见 [[qt-harmonyos-api-mapping]]） |
 
 > **⚠️ 元教训**：扫描时识别平台相关 API（QProcess/chmod/symlink 等），这些在鸿蒙需替换（见 [[qt-harmonyos-golden-rules]] P1-P5 + [[qt-harmonyos-api-mapping]]），纳入测试用例重点验证。
 
@@ -255,7 +255,7 @@ evidence: [<APP_NAME>完善测试报告, <WORKLOG>]
 |------|------|----------|------|
 | 用例 fail-崩溃 | 操作触发 SIGSEGV/SIGABRT | [[qt-ohos-run-test]] §5 崩溃分析 | run-test |
 | 用例 fail-平台限制 | chmod/symlink/dlopen 失败 | [[qt-harmonyos-golden-rules]] P1-P5 | golden-rules |
-| 用例 fail-API 不可用 | QProcess/QtWebEngine 等鸿蒙缺 | [[qt-harmonyos-api-mapping]] 替换 | api-mapping |
+| 用例 fail-API 不可用 | QtWebEngine 等鸿蒙缺；QProcess 有界面子进程须改 startAppProcess/startAbility | [[qt-harmonyos-api-mapping]] §1 | api-mapping |
 | 用例 flaky | 时序/竞态致间歇 fail | 多次复现+[[framework-issue-analysis]] 调用链 | framework-issue-analysis |
 | 用例无法执行 | 前置功能未实现/阻塞 | 标记阻塞，回到 [[qt-ohos-run-test]] 补或转入迁移 | run-test |
 
