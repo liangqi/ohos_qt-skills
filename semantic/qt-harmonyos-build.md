@@ -197,7 +197,7 @@ qtbase 工作树改源码（加 qOhosPrintfWarning 等）
 | demo 链到的还是旧 libqohos.so | install 后没重新编译 demo | install 后重跑 `hvigorw assembleHap` |
 | `mingw32-make: command not found` | MINGW_ROOT 未加 PATH | ENV.md 的 `MINGW_ROOT` 加 PATH |
 
-> 编译 Qt 源码加日志排查框架问题的完整流程见 [[framework-issue-analysis]] 阶段二。
+> 编译 Qt 源码加日志排查框架问题的完整流程见框架问题分析方法论阶段二。
 
 ## 参考来源
 

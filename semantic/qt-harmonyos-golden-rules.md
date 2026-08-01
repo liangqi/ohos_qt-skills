@@ -4,7 +4,7 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, golden-rules, quick-reference, porting, checklist]
 created: 2026-06-03
-updated: 2026-07-16
+updated: 2026-07-21
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-porting-workflow, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-lifecycle, semantic-qt-harmonyos-api-mapping, semantic-qt-harmonyos-code-patterns, semantic-qt-harmonyos-window-model, semantic-qt-ohos-extras, semantic-qt-harmonyos-build, semantic-qt-harmonyos-third-party-libs]
@@ -94,7 +94,7 @@ summary: >
 | L1 | 🟠 | `closeEvent()` **必须**检查 `CloseEventRootCause` 区分关闭来源。**⚠️ Level 2（AbilityClose）绝对不能弹 UI**——弹对话框会导致应用卡在关闭流程中被系统强杀。Level 1（WindowStageClose）可弹对话框，Level 2 只能静默 autoSave。**Qt6 注意**：此 API 已私有化，枚举值变更（`AbilityClose`→`OnPrepareToTerminate`），详见 [[qt-harmonyos-qt6-status]] | Level 1（用户关窗口）可弹对话框，Level 2（系统回收）**禁止弹 UI** | [[qt-harmonyos-lifecycle]] §3级关闭 |
 | L2 | 🟢 | `argv[0]` 是**库路径**（.so），不是可执行文件路径 | 鸿蒙以共享库方式加载 Qt 应用 | [[qt-harmonyos-lifecycle]] §参数传递 |
 | L3 | 🟢 | Qt for HarmonyOS 使用 **Stage 模型**，应用组件类型为 **UIAbility** | FA 模型自 API 9 已弃用 | [[qt-harmonyos-porting-workflow]] §原则3 |
-| L4 | 🟢 | `QProcess` **不是**推荐的子进程机制 — 用 `startAbility()` 或 `startNoUiChildProcess()` | 鸿蒙不支持传统 fork/exec | [[qt-harmonyos-lifecycle]] §子进程 |
+| L4 | 🟢 | 子进程**按场景选**，不一刀切：无界面 `QProcess` 可用 / 有界面 Qt 用 `startAppProcess()`、`startNewAbilityInstance()` / 有界面非 Qt 用 `startAbility(want)` / 无界面需托管用 `startNoUiChildProcess()` | 不要用裸 QProcess 起带界面的子进程（GUI 须经 Ability 框架）；无界面计算保留 QProcess 即可（2026-07-21 修正，旧版"QProcess 不可用"不准确） | [[qt-harmonyos-lifecycle]] §子进程、[[qt-harmonyos-api-mapping]] §1 |
 
 ---
 
@@ -123,8 +123,6 @@ summary: >
     ├─ 编译报 API 不存在？   → 本页 A1-A6 + ohos-extras
     ├─ 生命周期/closeEvent？ → 本页 L1-L4 + lifecycle
     ├─ QtOhosExtras 怎么用？ → ohos-extras
-    ├─ 框架 bug/根因定位？   → procedural/framework-issue-analysis
-    ├─ 验证修复/回归测试？   → procedural/framework-fix-verification
     ├─ Qt 6 相关？           → qt6-status
     ├─ 三方库/依赖？         → third-party-libs
     └─ DevEco/MCP/工具链？   → deveco-mcp-toolchain

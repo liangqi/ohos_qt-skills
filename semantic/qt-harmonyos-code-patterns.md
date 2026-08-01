@@ -4,7 +4,7 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, code-patterns, porting, before-after, examples]
 created: 2026-06-02
-updated: 2026-07-07
+updated: 2026-07-21
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-api-mapping, semantic-qt-harmonyos-porting-workflow, semantic-qt-ohos-extras]
@@ -23,7 +23,7 @@ summary: >
 
 | # | 场景 | 核心变化 |
 |---|------|----------|
-| 1 | 子进程 | QProcess → startNoUiChildProcess() |
+| 1 | 子进程 | QProcess 按场景：无界面保留 / 有界面Qt用 startAppProcess / 有界面非Qt用 startAbility |
 | 2 | 启动外部应用 | QDesktopServices / JNI → startAbility() |
 | 3 | 独立对话框 | 直接 show() → tagAsSubWindowOf() |
 | 4 | 关闭事件处理 | 统一 closeEvent → 区分 WindowStage/Ability/Internal |
@@ -40,9 +40,14 @@ summary: >
 
 ---
 
-## 模式 1：子进程 → NoUi Child Process
+## 模式 1：子进程 → 按场景选择（非一刀切）
 
-桌面/Android 用 `QProcess` 启动子进程。鸿蒙不支持传统 fork/exec，改用 QtOhosExtras 的 `startNoUiChildProcess()`。
+桌面/Android 用 `QProcess` 启动子进程。鸿蒙上要按"是否有界面""是否 Qt 程序"分场景（2026-07-21 修正：旧版"QProcess 不可用→一律 startNoUiChildProcess"不准确）：
+
+- **无界面子进程** → `QProcess` **原样可用**（鸿蒙沙箱内可 fork/exec 无界面二进制，**无需改**）
+- **有界面 + Qt 程序** → `QtOhosExtras::startAppProcess()` / `startNewAbilityInstance()`
+- **有界面 + 非 Qt 程序** → `QtOhosExtras::startAbility(want)`
+- **无界面但需鸿蒙原生托管** → `startNoUiChildProcess()`（.so 子进程经 Child Process Manager）
 
 **Before (Desktop/Android)**
 ```cpp
@@ -55,7 +60,17 @@ void MainWindow::runWorker() {
 }
 ```
 
-**After (HarmonyOS)**
+**After (HarmonyOS) — 无界面：保持 QProcess 不改**
+```cpp
+// 无界面计算子进程：QProcess 原样保留
+void MainWindow::runWorker() {
+    QProcess proc;
+    proc.start("worker", {"--input", inputFile});
+    proc.waitForFinished();
+}
+```
+
+**After (HarmonyOS) — 无界面但需原生托管（.so 子进程）**
 ```cpp
 #include <QtOhosExtras/QtOhosExtras>
 
@@ -67,8 +82,8 @@ void MainWindow::runWorker() {
 }
 ```
 
-> **关键约束**：子进程必须编译为 `.so` 共享库，部署到 `entry/libs/<arch>/`。
-> 详见 [[qt-ohos-extras]] 中 startNoUiChildProcess 的说明。
+> **关键约束**：`startNoUiChildProcess` 的子进程必须编译为 `.so` 共享库，部署到 `entry/libs/<arch>/`，且子进程内**禁止**创建 `QApplication`/GUI。若只是无界面计算，**首选保持 QProcess 不改**。
+> 详见 [[qt-ohos-extras]] 中 startNoUiChildProcess 的说明，决策树见 [[qt-harmonyos-api-mapping]] §1。
 
 ---
 
@@ -514,7 +529,7 @@ if (!db.open()) {
 在实际移植中，按以下顺序逐项排查：
 
 1. **构建系统** — qmake/CMake 是否补充了 `ohos` 分支和 `QT += ohosextras`？（模式 7）
-2. **进程模型** — 是否用 QProcess？→ 改为 startNoUiChildProcess（模式 1）
+2. **进程模型** — 是否用 QProcess？→ 按场景：无界面保留 / 有界面 Qt 用 startAppProcess / 有界面非 Qt 用 startAbility / 需托管用 startNoUiChildProcess（模式 1）
 3. **外部调用** — 是否用 QDesktopServices / JNI？→ 改为 startAbility（模式 2）
 4. **窗口/对话框** — 所有独立顶级窗口是否 tag 为子窗口？（模式 3）
 5. **生命周期** — closeEvent 是否区分 WindowStage / Ability / Internal？（模式 4）

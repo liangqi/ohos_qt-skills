@@ -1,6 +1,6 @@
 ---
-updated: 2026-07-27
-total_problems: 26
+updated: 2026-08-01
+total_problems: 29
 description: >
   错误速查索引（开发者版，从 problem 页 frontmatter 重建）。
 ---
@@ -38,6 +38,7 @@ description: >
 | `spawn java ENOENT; BuildNativeWithCmake finished` | [build-hvigor-native-skip](build-hvigor-native-skip.md) | spawn java ENOENT; BuildNativeWithCmake finished after 1ms with no .so artifact (DEVECO_SDK_HOME missing) |
 | `CMake Error: find_package(Qt5 COMPONENTS Widgets` | [build-missing-qt5uitools-ohos](build-missing-qt5uitools-ohos.md) | CMake Error: find_package(Qt5 COMPONENTS Widgets UiTools OpenGL QUIET) 失败 (OHOS Qt5 SDK 缺 Qt5UiTools 模块) |
 | `Q_ASSERT(receiver->d_func()->threadData.loadAcqu` | [ohos-mainthread-mismatch](ohos-mainthread-mismatch.md) | Q_ASSERT(receiver->d_func()->threadData.loadAcquire()->thread.loadRelaxed() == mainThread()) in QCoreApplicationPrivate::sendThroughApplicationEventFilters (Debug 构建鼠标点击事件触发) |
+| `QFileDialog 在 OHOS 上无需 #ifdef 守卫；QOhosPlatformIn` | [ohos-qfiledialog-native-support](ohos-qfiledialog-native-support.md) | QFileDialog 在 OHOS 上无需 #ifdef 守卫；QOhosPlatformIntegrationPlugin 已内置原生支持， 直接使用 QFileDialog::getSaveFileName / getOpenFileName 即可。 |
 | `Qt3D 实体贴图纯黑（cloud 球壳 / saturn 星环 / uranus 星环），光照` | [render-black-rgba8-zink-mipmap](render-black-rgba8-zink-mipmap.md) | Qt3D 实体贴图纯黑（cloud 球壳 / saturn 星环 / uranus 星环），光照与阴影正常； 同 effect 下用 RGB8 JPG 的实体贴图正常；唯一判别变量是贴图格式 RGBA8(alpha) vs RGB8(JPG)。 |
 | `签名 HAP 安装成功,aa start 后进程 1-9s 内消失。faultlog 显示 js` | [runtime-crash-libqohos-libqt5core-version-mismatch](runtime-crash-libqohos-libqt5core-version-mismatch.md) | 签名 HAP 安装成功,aa start 后进程 1-9s 内消失。faultlog 显示 jscrash TypeError (handleAbilityStageOnCreate of undefined 或 deviceType property 缺失)。 |
 | `签名 HAP 安装成功,aa start 启动后进程 1-2 秒内消失(启动即崩),桌面不显示应` | [runtime-crash-libqohos-modules-mismatch](runtime-crash-libqohos-modules-mismatch.md) | 签名 HAP 安装成功,aa start 启动后进程 1-2 秒内消失(启动即崩),桌面不显示应用窗口或一闪即退。 |
@@ -50,6 +51,8 @@ description: >
 | `应用启动后立即崩溃（JSCrash TypeError），日志显示 libQt5DBus.so ` | [runtime-fail-libqtdbus-missing](runtime-fail-libqtdbus-missing.md) | 应用启动后立即崩溃（JSCrash TypeError），日志显示 libQt5DBus.so 加载失败 |
 | `应用启动后立即崩溃，日志报 dlopen failed 或 platform plugin no` | [runtime-fail-qpa-plugin-not-found](runtime-fail-qpa-plugin-not-found.md) | 应用启动后立即崩溃，日志报 dlopen failed 或 platform plugin not found |
 | `应用启动即弹 QMessageBox '无法创建本地数据库 !' 后崩溃退出（实为 native` | [runtime-fail-sqlite-open-database](runtime-fail-sqlite-open-database.md) | 应用启动即弹 QMessageBox '无法创建本地数据库 !' 后崩溃退出（实为 native cppcrash），Login 窗口未显示 |
+| `应用启动后工具栏/菜单/托盘图标位置空白不显示；QIcon(:/...x.ico) 加载为空；改` | [runtime-icons-missing-libqico](runtime-icons-missing-libqico.md) | 应用启动后工具栏/菜单/托盘图标位置空白不显示；QIcon(:/...x.ico) 加载为空；改用 .png 图标则正常显示。 |
+| `Qt QML 应用在 OHOS 暗主题设备运行，按钮和输入框默认背景纯黑，控件与背景融为一片看不` | [runtime-style-dark-palette-pure-black](runtime-style-dark-palette-pure-black.md) | Qt QML 应用在 OHOS 暗主题设备运行，按钮和输入框默认背景纯黑，控件与背景融为一片看不清边界(文字可见)。 |
 | `设置 XComponent surface opaque 时 SurfaceHolder_Cre` | [surfaceholder-nativexcomponent-incompatibility](surfaceholder-nativexcomponent-incompatibility.md) | 设置 XComponent surface opaque 时 SurfaceHolder_Create 返回 null； 或 GetNativeXComponent 在节点挂载前返回 null 导致启动崩溃。 |
 
 ## 按领域
@@ -69,6 +72,7 @@ description: >
 | build | high | [build-hvigor-native-skip](build-hvigor-native-skip.md) | spawn java ENOENT; BuildNativeWithCmake finished after 1ms with no .so artifact (DEVECO_SDK_HOME missing) |
 | build | medium | [build-missing-qt5uitools-ohos](build-missing-qt5uitools-ohos.md) | CMake Error: find_package(Qt5 COMPONENTS Widgets UiTools OpenGL QUIET) 失败 (OHOS Qt5 SDK 缺 Qt5UiTools 模块) |
 | runtime | high | [ohos-mainthread-mismatch](ohos-mainthread-mismatch.md) | Q_ASSERT(receiver->d_func()->threadData.loadAcquire()->thread.loadRelaxed() == mainThread()) in QCoreApplicationPrivate::sendThroughApplicationEventFilters (Debug 构建鼠标点击事件触发) |
+| migration | low | [ohos-qfiledialog-native-support](ohos-qfiledialog-native-support.md) | QFileDialog 在 OHOS 上无需 #ifdef 守卫；QOhosPlatformIntegrationPlugin 已内置原生支持， 直接使用 QFileDialog::getSaveFileName / getOpenFileName 即可。 |
 | runtime | high | [render-black-rgba8-zink-mipmap](render-black-rgba8-zink-mipmap.md) | Qt3D 实体贴图纯黑（cloud 球壳 / saturn 星环 / uranus 星环），光照与阴影正常； 同 effect 下用 RGB8 JPG 的实体贴图正常；唯一判别变量是贴图格式 RGBA8(alpha) vs RGB8(JPG)。 |
 | runtime | critical | [runtime-crash-libqohos-libqt5core-version-mismatch](runtime-crash-libqohos-libqt5core-version-mismatch.md) | 签名 HAP 安装成功,aa start 后进程 1-9s 内消失。faultlog 显示 jscrash TypeError (handleAbilityStageOnCreate of undefined 或 deviceType property 缺失)。 |
 | runtime | critical | [runtime-crash-libqohos-modules-mismatch](runtime-crash-libqohos-modules-mismatch.md) | 签名 HAP 安装成功,aa start 启动后进程 1-2 秒内消失(启动即崩),桌面不显示应用窗口或一闪即退。 |
@@ -81,4 +85,6 @@ description: >
 | runtime | critical | [runtime-fail-libqtdbus-missing](runtime-fail-libqtdbus-missing.md) | 应用启动后立即崩溃（JSCrash TypeError），日志显示 libQt5DBus.so 加载失败 |
 | runtime | critical | [runtime-fail-qpa-plugin-not-found](runtime-fail-qpa-plugin-not-found.md) | 应用启动后立即崩溃，日志报 dlopen failed 或 platform plugin not found |
 | runtime | high | [runtime-fail-sqlite-open-database](runtime-fail-sqlite-open-database.md) | 应用启动即弹 QMessageBox '无法创建本地数据库 !' 后崩溃退出（实为 native cppcrash），Login 窗口未显示 |
+| runtime | high | [runtime-icons-missing-libqico](runtime-icons-missing-libqico.md) | 应用启动后工具栏/菜单/托盘图标位置空白不显示；QIcon(:/...x.ico) 加载为空；改用 .png 图标则正常显示。 |
+| runtime | medium | [runtime-style-dark-palette-pure-black](runtime-style-dark-palette-pure-black.md) | Qt QML 应用在 OHOS 暗主题设备运行，按钮和输入框默认背景纯黑，控件与背景融为一片看不清边界(文字可见)。 |
 | errors | high | [surfaceholder-nativexcomponent-incompatibility](surfaceholder-nativexcomponent-incompatibility.md) | 设置 XComponent surface opaque 时 SurfaceHolder_Create 返回 null； 或 GetNativeXComponent 在节点挂载前返回 null 导致启动崩溃。 |

@@ -4,7 +4,7 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, porting, workflow, decision-tree]
 created: 2026-06-02
-updated: 2026-06-25
+updated: 2026-07-21
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-api, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-modules, semantic-qt-ohos-extras]
@@ -63,7 +63,7 @@ Q_OS_MAC / Q_OS_MACOS / Q_OS_DARWIN
 以下 API 在鸿蒙上行为不同或不可用，需逐一排查：
 
 ```
-QProcess                        — 进程管理（鸿蒙不推荐）
+QProcess                        — 进程管理（无界面可用，有界面按 Qt/非Qt 改 startAppProcess/startAbility）
 QDesktopServices                — 桌面服务（openUrl 等）
 QFileDialog                     — 原生文件对话框
 QSystemTrayIcon                 — 系统托盘图标
@@ -106,10 +106,13 @@ if(ANDROID) ...
 
 | 源模式 | 鸿蒙替代方案 |
 |--------|-------------|
-| `QProcess` | `QtOhosExtras::QOhosAppContext::startNoUiChildProcess()` 或 `startAbility()` |
+| `QProcess`（无界面） | `QProcess` 原样可用（保持不改） | ★ 无界面子进程在鸿蒙沙箱内可 fork/exec |
+| `QProcess`（有界面+Qt） | `QtOhosExtras::startAppProcess()` / `startNewAbilityInstance()` | Qt extra 接口启动带 UI 的 Qt 子进程 |
+| `QProcess`（有界面+非Qt） | `QtOhosExtras::startAbility(want)` | Want 模型启动任意 Ability |
+| `QProcess`（无界面需托管） | `QtOhosExtras::QOhosAppContext::startNoUiChildProcess()` | 鸿蒙原生 .so 子进程（Child Process Manager） |
 | `QProcess::startDetached()` | `QtOhosExtras::startAppProcess()` |
 
-> ⚠️ **QProcess 不是鸿蒙推荐的子进程机制。** 应优先使用 `startAbility()` 或 `startNoUiChildProcess()`。
+> ⚠️ **按场景选，不一刀切**（2026-07-21 修正，旧版"QProcess 不可用"不准确）：无界面子进程 `QProcess` 可用；有界面子进程须经 Ability 框架（Qt 用 `startAppProcess`，非 Qt 用 `startAbility`）。详见 [[qt-harmonyos-api-mapping]] §1 决策树。
 
 ### 服务与交互
 
@@ -341,7 +344,7 @@ QtNetwork, QtSQL, QtMultimedia
 5. **首个主窗口不能在启动时全屏** — 必须先创建并显示窗口，之后再调用 `showFullScreen()`
 6. **主窗口 `hide()` 回退为最小化** — 在无系统托盘时，`hide()` 不会真正隐藏窗口
 7. **子窗口不支持最小化** — 子窗口调用 `showMinimized()` 无效果
-8. **QProcess 不是推荐的子进程机制** — 应使用 `startAbility()` 或 `startNoUiChildProcess()`
+8. **子进程按场景选**（2026-07-21 修正）— 无界面 `QProcess` 可用；有界面 Qt 用 `startAppProcess()`，有界面非 Qt 用 `startAbility()`；无界面需托管用 `startNoUiChildProcess()`。不要用裸 QProcess 起带界面子进程
 
 ---
 
@@ -350,7 +353,7 @@ QtNetwork, QtSQL, QtMultimedia
 完成 8 步后的最终确认：
 
 - [ ] 所有 `Q_OS_*` 宏分支已添加 `Q_OS_OHOS` 处理
-- [ ] `QProcess` 已替换为 `startAbility()` 或 `startNoUiChildProcess()`
+- [ ] 子进程已按场景处理：无界面 `QProcess` 保留 / 有界面 Qt `startAppProcess` / 有界面非 Qt `startAbility` / 需托管 `startNoUiChildProcess`
 - [ ] 所有无 parent 的顶层窗口已标记为子窗口（使用 `tagWindowOrWidgetAsSubWindowOf`）
 - [ ] 窗口标记函数在 `show()` / `winId()` 之前调用
 - [ ] `closeEvent()` 已通过 `getCloseEventRootCause()` 处理 Ability/WindowStage 级别的关闭

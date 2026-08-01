@@ -4,7 +4,7 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, system-tray, qsystemtrayicon, statusbar, StatusBarExtensionKit, notificationManager, qpa, ohos]
 created: 2026-07-23
-updated: 2026-07-23
+updated: 2026-07-28
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-golden-rules, semantic-qt-harmonyos-window-model, procedural-demo-generation, problem-runtime-crash-ohos-deviceinfo-global-expression]
@@ -69,6 +69,28 @@ evidence: [${DEMOS_ROOT}/tray-ohos/entry-default-unsigned.hap(37.7MB,BUILD SUCCE
 **全 no-op** 的菜单项 setter:`setIcon/setVisible/setFont/setRole/setCheckable/setChecked/setShortcut/setEnabled/setIconSize`。菜单 `showPopup/dismiss/setIcon/setEnabled/setVisible/syncMenuItem/syncSeparatorsCollapsible` 也全 no-op(OS 自己弹菜单,Qt 不弹)。子菜单内 `separator` 被忽略并告警。
 
 **硬编码值**:`quickOperation.abilityName=""`,`ohosSystemTrayItemTitle="Qt Application"`(tray 项 quickOperation 标题恒 "Qt Application",public API 不可配)。
+
+## 左键弹窗扩展(StatusBarViewExtensionAbility)
+
+状态栏图标**左键业务弹窗**走鸿蒙 `StatusBarViewExtensionAbility`(`@kit.DeskTopExtensionKit`,继承 `UIExtensionAbility`,API 12+,PC/2in1/Tablet),**非** Qt `QSystemTrayIcon::activated(Trigger)`——后者是 `abilityName=""` 时的回退路径。
+
+**声明**(`module.json5` 的 `extensionAbilities`,非 `abilities`):
+```json5
+{ "name":"TrayStatusBarViewAbility", "icon":"$media:layered_image",
+  "type":"statusBarView", "exported":true,
+  "srcEntry":"./ets/statusbarviewextensionability/TrayStatusBarViewAbility.ets" }
+```
+**类**:`onCreate`/`onSessionCreate(want,session)`/`onForeground`/`onBackground`/`onSessionDestroy`/`onDestroy`;`onSessionCreate` 里 `session.loadContent('pages/XxxPage')`。
+
+**绑定**(`addToStatusBar` 的 `QuickOperation.abilityName`):
+| abilityName | 左键行为 |
+|-------------|---------|
+| `""`(Qt `QSystemTrayIcon` 硬编码) | 走 `statusBarIconClick` 事件 → Qt `activated(Trigger)` |
+| 填 StatusBarViewExtensionAbility 名 | 系统拉起该 ability 弹原生窗(`StatusBarPage`) |
+
+> ⚠️ **与 `processMode=2` 区别**:`processMode=2`(`contextConstant.ProcessMode.NEW_PROCESS_ATTACH_TO_STATUS_BAR_ITEM`)是 `StartOptions` 字段,`startAbility(want,{processMode:2,startupVisibility:STARTUP_HIDE})` 拉起**普通 UIAbility**到独立进程绑状态栏图标(进程绑定);`StatusBarViewExtensionAbility` 是 `UIExtensionAbility`,系统按 `abilityName` 拉起承载弹窗(弹窗绑定)。两套机制不混用。
+
+> **tray-ohos demo(2026-07-28)**:已加 `TrayStatusBarViewAbility`+`StatusBarPage`+`module.json5(type:statusBarView)`+`main_pages` 注册,BUILD SUCCESSFUL。Qt 侧 `abilityName` 硬编码 `""` 故默认不触发;要触发需改 `qohossystemtrayicon.cpp` 的 `quickOperation.abilityName` 填 `"TrayStatusBarViewAbility"` 重编 libqohos,或原生 `statusBarManager.addToStatusBar({quickOperation:{abilityName:"TrayStatusBarViewAbility",...}})` 直验。
 
 ## 胶水依赖(OhosExportModules.ts)
 

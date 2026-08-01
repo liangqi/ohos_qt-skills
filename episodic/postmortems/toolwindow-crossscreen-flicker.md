@@ -7,7 +7,7 @@ created: 2026-06-05
 updated: 2026-06-05
 status: active
 audience: public
-refs: [procedural-framework-issue-analysis,semantic-qt-harmonyos-window-model]
+refs: [semantic-qt-harmonyos-window-model]
 summary: >
   ToolWindow跨屏闪烁系统问题分析：moveWindowToGlobalDisplay与resizeAsync在跨屏拖拽场景冲突，
   screenIdChanged仅拖拽结束时触发，Qt已通过完整调用链追踪定位根因，归属鸿蒙系统接口。
@@ -129,4 +129,4 @@ Qt 的 `setSize` 调用是必要的（确保窗口状态同步），不应跳过
 
 - 系统问题验证 — 本问题使用的工作流
 - [[qt-harmonyos-window-model]] — 窗口模型理解
-- [[framework-issue-analysis]] — Qt 框架分析方法论
+- Qt 框架分析方法论

@@ -4,7 +4,7 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, lifecycle, ability, want, close-event, continuation, sharing]
 created: 2026-06-02
-updated: 2026-06-25
+updated: 2026-07-21
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-ohos-extras, semantic-qt-harmonyos-api]
@@ -431,7 +431,9 @@ QObject::connect(ability.get(), &QOhosUiAbilityContext::newWantInfoReceived,
 
 ## 无 UI 子进程 (UI-less Child Process)
 
-用于执行后台任务（网络同步、数据处理、定时任务等），不创建窗口，节省资源。
+用于执行后台任务（网络同步、数据处理、定时任务等），不创建窗口，节省资源。这是鸿蒙**原生**的 .so 子进程托管方式（Child Process Manager）。
+
+> **与 QProcess 的关系**（2026-07-21 按领域经验补注）：无界面后台任务既可用本节 `startNoUiChildProcess`（原生托管、.so 形式、无 GUI 管线），也可直接用 `QProcess`（鸿蒙沙箱内可 fork/exec 无界面二进制）。两者不互斥——`startNoUiChildProcess` 是备选/需进程托管时，并非 QProcess 的唯一替代。有界面子进程须经 Ability 框架（Qt 用 `startAppProcess`，非 Qt 用 `startAbility`），不能用裸 QProcess 起 GUI。决策树见 [[qt-harmonyos-api-mapping]] §1。
 
 ### 启动子进程
 

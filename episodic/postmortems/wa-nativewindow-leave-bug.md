@@ -939,4 +939,4 @@ Qt Widget 层假设 QPA 会投递 Leave，OHOS QPA 假设 ArkUI 会触发 hover 
 - [x] 阶段三：根因定位（双重盲区 + 异步 vs 同步冲突），归属 Qt OHOS QPA 插件
 - [x] 阶段四：交付件已输出至 `<WORK_DIR>/leave-event-fix/`
 - [x] 知识沉淀：复盘记录已写入本文件
-- [x] 工作流强化：`framework-issue-analysis.md` 阶段四新增 patch 清理和工作流闭合清单
+- [x] 工作流强化：框架问题分析方法论阶段四新增 patch 清理和工作流闭合清单

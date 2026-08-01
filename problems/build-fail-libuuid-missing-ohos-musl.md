@@ -26,7 +26,7 @@ error_message: >
 error_code: ""
 keywords: [libuuid, uuid_t, uuid_generate, uuid_unparse, uuid/uuid.h, -luuid, musl, QUuid, shim, drop-in]
 symptoms: Linux Qt 应用移植 OHOS，编译报找不到 uuid/uuid.h 或链接找不到 -luuid
-environment: OHOS Qt5.15.16 SDK (C:/Qt-full/Qt5.15.16-arm64-v8a) + OHOS musl sysroot (aarch64-linux-ohos)；tcpview (chipmunk-sm/tcpview) LIBS += -luuid
+environment: OHOS Qt5.15.16 SDK (${QT5_15_OHOS_SDK_FULL}) + OHOS musl sysroot (aarch64-linux-ohos)；tcpview (chipmunk-sm/tcpview) LIBS += -luuid
 ---
 
 # OHOS musl 无 libuuid —— drop-in shim 方案

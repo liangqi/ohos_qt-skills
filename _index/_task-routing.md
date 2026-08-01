@@ -4,7 +4,7 @@ type: meta
 domain: workflow
 tags: [agent, routing, task-types, workflow, decision-tree]
 created: 2026-06-27
-updated: 2026-07-27
+updated: 2026-08-01
 status: active
 refs: [semantic-qt-harmonyos-golden-rules, procedural-demo-generation]
 summary: >
@@ -32,8 +32,6 @@ summary: >
     ├─ "窗口显示异常/对话框行为不对" ──────→ [F] 窗口问题
     ├─ "生命周期/closeEvent/接续/分享" ────→ [G] 生命周期
     ├─ "QtOhosExtras 怎么用/某个函数" ────→ [H] QtOhosExtras API
-    ├─ "框架 bug/加日志分析/根因定位" ────→ [I] 框架问题分析
-    ├─ "验证修复/回归测试" ────────────────→ [J] 修复验证
     ├─ "Qt6 相关" ─────────────────────────→ [L] Qt6 状态
     ├─ "三方库/依赖/交叉编译" ────────────→ [M] 三方库
     ├─ "DevEco/MCP/工具链" ──────────────→ [N] 工具链
@@ -125,27 +123,6 @@ summary: >
 | **必读页** | ① `ohos-extras.md`（~36 APIs） |
 | **按需加载** | `lifecycle.md`（使用示例）、`golden-rules.md` §三（A1-A6） |
 | **预期输出** | API 签名 + 用途 + 使用示例 |
-
-### [I] 框架问题分析
-
-**触发词**：框架 bug、加日志、根因分析、QPA 插件、调用链
-
-| 项目 | 内容 |
-|------|------|
-| **工作流** | `procedural/framework-issue-analysis.md` |
-| **必读页** | ① 工作流本身 ② `build.md`（编译 Qt 源码加日志） |
-| **按需加载** | `overview.md`（QPA 架构）、`platform-limits.md`（排除已知限制） |
-| **预期输出** | 最小复现 demo → 调用链分析 → 根因 → 归属（Qt/系统/应用） |
-
-### [J] 修复验证
-
-**触发词**：验证修复、回归测试、验证清单
-
-| 项目 | 内容 |
-|------|------|
-| **工作流** | `procedural/framework-fix-verification.md` |
-| **必读页** | ① 工作流本身 |
-| **预期输出** | 验证清单 → 验证工程 → 结果报告 |
 
 ### [L] Qt6 状态
 

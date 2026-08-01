@@ -35,7 +35,7 @@ symptoms: >
   (handleAbilityStageOnCreate of undefined 或 deviceType property 缺失)。
 
 environment: >
-  Qt5.15.16 OHOS SDK 两套(默认 C:/Qt + 全量 -full), 各自内部 libqohos/libQt5Core 构建版本不一致。
+  Qt5.15.16 OHOS SDK 两套(默认 ${QT5_15_OHOS_SDK} + 全量 ${QT5_15_OHOS_SDK_FULL}), 各自内部 libqohos/libQt5Core 构建版本不一致。
   OHOS 真机(HUAWEI MateBook Fold, UDID 9BFAF107...)。
 
 ## 根因(两层)
@@ -46,8 +46,8 @@ Qt OHOS SDK 内部 libqohos.so 与 libQt5Core.so 的构建日期/API 不一致:
 
 | SDK | libqohos | libQt5Core | 匹配? |
 |-----|----------|-----------|-------|
-| 默认(C:/Qt) | NEW(7/14, 5.5MB, 引用 `QtOhos::runInJsThreadAndWait@Qt_5`) | OLD(6/10, 37MB, 只定义 `QOhosJsThreadGateway::runAndWait@Qt_5_PRIVATE_API`) | ✗ 符号名+版本标签都不同 |
-| -full(C:/Qt-full) | stray OLD(170MB debug, 引用 `runAndWait@Qt_5_PRIVATE_API`) | NEW(7/14, 有 `runInJsThreadAndWait@Qt_5`) | ✗ libqohos 是旧 stray |
+| 默认(${QT5_15_OHOS_SDK}) | NEW(7/14, 5.5MB, 引用 `QtOhos::runInJsThreadAndWait@Qt_5`) | OLD(6/10, 37MB, 只定义 `QOhosJsThreadGateway::runAndWait@Qt_5_PRIVATE_API`) | ✗ 符号名+版本标签都不同 |
+| -full(${QT5_15_OHOS_SDK_FULL}) | stray OLD(170MB debug, 引用 `runAndWait@Qt_5_PRIVATE_API`) | NEW(7/14, 有 `runInJsThreadAndWait@Qt_5`) | ✗ libqohos 是旧 stray |
 
 **关键**: `runInJsThreadAndWait`(NEW API, @Qt_5 版本标签) ≠ `runAndWait`(OLD API, @Qt_5_PRIVATE_API 版本标签)。libqohos(NEW) 引用前者, libQt5Core(OLD) 只定义后者 → dynamic linker `symbol not found` → libqohos 加载失败 → NAPI 模块 undefined → jscrash。
 
@@ -84,4 +84,4 @@ Qt OHOS SDK 内部 libqohos.so 与 libQt5Core.so 的构建日期/API 不一致:
 - [[qt-ohos-run-test]] §5 崩溃分析表
 - [[problem-runtime-crash-libqohos-modules-mismatch]] (前序: libqohos/.ets modulesFactories/modules 字段名错配)
 - [[problem-runtime-crash-ohos-deviceinfo-global-expression]] (@ohos.deviceInfo 崩溃谱的另一代际分支: 515 代际裸 eval 抛 "global expression doesn't start with known module path"——本页第二层是 7/14 代际 napi_get_named_property 抛 "object has no property named 'deviceType'";同款 eager import 修复)
-- ENV.local: 默认 SDK(C:/Qt) + -full SDK(C:/Qt-full) 的 libqohos/libQt5Core 构建版本差异
+- ENV.local: 默认 SDK(${QT5_15_OHOS_SDK}) + -full SDK(${QT5_15_OHOS_SDK_FULL}) 的 libqohos/libQt5Core 构建版本差异
