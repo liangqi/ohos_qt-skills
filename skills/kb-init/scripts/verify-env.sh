@@ -1,15 +1,26 @@
 #!/bin/bash
 # verify-env.sh — 确定性环境验证
-# 检查所有必要路径存在、工具版本兼容，输出就绪报告
+# 根据用户角色检查必要路径和工具，输出就绪报告
 #
-# 用法: bash skills/kb-init/scripts/verify-env.sh
+# 用法: bash skills/kb-init/scripts/verify-env.sh [--role=ROLE]
+# 选项:
+#   --role=ROLE    用户角色: app-developer（默认）| framework-developer
 # 输出: 验证报告（pass / fail / skip 各项 + 整体 STATUS）
 # 退出码: 0=成功（STATUS=ready 或 not-ready）
 
 set -uo pipefail
 
-KB_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+# 从 scripts/ 向上三级到 KB root
+KB_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 ENV_LOCAL="$KB_ROOT/ENV.local.md"
+
+ROLE="app-developer"
+for arg in "$@"; do
+  case "$arg" in
+    --role=*) ROLE="${arg#*=}";;
+    *) echo "未知选项: $arg" >&2; exit 2;;
+  esac
+done
 
 PASS=0
 FAIL=0
@@ -31,7 +42,7 @@ check() {
   fi
 }
 
-echo "━━━ 环境验证 ━━━"
+echo "━━━ 环境验证 [角色: ${ROLE}] ━━━"
 echo ""
 
 # 1. ENV.local.md 存在
@@ -61,7 +72,7 @@ MINGW_ROOT=$(read_env "MINGW_ROOT")
 PERL_ROOT=$(read_env "PERL_ROOT")
 OHOS_SDK_NATIVE=$(read_env "OHOS_SDK_NATIVE")
 
-# 3. DevEco Studio
+# 3. DevEco Studio（所有角色必须）
 if [ -n "$DEVECO_PATH" ] && [ -d "$DEVECO_PATH" ]; then
   check "DevEco Studio 路径" "pass" "$DEVECO_PATH"
 elif [ -n "$DEVECO_PATH" ]; then
@@ -70,31 +81,28 @@ else
   check "DevEco Studio 路径" "fail" "未配置"
 fi
 
-# 4. Qt 源码（至少一个版本）
-QT_SRC_FOUND="false"
-if [ -n "$QT5_12_SRC" ] && [ -d "$QT5_12_SRC" ]; then
-  check "Qt 5.12 源码" "pass" "$QT5_12_SRC"
-  QT_SRC_FOUND="true"
-elif [ -n "$QT5_12_SRC" ]; then
-  check "Qt 5.12 源码" "fail" "路径不存在: $QT5_12_SRC"
+# 4. OHOS SDK native（所有角色必须）
+if [ -n "$OHOS_SDK_NATIVE" ] && [ -d "$OHOS_SDK_NATIVE" ]; then
+  check "OHOS SDK native" "pass" "$OHOS_SDK_NATIVE"
+  # 检查 clang 是否存在
+  if [ -f "$OHOS_SDK_NATIVE/llvm/bin/clang" ] || [ -f "$OHOS_SDK_NATIVE/llvm/bin/clang.exe" ]; then
+    check "OHOS clang 编译器" "pass"
+  else
+    check "OHOS clang 编译器" "fail" "llvm/bin/clang 不存在"
+  fi
+  # 检查 sysroot
+  if [ -d "$OHOS_SDK_NATIVE/sysroot" ]; then
+    check "OHOS sysroot" "pass"
+  else
+    check "OHOS sysroot" "fail" "sysroot 目录不存在"
+  fi
+elif [ -n "$OHOS_SDK_NATIVE" ]; then
+  check "OHOS SDK native" "fail" "路径不存在: $OHOS_SDK_NATIVE"
 else
-  check "Qt 5.12 源码" "skip" "未配置"
+  check "OHOS SDK native" "fail" "未配置"
 fi
 
-if [ -n "$QT5_15_SRC" ] && [ -d "$QT5_15_SRC" ]; then
-  check "Qt 5.15 源码" "pass" "$QT5_15_SRC"
-  QT_SRC_FOUND="true"
-elif [ -n "$QT5_15_SRC" ]; then
-  check "Qt 5.15 源码" "fail" "路径不存在: $QT5_15_SRC"
-else
-  check "Qt 5.15 源码" "skip" "未配置"
-fi
-
-if [ "$QT_SRC_FOUND" = "false" ] && [ "$FAIL" -eq 0 ]; then
-  check "Qt 源码（至少一个版本）" "fail" "未配置任何 Qt 源码路径"
-fi
-
-# 5. Qt OHOS SDK（至少一个版本）
+# 5. Qt OHOS SDK（所有角色必须，至少一个版本）
 QT_SDK_FOUND="false"
 if [ -n "$QT5_12_OHOS_SDK" ] && [ -d "$QT5_12_OHOS_SDK" ]; then
   check "Qt 5.12 OHOS SDK" "pass" "$QT5_12_OHOS_SDK"
@@ -114,51 +122,84 @@ else
   check "Qt 5.15 OHOS SDK" "skip" "未配置"
 fi
 
-# 6. OHOS SDK native
-if [ -n "$OHOS_SDK_NATIVE" ] && [ -d "$OHOS_SDK_NATIVE" ]; then
-  check "OHOS SDK native" "pass" "$OHOS_SDK_NATIVE"
-elif [ -n "$OHOS_SDK_NATIVE" ]; then
-  check "OHOS SDK native" "fail" "路径不存在: $OHOS_SDK_NATIVE"
-else
-  check "OHOS SDK native" "skip" "未配置"
+if [ "$QT_SDK_FOUND" = "false" ]; then
+  check "Qt OHOS SDK（至少一个版本）" "fail" "未配置任何 Qt OHOS SDK 路径"
 fi
 
-# 7. 工具链
+# 6. 基础工具
 if command -v git &>/dev/null; then
   check "git" "pass" "$(git --version 2>/dev/null | head -1)"
 else
   check "git" "fail" "未安装"
 fi
 
-if command -v cmake &>/dev/null; then
-  check "cmake" "pass" "$(cmake --version 2>/dev/null | head -1)"
-else
-  check "cmake" "skip" "未安装（仅编译 Qt 时需要）"
-fi
-
 if command -v hdc &>/dev/null; then
   check "hdc" "pass"
 else
-  check "hdc" "skip" "未安装（DevEco SDK 中通常包含）"
+  check "hdc" "skip" "未安装（DevEco SDK 中通常包含，用于设备调试）"
 fi
 
-# 8. Windows 专属工具
-OS=$(uname -s)
-if [[ "$OS" == MINGW* ]] || [[ "$OS" == MSYS* ]] || [[ "$OS" == CYGWIN* ]]; then
-  if [ -n "$MINGW_ROOT" ] && [ -d "$MINGW_ROOT" ]; then
-    check "MinGW" "pass" "$MINGW_ROOT"
-  elif [ -n "$MINGW_ROOT" ]; then
-    check "MinGW" "fail" "路径不存在: $MINGW_ROOT"
+# 7. 框架开发者专属检查
+if [ "$ROLE" = "framework-developer" ]; then
+  echo ""
+  echo "  ─── 框架开发者专属检查 ───"
+
+  # Qt 源码（至少一个版本）
+  QT_SRC_FOUND="false"
+  if [ -n "$QT5_12_SRC" ] && [ -d "$QT5_12_SRC" ]; then
+    check "Qt 5.12 源码" "pass" "$QT5_12_SRC"
+    QT_SRC_FOUND="true"
+  elif [ -n "$QT5_12_SRC" ]; then
+    check "Qt 5.12 源码" "fail" "路径不存在: $QT5_12_SRC"
   else
-    check "MinGW" "skip" "未配置（仅 Windows 编译 Qt 时需要）"
+    check "Qt 5.12 源码" "skip" "未配置"
   fi
 
-  if [ -n "$PERL_ROOT" ] && [ -d "$PERL_ROOT" ]; then
-    check "Strawberry Perl" "pass" "$PERL_ROOT"
-  elif [ -n "$PERL_ROOT" ]; then
-    check "Strawberry Perl" "fail" "路径不存在: $PERL_ROOT"
+  if [ -n "$QT5_15_SRC" ] && [ -d "$QT5_15_SRC" ]; then
+    check "Qt 5.15 源码" "pass" "$QT5_15_SRC"
+    QT_SRC_FOUND="true"
+  elif [ -n "$QT5_15_SRC" ]; then
+    check "Qt 5.15 源码" "fail" "路径不存在: $QT5_15_SRC"
   else
-    check "Strawberry Perl" "skip" "未配置（仅 Windows 编译 Qt 时需要）"
+    check "Qt 5.15 源码" "skip" "未配置"
+  fi
+
+  if [ "$QT_SRC_FOUND" = "false" ]; then
+    check "Qt 源码（至少一个版本）" "fail" "框架开发者必须配置 Qt 源码路径"
+  fi
+
+  # cmake
+  if command -v cmake &>/dev/null; then
+    check "cmake" "pass" "$(cmake --version 2>/dev/null | head -1)"
+  else
+    check "cmake" "fail" "框架开发者必须安装 cmake"
+  fi
+
+  # Windows 专属
+  OS=$(uname -s)
+  if [[ "$OS" == MINGW* ]] || [[ "$OS" == MSYS* ]] || [[ "$OS" == CYGWIN* ]]; then
+    if [ -n "$MINGW_ROOT" ] && [ -d "$MINGW_ROOT" ]; then
+      check "MinGW" "pass" "$MINGW_ROOT"
+    elif [ -n "$MINGW_ROOT" ]; then
+      check "MinGW" "fail" "路径不存在: $MINGW_ROOT"
+    else
+      check "MinGW" "fail" "Windows 框架开发者必须配置 MinGW"
+    fi
+
+    if [ -n "$PERL_ROOT" ] && [ -d "$PERL_ROOT" ]; then
+      check "Strawberry Perl" "pass" "$PERL_ROOT"
+    elif [ -n "$PERL_ROOT" ]; then
+      check "Strawberry Perl" "fail" "路径不存在: $PERL_ROOT"
+    else
+      check "Strawberry Perl" "fail" "Windows 框架开发者必须配置 Strawberry Perl"
+    fi
+  fi
+else
+  # 应用开发者：这些是可选的
+  if command -v cmake &>/dev/null; then
+    check "cmake" "pass" "$(cmake --version 2>/dev/null | head -1)"
+  else
+    check "cmake" "skip" "未安装（仅编译 Qt 框架时需要）"
   fi
 fi
 
@@ -170,7 +211,11 @@ echo ""
 if [ "$FAIL" -eq 0 ]; then
   echo "STATUS=ready"
   echo ""
-  echo "环境就绪，可以开始使用 Qt for HarmonyOS 知识库。"
+  if [ "$ROLE" = "app-developer" ]; then
+    echo "环境就绪，可以开始使用 Qt for HarmonyOS 知识库进行应用鸿蒙化开发。"
+  else
+    echo "环境就绪，可以开始使用 Qt for HarmonyOS 知识库进行框架开发。"
+  fi
 else
   echo "STATUS=not-ready"
   echo ""
