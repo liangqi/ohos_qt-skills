@@ -2,278 +2,137 @@
 id: semantic-qt-harmonyos-build-run-workflow
 type: semantic
 domain: tech
-tags: [qt, harmonyos, deveco-mcp, build, run, hilog, ui-test, troubleshooting, workflow]
+tags: [qt, harmonyos, devecocli, hvigor, hdc, build, run, hilog, ui-test, troubleshooting, workflow]
 created: 2026-06-02
-updated: 2026-07-02
+updated: 2026-08-15
 status: active
 audience: public
-refs: [semantic-qt-harmonyos-build, semantic-qt-harmonyos-overview, semantic-harmonyos-dev-fundamentals]
+refs: [semantic-qt-harmonyos-build, semantic-qt-harmonyos-overview]
 summary: >
-  Qt 鸿蒙编译运行全流程：DevEco MCP 工具链配置、构建/启动/日志/UI测试操作步骤、构建失败排查四步法。
+  Qt HarmonyOS 编译运行工作流：devecocli 优先完成构建、安装、启动、日志和 UI 操作；
+  封装未覆盖或诊断封装时使用可审计的 hvigor/hdc 最小调用，并保留 Qt 工程检查与失败排查闭环。
 ---
 
-# Qt 鸿蒙编译运行工作流
+# Qt HarmonyOS 编译运行工作流
 
-> 本页蒸馏自 `<INTERNAL_SKILL>`，覆盖从 MCP 配置到 UI 测试的完整链路。
-> 构建环境搭建（configure、MinGW、Perl 等）详见 [[qt-harmonyos-build]]。
+平台工具的当前能力和选择规则以 common 为准：
 
----
+- [[ohos-common-kb/procedural/deveco-cli-usage-rules|DevEco CLI 使用规则]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/procedural/deveco-cli-usage-rules.md)）
+- [[ohos-common-kb/semantic/deveco-mcp-capabilities|DevEco MCP 能力与使用边界]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/deveco-mcp-capabilities.md)）
+- [[ohos-common-kb/semantic/harmonyos-development-fundamentals|HarmonyOS 开发基础]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-development-fundamentals.md)）
 
-## 1. DevEco MCP 工具链
+当前 deveco-mcp 只承担静态 `check` 和 LSP `restart`，不提供项目同步、构建、启动、日志或 UI 操作。历史名称 `project_sync`、`build_project`、`start_app`、`get_app_ui_tree`、`perform_ui_action` 不得作为当前流程调用。
 
-DevEco Toolbox = `deveco-toolbox`（可视化配置）+ `deveco-mcp-server`（MCP 服务），依赖 [[harmonyos-dev-fundamentals|DevEco Studio]]。
+构建环境搭建（configure、MinGW、Perl 等）见 [[qt-harmonyos-build]]；完整真机验收见 [[qt-ohos-run-test]]。
 
-### 安装方式
+## 核心流程
 
-| 方式 | 命令 / 步骤 | 适用场景 |
-|------|-----------|---------|
-| **npx（推荐）** | `npx -y @deveco-codegenie/mcp@beta` | IDE 项目级 MCP 配置 |
-| **二进制** | GitHub Releases 下载 zip/dmg | 离线或无 Node 环境 |
-| **可视化** | DevEco Toolbox GUI 一键添加到 IDE | Trae / Cursor 用户 |
-
-### MCP JSON 配置模板（以 Cursor 为例）
-
-```json
-{
-  "mcpServers": {
-    "deveco-mcp": {
-      "command": "npx",
-      "args": ["-y", "@deveco-codegenie/mcp@beta"],
-      "env": {
-        "PROJECT_PATH": "${workspaceFolder}",
-        "DEVECO_PATH": "path/to/your/deveco"
-      }
-    }
-  }
-}
+```text
+依赖准备 → 构建 unsigned HAP → 独立签名 → 安装启动 → 日志 → Qt UI/渲染验证
 ```
 
-- `PROJECT_PATH`：工程路径，可通过 `init_project_path` 工具后续修改
-- `DEVECO_PATH`：DevEco Studio 安装路径（无需到 bin 层）
-- macOS 二进制安装后需执行 `xattr -cr /Applications/DevEco\ Toolbox.app`
+### Step 1：依赖准备
 
-### 可用工具清单
+首次 checkout 或 `oh-package.json5` 变化时，优先运行项目/devecocli 提供的依赖同步能力。Qt 工程同时检查：
 
-| 工具 | 功能 |
-|------|------|
-| `build_project` | 项目构建 |
-| `start_app` | 启动应用（真机/模拟器） |
-| `get_hilog_or_faultlog_recent` | 获取 hilog / faultlog 日志 |
-| `get_app_ui_tree` | 获取当前页面 UI 树 |
-| `perform_ui_action` | 执行 UI 操作（点击/滑动/输入/按键/截图） |
-| `project_sync` | 项目同步（ohpm install） |
-| `check_ets_files` | ArkTS 语法检查 |
-| `check_cpp_files` | C/C++ 语法检查 |
-| `harmonyos_knowledge_search` | 查询鸿蒙云端知识库 |
-| `verify_ui` | UI 验证（可选） |
-| `init_project_path` | 初始化/更改项目路径 |
+- `entry/build-profile.json5` 的 `externalNativeOptions.path` 指向目标 CMakeLists；
+- `CMAKE_PREFIX_PATH` 指向正确 Qt OHOS SDK；
+- Qt 应用 target 名与 `QtAppConstants.ets` 的 `APP_LIBRARY_NAME` 一致；
+- `local.properties`/SDK 路径只保存在本机配置，不写进共享知识页。
 
----
+### Step 2：构建
 
-## 2. 核心流程
-
-```
-项目同步 → 项目构建 → 启动应用 → 查看日志 → UI 测试（可选）
-```
-
-### Step 1: 项目同步（按需）
-
-`project_sync` — 在修改 `oh-package.json5` 或首次初始化时执行。
-
-### Step 2: 项目构建
-
-`build_project` 关键参数：
-
-| 参数 | 说明 | 默认 |
-|------|------|------|
-| `module` | 模块+Target，如 `'entry@default'` | 全部 |
-| `build_mode` | `'debug'` / `'release'` | debug |
-| `clean` | 是否先 clean | false |
-| `log_path` | 构建日志保存路径 | — |
-| `enable_inspector_source_jump` | UI 树跳转到源码 | — |
-
-**Qt 工程要点**：
-- CMakeLists.txt 须正确配置 Qt SDK 路径（`CMAKE_PREFIX_PATH`）
-- `entry/build-profile.json5` 的 `externalNativeOptions.path` 须指向 CMakeLists.txt
-- 首次构建建议 `clean: true`
-
-#### hvigorw CLI 替代法（无 MCP init_project_path 时）
-
-`build_project` 工具无 project path 参数，`init_project_path` 在部分 MCP 工具集不可用。此时可**命令行直调 hvigorw** 编译任意路径工程（批量编译/CI 场景必备）：
+正常路径：
 
 ```bash
-# 前置：工程 HarmonyOS/ 下有 local.properties（sdk.dir=C:\\Program Files\\Huawei\\DevEco Studio\\sdk）
-export PATH="/c/Program Files/Huawei/DevEco Studio/jbr/bin:/c/Program Files/Huawei/DevEco Studio/tools/node:$PATH"
-export DEVECO_SDK_HOME="C:\Program Files\Huawei\DevEco Studio\sdk"
-cd "<工程目录>/HarmonyOS"
-node "/c/Program Files/Huawei/DevEco Studio/tools/hvigor/bin/hvigorw.js" assembleHap \
+devecocli build --modules entry --product default --build-mode debug
+```
+
+Qt 编译阶段以 `BUILD SUCCESSFUL` 和 `entry-default-unsigned.hap` 为完成标志；签名是独立后续步骤。
+
+当 devecocli 尚未覆盖目标参数、正在维护封装或构造最小失败复现时，可直接调用 hvigor。必须记录使用原因，结束后回到 devecocli 或项目标准门禁验证：
+
+```bash
+node <DEVECO>/tools/hvigor/bin/hvigorw.js assembleHap \
   --mode module -p product=default -p buildMode=debug --no-daemon
 ```
 
-关键环境：
-- `DEVECO_SDK_HOME` 必须设（否则 `Configuration Error: Invalid value of 'DEVECO_SDK_HOME'`）
-- PATH 必须含 DevEco JBR（`jbr/bin`，java，PackageHap/SignHap 需要；否则 `spawn java ENOENT`）+ DevEco node（`tools/node`，运行 hvigorw.js）
-- 模板不含 hvigorw 包装器；直接 `node .../hvigorw.js`（引擎在 `tools/hvigor/{hvigor,hvigor-ohos-plugin}`）
-- 模板根需有 `local.properties`：`sdk.dir=C:\\Program Files\\Huawei\\DevEco Studio\\sdk`
+底层诊断只保留以下约束：使用同一 DevEco 安装中的 Node/JBR/SDK；先用 `tasks --no-daemon` 确认任务名；不把个人绝对路径固化进仓库。
 
-成功标志：`BUILD SUCCESSFUL` 且产物 `entry-default-unsigned.hap` 生成于 `entry/build/default/` 下（**编译工作流以未签名 HAP 为完成标志，签名是独立的后续步骤**；如需 signed HAP 需独立配置签名，不在编译工作流范围）。
+### Step 3：签名、安装和启动
 
-> 2026-07-02 批量移植 10 个 Qt 开源应用用此法全部编译通过（10/10 unsigned HAP）。
+签名配置完成后，正常路径使用：
 
-### Step 3: 启动应用
-
-`start_app` 关键参数：
-
-| 参数 | 说明 | 默认 |
-|------|------|------|
-| `hvd` | 设备名称/ID | 列出可用设备 |
-| `module` | 模块名 | `'entry'` |
-| `ability` | Ability 名 | `'EntryAbility'` |
-
-- 不指定设备时列出所有可用设备（真机 + 模拟器）
-- 选择未运行的模拟器会自动启动
-
-### Step 4: 查看日志
-
-`get_hilog_or_faultlog_recent` 关键参数：
-
-| 参数 | 说明 |
-|------|------|
-| `is_crash_log` | `false` = hilog, `true` = faultlog（崩溃日志） |
-| `bundle_name` | 应用包名（自动 PID 过滤） |
-| `level` | `D` / `I` / `W` / `E` / `F` |
-| `tag` / `keyword` | 标签 / 正则关键字过滤 |
-
-**Qt 应用常用查询**：
-
-```
-# 普通日志
-bundle_name: 'com.example.qtapp', level: 'I'
-
-# 错误日志
-bundle_name: 'com.example.qtapp', level: 'E'
-
-# 崩溃日志
-is_crash_log: true, bundle_name: 'com.example.qtapp'
-
-# 按 Qt 标签过滤
-tag: 'Qt', level: 'D'
+```bash
+devecocli run --module entry
 ```
 
-**Qt 特有日志关键字**：
+需要验证具体 HAP、Ability/Want 参数或封装未覆盖动作时，允许最小 hdc 诊断：
 
-| 日志信息 | 原因 |
-|---------|------|
-| `dlopen failed: library "libqohos.so" not found` | 平台插件未部署 |
-| `dlopen failed: library "libQt5Core.so" not found` | Qt 核心库未部署 |
-| `Cannot load Qt platform plugin` | 平台插件加载失败 |
-| `module "QtQuick" is not installed` | QML 模块未配置 |
-
-### Step 5 & 6: UI 树与 UI 操作
-
-**获取 UI 树** — `get_app_ui_tree`：
-- `mode: 'full'`（完整 UI 树）或 `'simple'`（窗口节点）
-- `outputDirectory`：JSON 保存路径
-
-**执行 UI 操作** — `perform_ui_action`：
-
-| actionType | 关键参数 | 说明 |
-|------------|---------|------|
-| `click` | `x`, `y` | 单击 |
-| `directionalFling` | `direction`(0左/1右/2上/3下), `velocity`, `stepLength` | 滑动 |
-| `inputText` | `x`, `y`, `text` | 输入文本 |
-| `keyEvent` | `key1`/`key2`/`key3`（Back/Home/Power/KeyCode） | 按键 |
-| `screenshot` | `localPath` | 截图保存到本地 |
-
----
-
-## 3. 构建失败排查（四步法）
-
-> ⚠️ 此流程对构建错误和运行时错误**均强制生效**。
-
-### Step A: 知识库优先查询
-
-检查当前工作目录是否存在 `compile_fix_pro.md`：
-- **存在** → 先搜索已知方案，找到则直接应用
-- **不存在** → 跳过，进入 Step B
-
-### Step B: 错误分类
-
-| 环节 | 关键词 | 示例 |
-|------|--------|------|
-| 预处理 | `#include not found`, `No such file or directory` | 头文件路径缺失 |
-| 编译 | `error:`, `undefined reference`（源码级） | 语法错误、API 不兼容 |
-| 链接 | `undefined symbol`, `cannot find -l`, `multiple definition` | 库缺失、符号冲突 |
-| 打包 | `BUILD FAILED`, `hap`, `sign`, `resource` | Hvigor/签名/资源 |
-
-### Step C: 修复与重试
-
-| 规则 | 要求 |
-|------|------|
-| 最大重试 | 同一错误最多 **3 次** |
-| 方案不重复 | 每次必须用**不同方案** |
-| 超限 | 立即停止，整理错误上下文 + 已尝试方案，**向用户求助** |
-
-### Step D: 修复沉淀
-
-- ✅ 成功 → 记入 `compile_fix_pro.md`（若存在）
-- ❌ 失败（超限）→ 向用户提供：错误信息 + 根因分析 + N 种方案及失败原因
-
-**`compile_fix_pro.md` 记录格式**：
-
-```markdown
-## <问题标题>
-- 问题描述：<具体错误信息>
-- 发生环节：编译 / 链接 / 打包 / 运行
-- 产生原因：<根因分析>
-- 修复方案：<具体步骤与代码改动>
-- 改动文件：<文件列表>
+```bash
+hdc install <signed.hap>
+hdc shell aa start -b <bundleName> -a <abilityName>
 ```
 
-### 运行时错误处理
+不要用底层命令规避 bundleName/profile/signingConfig 不一致；底层调用成功后仍要回到正常交付流程。
 
-与构建失败共用 Step A → D 流程，但**发生环节标记为「运行」**：
+### Step 4：日志
 
-1. 获取崩溃日志：`is_crash_log: true` + `bundle_name`
-2. 获取错误日志：`level: 'E'` + `bundle_name`
-3. 查 `compile_fix_pro.md`
-4. 分类 → 修复 → 沉淀
+```bash
+devecocli log --bundle-name <bundleName> --level E
+devecocli log --crash --bundle-name <bundleName>
+```
 
----
+Qt 特有关键字：
 
-## 4. 常见问题速查
+| 日志 | Qt 侧检查 |
+|---|---|
+| `libqohos.so not found` | QPA plugin 是否进入最终 HAP |
+| `libQt5Core.so not found` | Qt runtime 依赖闭包是否完整 |
+| `Cannot load Qt platform plugin` | plugin 路径、依赖和 ABI |
+| `module "QtQuick" is not installed` | QML 模块与资源部署 |
 
-### 构建问题
+devecocli 过滤不足时可用最小 `hdc shell hilog` 诊断，并记录 bundle/PID 过滤条件。
 
-| 问题 | 排查 |
-|------|------|
-| CMake 配置失败 | 检查 `entry/build-profile.json5` 的 `externalNativeOptions.path` |
-| Qt 模块找不到 | 检查 `CMAKE_PREFIX_PATH` 是否指向正确 Qt SDK |
-| 编译错误 | 用 `log_path` 保存详细日志分析 |
+### Step 5：Qt UI 验证
 
-### 启动问题
+优先使用 devecocli 当前实际提供的 `ui` 子命令。Qt UI 位于 XComponent/QPA 承载层，普通 ArkUI inspector 可能只看到 XComponent；获取 Qt 控件树需启用 Qt accessibility bridge，再通过目标环境支持的 uitest 能力验证。
 
-| 问题 | 排查 |
-|------|------|
-| 应用无法启动 | 确认构建成功 + 查看错误日志 |
-| 模拟器启动失败 | 确认 DevEco Studio 已安装模拟器 |
-| 真机连接失败 | 检查 USB + 开发者模式 |
+devecocli 没有对应 key/uitest 动作时，可使用最小底层调用，例如 `hdc shell uitest uiInput keyEvent ...`。这属于明确能力缺口，不应被推广为所有设备操作的默认路径。
 
-### 运行时问题
+截图存在不等于 Qt 渲染正确；同时检查非黑屏、窗口层级、输入、生命周期和日志。
 
-| 问题 | 排查 |
-|------|------|
-| Qt 库加载失败 | 查日志中 dlopen 错误，检查库部署 |
-| 平台插件失败 | 确认 `libqohos.so` 已正确部署 |
-| QML 加载失败 | 检查 QML 资源文件和模块配置 |
-| 应用崩溃 | `is_crash_log: true` 获取崩溃日志 |
+## 静态检查 MCP
 
----
+当前环境已连接 deveco-mcp 时，在修改受支持的 ArkTS/C++ 文件后运行 `check`；LSP 索引异常时运行一次 `restart`。MCP 不可用时，运行项目既有编译/lint/typecheck，不调用历史 build/run/UI MCP 工具。
 
-## 参考来源
+## 失败排查闭环
 
-- 原始 Skill 文件：`<INTERNAL_SKILL>`
-- 前置铁律：`<INTERNAL_SKILL>`（第 10–140 行）
-- DevEco Toolbox GitHub: https://github.com/open-deveco/deveco-toolbox
-- DevEco MCP Releases: https://github.com/open-deveco/deveco-mcp/releases
-- 飞书指导文档: https://<INTERNAL_DOC>
+1. 先查 KB 中同错误关键词和对应 problem；
+2. 分类为依赖/编译/链接/打包/签名/安装/启动/运行时；
+3. 同一假设最多重试三次，每次保留命令、输入、输出和不同证据；
+4. 成功后沉淀最小根因与回归；仍失败则停止并提交错误上下文、已尝试方案和缺失权限/环境。
+
+| 环节 | 典型信号 | 优先检查 |
+|---|---|---|
+| CMake | package/target not found | Qt kit、toolchain、find root path |
+| 编译 | header/API error | Qt5/Qt6 与 OHOS 条件分支 |
+| 链接 | undefined symbol / missing library | target link、ABI、依赖闭包 |
+| 打包 | Hvigor/HAP/resource failure | build-profile、模板、资源路径 |
+| 安装/启动 | profile/bundle/ability error | 身份、签名、设备 API、Want |
+| 运行 | dlopen/QPA/QML/crash | 最终 HAP、hilog/faultlog、Qt adapter |
+
+## 验收清单
+
+- [ ] 未调用历史 MCP build/run/UI 工具
+- [ ] 正常路径优先 devecocli，底层调用有明确原因和退出条件
+- [ ] unsigned HAP、签名 HAP 和运行中应用三个阶段分开记录
+- [ ] Qt runtime/QPA/QML/三方依赖闭包经过静态预检
+- [ ] 真机日志、截图、Qt 控件交互和生命周期均完成验证
+- [ ] deveco-mcp 可用时完成 check；不可用时完成项目替代门禁
+
+## 参考
+
+- [[qt-harmonyos-build]] — Qt SDK 与构建环境
+- [[qt-ohos-run-test]] — Qt 真机 CLI 验收
+- [[ohos-common-kb/procedural/deveco-cli-usage-rules|common：DevEco CLI 使用规则]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/procedural/deveco-cli-usage-rules.md)）

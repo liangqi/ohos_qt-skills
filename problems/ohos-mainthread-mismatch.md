@@ -241,8 +241,8 @@ int main(int argc, char *argv[])
 
 ## 源码引用
 
-| 文件 | 行号 | 说明 |
-|------|------|------|
+| 文件:行号 | 说明 |
+|------|------|
 | `qtbase/src/corelib/kernel/qcoreapplication.cpp:534-539` | `theMainThread` 定义和 `mainThread()` |
 | `qtbase/src/corelib/kernel/qcoreapplication.cpp:1157-1177` | `sendThroughApplicationEventFilters()` 含 Q_ASSERT |
 | `qtbase/src/corelib/kernel/qcoreapplication.cpp:1202-1217` | `notify_helper()` 含 guard 检查 |

@@ -4,7 +4,7 @@ type: problem
 domain: runtime
 tags: [runtime, dlopen, sandbox, writable-path, el2, plugin-loading]
 created: 2026-06-03
-updated: 2026-06-03
+updated: 2026-08-14
 status: solved
 audience: public
 summary: "运行时 dlopen 加载 .so 失败返回 EINVAL（路径在 el2 沙箱可写区）"
@@ -26,6 +26,8 @@ related_problems: [problem-runtime-qpa-plugin-not-found]
 ---
 
 # dlopen 从可写路径加载 .so 被拒绝
+
+> 平台 loader 对普通可写代码路径的诊断以 common 的 [[ohos-common-kb/problems/dlopen-rejects-writable-path|动态库加载失败：代码位于普通可写路径]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/problems/dlopen-rejects-writable-path.md)）为准。本页保留 `QPluginLoader`/Qt plugin 的可搜索症状、部署位置与回归方法。
 
 ## 错误信息
 
@@ -49,59 +51,13 @@ QPluginLoader: Could not load plugin: dlopen failed
 - JIT 编译器（运行时生成代码写入文件后加载）
 - 热更新机制（替换 .so 后重新加载）
 
-## 原因
-
-鸿蒙沙箱安全策略：**`dlopen()` 拒绝从可写路径加载 .so**。只允许从应用 lib 目录（只读）加载。
-
-具体限制：
-- `/data/storage/el2/` 下所有路径（包括 `files/`、`cache/`、`preferences/`）→ **被拒绝**
-- `/data/storage/el1/` 下 → 运行时只读，**可能可以**
-- 应用 lib 目录（`entry/libs/arm64-v8a/`）→ **允许**
-
 ## 解决方案
 
-### 方案 A：将 .so 放在应用 lib 目录（推荐）
+此为鸿蒙平台限制 P3，根因与 Workaround（放入应用 lib 目录 / 静态链接 / Qt 插件机制）详见平台限制页：
 
-将所有需要动态加载的 .so 文件在打包时放入 `entry/libs/arm64-v8a/`：
+→ [[qt-harmonyos-platform-limits]] §dlopen() 拒绝可写路径
 
-```bash
-cp libMyPlugin.so entry/libs/arm64-v8a/
-```
-
-然后在代码中使用标准 dlopen（不带路径，让系统搜索 lib 目录）：
-
-```cpp
-// ✅ 不指定路径，系统自动搜索应用 lib 目录
-void *handle = dlopen("libMyPlugin.so", RTLD_NOW);
-```
-
-### 方案 B：静态链接替代动态加载
-
-如果插件集合是固定的，改为编译时静态链接：
-
-```cmake
-# 替代 dlopen，直接链接
-target_link_libraries(QtHarmonyApp PRIVATE
-    MyPlugin  # 静态库
-)
-```
-
-### 方案 C：使用 Qt 插件机制
-
-利用 Qt 自带的插件系统（`Q_PLUGIN_METADATA`），Qt 会在应用 lib 目录中搜索插件：
-
-```cpp
-// 插件放在 entry/libs/arm64-v8a/ 下
-QPluginLoader loader("libMyPlugin.so");
-QObject *plugin = loader.instance();
-```
-
-## 注意事项
-
-- 这是平台限制 P3（[[qt-harmonyos-platform-limits]] §dlopen），华为未确认是否会放开
-- `QStandardPaths::writableLocation()` 返回的路径**全部**在 el2 下，都不能用于 dlopen
-- 如果需要运行时下载代码执行，考虑使用 ArkTS/JS 脚本替代 .so 插件
-- 第三方库（如 Qt 自身的插件加载）也受此限制——确保所有 .so 都在打包时部署到 lib 目录
+> 如需运行时下载代码执行，可考虑 ArkTS/JS 脚本替代 .so 插件；第三方库（如 Qt 自身的插件加载）同样受此限制，确保所有 .so 在打包时部署到 lib 目录。
 
 ## 相关
 

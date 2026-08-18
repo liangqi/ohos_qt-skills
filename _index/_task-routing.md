@@ -4,7 +4,7 @@ type: meta
 domain: workflow
 tags: [agent, routing, task-types, workflow, decision-tree]
 created: 2026-06-27
-updated: 2026-08-01
+updated: 2026-08-18
 status: active
 refs: [semantic-qt-harmonyos-golden-rules, procedural-demo-generation]
 summary: >
@@ -150,8 +150,8 @@ summary: >
 
 | 项目 | 内容 |
 |------|------|
-| **必读页** | ① `deveco-mcp-toolchain.md` |
-| **按需加载** | `harmonyos-dev-fundamentals.md`、`build-run-workflow.md` |
+| **必读页** | ① [[ohos-common-kb/procedural/deveco-cli-usage-rules|common：DevEco CLI 使用规则]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/procedural/deveco-cli-usage-rules.md)） ② [[ohos-common-kb/semantic/deveco-mcp-capabilities|common：DevEco MCP 能力边界]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/deveco-mcp-capabilities.md)） |
+| **按需加载** | [[ohos-common-kb/semantic/harmonyos-development-fundamentals|common：HarmonyOS 开发基础]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-development-fundamentals.md)）、[[qt-harmonyos-build-run-workflow]] |
 | **预期输出** | 安装/配置步骤 |
 
 ### [Q] Demo 生成

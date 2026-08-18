@@ -1,21 +1,19 @@
 ---
 id: problem-ohos-qfiledialog-native-support
 type: problem
-domain: migration
+domain: caveat
 tags: [qfiledialog, file-dialog, save, load, download, qohosplatformplugin, native-support, qt515, frequest]
 created: 2026-07-29
-updated: 2026-08-01
+updated: 2026-08-03
 status: solved
 severity: low
 audience: public
 refs: [semantic-qt-harmonyos-api-mapping]
-summary: >
-  Qt for OHOS 的 QOhosPlatformIntegrationPlugin 已内置 QFileDialog 支持，
-  Save/Load/Download 功能无需 #ifdef Q_OS_OHOS 特殊处理，标准 QFileDialog API 可直接使用。
-  常见误区是误以为 OHOS 无文件对话框而添加不必要的替代方案。
+summary: "反模式：QFileDialog OHOS 原生可用，误加 #ifdef 是常见反模式"
 error_message: >
-  QFileDialog 在 OHOS 上无需 #ifdef 守卫；QOhosPlatformIntegrationPlugin 已内置原生支持，
-  直接使用 QFileDialog::getSaveFileName / getOpenFileName 即可。
+  开发者误以为 QFileDialog 在 OHOS 需 \#ifdef Q_OS_OHOS 替代方案（QInputDialog/硬编码路径），
+  添加不必要守卫代码导致维护负担与原生支持冲突；实际 QOhosPlatformIntegrationPlugin 已内置原生支持，
+  标准 QFileDialog API 可直接使用。
 ---
 
 # QFileDialog 在 OHOS 上原生可用

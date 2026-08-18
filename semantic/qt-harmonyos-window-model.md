@@ -2,29 +2,33 @@
 id: semantic-qt-harmonyos-window-model
 type: semantic
 domain: tech
-tags: [qt, harmonyos, window, mainwindow, subwindow, tagging, floating, embedded]
+tags: [qt, harmonyos, window, mainwindow, subwindow, tagging, floating, embedded, activateWindow, shiftAppWindowFocus, focus, highlight, transientParent]
 created: 2026-06-02
-updated: 2026-07-16
+updated: 2026-08-14
 status: active
 audience: public
-refs: [semantic-qt-harmonyos-api, semantic-qt-ohos-extras, semantic-qt-harmonyos-code-patterns]
+refs: [semantic-qt-harmonyos-api, semantic-qt-ohos-extras, semantic-qt-harmonyos-code-patterns, episodic-ohostemplate-blockedbymodal-patch, problem-runtime-blocked-by-modal-window-no-parent]
 summary: >
-  Qt鸿蒙窗口模型详解：MainWindow(有Dock/任务图标/独立生命周期) vs
+  ArkUI Window/XComponent 的 Qt QPA adapter：MainWindow(有Dock/任务图标/独立生命周期) vs
   Subwindow(无Dock/属于主窗口/随主窗口关闭最小化恢复)。核心规则：
   首个窗口自动绑定、后续窗口默认新主窗口、tagging必须在show/winId之前。
   QOhosFunctions API、6种代码模式、浮窗、全屏规则、嵌入式子窗口、跨进程嵌入。
   含【QPA层】visible的来源（QWindowPrivate::visible）、OHOS系统回调链
   （window.on('windowEvent')→WINDOW_SHOWN/HIDDEN/ACTIVE/INACTIVE）、
   所有修改visible的7个位置、QOhosFloatingWindow命名陷阱、浮窗hide销毁链(setOrResetWindowProxy→destroyWindow)。
+  含【激活语义】activateWindow()→@ohos.window.shiftAppWindowFocus(非 showWindow!)异步~94ms、
+  D1 no-op 缺口(无focus_window时静默无效)、焦点状态≠激活态(标题灰⇒未获焦⇒Tab不响应)。
+  详见 episodic/postmortems/ 下复盘(内部文档)。
 ---
 
-# Qt 鸿蒙窗口模型详解
+# ArkUI 窗口模型的 Qt QPA adapter
 
 > 另见 [[semantic-qt-harmonyos-api]] 中窗口相关 API 差异、[[semantic-qt-ohos-extras]] 中 QtOhosExtras 模块、[[semantic-qt-harmonyos-code-patterns]] 中完整代码模式。
+> WindowStage/main/subwindow、XComponent/native surface、焦点、可见与可绘制状态的平台边界，以 common 的 [[ohos-common-kb/semantic/arkui-window-xcomponent-model|ArkUI 窗口与 XComponent 承载模型]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/arkui-window-xcomponent-model.md)）为准。本页保留 QPA tagging、`QWindowPrivate::visible`、Qt exposure/activation、浮窗销毁链与 Qt API 模式。
 
-## 概念 (Concepts)
+## Qt QPA 映射概念 (Concepts)
 
-鸿蒙系统将顶层窗口严格区分为两类：**Main Window**（主窗口）和 **Subwindow**（子窗口）。理解这一划分是正确使用 Qt for HarmonyOS 窗口模型的前提。
+Qt QPA 将平台窗口关系映射为 **Main Window**（主窗口）和 **Subwindow**（子窗口），并在其上增加 tagging、transient parent 和 fallback 行为。平台概念本身以 common 为准；下文只描述 Qt 映射后的可观察行为。
 
 ### Main Window（主窗口）
 
@@ -137,6 +141,23 @@ dlg->exec(); // 无需任何 tagging
 3. 确保每个窗口都能找到归属，避免成为"孤儿"主窗口
 
 > **注意**：普通 `Qt::Window` 类型**不会**触发自动回退。如果 `mainWindow` 无效且窗口类型是 `Qt::Window`，该窗口将成为一个新的主窗口。
+
+### Known Gap: QPA syntheticParent 不反写 transientParent
+
+OHOS QPA 的 `determineViewTypeAndLogicalParent()` 对无 parent 的 Dialog/Tool/Popup/ToolTip 使用 syntheticParent fallback
+分类为 SubWindow，并通过 `createSubWindow()` 在 ArkUI 层建立归属。**但 OHOS QPA 从不调用 `QWindow::setTransientParent()` 将
+syntheticParent 反写回 Qt 层**（qohosview.cpp grep 确认零调用）。
+
+这导致：
+- Qt 层 `transientParent()` 仍为 null
+- `isWindowBlocked()` 的 `isAncestorOf(IncludeTransients)` 检查失败
+- `blockedByModalWindow = 1` -> 拦截 `close()` 和 `processWheelEvent()`
+
+**影响**：所有无 parent 的 `QDialog()` 在有模态兄弟窗口时会关不掉且不能滚动。
+**修复**：Qt 源码 patch 在 `showImmediate()` 中反写 transientParent，详见 [[episodic-ohostemplate-blockedbymodal-patch]]。
+
+> **Win32 对比**：Windows 的 `CreateWindowEx(parent=NULL)` 自动设 owner=GetActiveWindow()，在系统层面兜底。
+> OHOS 没有类似兜底，Qt 必须在 QPA 层自己维护这个关系。两边 blockedByModalWindow 逻辑链一致，差异仅在兜底层。
 
 ## API Reference
 
@@ -533,6 +554,87 @@ case WINDOW_SHOWN:
 | `visibility`（enum） | 派生自 `visible`+`windowState`：Hidden/Windowed/Minimized/FullScreen | 可能 → Minimized |
 | `isExposed()`（`m_exposed`） | 渲染表面是否可绘制 | → false |
 | `ApplicationState` | 应用整体前后台（Active/Inactive/Hidden） | 后台时 → Inactive/Hidden |
+
+---
+
+## 激活语义 (activateWindow → shiftAppWindowFocus,异步 + D1 no-op 缺口)
+
+> **适用场景**:调试"`activateWindow()` 后窗口标题仍灰 / Tab 不响应 / Qt isActiveWindow 与 OS 不一致"。源码基准:Qt 5.12.12 OHOS(commit `613336de`)。设备铁证 + 完整复盘见 episodic/postmortems/ 下复盘(内部文档)。
+>
+> **核心纠正**:`QWidget::activateWindow()` 在 OHOS 调的**不是 `showWindow()`**,而是 `@ohos.window.shiftAppWindowFocus(srcWindowId, targetWindowId)`。
+
+### 调用链(逐行核实)
+
+```
+QWidget::activateWindow()           qwidget.cpp:12908-12914   → wnd->requestActivate()
+QWindow::requestActivate()           qwindow.cpp:1124-1133     → platformWindow->requestActivateWindow()
+QOhosFloatingWindow::requestActivateWindow()   qohosfloatingwindow.cpp:258-266
+QOhosPlatformWindow::requestActivateWindow()   qohosplatformwindow.cpp:486-494  → view->requestActivate()
+QOhosView::requestActivate()        qohosview.cpp:1025-1044    ← ★ D1 no-op 缺口
+QOhosWindowProxy::shiftAppWindowFocus()   qohoswindowproxy.cpp:1835-1852
+  → JS eval "@ohos.window.shiftAppWindowFocus(srcWindowId, targetWindowId)"  (qohoswindowproxy.cpp:1846-1847)
+```
+
+`showWindow(*)`(qohoswindowproxy.cpp:656)是 `raise(MainWindow)`/`lower`/`show` 路径(qohosview.cpp:734 调),**与 activateWindow 无调用关系**。OHOS 把"激活"拆成"焦点 shift"(`shiftAppWindowFocus`)+"显示/置顶"(`showWindow`/`raiseToAppTop`)两个独立原语,无合二为一的 activeWindow 等价物——但 `shiftAppWindowFocus` 即"同应用窗口焦点转移"等价接口。
+
+### 关键特性 1:异步(~94ms,非同步)
+
+`shiftAppWindowFocus` 是 JS Promise。`activateWindow()` 同步返回后 `isActiveWindow()` **仍为 false**;~94ms 后 OHOS 回发 `WINDOW_ACTIVE` → `QOhosFloatingWindow::handleWindowEvent`(qohosfloatingwindow.cpp:277)→ `QWindowSystemInterface::handleWindowActivated`(qohosfloatingwindow.cpp:292)才置 Qt active。
+
+设备铁证(前台,点主窗置灰 dialog 后调 activateWindow):
+```
+before-activate:    dialog isActiveWindow=false  focusWindow="MainWindow"   ← 同步前
+after-activate(sync):  dialog isActiveWindow=false  focusWindow="MainWindow"   ← ★同步仍 false
+(+94ms) dialog(widget) eventFilter type=WindowActivate                    ← 异步 WINDOW_ACTIVE 回环
+after-activate(150ms): dialog isActiveWindow=true  focusWindow="Child Dialog"  ← ★150ms 后才 true
+```
+
+→ **不要在 `activateWindow()` 后同步检查 `isActiveWindow()`**;须等 `WindowActivate` 事件或延迟 ~150ms。
+
+### 关键特性 2:D1 no-op 缺口(无 focus_window 时静默无效)
+
+`QOhosView::requestActivate()`(qohosview.cpp:1025-1044)在 `m_ohosWindowProxy!=null` 且 `QGuiApplicationPrivate::focus_window==null` 时**什么都不做**(:1028 的 if 假,此分支无 else)→ `shiftAppWindowFocus` 不发(源窗须获焦,无源窗则不发)。
+
+→ **app 后台/失焦(focus_window=null)时 `activateWindow()` 静默 no-op**,dialog 永不 active,Tab 到不了。这是"Tab 不响应"的真实复现场景(见复盘场景2)。这是 OHOS QPA 真实缺陷。
+
+**2026-08-12 已修(方案 A hotfix)**:`requestActivate` 的 `focus_window==null` 分支加 else:尝试 `shiftAppWindowFocus` from logical parent(main 作 src,可能 onCatch 静默失败)+ `sendAsyncSyntheticWindowActiveEvent()` 合成事件 fallback 设 Qt 侧 focus_window=dialog。后台 D1 验证通过(isActiveWindow false→true,synthetic event 触发 WindowActivate)。补丁见 episodic/postmortems/ 下复盘(内部)。备选方案 D(合成事件 + 延迟 shiftAppWindowFocus 等主窗 WINDOW_ACTIVE 到达,根治 WMS 级焦点转移)。
+
+### 关键特性 3:焦点状态 ≠ 激活态(官方 window-focus-guide)
+
+| 概念 | 含义 | 现象 |
+|------|------|------|
+| 焦点状态(Focus State) | WINDOW_ACTIVE/INACTIVE,能否接收键盘事件 | Tab 不响应=未获焦 |
+| 激活态(Highlight State) | 视觉高亮(标题栏颜色) | **标题灰=激活态 false** |
+
+**铁律**:「窗口处于激活态不等于窗口获焦;但获焦窗口一定处于激活态。」逆否:**标题灰(未激活态)⇒ 一定未获焦 ⇒ Tab 不响应**(三现象同源)。要让标题亮须让窗口**获焦**(`shiftAppWindowFocus`),非 `setExclusivelyHighlighted`(只改外观)。
+
+### 关键特性 4:触摸 vs 鼠标(NODE_FOCUS_ON_TOUCH,结构性差异)
+
+> 设备实测:触摸按钮调 `activateWindow()` **首次即激活** dialog;鼠标点按钮**首次失败、二次成功**。结构性根因(非时序偶发)。
+
+- XComponent 3 个独立回调:Touch(`DispatchTouchEvent`,qqtembeddedwindownode.cpp:66-71)/Mouse(`DispatchMouseEvent`,:73-76)/Focus-Blur(`handleOnFocusEvent`,:86-87)。
+- **`NODE_FOCUS_ON_TOUCH`**(qnativenode.cpp:169 `focusOnTouch=true`,setAttributeOrFail :271):**手指触摸**时 ArkUI 让节点请求焦点 → `handleOnFocusEvent`(qqtembeddedwindownode.cpp:181)→ `qohosinputmethodeventhandler.cpp:333 handleWindowActivated(main)` → **focus_window=main 在 touch→clicked() 之前设好** → activateWindow() 见 focus_window=main → shiftAppWindowFocus 成功。
+- **鼠标不触发 NODE_FOCUS_ON_TOUCH**(ArkUI "touch"=手指专指)→ 无焦点回调 → focus_window 保持 null → **命中特性 2 的 D1 no-op** → 首鼠失败;二鼠时 WMS WINDOW_ACTIVE(异步,文档:"处理点击事件后的状态")已到达 → focus_window=main → 成功。
+
+→ **触摸天然避开 D1(经 NODE_FOCUS_ON_TOUCH 预设 focus_window),鼠标踩中(无此旁路)**。这是 OHOS QPA 触摸/鼠标激活不对称的结构性根因。方案 A 修复后,鼠标首鼠经 synthetic event 兜底(等价触摸路径)。
+
+### `shiftAppWindowFocus` 约束(官方 arkts-apis-window-f)
+
+1. 仅同应用内主窗/子窗(不能跨应用/跨进程主动激活)
+2. **源窗 srcWindowId 必须是获焦状态**(→ D1 no-op 的文档根因)
+3. 目标须 `setWindowFocusable(true)` + `showWindow()` 成功且执行完毕
+4. `ShowWindowOptions.focusOnShow` **对主窗/模态窗/dialog 窗口不生效**(仅子窗/系统窗/悬浮窗默认获焦)
+
+### 非模态 child dialog 不命中 isWindowBlocked 重定向
+
+`qohosfloatingwindow.cpp:280-284` 守卫(`WINDOW_ACTIVE` 分支内)仅在 qWindow 被某**模态**窗口阻挡时把激活重定向回模态。非模态 child dialog 无模态阻挡 → `isWindowBlocked=false` → 守卫不触发 → 正常激活流程。(模态场景才命中,见 modalraise 复盘(内部)。)
+
+### workaround
+
+- 调 `activateWindow()` 前**确保 app 前台**(focus_window 非空);后台时 no-op,改用 `startAbility` 拉前台再 activate。
+- `activateWindow()` 是异步,同步 `isActiveWindow()` 必 false;等 `WindowActivate` 或延迟 ~150ms。
+- 标题灰⇒未获焦;要让标题亮须获焦(`shiftAppWindowFocus`),非 `setExclusivelyHighlighted`。
+- 跨应用激活无应用侧 API,只能 `startAbility` 或依赖用户点击。
 
 ---
 

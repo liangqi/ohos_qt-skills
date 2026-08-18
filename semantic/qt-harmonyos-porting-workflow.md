@@ -4,40 +4,48 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, porting, workflow, decision-tree]
 created: 2026-06-02
-updated: 2026-07-21
+updated: 2026-08-14
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-api, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-modules, semantic-qt-ohos-extras]
 summary: >
-  Qt鸿蒙移植8步决策树工作流：扫描平台代码→API映射→窗口适配→生命周期适配→
-  检查平台限制→构建系统适配→添加鸿蒙特性→验证模块支持。含5条核心原则。
+  面向 Qt 应用的 HarmonyOS 移植编排：将公共库中的生命周期、窗口模型与平台限制
+  落到 Qt/QPA、QtOhosExtras、构建系统和模块验收的 8 步适配流程。
 ---
 
 # Qt 鸿蒙移植 8 步决策树工作流
+
+本文是 **Qt 适配层的流程枢纽**，不重复维护 HarmonyOS 平台规范。开始移植前，先以公共知识库中的以下页面作为规范事实来源：
+
+- Stage/UIAbility 生命周期：[[ohos-common-kb/semantic/stage-uiability-lifecycle|公共库：Stage/UIAbility 生命周期]]（[稳定链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)）
+- ArkUI 窗口与 XComponent 模型：[[ohos-common-kb/semantic/arkui-window-xcomponent-model|公共库：ArkUI 窗口与 XComponent 模型]]（[稳定链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/arkui-window-xcomponent-model.md)）
+- HarmonyOS 平台限制：[[ohos-common-kb/semantic/harmonyos-platform-limits|公共库：HarmonyOS 平台限制]]（[稳定链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)）
+
+下文只回答这些公共约束如何映射到 Qt 应用、QPA 插件和 QtOhosExtras。
 
 ## 五条核心原则
 
 在动手移植之前，必须建立以下五个关键认知，它们贯穿整个移植流程：
 
-### 原则 1：HarmonyOS ≠ Linux
+### 原则 1：显式审查 Qt 的 Linux 兼容分支
 
-虽然 `Q_OS_OHOS` 隐含 `Q_OS_LINUX`（即 `#ifdef Q_OS_LINUX` 在鸿蒙上也会命中），但大量 POSIX/Linux 行为在鸿蒙上存在差异甚至完全不可用。**绝不能假设 Linux 代码可以直接运行**。
+`Q_OS_OHOS` 会与部分 Linux 条件重叠，因此 `#ifdef Q_OS_LINUX` 可能在 HarmonyOS 构建中命中。逐项审查这些分支，把平台能力结论交给公共平台限制页维护，在 Qt 侧只记录需要替换的类、调用点与构建条件。
 
-### 原则 2：双线程模型
+### 原则 2：区分 Qt 事件循环与 ArkUI 运行时
 
-Qt 运行在独立线程上，与 OHOS 的 JS/ArkUI 运行时分离。所有跨线程调用必须通过 N-API 桥接完成，直接调用会导致线程安全问题。
+Qt 事件循环、QPA 平台插件与 ArkUI/Ability 运行时各有线程和回调约束。不要把所有跨边界调用笼统等同于 N-API；应优先使用 QtOhosExtras 或 QPA 已封装的接口，并在自定义桥接处明确线程归属和投递方式。
 
-### 原则 3：Ability 生命周期模型
+### 原则 3：把 Stage/UIAbility 事件映射到 Qt 生命周期
 
-鸿蒙没有传统的进程启动概念。应用由 Ability 承载，通过 Want 进行通信和启动。必须使用 Ability/Want 模型替代传统的进程管理方式。
+Qt 应用仍从 `main()` 进入，但其创建、前后台切换、Want 投递与销毁由 Stage/UIAbility 承载。先理解公共生命周期，再决定 Qt 信号、`closeEvent()` 和 QtOhosExtras 回调如何响应；不要用单一“进程启动”模型解释所有场景。
 
-### 原则 4：主窗口 vs 子窗口
+### 原则 4：显式维护 QWindow 到系统窗口的映射
 
-鸿蒙有严格的窗口层级规则，完全不同于桌面平台。窗口的创建顺序、标记方式和显示时机都有严格要求。
+公共窗口模型定义系统侧约束；Qt 适配关注首个 `QWindow`、后续顶层窗口、`transientParent` 和子窗口标记如何经 QPA 落到该模型，以及 `show()` / `winId()` 前后的时序。
 
-### 原则 5：沙箱约束
+### 原则 5：让 Qt 文件与插件路径服从沙箱
 
-文件系统访问、权限管理、动态库加载等均受沙箱限制。桌面端习以为常的操作（如 `chmod`、`symlink`、从任意路径 `dlopen`）在鸿蒙上均不可用。
+以公共平台限制页为准审查 `QFile`、`QStandardPaths`、`QPluginLoader` 和第三方库加载路径。Qt 页只维护这些限制对 Qt API 的表现、替代接口和验收方法。
 
 ---
 
@@ -104,15 +112,7 @@ if(ANDROID) ...
 
 ### 进程管理
 
-| 源模式 | 鸿蒙替代方案 |
-|--------|-------------|
-| `QProcess`（无界面） | `QProcess` 原样可用（保持不改） | ★ 无界面子进程在鸿蒙沙箱内可 fork/exec |
-| `QProcess`（有界面+Qt） | `QtOhosExtras::startAppProcess()` / `startNewAbilityInstance()` | Qt extra 接口启动带 UI 的 Qt 子进程 |
-| `QProcess`（有界面+非Qt） | `QtOhosExtras::startAbility(want)` | Want 模型启动任意 Ability |
-| `QProcess`（无界面需托管） | `QtOhosExtras::QOhosAppContext::startNoUiChildProcess()` | 鸿蒙原生 .so 子进程（Child Process Manager） |
-| `QProcess::startDetached()` | `QtOhosExtras::startAppProcess()` |
-
-> ⚠️ **按场景选，不一刀切**（2026-07-21 修正，旧版"QProcess 不可用"不准确）：无界面子进程 `QProcess` 可用；有界面子进程须经 Ability 框架（Qt 用 `startAppProcess`，非 Qt 用 `startAbility`）。详见 [[qt-harmonyos-api-mapping]] §1 决策树。
+> 四场景决策树（无界面保留 QProcess / 有界面 Qt 用 startAppProcess / 有界面非 Qt 用 startAbility / 无界面需托管用 startNoUiChildProcess）详见 [[qt-harmonyos-api-mapping]] §1 进程管理。
 
 ### 服务与交互
 
@@ -143,7 +143,7 @@ if(ANDROID) ...
 
 ## Step 3：适配窗口管理
 
-鸿蒙的窗口模型与桌面平台差异显著，需逐窗口审查并适配。
+以公共 ArkUI 窗口模型为基线，逐个确认 QPA 如何把 `QWindow` / `QWidget` 映射为系统主窗口或子窗口；本步骤只记录 Qt 侧绑定与调用时序。
 
 ### 窗口绑定规则
 
@@ -178,6 +178,8 @@ QOhosFunctions::tagWindowOrWidgetAsSubWindowOf(
 
 ## Step 4：适配应用生命周期
 
+先按公共 Stage/UIAbility 生命周期确认系统事件，再把事件映射到 Qt 入口、信号和关闭处理。以下内容是 Qt 适配，不是生命周期规范的副本。
+
 ### 入口与启动
 
 - `main()` 仍然是应用入口点，但语义不同——应用启动由系统 Ability 框架管理
@@ -190,23 +192,7 @@ QOhosFunctions::tagWindowOrWidgetAsSubWindowOf(
 
 ### 关闭事件处理
 
-`closeEvent()` 可能来自多种来源（用户点击、Ability 生命周期终止、WindowStage 关闭），必须检查根因：
-
-```cpp
-void MyWidget::closeEvent(QCloseEvent *event)
-{
-    auto cause = QtOhosExtras::getCloseEventRootCause(event);
-    // 可能的值：InternalClose | AbilityClose | WindowStageClose
-
-    if (cause == QtOhosExtras::AbilityClose) {
-        // Ability 级别关闭，可能是系统回收或用户从任务管理器关闭
-    } else if (cause == QtOhosExtras::WindowStageClose) {
-        // WindowStage 关闭
-    } else {
-        // 用户主动关闭窗口
-    }
-}
-```
+`closeEvent()` 可能来自多种来源（用户点击、Ability 生命周期终止、WindowStage 关闭），必须检查根因。详见 [[qt-harmonyos-lifecycle]] §3 级关闭拦截（WindowStageClose / AbilityClose / InternalClose 三级区分）。
 
 ### 可选：跨设备接续
 
@@ -221,21 +207,19 @@ connect(abilityContext, &QOhosAbilityContext::continueRequestReceived,
 
 ---
 
-## Step 5：检查平台硬限制
+## Step 5：检查平台限制对 Qt 的影响
 
-以下限制可能导致功能**完全无法移植**，需逐一排查是否影响应用核心功能：
+公共平台限制页维护限制本身及其依据；这里仅保留 Qt API 的影响检查，判断是否需要包装、替代或裁剪功能：
 
-| 限制 | 影响 | 严重程度 |
-|------|------|---------|
-| `chmod()` / `fchmod()` 不支持 | 已有文件的权限修改调用静默失败 | 🔴 高 |
-| `symlink()` 第三方应用禁用 | `QFile::link()` 不可用 | 🔴 高 |
-| `dlopen()` 拒绝可写路径 | 无法从 `el2/` 等可写路径动态加载 .so | 🔴 高 |
-| `stat()` 系统路径返回 EACCES | `QFileInfo::isFile()` 对系统路径返回 false | 🟡 中 |
-| 无 tzdata | 时区处理需要使用 ICU 后端 | 🟡 中 |
-| 无等宽字体（monospaced font） | 需通过 `QFontDatabase::addApplicationFont()` 自带字体文件 | 🟡 中 |
-| MUSL 不能加载 stripped ELF | .so 文件不能去掉 section header，否则加载失败 | 🔴 高 |
+| Qt 检查面 | 本阶段动作 | 通过条件 |
+|-----------|-----------|----------|
+| `QFile` / `QFileInfo` | 列出权限变更、链接创建和系统路径探测调用，逐项对照 common 平台限制 | 不依赖未经验证的 POSIX 文件语义 |
+| `QLibrary` / `QPluginLoader` | 记录每个 native artifact 的打包位置和加载入口，对照 common loader/沙箱契约 | 插件只从已验收的交付位置加载 |
+| `QTimeZone` | 在目标设备执行时区枚举与转换回归，后端选择由 common 能力结论驱动 | 所需时区用例在目标设备通过 |
+| `QFontDatabase` | 枚举应用实际需要的字体族；缺失时由 Qt 资源携带应用自有字体 | UI 不依赖未声明的平台字体目录 |
+| native 依赖闭包 | 对最终 HAP 中的 ELF 运行 common artifact 检查，再验证 Qt target 的 `DT_NEEDED` | ABI、依赖和加载验证全部通过 |
 
-> 完整限制清单（含 QTBUG 编号和华为确认状态）见 [[qt-harmonyos-platform-limits]]。
+> Qt 侧兼容表现与 QTBUG 追踪见 [[qt-harmonyos-platform-limits]]；平台限制的规范事实以本文开头链接的公共页面为准。
 
 ---
 
@@ -369,6 +353,9 @@ QtNetwork, QtSQL, QtMultimedia
 
 ## 相关
 
+- [[ohos-common-kb/semantic/stage-uiability-lifecycle|公共库：Stage/UIAbility 生命周期]]（[稳定链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)）
+- [[ohos-common-kb/semantic/arkui-window-xcomponent-model|公共库：ArkUI 窗口与 XComponent 模型]]（[稳定链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/arkui-window-xcomponent-model.md)）
+- [[ohos-common-kb/semantic/harmonyos-platform-limits|公共库：HarmonyOS 平台限制]]（[稳定链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)）
 - [[qt-harmonyos-api]] — API 兼容性详情
 - [[qt-harmonyos-platform-limits]] — 平台限制与 QTBUG 编号
 - [[qt-harmonyos-modules]] — 模块适配状态表

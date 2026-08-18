@@ -37,6 +37,7 @@ symptoms: >
 environment: >
   Qt5.15.16 OHOS SDK 两套(默认 ${QT5_15_OHOS_SDK} + 全量 ${QT5_15_OHOS_SDK_FULL}), 各自内部 libqohos/libQt5Core 构建版本不一致。
   OHOS 真机(HUAWEI MateBook Fold, UDID 9BFAF107...)。
+---
 
 ## 根因(两层)
 

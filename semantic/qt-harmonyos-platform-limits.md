@@ -4,85 +4,37 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, platform-limits, chmod, symlink, dlopen, timezone, font, xcomponent, zink, rgba8, mipmap]
 created: 2026-06-02
-updated: 2026-07-14
+updated: 2026-08-15
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-api]
 summary: >
-  鸿蒙平台限制汇总：chmod/setPermissions 不可用、symlink 禁止第三方使用、
-  stat() 系统路径 EACCES、dlopen() 拒绝可写路径、无 tzdata（时区用 ICU）、
-  无等宽字体（需自带）、XComponent（SURFACE 类型）在 API 20 弃用、
-  MUSL 不能加载 stripped ELF。OpenGL/ZINK 渲染：glGenerateMipmap 对 RGBA8 alpha
-  纹理失败→mipmap 不完整→采样黑（alpha-PNG 实体关 mipmap）；Qt.platform.os 返回
-  "linux" 非 "ohos"（QML 守卫用 Qt.platform.pluginName）。每条含华为确认状态和 QTBUG 编号。
+  HarmonyOS 平台限制的 Qt/QPA/QML adapter：记录 QFile/QStandardPaths/QPluginLoader/QTimeZone、
+  字体、XComponent、ZINK 与 Qt.platform 的可观察症状、Qt workaround 和 QTBUG；平台状态与原因由 common 维护。
 ---
 
-# 鸿蒙平台限制
+# HarmonyOS 平台限制的 Qt adapter
 
 > 来源：[HarmonyOS Platform Limitations](https://wiki.qt.io/Qt_for_HarmonyOS/platform_limitations)
 > 父 issue：[QTBUG-146618](https://bugreports.qt.io/issues/?jql=project%20%3D%20QTBUG%20AND%20parent%20%3D%20QTBUG-146618)
+>
+> 跨框架成立的平台限制、证据边界与使用方法，以 common 的 [[ohos-common-kb/semantic/harmonyos-platform-limits|HarmonyOS 平台限制]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)）为准。本页保留 `QFile`、`QStandardPaths`、`QPluginLoader`、QML、Qt rendering 与 QTBUG 层面的症状和修复。
 
-## 文件系统与权限
+## 平台限制到 Qt API 的映射
 
-### chmod() / QFile::setPermissions() 不可用
-- **状态**：华为已确认
-- **原因**：安全审查取消此接口，无替代
-- **影响**：`QFile::setPermissions()` 对已有文件始终返回 false
-- **注意**：对新创建的文件描述符（如 `QFile::copy()` 内部用 `fchmod()`）不受影响
-- **QTBUG**：[QTBUG-146619](https://bugreports.qt.io/browse/QTBUG-146619)
+下表只记录 Qt 层可观察结果和 adapter；限制是否成立、平台原因、错误码和确认状态以 common 为准。
 
-### symlink() 不可用于第三方应用
-- **状态**：华为已确认
-- **错误码**：EACCES (13900012)
-- **影响**：`QFile::link()` 和依赖符号链接的功能均失败
-- **Workaround**：暂无
-- **QTBUG**：[QTBUG-146621](https://bugreports.qt.io/browse/QTBUG-146621)
-
-### stat() 系统路径返回 EACCES
-- **状态**：华为未确认
-- **表现**：`stat("/bin/sh")` 返回 errno=13
-- **影响**：`QFileInfo::isFile()` 对系统可执行文件返回 false（但 `exists()` 和 `isExecutable()` 返回 true）
-- **连锁影响**：`QStandardPaths::findExecutable()` 无法定位系统可执行文件
-- **QTBUG**：[QTBUG-146625](https://bugreports.qt.io/browse/QTBUG-146625)
-
-### open() 尾随斜杠不报错
-- **状态**：华为未确认
-- **表现**：`open("qwe//", O_RDWR|O_CREAT|O_CLOEXEC, 0666)` 在 Linux 报 EISDIR，鸿蒙上静默创建文件 `qwe`
-- **QTBUG**：[QTBUG-146578](https://bugreports.qt.io/browse/QTBUG-146578)
-
-### fread() 非阻塞管道错误设置 EOF
-- **状态**：华为未确认
-- **表现**：无数据时 `fread()` 非阻塞管道会错误设置 FILE* 的 EOF 标志
-- **QTBUG**：[QTBUG-146579](https://bugreports.qt.io/browse/QTBUG-146579)
-
-## 时区
-
-### 无 tzdata
-- **状态**：华为已确认，修复时间未知
-- **原因**：系统 musl libc 有 tzdata，但不允许第三方读取
-- **Workaround**：使用 **ICU 后端**处理时区
-- **QTBUG**：[QTBUG-146717](https://bugreports.qt.io/browse/QTBUG-146717), [QTBUG-146559](https://bugreports.qt.io/browse/QTBUG-146559)
-
-## 线程
-
-### PTHREAD_CANCEL_DISABLE 定义但无实现
-- **状态**：华为已确认，修复时间未知
-- **Workaround**：`#undef PTHREAD_CANCEL_DISABLE`
-- **QTBUG**：[QTBUG-146708](https://bugreports.qt.io/browse/QTBUG-146708)
-
-## 动态链接
-
-### MUSL-LDSO 无法加载 stripped ELF
-- **状态**：华为已确认，修复时间未知
-- **原因**：链接器内部依赖 `e_shnum` 和 `e_shoff` 字段
-- **影响**：去掉 section header 的 .so 无法加载
-- **QTBUG**：[QTBUG-146620](https://bugreports.qt.io/browse/QTBUG-146620)
-
-### dlopen() 拒绝可写路径
-- **状态**：华为未确认
-- **表现**：`/data/storage/el2/` 下所有路径（包括 `QStandardPaths::writableLocation()` 返回的路径）的 `dlopen()` 被拒绝，errno=22 (EINVAL)
-- **仅可访问**：`/data/storage/el1/`（运行时只读）
-- **QTBUG**：[QTBUG-146624](https://bugreports.qt.io/browse/QTBUG-146624)
+| Qt 消费点 | Qt 层症状 | Qt adapter / 路由 | Qt 追踪 |
+|---|---|---|---|
+| `QFile::setPermissions()` | 对已有文件返回失败 | 不用它作为业务成功条件；权限需求交给平台打包契约 | [QTBUG-146619](https://bugreports.qt.io/browse/QTBUG-146619) |
+| `QFile::link()` | 无法创建应用所需链接 | 构建/打包阶段展开为真实文件，避免运行时建链接 | [QTBUG-146621](https://bugreports.qt.io/browse/QTBUG-146621) |
+| `QFileInfo` / `QStandardPaths::findExecutable()` | 系统可执行探测结果不可靠 | 不用桌面式 PATH 扫描选择程序；使用平台声明的入口 | [QTBUG-146625](https://bugreports.qt.io/browse/QTBUG-146625) |
+| Qt 文件 IO 尾随斜杠 | 与桌面错误分支不同 | Qt 业务层先规范化并验证目标路径 | [QTBUG-146578](https://bugreports.qt.io/browse/QTBUG-146578) |
+| `QFile` 包装的非阻塞流 | EOF 状态可能提前出现 | 同时检查 Qt IO 状态与底层错误，补回归测试 | [QTBUG-146579](https://bugreports.qt.io/browse/QTBUG-146579) |
+| `QTimeZone` | libc 后端无法提供完整数据 | 构建 Qt 时选用 ICU 后端并验证目标时区 | [QTBUG-146717](https://bugreports.qt.io/browse/QTBUG-146717) / [QTBUG-146559](https://bugreports.qt.io/browse/QTBUG-146559) |
+| Qt/三方 worker | 依赖线程取消的代码不可移植 | 使用 Qt interruption/cooperative cancellation | [QTBUG-146708](https://bugreports.qt.io/browse/QTBUG-146708) |
+| `QPluginLoader` / runtime `.so` | 动态插件加载失败 | 让插件随最终 HAP 的 native library 闭包交付，或固定集合时静态链接；见 [runtime-fail-dlopen-writable-path](../problems/runtime-fail-dlopen-writable-path.md) | [QTBUG-146624](https://bugreports.qt.io/browse/QTBUG-146624) |
+| Qt/三方共享库部署 | 处理后的 ELF 无法加载 | Qt 打包预检保留 loader 所需信息并验证 fresh HAP | [QTBUG-146620](https://bugreports.qt.io/browse/QTBUG-146620) |
 
 ## 标准路径
 
@@ -101,7 +53,6 @@ summary: >
 ## 字体系统
 
 ### 无等宽字体
-- **状态**：华为已确认
 - **影响**：`QFontDatabase::systemFont(FixedFont)` 返回非等宽字体
 - **Workaround**：应用需自带等宽字体，用 `QFontDatabase::addApplicationFont()` 注册
 - **QTBUG**：[QTBUG-146623](https://bugreports.qt.io/browse/QTBUG-146623)

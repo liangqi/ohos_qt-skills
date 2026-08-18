@@ -9,15 +9,15 @@ status: active
 audience: public
 refs: [semantic-qt-harmonyos-api,semantic-qt-harmonyos-build,semantic-qt-harmonyos-modules,semantic-qt-harmonyos-overview,semantic-qt-harmonyos-qt6-status]
 summary: >
-  QtWidgets 模块 Qt 5.15.17 vs 5.12.12 (OHOS SDK) 公共 API 完整差异报告：
+  QtWidgets 模块 Qt 5.15.16 vs 5.12.12 (OHOS SDK) 公共 API 完整差异报告：
   1 个新头文件、67 个头文件有差异、~50 个新 API（QStyleOptionTabV4/QCalendar/Markdown/ExclusionPolicy/
   OHOS 专有 QSystemTrayIcon/QFileDialog）、50+ 个废弃 API、Qt6 预备双重签名、迁移风险评估。
 ---
 
-# QtWidgets: Qt 5.15.17 vs 5.12.12 OHOS SDK 公共 API 差异
+# QtWidgets: Qt 5.15.16 vs 5.12.12 OHOS SDK 公共 API 差异
 
 > **用途**：在两个 OHOS Qt SDK 版本之间迁移时，快速查找哪些 API 新增/废弃/变更。
-> **校验基准**：Qt 5.15.17 (commit 962aa625, 2026-04-14) vs Qt 5.12.12 (commit 613336de, 2026-05-25)
+> **校验基准**：Qt 5.15.16 (commit 962aa625, 2026-04-19) vs Qt 5.12.12 (commit 613336de, 2026-05-25)
 
 ## 总览
 
@@ -38,7 +38,7 @@ summary: >
 | 头文件 | 说明 | 降级风险 |
 |--------|------|:--------:|
 | `QStyleOptionTabV4` | 转发头文件 → `#include "qstyleoption.h"`。类在 `qstyleoption.h` 中定义 | 低 |
-| `5.15.17` | 版本标记文件（非 API） | — |
+| `5.15.16` | 版本标记文件（非 API） | — |
 
 **结论**：无真实 API 头文件被移除。
 
@@ -408,13 +408,13 @@ void setIcon(const QIcon &icon, IconTheme theme = Light);
 |------|------|
 | 🛠️ SDK 头文件比对 | `<LOCAL_PATH>` vs `<LOCAL_PATH>` |
 | 🛠️ diff 分析 | 67 个差异头文件逐一 diff，提取 `class`/`Q_PROPERTY`/`Q_ENUM`/`Q_SIGNALS`/`QT_DEPRECATED_SINCE` 等模式 |
-| 🛠️ 校验基准 | Qt 5.15.17 tqtc/harmonyos-5.15.16 (962aa625) vs Qt 5.12.12 tqtc/harmonyos-5.12.12 (613336de) |
+| 🛠️ 校验基准 | Qt 5.15.16 tqtc/harmonyos-5.15.16 (962aa625) vs Qt 5.12.12 tqtc/harmonyos-5.12.12 (613336de) |
 
 ## Qt 框架版本（校验基准）
 
 | 版本 | 分支 | Commit | 日期 |
 |------|------|--------|------|
-| Qt 5.15.17 | tqtc/harmonyos-5.15.16 | 962aa625 | 2026-04-14 |
+| Qt 5.15.16 | tqtc/harmonyos-5.15.16 | 962aa625 | 2026-04-19 |
 | Qt 5.12.12 | tqtc/harmonyos-5.12.12 | 613336de | 2026-05-25 |
 
 ---

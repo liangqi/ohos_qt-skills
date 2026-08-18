@@ -7,6 +7,20 @@
 
 ---
 
+## 首次使用（Agent 必读）
+
+如果用户是第一次使用本知识库，或 `ENV.local.md` 不存在，**必须**先执行 `skills/kb-init/SKILL.md` 完成初始化。
+
+初始化 skill 会引导用户完成：
+- 检测当前环境（DevEco Studio、HarmonyOS SDK、Qt 源码等）
+- 引导安装缺失依赖
+- 生成 `ENV.local.md`（本地路径配置）
+- 验证环境可用
+
+**触发关键词**：用户说"初始化"、"配置环境"、"第一次使用"、"ENV.local.md 不存在"时，自动执行初始化 skill。
+
+---
+
 ## 知识库结构
 
 ```
@@ -15,6 +29,8 @@ semantic/    → 语义知识：技术概念、API 参考、平台限制、模�
 procedural/  → 程序知识：工作流（应用迁移、问题分析、修复验证、Demo 生成）
 episodic/    → 情景知识：实际移植项目复盘
 problems/    → 错误知识库：实际编译/部署/运行时报错与解决方案
+ohos-common-kb-public/ → 内嵌的 HarmonyOS 平台通用知识（ArkTS、ArkUI、NAPI、Stage 模型等）
+skills/      → Agent skills（自动化脚本和工具）
 ```
 
 ## 快速开始（Agent 必读）
@@ -22,20 +38,22 @@ problems/    → 错误知识库：实际编译/部署/运行时报错与解决�
 **接到任务后，按此顺序加载**：
 
 ```
-① _index/_task-routing.md    → 匹配任务类型，确定工作流和必读页
-② semantic/qt-harmonyos-golden-rules.md  → 扫描 33 条铁律（避免已知陷阱）
-③ _index/_map.md             → 知识地图，按 summary 判断相关性
-④ 只读相关的知识页           → 不要全量加载
-⑤ 沿 refs 字段追踪交叉引用    → 获取深度上下文
+① 检查 ENV.local.md 是否存在 → 不存在则执行 skills/kb-init/SKILL.md
+② _index/_task-routing.md    → 匹配任务类型，确定工作流和必读页
+③ semantic/qt-harmonyos-golden-rules.md  → 扫描 35 条铁律（避免已知陷阱）
+④ _index/_map.md             → 知识地图，按 summary 判断相关性
+⑤ 只读相关的知识页           → 不要全量加载
+⑥ 沿 refs 字段追踪交叉引用    → 获取深度上下文
 ```
 
-**四个核心页面**：
+**五个核心页面**：
 
 | 页面 | 作用 |
 |------|------|
+| `skills/kb-init/SKILL.md` | 初始化 skill：环境检测、依赖安装、ENV.local.md 生成 |
 | `_index/_dashboard.md` | 仪表盘：计数、分域统计、使用建议入口 |
 | `_index/_task-routing.md` | 任务路由：用户请求 → 任务类型 → 必读页 |
-| `semantic/qt-harmonyos-golden-rules.md` | 33 条铁律速查（构建/窗口/API/限制/生命周期/跨平台） |
+| `semantic/qt-harmonyos-golden-rules.md` | 35 条铁律速查（构建/窗口/API/限制/生命周期/跨平台） |
 | `_index/_map.md` | 知识地图：每页一句话摘要 |
 
 ## 按场景入口
@@ -65,7 +83,21 @@ problems/    → 错误知识库：实际编译/部署/运行时报错与解决�
 
 ## 路径变量
 
-知识页以变量名（如 `QT5_15_SRC`、`OHOS_SDK_NATIVE`）引用本地路径，不硬编码。实际路径值见 `ENV.md`（开发者版为占位模板，需替换为你本机路径）。
+知识页以变量名（如 `QT5_15_SRC`、`OHOS_SDK_NATIVE`）引用本地路径，不硬编码。实际路径值见 `ENV.local.md`（由 `skills/kb-init/` 生成，或手动创建）。
+
+## 内嵌的 HarmonyOS 平台通用知识
+
+本知识库内嵌了 `ohos-common-kb-public/` 目录，包含 HarmonyOS 平台通用知识（ArkTS、ArkUI、NAPI、Stage 模型、DevEco 工具链等）。当任务涉及平台机制而非 Qt 特定问题时，优先查阅该目录。
+
+## Skills（Agent 自动化脚本）
+
+本知识库提供以下 Agent skills，位于 `skills/` 目录：
+
+| Skill | 用途 | 触发方式 |
+|-------|------|----------|
+| `kb-init` | 初始化知识库环境（检测依赖、安装缺失组件、生成 ENV.local.md、验证环境） | 用户说"初始化"、"配置环境"、"第一次使用"、"ENV.local.md 不存在"时自动触发 |
+
+**首次使用**：如果用户是第一次使用本知识库，或 `ENV.local.md` 不存在，**必须**先执行 `skills/kb-init/SKILL.md` 完成初始化。
 
 ## 待办与进度同步
 

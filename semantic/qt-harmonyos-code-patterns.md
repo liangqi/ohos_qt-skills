@@ -4,20 +4,23 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, code-patterns, porting, before-after, examples]
 created: 2026-06-02
-updated: 2026-07-21
+updated: 2026-08-14
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-api-mapping, semantic-qt-harmonyos-porting-workflow, semantic-qt-ohos-extras]
 summary: >
-  Qt鸿蒙移植14组Before/After代码模式速查：子进程→NoUi、启动外部应用→StartAbility、
+  HarmonyOS 平台能力的 Qt adapter 代码速查：14 组 Before/After，覆盖子进程、Want、
   独立对话框→tagged子窗口、关闭事件处理、文件权限守卫、参数解析、
-  平台构建配置、深色模式、拖放、等宽字体、浮窗、分享数据、Qt6→Qt5 shim移植(不改原src)。
+  平台构建配置、深色模式、拖放、等宽字体、浮窗、分享数据、Qt6→Qt5 shim移植(不改原src)、
+  数据库文件路径。
 ---
 
-# Qt 鸿蒙移植 14 组 Before/After 代码模式
+# HarmonyOS 平台能力的 Qt adapter：14 组 Before/After
 
 > 来源：[Code Patterns: Before/After Porting Examples](https://wiki.qt.io/Qt_for_HarmonyOS/code_patterns)
 > 关联：[[qt-harmonyos-api-mapping]]、[[qt-harmonyos-porting-workflow]]、[[qt-ohos-extras]]
+>
+> 本页只维护可复制的 Qt/QtOhosExtras/QPA 代码改写。Want 与生命周期语义见 [[ohos-common-kb/semantic/stage-uiability-lifecycle|Stage 模型与 UIAbility 生命周期]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)）；窗口/XComponent seam 见 [[ohos-common-kb/semantic/arkui-window-xcomponent-model|ArkUI 窗口与 XComponent 承载模型]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/arkui-window-xcomponent-model.md)）；文件权限与 loader 限制见 [[ohos-common-kb/semantic/harmonyos-platform-limits|HarmonyOS 平台限制]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)）；bundle/data 路径选择见 [[ohos-common-kb/semantic/application-sandbox-paths|HarmonyOS 应用沙箱路径与代码加载]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/application-sandbox-paths.md)）。
 
 ## 模式一览
 
@@ -42,12 +45,9 @@ summary: >
 
 ## 模式 1：子进程 → 按场景选择（非一刀切）
 
-桌面/Android 用 `QProcess` 启动子进程。鸿蒙上要按"是否有界面""是否 Qt 程序"分场景（2026-07-21 修正：旧版"QProcess 不可用→一律 startNoUiChildProcess"不准确）：
+桌面/Android 用 `QProcess` 启动子进程。鸿蒙上要按场景选择，不能一刀切。
 
-- **无界面子进程** → `QProcess` **原样可用**（鸿蒙沙箱内可 fork/exec 无界面二进制，**无需改**）
-- **有界面 + Qt 程序** → `QtOhosExtras::startAppProcess()` / `startNewAbilityInstance()`
-- **有界面 + 非 Qt 程序** → `QtOhosExtras::startAbility(want)`
-- **无界面但需鸿蒙原生托管** → `startNoUiChildProcess()`（.so 子进程经 Child Process Manager）
+> 四场景决策树（无界面保留 QProcess / 有界面 Qt 用 startAppProcess / 有界面非 Qt 用 startAbility / 无界面需托管用 startNoUiChildProcess）详见 [[qt-harmonyos-api-mapping]] §1 进程管理。
 
 **Before (Desktop/Android)**
 ```cpp
@@ -72,7 +72,7 @@ void MainWindow::runWorker() {
 
 **After (HarmonyOS) — 无界面但需原生托管（.so 子进程）**
 ```cpp
-#include <QtOhosExtras/QtOhosExtras>
+#include <QtOhosExtras/qohosappcontext.h>
 
 void MainWindow::runWorker() {
     QtOhosExtras::QOhosAppContext::startNoUiChildProcess(
@@ -89,7 +89,7 @@ void MainWindow::runWorker() {
 
 ## 模式 2：启动外部应用 → Start Ability
 
-桌面用 `QDesktopServices::openUrl()`，Android 用 JNI 构造 Intent。鸿蒙统一用 `QOhosWant` + `startAbility()`。
+桌面用 `QDesktopServices::openUrl()`，Android 用 JNI 构造 Intent；Qt 的 HarmonyOS adapter 使用 `QOhosWant` + `startAbility()`。
 
 **Before (Desktop)**
 ```cpp
@@ -116,7 +116,7 @@ QtOhosExtras::startAbility(want);
 
 ## 模式 3：独立对话框 → Tagged Subwindow
 
-鸿蒙窗口模型不支持独立的顶级窗口弹出。所有 QDialog / Popup 必须标记为子窗口，参见 [[qt-harmonyos-api-mapping]] 窗口模型差异。
+在 Qt QPA adapter 中，无 parent 的独立 `QDialog` 会映射为新主窗口；需要子窗口语义时必须 tagging，参见 [[qt-harmonyos-api-mapping]]。
 
 **Before (Desktop)**
 ```cpp
@@ -138,13 +138,13 @@ void MainWindow::showSettings() {
 }
 ```
 
-> **注意**：不调用 `tagWindowOrWidgetAsSubWindowOf()` 的独立对话框在鸿蒙上将无法正常显示或导致崩溃。
+> **注意**：不调用 `tagWindowOrWidgetAsSubWindowOf()` 的无 parent 对话框会成为独立主窗口，不具备预期的子窗口层级与模态语义。
 
 ---
 
 ## 模式 4：关闭事件处理 — 区分关闭原因
 
-鸿蒙的 `closeEvent` 可能来自三种根源：窗口关闭（WindowStageClose）、Ability 生命周期销毁（AbilityClose）、内部关闭（InternalClose），需分别处理。
+Qt adapter 会把窗口关闭、Ability 生命周期销毁和内部关闭映射到 `closeEvent`，需按 root cause 分别处理。
 
 **Before (Desktop)**
 ```cpp
@@ -195,7 +195,7 @@ void MainWindow::closeEvent(QCloseEvent *event) {
 
 ## 模式 5：文件权限守卫
 
-鸿蒙不支持 `chmod()` / `setPermissions()`，详见 [[qt-harmonyos-api-mapping]] 中 chmod 限制。
+平台权限模型以 common 为准；Qt 代码用条件编译避免把 `QFile::setPermissions()` 成功作为流程前提。
 
 **Before (Cross-platform)**
 ```cpp
@@ -301,7 +301,7 @@ qApp->setPalette(darkPalette);
 
 **After (HarmonyOS)**
 ```cpp
-#include <QtOhosExtras/QtOhosExtras>
+#include <QtOhosExtras/qohosappcontext.h>
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
@@ -391,7 +391,7 @@ editor->setFont(monoFont);
 
 **New (HarmonyOS only)**
 ```cpp
-#include <QtOhosExtras/QtOhosExtras>
+#include <QtOhosExtras/qohoswindowutils.h>
 
 void MainWindow::openFloatingNote() {
     NoteWidget *note = new NoteWidget();
@@ -412,7 +412,8 @@ void MainWindow::openFloatingNote() {
 
 **New (HarmonyOS only)**
 ```cpp
-#include <QtOhosExtras/QtOhosExtras>
+#include <QtOhosExtras/qohossharekit.h>
+#include <QtOhosExtras/qohosuiabilitycontext.h>
 
 void MainWindow::shareFile(const QString &filePath) {
     auto record = QtOhosExtras::ShareKit::createFileRecord(QFileInfo(filePath));
@@ -486,7 +487,7 @@ QImage ImageLoader::load(const QString &path) { /* 用 Qt5 API 实现 */ }
 
 ## 模式 14：数据库文件路径 → 沙箱可写绝对路径
 
-鸿蒙应用以共享库方式加载（`argv[0]` 是 .so 路径，见铁律 L2），进程 CWD 多落在只读 `el1/bundle` 区或不可预期路径。SQLite/配置文件用相对路径将无法创建，`open()` 返回 false。必须用 `QStandardPaths::writableLocation(AppLocalDataLocation)` 拼接绝对路径——该枚举在 OHOS 映射 `preferencesDir`（`/data/storage/el2/` 下可写沙箱），桌面端返回 `~/.local/share/<Org>/<App>`，统一使用无需 `#ifdef`。
+Qt 应用的 CWD 可能位于只读 bundle 或不可预期路径。SQLite/配置文件应通过 `QStandardPaths::writableLocation(AppLocalDataLocation)` 取得 Qt 映射后的可写目录，不在本页硬编码平台路径；该 API 在桌面端同样成立，通常无需 `#ifdef`。
 
 **Before (Desktop-friendly but breaks on OHOS)**
 ```cpp

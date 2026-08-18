@@ -4,10 +4,10 @@ type: procedural
 domain: workflow
 tags: [qt, harmonyos, device, verification, hdc, hvigor, signing, cli, build, deploy, run, troubleshoot, rendering, lifecycle, window, platform-limits, input-event, run-test, cli-build]
 created: 2026-07-08
-updated: 2026-07-16
+updated: 2026-08-14
 status: active
 audience: public
-refs: [semantic-qt-harmonyos-build-run-workflow, semantic-deveco-mcp-toolchain, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-golden-rules, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-window-model, semantic-qt-harmonyos-lifecycle, problem-render-black-rgba8-zink-mipmap, problem-ohos-mainthread-mismatch, problem-runtime-qpa-plugin-not-found, problem-runtime-fail-libqtdbus-missing, problem-runtime-sqlite-open-database, problem-runtime-dlopen-writable-path, problem-runtime-crash-sandbox-readonly-path, problem-runtime-crash-null-pointer-entry-shim, problem-surfaceholder-nativexcomponent-incompatibility, episodic-quit-deadlock-tsfn, episodic-wa-nativewindow-leave-bug, episodic-toolwindow-crossscreen-flicker, procedural-qt-app-harmonyos-completion, problem-runtime-crash-libqohos-modules-mismatch]
+refs: [semantic-qt-harmonyos-build-run-workflow, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-golden-rules, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-window-model, semantic-qt-harmonyos-lifecycle, problem-render-black-rgba8-zink-mipmap, problem-ohos-mainthread-mismatch, problem-runtime-qpa-plugin-not-found, problem-runtime-fail-libqtdbus-missing, problem-runtime-sqlite-open-database, problem-runtime-dlopen-writable-path, problem-runtime-crash-sandbox-readonly-path, problem-runtime-crash-null-pointer-entry-shim, problem-surfaceholder-nativexcomponent-incompatibility, episodic-quit-deadlock-tsfn, episodic-wa-nativewindow-leave-bug, episodic-toolwindow-crossscreen-flicker, procedural-qt-app-harmonyos-completion, problem-runtime-crash-libqohos-modules-mismatch]
 summary: >
   鸿蒙化运行测试工作流（CLI全流程,七阶段闭环）：环境SDK预检→构建静态预检(DT_NEEDED/符号可见性/QML插件部署)→
   签名安装→启动运行时测试(渲染黑屏三类定位/Ability生命周期退出/窗口行为回归/输入事件/平台限制回归)→
@@ -31,7 +31,7 @@ evidence: [<APP_NAME>真机验证commit, <WORKLOG>]
 ## 触发条件
 
 - 已迁移完成的 Qt 鸿蒙化项目，需真机端到端运行测试（让应用跑起来）
-- 收到 应用移植 / 构建排障 / 修复验证 任务且需真机闭环（本工作流被三者复用，见 frontmatter `reused_by`）
+- 收到 应用移植 / 构建排障 / 修复验证 任务且需真机闭环（本工作流被三者复用，见 _index/_task-routing.md 路由 [A][E][J]）
 - 桌面/模拟器验证不足以暴露渲染、生命周期、窗口行为等真机专属问题
 
 ---
@@ -569,9 +569,9 @@ deveco-mcp_get_hilog_or_faultlog_recent(
 
 > **⚠️ 元教训**：修正一个文件 ≠ 修正一个知识点。沉淀前 `grep` 全引用点，避免跨文件传播遗漏（工作流页本身曾因逐文件修正模式 67% 遗漏）。
 
-- 使用 `_templates/problem.md` 模板，`error_message` 字段填完整错误文本（便于 Agent 全文搜索匹配）
+- 使用 `_templates/qt-problem.md` 模板，`error_message` 字段填完整错误文本（便于 Agent 全文搜索匹配）
 - 反向引用现有 problem 库：本工作流 §5.3 速查表已链接 14 条 problem
-- 更新 `problems/_lookup.md`（症状速查 + 领域分组 + 部署/运行时/签名分类）
+- 运行 `bash _scripts/kb-regen-indexes.sh` 重生 `problems/_lookup.md`（症状速查 + 领域分组 + 部署/运行时/签名分类；派生索引，gitignored，自动从 frontmatter 重建，勿手改）
 
 ### 6.3 回归验证
 
@@ -585,53 +585,9 @@ deveco-mcp_get_hilog_or_faultlog_recent(
 
 > 适用：Playbook B 项目编译产物为静态库（`.a`），无 `HarmonyOS/` 工程目录，无法直接安装真机，需编写 Playbook A 风格 demo 链接静态库完成端到端验证。
 
-### 7.1 典型项目
+> Demo 工程结构、CMakeLists.txt 要点、main.cpp 设计原则及已验证案例表属编译配方范畴（内部 procedural，此处不展开）。本节仅补充环境准备与真机验证衔接。
 
-纯库项目：HTTP 库、数据库迁移库等。
-
-### 7.2 Demo 工程结构
-
-```
-ProjectRoot/
-├── OhosExampleApp/          ← 新建
-│   ├── CMakeLists.txt       ← Playbook A 风格，链接静态库源码
-│   └── main.cpp             ← QWidget demo，展示库的核心功能
-├── HarmonyOS/               ← 从已有 Playbook A 项目复制
-│   ├── entry/build-profile.json5
-│   ├── build-profile.json5
-│   ├── AppScope/app.json5
-│   └── ...
-└── src/ (或 lib/)           ← 原始库源码
-```
-
-### 7.3 CMakeLists.txt 要点
-
-```cmake
-# 链接库源码（直接编译 .cpp，而非链接 .a）
-set(LIB_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../src)
-include_directories(${LIB_SRC_DIR})
-
-add_library(<DemoName> SHARED
-    main.cpp
-    ${LIB_SOURCES}    # 库的 .cpp 文件
-)
-
-# 必须包含 DBus + QOhosPlatformIntegration
-target_link_libraries(<DemoName> PRIVATE
-    Qt5::Core Qt5::Gui Qt5::Widgets
-    Qt5::DBus                              # ← 必加
-    Qt5::QOhosPlatformIntegrationPlugin
-)
-```
-
-### 7.4 main.cpp 设计原则
-
-- **QWidget UI**：可交互按钮/输入框，展示库核心功能
-- **日志输出**：QTextEdit 显示操作结果，便于验证
-- **沙箱安全**：文件操作用 `QStandardPaths::writableLocation()`（见 problem-runtime-crash-sandbox-readonly-path）
-- **`extern "C" int main()`**：OHOS entry shim 标准格式
-
-### 7.5 环境准备
+### 7.1 环境准备
 
 ```powershell
 # 从已有 Playbook A 项目复制 HarmonyOS/ 目录（路径用 ENV.md 实际值，勿硬编码）
@@ -641,12 +597,9 @@ robocopy "$base\<APP_NAME>\HarmonyOS" "$base\NewProject\HarmonyOS" /E /XD build 
 # 替换占位符、签名、bundleName（同 §1 / §3 流程）
 ```
 
-### 7.6 已验证案例
+### 7.2 构建后真机验证
 
-| 项目类型 | Demo 功能 | 构建时间 | 真机验证 |
-|---------|----------|---------|---------|
-| HTTP 库 | Server 启停 + Client GET + 日志 | ~23s | ✅ 进程稳定 |
-| 数据库迁移库 | DB 打开/关闭 + 迁移 + CRUD + 日志 | ~24s | ✅ 进程稳定 |
+Demo 构建完成后，按本工作流 §1-§6 流程进行真机验证（环境预检→构建预检→签名安装→运行时验证→崩溃分析→修复回归），重点确认库在真机上的运行时行为（如 qhttp HTTP 通信、QSqlMigrator 数据库迁移）。
 
 ---
 
@@ -687,7 +640,7 @@ Start-Sleep -Seconds 5
 - [ ] 阶段四：进程存活 + 渲染正确 + 生命周期/窗口/输入/平台限制回归全通过
 - [ ] 阶段五：无未解决崩溃（或崩溃根因已定位 + 修复方案已确定）
 - [ ] 阶段六：修复已回归验证 + 问题已沉淀到 `problems/`
-- [ ] 索引同步：`_map.md` summary 已更新（如页面 summary 变更），已提交 git commit
+- [ ] 索引同步：已运行 `bash _scripts/kb-regen-indexes.sh` 重生 `_map.md` 等派生索引（如页面 summary 变更），已提交 git commit
 
 ---
 
@@ -722,9 +675,9 @@ Start-Sleep -Seconds 5
 ## 相关上下文
 
 - [[qt-harmonyos-build-run-workflow]] — DevEco MCP 方式构建运行（本文补充 CLI 方式）
-- [[deveco-mcp-toolchain]] — DevEco MCP 工具链配置
+- [[ohos-common-kb/semantic/deveco-mcp-capabilities|DevEco MCP 能力与使用边界]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/deveco-mcp-capabilities.md)）— 通用安装、配置与能力边界
 - [[qt-harmonyos-project-structure]] — 工程结构详解
-- [[qt-harmonyos-golden-rules]] — 34 条铁律（B7/B12 部署、W1-W5 窗口、L1 生命周期、P1-P5/G1-G2 平台限制）
+- [[qt-harmonyos-golden-rules]] — 35 条铁律（B7/B12 部署、W1-W5 窗口、L1 生命周期、P1-P5/G1-G2 平台限制）
 - [[qt-harmonyos-platform-limits]] — 平台限制 8 大类（§4.6 回归清单 canonical）
 - [[qt-harmonyos-window-model]] — 窗口模型（tagging/First Window/fullscreen，§4.4 canonical）
 - [[qt-harmonyos-lifecycle]] — 生命周期（closeEvent 3 级关闭/Stage 模型，§4.3 canonical）

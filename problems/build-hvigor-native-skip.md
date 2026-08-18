@@ -4,12 +4,12 @@ type: problem
 domain: build
 tags: [hvigor, cmake, native-build, deveco-sdk-home, java, environment]
 created: 2026-06-08
-updated: 2026-06-08
+updated: 2026-08-14
 status: solved
 audience: public
 severity: high
 error_message: "spawn java ENOENT; BuildNativeWithCmake finished after 1ms with no .so artifact (DEVECO_SDK_HOME missing)"
-refs: [semantic-deveco-mcp-toolchain, semantic-qt-harmonyos-build-run-workflow]
+refs: [semantic-qt-harmonyos-build-run-workflow]
 summary: >
   hvigor 构建原生代码不执行（BuildNativeWithCmake 1ms）：DEVECO_SDK_HOME 未设置导致
   CMake 工具链找不到；PackageHap 失败 spawn java ENOENT：Java 不在 PATH 中。

@@ -416,7 +416,7 @@ Leave 事件丢失的原因是**两个独立层各自假设对方会投递它**�
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-#### 盲区 #1：Qt Widget 层因 `internalWinId()` 跳过合成
+#### 盲区 \#1：Qt Widget 层因 `internalWinId()` 跳过合成
 
 **位置**：`qwidgetwindow.cpp:467-469`
 
@@ -426,7 +426,7 @@ Qt 的设计意图（注释 line 465-466）：
 
 > "Preferred leave target is the last mouse receiver, **unless it has native window**, in which case it is assumed to receive it's own leave event when relevant."
 
-#### 盲区 #2：OHOS QPA 层 Leave 完全依赖 ArkUI hover 回调
+#### 盲区 \#2：OHOS QPA 层 Leave 完全依赖 ArkUI hover 回调
 
 **位置**：`qohoshovereventsgenerator.cpp:42-48`
 

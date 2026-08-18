@@ -4,13 +4,13 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, golden-rules, quick-reference, porting, checklist]
 created: 2026-06-03
-updated: 2026-07-21
+updated: 2026-08-14
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-porting-workflow, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-lifecycle, semantic-qt-harmonyos-api-mapping, semantic-qt-harmonyos-code-patterns, semantic-qt-harmonyos-window-model, semantic-qt-ohos-extras, semantic-qt-harmonyos-build, semantic-qt-harmonyos-third-party-libs]
 summary: >
   Qt 鸿蒙化铁律速查：35 条黄金规则覆盖构建部署、窗口管理、API/枚举路径、
-  平台限制、生命周期、跨平台守卫。每条含严重度（🔴🟠🟡🟢）、"为什么"和出处。
+  平台限制对 Qt 的影响、生命周期 adapter、跨平台守卫。每条含严重度（🔴🟠🟡🟢）、"为什么"和出处。
   Agent 执行任何 Qt for HarmonyOS 任务前应先扫描此页。
 ---
 
@@ -18,6 +18,7 @@ summary: >
 
 > **Agent 操作指引**：执行任何 Qt for HarmonyOS 相关任务前，先扫描此页。
 > 每条规则标注出处，需要细节时沿链接深入。
+> 本页是 Qt 快速决策 hub，不是平台事实的第二 canonical source。HAP/签名见 [[ohos-common-kb/semantic/hap-native-project-structure|HAP 原生工程结构与签名关系]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/hap-native-project-structure.md)）；平台限制见 [[ohos-common-kb/semantic/harmonyos-platform-limits|HarmonyOS 平台限制]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)）；Stage/UIAbility 见 [[ohos-common-kb/semantic/stage-uiability-lifecycle|Stage 模型与 UIAbility 生命周期]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)）。下表只保留这些事实会怎样影响 Qt，以及 Qt 侧必须做什么。
 >
 > **⚠️ 版本适用范围**：本规则集基于 **Qt 5.12/5.15**。Qt 6 for OHOS 有以下重大变更：
 > - **QtOhosExtras 模块不再独立存在** — 功能已内联到 QPA 插件中作为私有 API（`_p.h`），规则 B6/A3/A4/A5/A6 在 Qt6 中不适用
@@ -44,7 +45,7 @@ summary: >
 | B8 | 🟡 | 场景二（已有工程鸿蒙化）`build-profile.json5` 的 `path` **必须**用绝对路径 | 相对路径找不到源文件 | [[qt-harmonyos-project-structure]] §9 |
 | B9 | 🔴 | qmake 的 `unix` 分支**必须**追加 `:!ohos`（`unix:!android:!macx:!ohos`） | 否则 ohos 同时命中 unix 分支，编译出错误的 Linux 代码 | [[qt-harmonyos-code-patterns]] §模式7 |
 | B10 | 🔴 | QML 应用**必须**启用 `CMAKE_AUTORCC ON` | 不启用则 qml.qrc 不编译，QML 文件不打包，运行时黑屏 | [[qt-harmonyos-project-structure]] §4.2 |
-| B11 | 🔴 | `bundleName` 格式**必须**为 `com.<公司>.<应用名>`，**禁止**中文/空格/特殊字符 | 格式不合法导致打包和签名失败 | [[qt-harmonyos-project-structure]] §8 |
+| B11 | 🔴 | `bundleName` 必须使用目标 SDK schema 接受的稳定点分标识，并与最终生成工程、签名 profile、安装/启动命令一致 | 身份不一致会导致校验、签名、安装或启动失败；精确字符范围由目标 SDK 判定 | [[qt-harmonyos-project-structure]] §8 |
 | B12 | 🟠 | SQL 驱动插件 `libqsqlite.so`**必须**手动复制到 `libs/${ABI_DIR}/sqldrivers/`（与 B7 `libqohosstyle.so`→`styles/`、`libqsvg.so`→`imageformats/` 同类） | 动态分类插件无法靠 `target_link_libraries` 部署，`QFactoryLoader` 按子目录 dlopen 加载；漏部署则 `addDatabase("QSQLITE")` driver 为 null，`open()` 在碰文件系统前即返回 false（`lastError="Driver not loaded"`）。注意 OHOS SDK 文件名是 `libqsqlite.so`（非桌面 `libqsqlsqlite.so`） | [[qt-harmonyos-project-structure]] §6.2, [runtime-fail-sqlite-open-database](../problems/runtime-fail-sqlite-open-database.md) |
 
 ---
@@ -75,15 +76,15 @@ summary: >
 
 ---
 
-## 四、平台限制（5 条）
+## 四、平台限制的 Qt 响应（5 条）
 
 | # | 严重度 | 规则 | 为什么 | 出处 |
 |---|:------:|------|--------|------|
-| P1 | 🟠 | `chmod()`/`fchmod()` **不可用** — 已有文件权限修改静默失败 | 安全审查取消此接口 | [[qt-harmonyos-platform-limits]] §chmod |
-| P2 | 🟠 | `symlink()` **不可用** — 第三方应用禁止使用（EACCES 13900012） | 沙箱限制 | [[qt-harmonyos-platform-limits]] §symlink |
-| P3 | 🟠 | `dlopen()` **拒绝可写路径** — 只能从应用 lib 目录加载 .so | `/data/storage/el2/` 下所有路径被拒绝 | [[qt-harmonyos-platform-limits]] §dlopen |
-| P4 | 🟢 | `pthread_cancel` 系列**无实现** — 宏已定义但函数不存在 | 华为确认，修复时间未知 | [[qt-harmonyos-platform-limits]] §pthread |
-| P5 | 🟢 | 无 tzdata — 时区处理**必须**使用 ICU 后端 | 系统 musl libc 有 tzdata 但不允许第三方读取 | [[qt-harmonyos-platform-limits]] §时区 |
+| P1 | 🟠 | 不把 `QFile::setPermissions()` 成功作为流程前提；随包文件权限在打包/安装阶段解决 | Qt wrapper 不能绕过平台权限模型 | [[qt-harmonyos-platform-limits]] §chmod |
+| P2 | 🟠 | `QFile::link()` 或依赖 symlink 的库必须提供复制/直接路径方案 | Qt 文件 API 仍受平台沙箱约束 | [[qt-harmonyos-platform-limits]] §symlink |
+| P3 | 🟠 | `QPluginLoader`/`QLibrary` 的代码产物随 HAP 放入合规 native 目录，不从普通可写数据目录加载 | Qt loader 最终仍调用平台动态加载器 | [[qt-harmonyos-platform-limits]] §dlopen |
+| P4 | 🟢 | 使用 Qt 协作式线程停止/中断，不为 OHOS 路径引入 `pthread_cancel` 假设 | Qt adapter 应保持可移植的停止语义 | [[qt-harmonyos-platform-limits]] §pthread |
+| P5 | 🟢 | Qt 时区功能走已验证的 ICU 后端，不直接扫描系统 tzdata 路径 | 框架后端必须适配平台资源可见性 | [[qt-harmonyos-platform-limits]] §时区 |
 
 ---
 
@@ -93,7 +94,7 @@ summary: >
 |---|:------:|------|--------|------|
 | L1 | 🟠 | `closeEvent()` **必须**检查 `CloseEventRootCause` 区分关闭来源。**⚠️ Level 2（AbilityClose）绝对不能弹 UI**——弹对话框会导致应用卡在关闭流程中被系统强杀。Level 1（WindowStageClose）可弹对话框，Level 2 只能静默 autoSave。**Qt6 注意**：此 API 已私有化，枚举值变更（`AbilityClose`→`OnPrepareToTerminate`），详见 [[qt-harmonyos-qt6-status]] | Level 1（用户关窗口）可弹对话框，Level 2（系统回收）**禁止弹 UI** | [[qt-harmonyos-lifecycle]] §3级关闭 |
 | L2 | 🟢 | `argv[0]` 是**库路径**（.so），不是可执行文件路径 | 鸿蒙以共享库方式加载 Qt 应用 | [[qt-harmonyos-lifecycle]] §参数传递 |
-| L3 | 🟢 | Qt for HarmonyOS 使用 **Stage 模型**，应用组件类型为 **UIAbility** | FA 模型自 API 9 已弃用 | [[qt-harmonyos-porting-workflow]] §原则3 |
+| L3 | 🟢 | Qt event loop 由 **Stage/UIAbility** adapter 启动，不另建旧 FA 模型入口 | Qt `main()` 是被平台组件桥接的 native 入口 | [[qt-harmonyos-lifecycle]] §启动桥接 |
 | L4 | 🟢 | 子进程**按场景选**，不一刀切：无界面 `QProcess` 可用 / 有界面 Qt 用 `startAppProcess()`、`startNewAbilityInstance()` / 有界面非 Qt 用 `startAbility(want)` / 无界面需托管用 `startNoUiChildProcess()` | 不要用裸 QProcess 起带界面的子进程（GUI 须经 Ability 框架）；无界面计算保留 QProcess 即可（2026-07-21 修正，旧版"QProcess 不可用"不准确） | [[qt-harmonyos-lifecycle]] §子进程、[[qt-harmonyos-api-mapping]] §1 |
 
 ---
@@ -118,14 +119,14 @@ summary: >
     ├─ API 怎么替换？        → api-mapping（12 类映射）
     ├─ 模块是否支持？        → modules
     ├─ 平台限制？            → platform-limits
-    ├─ 构建/部署出问题？     → 本页 B1-B11 + project-structure
-    ├─ 窗口行为异常？        → 本页 W1-W5 + window-model
+    ├─ 构建/部署出问题？     → 本页 B1-B12 + project-structure
+    ├─ 窗口行为异常？        → 本页 W1-W6 + window-model
     ├─ 编译报 API 不存在？   → 本页 A1-A6 + ohos-extras
     ├─ 生命周期/closeEvent？ → 本页 L1-L4 + lifecycle
     ├─ QtOhosExtras 怎么用？ → ohos-extras
     ├─ Qt 6 相关？           → qt6-status
     ├─ 三方库/依赖？         → third-party-libs
-    └─ DevEco/MCP/工具链？   → deveco-mcp-toolchain
+    └─ DevEco/MCP/工具链？   → common DevEco CLI/MCP 页面 + qt-harmonyos-build-run-workflow
 ```
 
 ---
@@ -136,10 +137,10 @@ summary: >
 
 - [[qt-harmonyos-porting-workflow]] — 8 步决策树
 - [[qt-harmonyos-project-structure]] — 工程结构与铁律清单
-- [[qt-harmonyos-platform-limits]] — 平台限制详情 + QTBUG 编号
-- [[qt-harmonyos-lifecycle]] — 生命周期详解（canonical API 参考）
+- [[qt-harmonyos-platform-limits]] — 平台限制的 Qt/QML/QPA 影响 + QTBUG 编号
+- [[qt-harmonyos-lifecycle]] — Stage/UIAbility 的 Qt adapter 与 Qt API 参考
 - [[qt-harmonyos-api-mapping]] — API 迁移映射表
-- [[qt-harmonyos-code-patterns]] — 12 组 Before/After 代码模式
+- [[qt-harmonyos-code-patterns]] — 14 组 Before/After 代码模式
 - [[qt-harmonyos-window-model]] — 窗口模型详解
 - [[qt-ohos-extras]] — QtOhosExtras 模块 API
 - [[qt-harmonyos-build]] — 构建指南

@@ -4,21 +4,20 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, third-party, cross-compile, cmake, vcpkg, dependency]
 created: 2026-06-03
-updated: 2026-07-07
+updated: 2026-08-15
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-build, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-platform-limits, semantic-qt-ohos-project-analyzer-workflow]
 summary: >
-  三方库鸿蒙化指南：OHOS NDK 交叉编译（CMake 工具链配置）、.so 部署规则
-  （entry/libs/arm64-v8a/）、CMake find_package 集成、平台限制对三方库的影响
-  （chmod/symlink/dlopen/pthread_cancel）、vcpkg 参考、静态/动态链接策略、
-  系统库可用性、header-only 库、已知兼容清单。
+  Qt 应用接入 OHOS 三方库的 adapter：Qt find_package/CMake、Qt 模块与插件部署、
+  静态/动态链接选择、Qt 项目迁移检查和实测兼容清单；平台 NDK、ABI、sysroot、
+  HAP native 部署与 loader 契约由 common 维护。
 ---
 
 # 三方库鸿蒙化指南
 
 > 将 Qt 应用移植到鸿蒙时，除了 Qt 模块本身的适配，还需要处理应用依赖的第三方 C/C++ 库。
-> 本页覆盖交叉编译、部署、集成、平台限制影响等全流程。
+> 平台通用的 NDK/toolchain、ABI、sysroot、产物检查、HAP native 部署与 loader 契约，以 common 的 [[ohos-common-kb/semantic/ohos-native-third-party-libraries|OHOS 原生三方库接入契约]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/ohos-native-third-party-libraries.md)）为准。本页只维护 Qt 包发现、目标链接、Qt plugin/module 部署与 Qt 应用验证。
 
 ---
 
@@ -37,135 +36,17 @@ summary: >
 
 > **📦 arm64 OHOS 预编译 bottle 来源 = Harmonybrew**：若某三方库已有 arm64_ohos 预编译包，可直接下载 .so 跳过本节交叉编译——见 [[fetch-ohos-third-party-lib]] 的一键拉取脚本（含依赖递归、sha256 校验、qmake/CMake 链接片段）。无 bottle 时继续按下文源码交叉编译。
 
-## 2. OHOS NDK 交叉编译
+## 2. Qt 消费的平台输入契约
 
-### 2.1 工具链文件
+先按 common 页面产出并验收目标 ABI 的 headers、静态库或共享库及其完整 `NEEDED` 闭包。Qt adapter 不规定 NDK、sysroot、autotools/Meson 参数或系统库可用性，只消费已经通过平台验收的产物。
 
-OHOS NDK 提供了 CMake 工具链文件，位于 SDK 中：
-
-```
-<NATIVE_OHOS_SDK>/build/cmake/ohos.toolchain.cmake
-```
-
-交叉编译三方库时，使用此工具链文件：
-
-```bash
-cmake -S <三方库源码> -B build_ohos \
-  -DCMAKE_TOOLCHAIN_FILE=$NATIVE_OHOS_SDK/build/cmake/ohos.toolchain.cmake \
-  -DOHOS_ARCH=arm64-v8a \
-  -DOHOS_PLATFORM=OHOS \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_INSTALL_PREFIX=<安装路径>
-```
-
-### 2.2 关键 CMake 变量
-
-| 变量 | 说明 | 典型值 |
-|------|------|--------|
-| `CMAKE_TOOLCHAIN_FILE` | OHOS 工具链文件路径 | `$NATIVE_OHOS_SDK/build/cmake/ohos.toolchain.cmake` |
-| `OHOS_ARCH` | 目标架构 | `arm64-v8a` |
-| `OHOS_PLATFORM` | 目标平台 | `OHOS` |
-| `CMAKE_INSTALL_PREFIX` | 安装路径（头文件+库） | 自定义路径 |
-| `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE` | find_package 搜索模式 | **`BOTH`**（同 Qt 交叉编译修复） |
-
-> ⚠️ **铁律**：与 Qt 应用交叉编译相同，三方库的 CMake 构建也需要设置 `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH`，否则 `find_package` 无法找到依赖。详见 [[qt-harmonyos-project-structure]] §4.2。
-
-### 2.3 典型交叉编译流程
-
-```bash
-# 以 zlib 为例
-cd zlib-source/
-
-cmake -S . -B build_ohos \
-  -DCMAKE_TOOLCHAIN_FILE=$NATIVE_OHOS_SDK/build/cmake/ohos.toolchain.cmake \
-  -DOHOS_ARCH=arm64-v8a \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_INSTALL_PREFIX=$HOME/ohos-libs/zlib
-
-cmake --build build_ohos -j16
-cmake --install build_ohos
-
-# 产出：
-# $HOME/ohos-libs/zlib/lib/libz.so
-# $HOME/ohos-libs/zlib/include/zlib.h
-```
-
-### 2.4 autotools 项目的交叉编译
-
-部分三方库使用 autotools（`./configure && make`），需要手动指定交叉编译器：
-
-```bash
-export CC=$NATIVE_OHOS_SDK/llvm/bin/clang
-export CXX=$NATIVE_OHOS_SDK/llvm/bin/clang++
-export CFLAGS="--target=aarch64-linux-ohos --sysroot=$NATIVE_OHOS_SDK/sysroot"
-export LDFLAGS="--target=aarch64-linux-ohos"
-
-./configure --host=aarch64-linux-ohos --prefix=$HOME/ohos-libs/<库名>
-make -j16
-make install
-```
+动态库随 Qt HAP 部署时，还要同时确认 Qt runtime、QPA/style plugin 与三方依赖均进入最终包；不要只检查业务 target 的直接依赖。
 
 ---
 
-## 3. .so 部署规则
+## 3. CMake 集成三方库
 
-### 3.1 部署目录
-
-交叉编译产出的 `.so` 文件需要复制到应用的 `entry/libs/arm64-v8a/` 目录下：
-
-```
-<工程目录>/
-└── entry/
-    └── libs/
-        └── arm64-v8a/
-            ├── libQt5Core.so          # Qt 库（自动部署）
-            ├── libqohos.so            # QPA 插件（自动部署）
-            ├── libz.so                # ★ 三方库（手动部署）
-            ├── libssl.so              # ★ 三方库（手动部署）
-            └── styles/
-                └── libqohosstyle.so   # Qt 样式插件（手动部署）
-```
-
-### 3.2 部署脚本模板
-
-```bash
-#!/bin/bash
-# deploy_third_party.sh — 将预编译的三方库 .so 复制到应用目录
-
-TARGET_DIR=<工程目录>/entry/libs/arm64-v8a
-THIRD_PARTY_LIBS=$HOME/ohos-libs
-
-# 列出需要部署的三方库
-THIRD_PARTY_SO_LIST=(
-    "$THIRD_PARTY_LIBS/zlib/lib/libz.so"
-    "$THIRD_PARTY_LIBS/openssl/lib/libssl.so"
-    "$THIRD_PARTY_LIBS/openssl/lib/libcrypto.so"
-    # 按需添加更多库...
-)
-
-for so in "${THIRD_PARTY_SO_LIST[@]}"; do
-    if [ -f "$so" ]; then
-        cp "$so" "$TARGET_DIR/"
-        echo "Deployed: $(basename $so)"
-    else
-        echo "WARNING: $so not found!"
-    fi
-done
-
-echo "Done. Verify: ls $TARGET_DIR/*.so"
-```
-
-### 3.3 运行时加载路径
-
-鸿蒙应用运行时，`.so` 文件的搜索路径包含 `entry/libs/<arch>/`。只要将三方库 `.so` 放在此目录下，`dlopen()` 和动态链接器就能找到它们。
-
-> ⚠️ **注意**：`dlopen()` 从**可写路径**加载 .so 会被拒绝（errno=22 EINVAL）。只能从应用 lib 目录（只读）加载。详见 [[qt-harmonyos-platform-limits]] §dlopen。
-
----
-
-## 4. CMake 集成三方库
-
-### 4.1 在应用 CMakeLists.txt 中链接三方库
+### 3.1 在应用 CMakeLists.txt 中链接三方库
 
 > **铁律**：与 Qt 应用交叉编译相同，三方库的 CMake 构建也需要设置 `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH`，否则 `find_package` 无法找到依赖。完整的 save/restore 代码模式详见 [[qt-harmonyos-project-structure]] §4.2。
 
@@ -187,7 +68,7 @@ link_directories(${THIRD_PARTY_PREFIX}/zlib/lib)
 target_link_libraries(QtHarmonyApp PRIVATE z ssl crypto)
 ```
 
-### 4.2 使用 CMAKE_PREFIX_PATH
+### 3.2 使用 CMAKE_PREFIX_PATH
 
 如果三方库安装时使用了标准目录结构（`lib/`、`include/`、`lib/cmake/`），可以通过 `CMAKE_PREFIX_PATH` 让 `find_package` 自动找到：
 
@@ -196,7 +77,7 @@ target_link_libraries(QtHarmonyApp PRIVATE z ssl crypto)
 # "arguments": "-DCMAKE_PREFIX_PATH=<Qt_SDK>;$ENV{HOME}/ohos-libs/zlib;$ENV{HOME}/ohos-libs/openssl"
 ```
 
-### 4.3 静态链接三方库
+### 3.3 静态链接三方库
 
 如果三方库编译为静态库（`.a`），直接链接即可，无需部署 .so：
 
@@ -211,123 +92,21 @@ target_link_libraries(QtHarmonyApp PRIVATE
 
 ---
 
-## 5. 平台限制对三方库的影响
+## 4. 平台限制在 Qt 项目中的检查点
 
-鸿蒙平台的以下限制可能影响三方库的正常运行。移植前需检查三方库源码是否使用了这些 API。
+平台限制及错误码不在本页维护。Qt 项目只记录受影响的消费点：
 
-### 5.1 chmod() / fchmod() 不可用
+- `QPluginLoader` 或插件框架是否能从最终 HAP 的 native library 集合解析完整依赖；
+- `QFile`/`QFileInfo` 包装的三方代码是否依赖 common 限制页列出的权限、链接或系统路径行为；
+- `QThread` 上运行的三方 worker 是否依赖目标 libc 不提供的取消语义；
+- `QTimeZone` 或库内时区逻辑是否需要 Qt ICU 后端；
+- 静态链接是否引入重复符号、PIC 或许可证问题。
 
-| 影响 | 说明 |
-|------|------|
-| **受影响库** | SQLite（数据库文件权限设置）、部分日志库（日志文件权限）、Boost.Filesystem |
-| **表现** | 调用静默失败（对已有文件）或返回 false |
-| **Workaround** | 用 `#ifndef __OHOS__` 条件编译跳过 `chmod()` 调用，或 patch 源码 |
-| **参考** | [[qt-harmonyos-platform-limits]] §chmod |
-
-```cpp
-// Patch 示例：在源码中添加 OHOS 守卫
-#ifndef __OHOS__
-    chmod(path, 0644);
-#endif
-```
-
-### 5.2 symlink() 不可用
-
-| 影响 | 说明 |
-|------|------|
-| **受影响库** | 部分构建系统（创建符号链接）、Python 嵌入式解释器、某些包管理器 |
-| **表现** | 返回 EACCES (13900012) |
-| **Workaround** | 用文件拷贝替代符号链接 |
-| **参考** | [[qt-harmonyos-platform-limits]] §symlink |
-
-### 5.3 dlopen() 拒绝可写路径
-
-| 影响 | 说明 |
-|------|------|
-| **受影响库** | 插件系统（如 Qt 自身的插件加载）、JIT 编译器、动态代码生成 |
-| **表现** | 从 `/data/storage/el2/` 等可写路径 dlopen 被拒绝（EINVAL） |
-| **Workaround** | 只能从应用 lib 目录（只读）加载 .so |
-| **参考** | [[qt-harmonyos-platform-limits]] §dlopen |
-
-### 5.4 pthread_cancel 相关 API 无实现
-
-| 影响 | 说明 |
-|------|------|
-| **受影响库** | 使用 `PTHREAD_CANCEL_DISABLE` / `pthread_cancel()` 的库（如部分嵌入式数据库） |
-| **表现** | 宏已定义但函数无实现，链接或运行时失败 |
-| **Workaround** | `#undef PTHREAD_CANCEL_DISABLE`，改用协作式终止 |
-| **参考** | [[qt-harmonyos-platform-limits]] §pthread_cancel |
-
-### 5.5 无 tzdata
-
-| 影响 | 说明 |
-|------|------|
-| **受影响库** | 依赖系统时区数据的库（如 Boost.DateTime、ICU 旧版本） |
-| **Workaround** | 使用 ICU 后端处理时区 |
-
-### 5.6 系统路径 stat() 返回 EACCES
-
-| 影响 | 说明 |
-|------|------|
-| **受影响库** | 扫描系统目录的库（如 `find_executable` 类功能） |
-| **表现** | `stat("/bin/sh")` 返回 errno=13 |
+具体 Qt 症状和 workaround 见 [[qt-harmonyos-platform-limits]]，平台原因与状态以 common 为准。
 
 ---
 
-## 6. 系统库可用性
-
-OHOS 系统（MUSL libc）自带以下常用库，可以直接链接，无需交叉编译或部署：
-
-| 库 | 链接名 | 说明 |
-|----|--------|------|
-| zlib | `-lz` | 压缩库，系统自带 |
-| libcrypto | `-lcrypto` | OpenSSL crypto，系统自带 |
-| libssl | `-lssl` | OpenSSL SSL，系统自带 |
-| libm | `-lm` | 数学库 |
-| libc | `-lc` | C 标准库（MUSL） |
-| libdl | `-ldl` | 动态链接 |
-| libpthread | `-lpthread` | 线程 |
-
-> **注意**：系统自带库的版本可能与桌面 Linux 不同。例如系统 OpenSSL 版本可能较旧。如果应用需要特定版本，仍需交叉编译并部署自定义版本。
-
-```cmake
-# 直接链接系统库（无需部署 .so）
-target_link_libraries(QtHarmonyApp PRIVATE
-    z        # 系统 zlib
-    crypto   # 系统 OpenSSL crypto
-    ssl      # 系统 OpenSSL SSL
-)
-```
-
----
-
-## 7. Header-Only 库
-
-Header-only 库（如 Eigen、nlohmann/json、spdlog header-only 模式、Catch2、{fmt} header-only 模式）**不需要交叉编译或部署**。直接在 CMake 中包含头文件路径即可：
-
-```cmake
-# Header-only 库：只需 include 路径
-include_directories(${THIRD_PARTY_PREFIX}/eigen3/include)
-include_directories(${THIRD_PARTY_PREFIX}/nlohmann-json/include)
-
-# 或使用 add_subdirectory（如果库提供 CMakeLists.txt）
-add_subdirectory(${THIRD_PARTY_PREFIX}/nlohmann-json)
-target_link_libraries(QtHarmonyApp PRIVATE nlohmann_json::nlohmann_json)
-```
-
----
-
-## 8. vcpkg 参考
-
-Qt 官方博客有一篇关于使用 vcpkg 为鸿蒙编译 C/C++ 库的文章：
-
-- [Building C/C++ libraries for HarmonyOS with vcpkg](https://www.qt.io/blog/building-libraries-for-harmonyos-with-vcpkg)
-
-vcpkg 可以自动化三方库的交叉编译流程。需要自定义 triplet 文件指向 OHOS NDK 工具链。
-
----
-
-## 9. 已知兼容清单
+## 5. 已知 Qt 应用兼容清单
 
 > 此清单随实践积累。每次移植新三方库时，更新此表。
 
@@ -347,10 +126,11 @@ vcpkg 可以自动化三方库的交叉编译流程。需要自定义 triplet �
 | Coin3D 4.0 | — | 预编译 .so | ✅ 已验证 | `libCoin.so.80` (ARM aarch64) 可直接集成，需 `-DCOIN_DLL` + 链接 `libGLv4.so` + `libEGL.so`。详见 [[coin3d-quarter-ohos]] |
 | Quarter 1.2.3 | — | 源码编译 | ✅ 已验证 | 依赖 Coin3D + Qt5::Widgets/OpenGL，需移除 UiTools、自定义 FindOpenGL.cmake。详见 [[coin3d-quarter-ohos]] |
 | QScintilla | 2.11.6 | 源码编译 (qmake) | ✅ 已验证 | 代码编辑器组件（含语法高亮），纯 QtCore/Gui/Widgets/PrintSupport 依赖，OHOS 交叉编译需自定义 mkspec (ohos-clang-win) 和短路径。无需源码修改 |
+| QtMqtt | 6.12.0 (v6.12.0-beta2) | 源码编译 (qt-cmake 交叉) | ✅ 已验证 | Qt 官方 MQTT addon（MQTT 3.1/3.1.1/5.0 客户端）。**source-only 附加模块**，不在预构建安装器（开源版无组件可勾选），GPLv3（非 LGPL，闭源发行需商业许可或换 Paho/mosquitto）。流程：clone `qt/qtmqtt` checkout 对应 tag → `qt-cmake.bat`+`ohos.toolchain.cmake` 交叉编译 → `CMAKE_INSTALL_PREFIX=<QT6_OHOS_KIT>` **装进 OHOS kit**（关键招：libQt6Mqtt.so 进 kit `lib/`、cmake config 进 `lib/cmake/Qt6Mqtt/`、headers 进 `include/QtMqtt/`，demo `find_package(Qt6 Mqtt)` 与 harmonydeployqt6 拷库两头顺）。预构建 OHOS kit 带 `Qt6BuildInternalsConfig.cmake`，支持编 Qt addon。验证产出 libQt6Mqtt.so(395KB)+libsimplemqttclient.so+HAP(36MB)，NEEDED 全裸名（libQt6Mqtt.so NEEDED 含 libQt6WebSockets.so，harmonydeployqt6 递归拖依赖正确）。详见 [[qt-harmonyos-qt6-status]] \#21 |
 
 ---
 
-## 10. 迁移评估检查清单
+## 6. 迁移评估检查清单
 
 移植 Qt 应用时，在 [[qt-ohos-project-analyzer-workflow]] §3.4 的基础上，对每个三方库逐项确认：
 
