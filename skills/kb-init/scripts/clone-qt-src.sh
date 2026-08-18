@@ -3,8 +3,9 @@
 #
 # 用法: bash skills/kb-init/scripts/clone-qt-src.sh \
 #         --method=<commercial|opensource> \
-#         --version=<5.12|5.15|both> \
-#         --dest=<目录>
+#         --version=<5.12|5.15> \
+#         --dest=<目录> \
+#         [--user=<用户名>] [--pass=<密码>]
 # 输出: QT5_12_SRC=<路径> 和/或 QT5_15_SRC=<路径>
 # 退出码: 0=成功, 1=失败
 
@@ -13,18 +14,22 @@ set -uo pipefail
 METHOD=""
 VERSION="5.12"
 DEST=""
+QT_USER=""
+QT_PASS=""
 
 for arg in "$@"; do
   case "$arg" in
     --method=*) METHOD="${arg#*=}";;
     --version=*) VERSION="${arg#*=}";;
     --dest=*) DEST="${arg#*=}";;
+    --user=*) QT_USER="${arg#*=}";;
+    --pass=*) QT_PASS="${arg#*=}";;
     *) echo "未知选项: $arg" >&2; exit 2;;
   esac
 done
 
 if [ -z "$METHOD" ] || [ -z "$DEST" ]; then
-  echo "用法: bash clone-qt-src.sh --method=<commercial|opensource> --version=<5.12|5.15|both> --dest=<目录>"
+  echo "用法: bash clone-qt-src.sh --method=<commercial|opensource> --version=<5.12|5.15> --dest=<目录> [--user=<用户名>] [--pass=<密码>]"
   exit 2
 fi
 
@@ -47,16 +52,13 @@ GIT_NAME=$(git config --global user.name 2>/dev/null || true)
 GIT_EMAIL=$(git config --global user.email 2>/dev/null || true)
 if [ -z "$GIT_NAME" ] || [ -z "$GIT_EMAIL" ]; then
   echo "FAIL: git user.name 或 user.email 未配置"
-  echo "  运行: git config --global user.name \"你的名字\""
-  echo "  运行: git config --global user.email \"你的邮箱\""
+  echo "  git config --global user.name \"你的名字\""
+  echo "  git config --global user.email \"你的邮箱\""
   exit 1
 fi
 
 clone_repo() {
-  local url="$1"
-  local branch="$2"
-  local target="$3"
-  local label="$4"
+  local url="$1" branch="$2" target="$3" label="$4"
 
   if [ -d "$target/qtbase" ]; then
     echo "  已存在: $target (跳过)"
@@ -66,7 +68,6 @@ clone_repo() {
   echo "  正在克隆 $label ..."
   echo "  URL: $url"
   echo "  分支: $branch"
-  echo "  目标: $target"
   echo ""
 
   git clone --branch "$branch" --single-branch "$url" "$target" 2>&1
@@ -78,20 +79,22 @@ clone_repo() {
 
   echo ""
   echo "  正在初始化子模块..."
-  cd "$target" && git submodule update --init --recursive 2>&1
+  (cd "$target" && git submodule update --init --recursive 2>&1)
   rc=$?
-  if [ $rc -ne 0 ]; then
-    echo "WARN: 子模块初始化失败 (exit $rc)，部分功能可能不可用"
-  fi
+  [ $rc -ne 0 ] && echo "WARN: 子模块初始化失败 (exit $rc)"
 
   echo "  克隆完成: $target"
   return 0
 }
 
-# 确定 clone URL
+# 确定 URL
 case "$METHOD" in
   commercial)
-    REPO_URL="https://codereview.qt-project.org/qt/tqtc-qt5"
+    if [ -n "$QT_USER" ] && [ -n "$QT_PASS" ]; then
+      REPO_URL="https://${QT_USER}:${QT_PASS}@codereview.qt-project.org/qt/tqtc-qt5"
+    else
+      REPO_URL="https://codereview.qt-project.org/qt/tqtc-qt5"
+    fi
     ;;
   opensource)
     REPO_URL="https://gitcode.com/ohos-qt/qt-harmonyos-src.git"
@@ -106,7 +109,6 @@ esac
 BRANCH_512="tqtc/harmonyos-5.12.12"
 BRANCH_515="tqtc/harmonyos-5.15.16"
 
-# 执行克隆
 QT5_12_SRC=""
 QT5_15_SRC=""
 

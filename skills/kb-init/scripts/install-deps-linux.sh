@@ -122,7 +122,26 @@ else
   warn "hdc 未在 PATH 中" "安装 DevEco 后自带，需将 SDK toolchains 目录加入 PATH"
 fi
 
-# 8. Windows 专属: PowerShell
+# 8. DevEco CLI (devecocli)
+if command -v devecocli &>/dev/null; then
+  ok "DevEco CLI (PATH)"
+elif [ "$DEVECO_FOUND" = "true" ]; then
+  _cli="$DEVECO_PATH/tools/devecocli"
+  if [ -f "$_cli" ]; then
+    ok "DevEco CLI (DevEco 内置，未加入 PATH)"
+    warn "devecocli 未加入 PATH" "建议将 $DEVECO_PATH/tools 加入 PATH"
+  else
+    warn "DevEco CLI 未找到" "DevEco 工具链应自带 devecocli"
+  fi
+else
+  if [ "$IS_WINDOWS" = "true" ]; then
+    warn "DevEco CLI 未找到" "安装 DevEco Studio 后自带"
+  else
+    warn "DevEco CLI 未找到" "安装 Command Line Tools 后自带"
+  fi
+fi
+
+# 9. Windows 专属: PowerShell
 if [ "$IS_WINDOWS" = "true" ]; then
   if command -v powershell.exe &>/dev/null || command -v pwsh &>/dev/null; then
     ok "PowerShell"
@@ -131,7 +150,7 @@ if [ "$IS_WINDOWS" = "true" ]; then
   fi
 fi
 
-# 9. 磁盘空间
+# 10. 磁盘空间
 INSTALL_BASE="${1:-$HOME/dev}"
 if [ -d "$(dirname "$INSTALL_BASE")" ]; then
   AVAIL_KB=$(df -k "$(dirname "$INSTALL_BASE")" 2>/dev/null | tail -1 | awk '{print $4}')

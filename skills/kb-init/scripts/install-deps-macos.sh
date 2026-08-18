@@ -96,7 +96,25 @@ else
   warn "hdc 未找到" "安装 DevEco Studio 后自带"
 fi
 
-# 9. 磁盘空间
+# 9. DevEco CLI (devecocli)
+DEVECO_CLI_FOUND="false"
+if command -v devecocli &>/dev/null; then
+  DEVECO_CLI_FOUND="true"
+  ok "DevEco CLI (PATH)"
+elif [ "$DEVECO_FOUND" = "true" ]; then
+  _cli="/Applications/DevEco-Studio.app/Contents/tools/devecocli"
+  if [ -f "$_cli" ]; then
+    DEVECO_CLI_FOUND="true"
+    ok "DevEco CLI (DevEco Studio 内置，未加入 PATH)"
+    warn "devecocli 未加入 PATH" "建议运行: echo 'export PATH=\"/Applications/DevEco-Studio.app/Contents/tools:\$PATH\"' >> ~/.zshrc && source ~/.zshrc"
+  else
+    warn "DevEco CLI 未找到" "DevEco Studio 应自带 devecocli"
+  fi
+else
+  warn "DevEco CLI 未找到" "安装 DevEco Studio 后自带"
+fi
+
+# 10. 磁盘空间
 INSTALL_BASE="${1:-$HOME/dev}"
 if [ -d "$(dirname "$INSTALL_BASE")" ]; then
   AVAIL_KB=$(df -k "$(dirname "$INSTALL_BASE")" 2>/dev/null | tail -1 | awk '{print $4}')
