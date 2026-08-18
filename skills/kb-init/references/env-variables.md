@@ -9,6 +9,20 @@
 | `DEVECO_PATH` | DevEco Studio 安装路径 | macOS: `/Applications/DevEco-Studio.app`<br>Windows: `C:\Program Files\Huawei\DevEco Studio` |
 | `OHOS_SDK_NATIVE` | OHOS SDK native 工具链路径（含 clang/sysroot） | macOS: `/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native` |
 
+## DevEco 自带工具
+
+以下工具随 DevEco Studio 安装，无需单独安装。它们位于 `DEVECO_PATH` 下的子目录中：
+
+| 工具 | 路径 | 用途 | 知识库引用次数 |
+|------|------|------|----------------|
+| **devecocli** | `<DEVECO_PATH>/tools/devecocli` | DevEco 命令行工具（构建、安装、日志） | 13 次 |
+| **hvigorw** | `<DEVECO_PATH>/tools/hvigor/bin/hvigorw.js` | HarmonyOS 项目构建工具（类似 Gradle） | 41 次 |
+| **ohpm** | `<DEVECO_PATH>/sdk/default/openharmony/ohpm/bin/ohpm` | HarmonyOS 包管理器（安装依赖） | 3 次 |
+| **hdc** | `<DEVECO_PATH>/sdk/default/openharmony/toolchains/hdc` | 设备连接器（安装应用、日志、调试） | 95 次 |
+| **clang/clang++** | `<DEVECO_PATH>/sdk/default/openharmony/native/llvm/bin/clang` | 交叉编译器（编译 C/C++ 代码） | 54+48 次 |
+
+> **提示**：建议将 `<DEVECO_PATH>/tools` 和 `<DEVECO_PATH>/sdk/default/openharmony/toolchains` 加入系统 PATH，这样可以直接在终端使用 `devecocli`、`hdc` 等命令。
+
 ## Qt 源码路径
 
 仅当你 clone 了 Qt 源码时需要配置。使用预编译 SDK 的用户不需要。

@@ -86,7 +86,18 @@ else
   warn "Java 未安装" "DevEco 工具链自带 JDK，如已安装可忽略"
 fi
 
-# 6. DevEco Studio / 命令行工具
+# 6. cmake（Qt 编译和项目构建必需，知识库中引用 189 次）
+if command -v cmake &>/dev/null; then
+  ok "cmake ($(cmake --version 2>/dev/null | head -1))"
+else
+  if [ "$IS_WINDOWS" = "true" ]; then
+    fail "cmake 未安装" "请访问 https://cmake.org/download/ 下载 Windows 版"
+  else
+    fail "cmake 未安装" "运行: sudo apt install cmake 或 sudo yum install cmake"
+  fi
+fi
+
+# 7. DevEco Studio / 命令行工具
 DEVECO_FOUND="false"
 if [ "$IS_WINDOWS" = "true" ]; then
   # Windows: 检查常见安装路径

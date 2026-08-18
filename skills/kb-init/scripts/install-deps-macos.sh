@@ -69,7 +69,14 @@ else
   warn "Java 未安装" "DevEco Studio 自带 JDK，如已安装 DevEco 可忽略"
 fi
 
-# 7. DevEco Studio
+# 7. cmake（Qt 编译和项目构建必需，知识库中引用 189 次）
+if command -v cmake &>/dev/null; then
+  ok "cmake ($(cmake --version 2>/dev/null | head -1))"
+else
+  fail "cmake 未安装" "运行: brew install cmake 或访问 https://cmake.org/download/"
+fi
+
+# 8. DevEco Studio
 DEVECO_FOUND="false"
 for p in "/Applications/DevEco-Studio.app" "$HOME/Applications/DevEco-Studio.app"; do
   if [ -d "$p" ]; then

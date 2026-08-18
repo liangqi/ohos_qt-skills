@@ -206,7 +206,9 @@ bash skills/kb-init/scripts/install-deps-linux.sh
 bash skills/kb-init/scripts/install-deps-linux.sh
 ```
 
-脚本会检查 git、curl、Node.js、JDK、hdc 等依赖。如果有 FAIL 项，Agent 引导用户修复后重新运行。
+脚本会检查 git、curl、cmake、Node.js、JDK、hdc、DevEco CLI 等依赖。如果有 FAIL 项，Agent 引导用户修复后重新运行。
+
+> **cmake 是必须的**：知识库中引用 cmake 189 次，是 Qt 编译和项目构建的核心工具。如果 cmake 检查失败，必须先安装。
 
 ### Step 4: 获取 Qt 源码/SDK
 
@@ -234,6 +236,8 @@ bash skills/kb-init/scripts/compile-qt-sdk.sh \
 ```
 
 脚本会输出 `QT<VERSION>_OHOS_SDK=<路径>`。
+
+> **详细编译指南**：如果编译遇到问题，或需要手动编译，请参阅 `references/qt-compile-guide.md`，其中包含完整的编译步骤、参数说明和故障排除指南。
 
 **场景 B: opensource, both（源码 + SDK）**
 
@@ -307,7 +311,7 @@ bash skills/kb-init/scripts/verify-env.sh
 | git clone 失败 (commercial) | 检查 HTTP 凭据；检查网络 |
 | git clone 失败 (opensource) | 检查网络；尝试 `git config --global http.sslVerify false` |
 | SDK 下载失败 | 手动访问 https://gitcode.com/ohos-qt/qt-harmonyos-src/releases |
-| 编译 SDK 失败 (commercial) | 检查 MinGW/Perl/cmake 是否安装；查看编译日志 |
+| 编译 SDK 失败 (commercial) | 检查 MinGW/Perl/cmake 是否安装；参阅 `references/qt-compile-guide.md` 故障排除章节 |
 | `verify-env.sh` 报告 FAIL | 按 FAIL 项提示修复，重新运行 |
 | Linux 用户无 DevEco Studio GUI | 正常——使用 Command Line Tools |
 
@@ -315,4 +319,5 @@ bash skills/kb-init/scripts/verify-env.sh
 
 - `references/deveco-install.md` — DevEco Studio / CLI 各平台安装详细步骤
 - `references/qt-src-acquisition.md` — Qt 源码获取的两种方式详细说明
-- `references/env-variables.md` — ENV.md 中所有变量的含义和用途
+- `references/qt-compile-guide.md` — Qt 源码编译构建完整指南（商业版用户必读，含故障排除）
+- `references/env-variables.md` — ENV.md 中所有变量的含义和用途（含 DevEco 自带工具说明）
