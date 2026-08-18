@@ -7,7 +7,7 @@ created: 2026-06-02
 updated: 2026-07-21
 status: active
 audience: public
-refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-api, semantic-qt-ohos-js-thread-gateway, semantic-qt-harmonyos-lifecycle, semantic-qt-harmonyos-qt6-status, semantic-qt-harmonyos-window-model]
+refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-api, semantic-qt-ohos-js-thread-gateway, semantic-qt-harmonyos-lifecycle, semantic-qt-harmonyos-qt6-status, semantic-qt-harmonyos-window-model, semantic-qt-ohos-extras-examples]
 summary: >
   QtOhosExtras 模块：Qt 与鸿蒙系统交互的桥梁。Qt5 公开 API 145+ 个（2026-07-15 源码全扫补全，此前仅录 ~9 个）。
   覆盖：窗口（setWindowCornerRadius/tryGetNativeWindowId/setShowWindowAsFloatWindowHint/隐私模式/常亮/拖拽缩放）、
@@ -73,7 +73,7 @@ QtOhosExtras 是 Qt for HarmonyOS 的专有扩展模块，提供与鸿蒙系统�
 
 > ⚠️ **纠正历史错误**：本页曾断言"无 `startAbilityForResult`"。源码 `qohosabilitycontext.h:79-80` **明确提供** `QOhosAbilityContext::startAbilityForResult` 两个重载（异步，返回 `requestId`，结果经信号回调）。要**同步阻塞**等结果时才需 [[qt-ohos-js-thread-gateway]] 的 `evalWithPromise` 同步化（QtOhosExtras 无同步阻塞变体，见末尾「已纠正」）。
 
-> **子进程选型**（2026-07-21 按领域经验补注）：启动子进程不能一刀切——**无界面**用 `QProcess`（可用，保持不改）；**有界面+Qt**用 `startAppProcess()`/`startNewAbilityInstance()`；**有界面+非Qt**用 `startAbility(want)`；**无界面需原生托管**用 `startNoUiChildProcess()`。决策树见 [[qt-harmonyos-api-mapping]] §1。（旧版 KB 笼统说"QProcess 不可用"是不准确的。）
+> **子进程选型**：启动子进程不能一刀切（`QProcess`/`startAppProcess()`/`startAbility()`/`startNoUiChildProcess()` 各有适用场景），决策树见 [[qt-harmonyos-api-mapping]] §1。
 
 **命名空间级自由函数**：
 
@@ -316,4 +316,3 @@ QtOhosExtras 是 Qt for HarmonyOS 的专有扩展模块，提供与鸿蒙系统�
 - [[qt-harmonyos-lifecycle]] — 生命周期、Want 接续、设备迁移
 - [[qt-harmonyos-window-model]] — 窗口模型（浮窗、popup、XComponent 承载）
 - [[qt-harmonyos-qt6-status]] — Qt6 中本模块私有化
-refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-api, semantic-qt-ohos-js-thread-gateway, semantic-qt-harmonyos-lifecycle, semantic-qt-harmonyos-qt6-status, semantic-qt-harmonyos-window-model, semantic-qt-ohos-extras-examples]

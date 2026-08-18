@@ -4,7 +4,7 @@ type: procedural
 domain: workflow
 tags: [workflow, qt, harmonyos, completion, functional-test, test-case, source-scan, human-test-loop, app-harmonyos]
 created: 2026-07-16
-updated: 2026-07-21
+updated: 2026-08-12
 status: active
 audience: public
 refs: [procedural-qt-ohos-run-test, procedural-qt-app-harmonyos-migration, procedural-framework-fix-verification, procedural-framework-issue-analysis, procedural-demo-generation, semantic-qt-ohos-project-analyzer-workflow, semantic-qt-harmonyos-golden-rules, semantic-qt-harmonyos-api-mapping]
@@ -119,8 +119,8 @@ evidence: [<APP_NAME>完善测试报告, <WORKLOG>]
 
 **10 用例清单表**（示例骨架，按应用实际填充）：
 
-| TC# | 用例名 | 功能点 | 优先级 | 状态 |
-|-----|--------|--------|:------:|:----:|
+| TC# | 用例名 | 优先级 | 状态 |
+|-----|--------|:------:|:----:|
 | TC-01 | 主窗口启动显示 | P0 | 🟡待测 |
 | TC-02 | 菜单/工具栏操作 | P0 | 🟡待测 |
 | TC-03 | 核心业务对话框 | P0 | 🟡待测 |
@@ -224,7 +224,7 @@ evidence: [<APP_NAME>完善测试报告, <WORKLOG>]
 
 ### 4.2 问题沉淀
 
-- 修复中遇到的新错误 → `problems/`（用 `_templates/problem.md`）+ 更新 `problems/_lookup.md`
+- 修复中遇到的新错误 → `problems/`（用 `_templates/qt-problem.md`）+ 运行 `bash _scripts/kb-regen-indexes.sh` 重生 `problems/_lookup.md` 等派生索引
 - 新 API 差异 → [[qt-harmonyos-api-mapping]]
 - 新平台限制 → `qt-harmonyos-platform-limits`（内部沉淀）
 
@@ -283,7 +283,7 @@ evidence: [<APP_NAME>完善测试报告, <WORKLOG>]
 - [[framework-fix-verification]] — 验证用例编写规范参考
 - [[framework-issue-analysis]] — 框架问题分析（fail 用例定位调用链）
 - [[qt-ohos-project-analyzer-workflow]] — 工程分析（源码扫描）
-- [[qt-harmonyos-golden-rules]] — 34 条铁律（P1-P5 平台限制验证）
+- [[qt-harmonyos-golden-rules]] — 35 条铁律（P1-P5 平台限制验证）
 - [[qt-harmonyos-api-mapping]] — API 替换（源码扫描识别需测 API）
 - [[demo-generation]] — Demo 生成（用例工程可复用 demo 模板）
 - 工作流供应链 — 工作流供应链总览

@@ -4,7 +4,7 @@ type: semantic
 domain: tech
 tags: [qt, qt6, harmonyos, ohos, status, cmake]
 created: 2026-06-03
-updated: 2026-07-27
+updated: 2026-08-03
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-build, semantic-qt-harmonyos-modules, semantic-qt-harmonyos-platform-limits, semantic-qt-ohos-project-analyzer-workflow]
@@ -92,7 +92,7 @@ Qt 6 新增了若干 `QStandardPaths::StandardLocation` 枚举值，以下映射
 |------|------|------|
 | `import QtQuick 2.15` | `import QtQuick` | 无版本号导入 |
 | `import QtQuick.Controls 2.15` | `import QtQuick.Controls` | 同上 |
-| `QtQuick.Controls` 模块在 OHOS SDK 中缺失 | ⚠️ **源码 superbuild（策略 B）**：不在 qtbase 中，属于独立模块（qtdeclarative/qtquickcontrols2），需单独适配。**预构建安装器（策略 B'）**：libQt6QuickControls2.so + qml/QtQuick/Controls runtime **全在**（2026-07-25 ground-truth 复核），无需单独适配。CopyQ（qml）用预构建编译成功佐证（第 2 批编译复盘）。 |
+| `QtQuick.Controls` 模块在 OHOS SDK 中缺失 | — | ⚠️ **源码 superbuild（策略 B）**：不在 qtbase 中，属于独立模块（qtdeclarative/qtquickcontrols2），需单独适配。**预构建安装器（策略 B'）**：libQt6QuickControls2.so + qml/QtQuick/Controls runtime **全在**（2026-07-25 ground-truth 复核），无需单独适配。CopyQ（qml）用预构建编译成功佐证（第 2 批编译复盘）。 |
 
 ### 其他变更
 
@@ -204,9 +204,9 @@ cmake --build . -j8   # 业务 .so（qt_add_executable 自动 MODULE + main GLOB
 
 > ⚠️ **2026-07-27 第 3 批（16 应用 8 成功 8 阻断）补四条经验**（见 第 3 批编译复盘）：
 > - **"模块层可行" ≠ "应用可编译"**：预构建再推翻 3 个旧"模块缺失"阻断（Serial-Studio 旧"Quick absent"→Quick 全在编译成功；QCTools 旧"Multimedia missing"→Multimedia 现齐，真阻断=FFmpeg native；Contour 旧"Quick hard-requires"→Quick 现齐，真阻断=DBus+xcb）。翻案后真阻断常是 native 重型库（FFmpeg/DBus+xcb），非 Qt 模块。收到"Quick/Multimedia/3D absent"类应用应：① 先验模块层（预构建大概率已齐）；② 再验 native 重型依赖层。
-> - **DBus 缺失是预构建确定性硬墙**（见已知问题 #18）：无条件 REQUIRED DBus 的应用不可编译、不可 stub、不可 `-DCMAKE_DISABLE`；可选 DBus（`Q_OS_OHOS` 守护跳过）可编译。
-> - **C++23 deducing-this/ranges 是编译器能力缺口**（见已知问题 #19）：OHOS clang 15.0.4 不支持 P0847（需 Clang18+），非 stub 可解，硬天花板。
-> - **`#ifdef Q_OS_LINUX` 不可信**（见已知问题 #20）：Qt6 OHOS 同时定义 Q_OS_OHOS+Q_OS_LINUX，desktop-only 功能守护须用 `Q_OS_LINUX && !Q_OS_OHOS`。
+> - **DBus 缺失是预构建确定性硬墙**（见已知问题 \#18）：无条件 REQUIRED DBus 的应用不可编译、不可 stub、不可 `-DCMAKE_DISABLE`；可选 DBus（`Q_OS_OHOS` 守护跳过）可编译。
+> - **C++23 deducing-this/ranges 是编译器能力缺口**（见已知问题 \#19）：OHOS clang 15.0.4 不支持 P0847（需 Clang18+），非 stub 可解，硬天花板。
+> - **`#ifdef Q_OS_LINUX` 不可信**（见已知问题 \#20）：Qt6 OHOS 同时定义 Q_OS_OHOS+Q_OS_LINUX，desktop-only 功能守护须用 `Q_OS_LINUX && !Q_OS_OHOS`。
 > - 编译边界 stub 扩展：Merkaartor（GDAL/PROJ C++ 类层级 stub）、Drawpile（libav/libwebp/libzip/KArchive/libsodium stub）。第 3 批累计预构建 3 批 31 应用 22 成功。
 
 ## 已知问题与待验证项
@@ -234,6 +234,8 @@ cmake --build . -j8   # 业务 .so（qt_add_executable 自动 MODULE + main GLOB
 | 19 | OHOS clang 是否支持 C++23 deducing-this/ranges 适配器 | ✅ **已验证（2026-07-27 第 3 批，creeper-qt）**：OHOS native clang **15.0.4 不实现 C++23 deducing-this（P0847R7）**（需 Clang 18.0+），无 -std flag 可在 15 上开启（实测 `-std=gnu++2b` 下 `auto f(this auto& self)` 报 expected parameter declarator，20 errors）；libc++ 同样缺 C++23 ranges 适配器（`std::views::zip`/`cartesian_product`）。用这些特性的应用需等 OHOS NDK 升级 Clang18+/libc++19+ 或源码层降级（deducing-this→CRTP、ranges→手写循环）。**编译器能力缺口**，非 Qt 模块/平台限制，非 stub 可解（第 3 批编译复盘 决策 3）|
 | 20 | Qt6 OHOS Q_OS_LINUX 守护是否可靠 | ✅ **已验证（2026-07-27 第 3 批，Open-Typer/Serial-Studio）**：Qt6 `qsystemdetection.h` 在 OHOS 上**同时定义 `Q_OS_OHOS` 和 `Q_OS_LINUX`**。源码用裸 `#ifdef Q_OS_LINUX` 守护 desktop-only 功能（DBus/systemd/X11/procfs）时，OHOS 上也触发 → 编译失败（DBus 预构建缺失）。**正确守护**：`#if defined(Q_OS_LINUX) && !defined(Q_OS_OHOS)`。Qt6 OHOS 独有（Qt5 qsystemdetection 可能不双定义）。grep `Q_OS_LINUX` 是 DBus 类阻断的早期信号（第 3 批编译复盘 决策 5）|
 
+| 21 | Qt6.12 IoT addon 模块（Mqtt/Coap/Opcua/Knx）的鸿蒙支持 | ✅ **已验证（2026-08-03，qtmqtt `v6.12.0-beta2`）**：这些是 Qt **source-only 附加模块**，**不在预构建安装器**（开源版 installer 无此组件可勾选、商业版以源码形式提供），与"发行版缺 WebEngine/DBus"性质不同——需自编。但**预构建 OHOS kit 带 `Qt6BuildInternalsConfig.cmake`**（`lib/cmake/Qt6BuildInternals/`），设计上支持编译 Qt addon 模块。流程：clone `qt/qtmqtt` checkout 对应 tag → `qt-cmake.bat`+`ohos.toolchain.cmake` 交叉编译（`-DQT_BUILD_EXAMPLES=OFF -DQT_BUILD_TESTS=OFF`）→ `CMAKE_INSTALL_PREFIX=<QT6_OHOS_KIT>` **装进 OHOS kit**（关键招：libQt6Mqtt.so 进 kit `lib/`、cmake config 进 `lib/cmake/Qt6Mqtt/`、headers 进 `include/QtMqtt/`，业务 demo `find_package(Qt6 Mqtt)` 与 harmonydeployqt6 拷库两头顺，无需额外配路径）→ 业务用 `qt_add_executable` 正常编。验证：libQt6Mqtt.so(395KB)+libsimplemqttclient.so+HAP(36MB) 全产出，NEEDED 全裸名（libQt6Mqtt.so NEEDED 含 libQt6WebSockets.so，harmonydeployqt6 递归拖依赖正确），0 patch。⚠️ 许可：QtMqtt 开源版 **GPLv3**（非 LGPL），闭源商业发行需买 Qt 商业许可或换 Paho.mqtt-c/mosquitto（EPL/EDL 不传染）。同法可编 CoAP/Opcua/Knx（待验证）。详见 [[qt-harmonyos-third-party-libs]] §9 QtMqtt。⚠️ **2026-08-04 runtime 补正**：#21 原仅验证 build 产物（lib+HAP+NEEDED 裸名），未端到端跑设备。实跑（mqttclient-ohos demo）发现：Qt6 预构建 kit 的 Qt .so 带 HARD DT_NEEDED 三方库（libQt6Core→libicui18n/uc/data、libQt6Gui→libfontconfig/png16/freetype、libQt6Network→libbrotlidec/common、libfontconfig→libexpat），既不在 kit `lib/`、也不属 OHOS 系统库，harmonydeployqt6 不自动拷 → HAP 装得上但启动即崩 dlopen(libQt6Core)→libicui18n not found。修：手动 stage 9 个三方 .so 进 `hap/entry/libs/arm64-v8a/`（从 additional-packages 或已跑通的 gallery-ohos demo 拷）+ `hvigorw assembleHap` 重打 → HAP 34MB→73MB，依赖链完整。完整根因与修复步骤见 KB 错误库（problems/）与鸿蒙 Qt 应用开发指南 §6 陷阱 #12（均 KB 内部页，公开版不可达），此处不展开。 |
+
 ## 参考来源
 
 - [Building Qt6 for HarmonyOS](https://wiki.qt.io/Building_Qt6_for_HarmonyOS) — Qt 6 构建指南
@@ -247,3 +249,15 @@ cmake --build . -j8   # 业务 .so（qt_add_executable 自动 MODULE + main GLOB
   - `<LOCAL_PATH>` — 关闭事件 API（私有）
   - `<LOCAL_PATH>` — 窗口标记 API
   - `<LOCAL_PATH>` — QPA 函数（ShareKit/FloatWindow）
+
+## 变更史
+
+| 日期 | 变更 |
+|------|------|
+| 2026-07-06 | 创建页面，Qt6 鸿蒙化状态初始记录（qtbase dev 已合并 Gerrit 733351，最低 SDK API 20） |
+| 2026-07-13 | 策略 B 源码 superbuild Windows 验证（MinGW host + OHOS Clang target，gallery 真机运行通过）→ Qt6 Windows 源码 superbuild 工作流（内部） |
+| 2026-07-23 | Qt Creator Kit 配置验证（预构建安装器 + QtC IDE，samegame demo）→ Qt Creator Kit 配置工作流（内部） |
+| 2026-07-25 | 策略 B' 预构建安装器 ground-truth 复核：完整 Qt6.12 发行版（50+ 模块 .so + qml runtime），第 1+2 批 15 应用 14 成功 |
+| 2026-07-27 | 第 3 批 16 应用 8 成功 8 阻断，补 DBus 硬墙 / C++23 天花板 / Q_OS_LINUX 双定义三条经验 |
+| 2026-08-02 | 策略 B' 预构建 CLI 端到端验证（Qt6 预构建 CLI 端到端工作流，内部）：widgets/gallery demo configure→build→package HAP ~33MB 成功，固化 11 陷阱 + hvigor-wrapper.bat 占位符模板 |
+| 2026-08-03 | Qt6+CEF 鸿蒙集成验证（Qt6+CEF 集成工作流，内部）：OpenQtCef Qt5→Qt6 迁移，HAP 真机启动通过；IoT addon（qtmqtt）鸿蒙交叉编译验证（已知问题 \#21） |

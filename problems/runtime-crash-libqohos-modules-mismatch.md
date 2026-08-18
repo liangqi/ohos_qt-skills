@@ -39,6 +39,7 @@ environment: >
   Qt5.15.16 OHOS SDK 两套: ${QT5_15_OHOS_SDK}(旧,libqohos 读 modulesFactories)
   与 ${QT5_15_OHOS_SDK_FULL}(全量,libqohos 读 modules).
   .ets 胶水模板来源 ${QT5_15_SRC}(实为脏 5.12 树,传 modulesFactories).
+---
 
 ## 根因
 

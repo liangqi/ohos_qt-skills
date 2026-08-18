@@ -2,16 +2,16 @@
 id: semantic-qt-harmonyos-api
 type: semantic
 domain: tech
-tags: [qt, harmonyos, api, porting, qprocess, qwindow, dialog, modality, fullscreen, platform]
+tags: [qt, harmonyos, api, porting, qprocess, qwindow, dialog, modality, fullscreen, platform, setSurfaceConsumer, OHNativeWindow]
 created: 2026-06-02
-updated: 2026-07-21
+updated: 2026-08-06
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-ohos-extras]
 summary: >
   Qt 鸿蒙化 API 兼容性要点：argv 参数差异、子进程按场景选（无界面 QProcess 可用/有界面 Qt 用 startAppProcess/有界面非Qt 用 startAbility）、
   窗口模型差异（QDialog/Popup 为子窗口）、
-  modality 仅子窗口有效、winId() 非原生句柄、hide() 语义不同、
+  modality 仅子窗口有效、winId() 非原生句柄、setSurfaceConsumer 获取 OHNativeWindow* 的公开路径、hide() 语义不同、
   setMask() 仅子窗口、closeEvent 可能来自系统生命周期。
   平台判断：Qt.platform.os 在鸿蒙返回 "linux"（上游 os() 缺 Q_OS_OHOS 分支），临时用 pluginName，建议上游修复。
   设备类型判断：Qt 不导出公开设备类型接口；私有层 QtCore 的 QOhosDeviceInfo（Q_CORE_EXPORT，可 include 可 link，但仅 2in1/tablet/phone 三档、本质是 @ohos.deviceInfo 缓存）可用，应用层推荐直接走 Node-API 调 @ohos.deviceInfo。
@@ -122,12 +122,6 @@ const bool isHarmony = QSysInfo::productType() == "ohos";  // qglobal.cpp:2718 �
   - `QtOhosExtras::startAppProcess()` — 启动应用进程
 
 ### QProcess
-按场景选择，**不一刀切**（2026-07-21 按领域经验修正，旧版"QProcess 不可用/不推荐"不准确）：
-- **无界面子进程** → `QProcess` **可用**，保持原样（鸿蒙沙箱内可 fork/exec 无界面二进制）
-- **有界面 + Qt 程序** → `QtOhosExtras::startAppProcess()` / `startNewAbilityInstance()`（Qt extra 接口，子进程以带 UI 的 Ability 形态运行）
-- **有界面 + 非 Qt 程序** → `QtOhosExtras::startAbility(want)`（Want 模型启动任意 Ability）
-- **无界面但需鸿蒙原生托管** → `startNoUiChildProcess()`（.so 子进程经 Child Process Manager 托管）
-- 不要用裸 `QProcess` 启动**带界面**的子进程（GUI 必须经 Ability 框架）
 
 > 详见 [[qt-harmonyos-api-mapping]] §1 进程管理（决策树 + Before/After）。
 
@@ -239,6 +233,48 @@ const bool isHarmony = QSysInfo::productType() == "ohos";  // qglobal.cpp:2718 �
 - 类型和布局可能随时变更
 - `QtOhosExtras::tryGetNativeWindowId(QWindow *)` 返回 ArkTS 侧 WindowProperties.id
   - 但官方警告：不保证应用生命周期内有效，使用后稳定性/性能可能差
+
+### setSurfaceConsumer（获取 OHNativeWindow* 的公开路径）
+
+> **源码验证**（Qt 5.15.16 OHOS commit `962aa625`，tqtc/harmonyos-5.15.16 分支）
+
+QPA 插件通过 `platformFunction("setSurfaceConsumer")` 暴露 `OHNativeWindow*`，这是 Qt 内部 **唯一公开** 的获取原生窗口句柄的路径。`winId()` 不返回 OHNativeWindow。
+
+**注册**（`qohosplatformnativeinterface.cpp`）：
+```cpp
+} else if (functionName == "setSurfaceConsumer") {
+    return reinterpret_cast<QFunctionPointer>(&QOhosPlatformWindow::setSurfaceConsumer);
+}
+```
+
+**签名**（`qohosplatformwindow.h`）：
+```cpp
+static std::shared_ptr<void> setSurfaceConsumer(
+    QWindow *targetWindow,
+    QObject *surfaceConsumerContext,
+    std::function<void(QOhosOptional<void *>)> surfaceConsumer);
+```
+
+**回调中的 `void*`** 是 `QOhosSurface::nativeWindow()` 返回的 `OHNativeWindow*`。回调在 surface 创建/销毁/变化时触发（包括初始 surface 和 `surfaceStatusChanged` 信号）。返回的 `shared_ptr<void>` 是句柄，析构时自动注销 consumer。
+
+**QtMultimedia 已在用**（`qtmultimedia/src/plugins/ohos/src/mediaplayer/qohosvideowidget.cpp`）：
+```cpp
+auto setSurfaceConsumerFunc = reinterpret_cast<...>(
+    qApp->platformFunction("setSurfaceConsumer"));
+m_surfaceConsumerHandle = setSurfaceConsumerFunc(
+    m_displayWindow.get(), this,
+    [this](QOhosOptional<void *> nativeSurface) {
+        m_playerControl->setVideoSurface(
+            static_cast<::OHNativeWindow *>(nativeSurface.value()));
+    });
+```
+
+**使用场景**：
+- C++ 应用：直接 `qApp->platformFunction("setSurfaceConsumer")` 获取函数指针
+- Python/PyQt5 应用：需通过 ctypes + C++ shim .so 桥接（PyQt5 sip 未暴露 `platformFunction`）
+- 典型用途：将 OHNativeWindow 传给三方渲染库（libvlc、OpenGL 等）
+
+**注意**：`QOhosOptional` 是 Qt OHOS QPA 内部类型，二进制布局兼容性需在编译时验证。
 
 ## 参考来源
 

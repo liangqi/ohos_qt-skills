@@ -48,6 +48,7 @@ environment: >
   makeJsModulesMap 期望 object 值、无 qohosplugincore.cpp 的 napi_load_module 回退)。
   OHOS 真机 HUAWEI MateBook Fold(HPR-W72 6.0.0.29)。
   demo: ${DEMOS_ROOT}/qapp-recreate-test(QApplication 二次构造验证),胶水模板来自 qtbase/src/harmonyos/templates。
+---
 
 ## 根因(三层,由表及里)
 

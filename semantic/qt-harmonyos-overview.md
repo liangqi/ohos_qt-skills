@@ -4,7 +4,7 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, ohos, huawei, cross-platform, qpa]
 created: 2026-06-02
-updated: 2026-06-02
+updated: 2026-08-14
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-build, semantic-qt-harmonyos-api, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-modules, semantic-qt-ohos-extras]
@@ -68,7 +68,7 @@ Qt 通过 **QPA（Qt Platform Abstraction）插件** 实现与鸿蒙系统的对
 - [[qt-harmonyos-modules]] — 模块适配状态
 - [[qt-harmonyos-lifecycle]] — 生命周期/开发指南（dev-guide 已归档）
 - [[qt-ohos-extras]] — QtOhosExtras 模块
-- [[harmonyos-dev-fundamentals]] — 鸿蒙开发基础
+- [[ohos-common-kb/semantic/harmonyos-development-fundamentals|HarmonyOS 开发基础]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-development-fundamentals.md)）
 
 ## 参考来源
 

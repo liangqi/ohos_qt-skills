@@ -24,11 +24,38 @@
 - ✅ **API 映射 / 平台限制**的勘误与补充
 - ✅ **迁移复盘、Demo 经验**
 - ✅ **文档笔误、链接失效**
+- ✅ **Skills 改进建议**：`skills/` 目录中的自动化脚本和工具
 
 ## 不接受
 
 - ❌ 直接修改内容文件的 PR（会被发布覆盖；请转成 issue）
 - ❌ 涉及内部/私有信息的内容（本仓库仅含 `audience:public` 内容）
+
+## 反馈流程
+
+### 发现内容错误
+
+1. 在本仓库提 Issue，选择"Knowledge correction"模板
+2. 描述错误内容、涉及页面、正确信息
+3. 维护者会在内部源修复，下次发布时自动带入
+
+### 想补充新知识
+
+1. 在本仓库提 Issue，选择"Knowledge contribution"模板
+2. 描述你想补充的知识、证据来源
+3. 维护者会评估并蒸馏到内部源，下次发布时自动带入
+
+### 想改进 Skills
+
+1. 在本仓库提 Issue，选择"Feature / structure proposal"模板
+2. 描述你想改进的 skill、改进建议
+3. 维护者会评估并实现改进
+
+## 内嵌的 HarmonyOS 平台通用知识
+
+本仓库内嵌了 `ohos-common-kb-public/` 目录，包含 HarmonyOS 平台通用知识（ArkTS、ArkUI、NAPI、Stage 模型、DevEco 工具链等）。这些内容由内部 `ohos-common-kb` 仓库按 `audience:public` 过滤后生成。
+
+如果你发现平台通用知识有问题，同样在本仓库提 Issue，维护者会路由到内部 `ohos-common-kb` 修复。
 
 ## License
 

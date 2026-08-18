@@ -4,19 +4,19 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, api, mapping, porting, qprocess, window, filesystem, sharing, context-menu, touch]
 created: 2026-06-02
-updated: 2026-07-21
+updated: 2026-08-15
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-api, semantic-qt-harmonyos-code-patterns, semantic-qt-ohos-extras]
 summary: >
-  Qt鸿蒙API迁移映射表：13大类Before/After对照——进程管理、应用间通信、
+  HarmonyOS 平台能力的 Qt API adapter 映射表：13大类 Before/After 对照——进程管理、应用间通信、
   窗口管理、关闭事件、文件系统、启动参数、拖放、主题外观、时区、线程、
   分享、应用接续、触摸长按上下文菜单。每类含映射表和代码示例。
 ---
 
-# Qt → HarmonyOS API 迁移映射表
+# HarmonyOS 平台能力 → Qt API adapter 映射表
 
-> 本文档汇总 Qt 跨平台应用移植到 OpenHarmony / HarmonyOS 时的 API 映射关系，覆盖 12 个核心领域。每类均提供映射表与 Before/After 代码示例，便于快速检索。
+> 本文档汇总 13 类 Qt API adapter 与 Before/After 代码。平台概念以 common 为准：Stage/UIAbility、Want 与 launchType 见 [[ohos-common-kb/semantic/stage-uiability-lifecycle|Stage 模型与 UIAbility 生命周期]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)）；Window/XComponent/focus seam 见 [[ohos-common-kb/semantic/arkui-window-xcomponent-model|ArkUI 窗口与 XComponent 承载模型]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/arkui-window-xcomponent-model.md)）；文件、loader、线程与时区限制见 [[ohos-common-kb/semantic/harmonyos-platform-limits|HarmonyOS 平台限制]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)）。本页只维护 Qt API、QtOhosExtras/QPA 与 Qt 代码改写。
 
 ---
 
@@ -66,7 +66,7 @@ proc.waitForFinished();
 无界面但用鸿蒙原生托管（需 .so 子进程）：
 
 ```cpp
-#include <QOhosAppContext>
+#include <QtOhosExtras/qohosappcontext.h>
 
 QtOhosExtras::QOhosAppContext::startNoUiChildProcess(
     "libWorker.so",
@@ -77,11 +77,13 @@ QtOhosExtras::QOhosAppContext::startNoUiChildProcess(
 
 > **来源与修正**（2026-07-21）：本节原写"QProcess 均不可用或不被推荐"，按领域经验修正——**无界面子进程 QProcess 可用**，一刀切替换为 `startNoUiChildProcess` 是误导。`startNoUiChildProcess` 是鸿蒙原生 .so 托管方式（备选/需进程托管时），并非 QProcess 的唯一替代。来源：用户（领域专家）经验；与 [[qt-harmonyos-dev-guide]] `uiless_child_process` 互参（该 wiki 讲的是原生托管方式，非禁止 QProcess）。
 
+> **QFileDialog 原生可用**：QFileDialog 在 OHOS 上无需 `#ifdef` 替代——平台插件 `QOhosPlatformIntegrationPlugin` 已内置原生文件对话框支持，`getSaveFileName`/`getOpenFileName` 可直接使用。详见 [ohos-qfiledialog-native-support](../problems/ohos-qfiledialog-native-support.md)。
+
 ---
 
 ## 2. 应用间通信 (Inter-Application Communication)
 
-HarmonyOS 不使用 D-Bus 或 `xdg-open`，统一通过 Want 机制实现应用间调用与 URL 打开。
+Qt 在 HarmonyOS 上通过 QtOhosExtras 的 Want adapter 实现应用间调用与 URL 打开；Want 匹配语义本身由 common 维护。
 
 | Other Platform API | HarmonyOS Replacement | Notes |
 |---|---|---|
@@ -100,19 +102,19 @@ QDesktopServices::openUrl(QUrl("https://example.com"));
 ### After
 
 ```cpp
-#include <QOhosWant>
+#include <QtOhosExtras/qohoswant.h>
 
-QOhosWant want;
+QtOhosExtras::QOhosWant want;
 want.uri    = "https://example.com";
 want.action = "ohos.want.action.viewData";
-startAbility(want);
+QtOhosExtras::startAbility(want);
 ```
 
 ---
 
 ## 3. 窗口管理 (Window Management)
 
-HarmonyOS 对窗口层级、模态、全屏等有较多约束。独立 `QDialog`（无 parent）会被系统视为新主窗口，需显式标记为子窗口。
+Qt QPA 把平台窗口层级映射到 `QWindow`/`QWidget`。独立 `QDialog`（无 parent）在该 adapter 中会成为新主窗口，需显式标记为子窗口。
 
 | Other Platform API | HarmonyOS Behavior / Replacement | Notes |
 |---|---|---|
@@ -140,9 +142,9 @@ QDialog *dlg = new QDialog(mainWindow);
 dlg->exec();
 
 // 方式二：显式标记为子窗口
-#include <QOhosFunctions>
+#include <QtPlatformHeaders/QOhosFunctions>
 QDialog *dlg = new QDialog();
-QtOhosExtras::QOhosFunctions::tagWindowOrWidgetAsSubWindowOf(dlg, mainWindow);
+QOhosFunctions::tagWindowOrWidgetAsSubWindowOf(dlg, mainWindow);
 dlg->exec();
 ```
 
@@ -150,7 +152,7 @@ dlg->exec();
 
 ## 4. 关闭事件处理 (Close Event Handling)
 
-HarmonyOS 中 `closeEvent()` 不仅由用户点击关闭按钮触发，也可能由系统生命周期管理触发。需要根据 root cause 区分处理。
+Qt adapter 会把用户窗口关闭与系统生命周期回调都映射到 `closeEvent()`，因此必须按 root cause 区分处理。
 
 | Other Platform Behavior | HarmonyOS Behavior | Notes |
 |---|---|---|
@@ -159,35 +161,13 @@ HarmonyOS 中 `closeEvent()` 不仅由用户点击关闭按钮触发，也可能
 
 ### After
 
-```cpp
-void MyWindow::closeEvent(QCloseEvent *event)
-{
-    auto cause = QtOhosExtras::QOhosFunctions::getCloseEventRootCause(event);
-
-    switch (cause) {
-    case QtOhosExtras::WindowStageClose:
-        // 用户或系统关闭窗口
-        if (hasUnsavedChanges()) {
-            event->ignore();   // Level 1 可阻止
-            promptSaveDialog();
-        }
-        break;
-    case QtOhosExtras::AbilityClose:
-        // Ability 被系统回收，必须尽快保存状态
-        saveState();
-        break;
-    case QtOhosExtras::InternalClose:
-        // 应用内部调用 close()
-        break;
-    }
-}
-```
+closeEvent 根因处理（区分 WindowStageClose / AbilityClose / InternalClose）详见 [[qt-harmonyos-lifecycle]] §3 级关闭拦截。
 
 ---
 
 ## 5. 文件系统 (File System)
 
-HarmonyOS 的沙箱机制限制了文件权限修改、符号链接创建以及对系统路径的访问。
+以下是平台沙箱/loader 限制在 Qt 文件 API 上的表现；平台原因和证据边界以 common 为准。
 
 | Other Platform API | HarmonyOS Behavior | Notes |
 |---|---|---|
@@ -331,7 +311,7 @@ QApplication app(argc, argv);
 ### After
 
 ```cpp
-#include <QtOhosExtras/QOhosAppContext>
+#include <QtOhosExtras/qohosappcontext.h>
 
 QApplication app(argc, argv);
 
@@ -360,7 +340,7 @@ QObject::connect(
 
 ## 9. 时区 (Timezone)
 
-HarmonyOS 不包含 tzdata 数据库，`QTimeZone` 需使用 ICU 后端。
+平台时区资源限制在 Qt 中的响应是使用已验证的 ICU 后端；不在本页重复维护平台资源结论。
 
 | Other Platform Behavior | HarmonyOS Replacement | Notes |
 |---|---|---|
@@ -388,7 +368,7 @@ QDateTime dt = QDateTime::currentDateTime().toTimeZone(tz);
 
 ## 10. 线程 (Threading)
 
-HarmonyOS 定义了 `PTHREAD_CANCEL_DISABLE` 等宏，但相关函数（如 `pthread_cancel`）不可用。
+平台线程限制在 Qt 中的响应是采用 `QThread::quit()`、中断标志等协作式终止，不依赖 `pthread_cancel`。
 
 | Other Platform Behavior | HarmonyOS Behavior | Notes |
 |---|---|---|
@@ -432,7 +412,7 @@ HarmonyOS 提供 ShareKit 框架实现系统级分享，通过 `QOhosAbilityCont
 
 | Other Platform Behavior | HarmonyOS Replacement | Notes |
 |---|---|---|
-| Platform share sheet (iOS/Android) | `ShareKit::shareDataWithShareKit()` | 通过 `QOhosAbilityContext` 获取上下文 |
+| Platform share sheet (iOS/Android) | `QOhosAbilityContext::shareDataWithShareKit()` | 用 `ShareKit::create*Record()` 创建分享记录 |
 
 ### Before
 
@@ -445,15 +425,16 @@ HarmonyOS 提供 ShareKit 框架实现系统级分享，通过 `QOhosAbilityCont
 ### After
 
 ```cpp
-#include <QOhosAbilityContext>
-#include <ShareKit>
+#include <QtOhosExtras/qohossharekit.h>
 
-auto context = QtOhosExtras::QOhosAbilityContext::currentContext();
-ShareKit::SharedData data;
-data.text = "Check out this app!";
-data.uri  = "https://example.com";
+auto textRecord = QtOhosExtras::ShareKit::createContentRecord(
+    QMimeDatabase().mimeTypeForName("text/plain"),
+    QStringLiteral("Check out this app!"));
+auto urlRecord = QtOhosExtras::ShareKit::createUrlRecord(
+    QUrl("https://example.com"));
 
-ShareKit::shareDataWithShareKit(context, data);
+auto context = QtOhosExtras::QOhosAbilityContext::getDefaultInstance();
+context->shareDataWithShareKit({textRecord, urlRecord}, nullptr);
 // 系统弹出分享面板，用户选择目标应用
 ```
 
@@ -477,28 +458,26 @@ HarmonyOS 支持跨设备应用接续（类似 Apple Handoff），通过 `contin
 ### After
 
 ```cpp
-#include <QOhosAbilityContext>
+#include <QtOhosExtras/qohosappcontext.h>
+#include <QtOhosExtras/qohosuiabilitycontext.h>
 
-// 发送端：序列化当前状态
-auto context = QtOhosExtras::QOhosAbilityContext::currentContext();
-QJsonObject state;
-state["document"] = currentDocumentPath;
-state["cursor"]   = cursorPosition;
+auto context = QtOhosExtras::QOhosAbilityContext::getDefaultInstance();
+context->setContinuationActive(true);
 
-// 状态必须 < 100KB
-QByteArray serialized = QJsonDocument(state).toJson(QJsonDocument::Compact);
-Q_ASSERT(serialized.size() < 100 * 1024);
+QObject::connect(context.get(),
+    &QtOhosExtras::QOhosUiAbilityContext::continueRequestReceived,
+    [](const QSharedPointer<QtOhosExtras::QOhosOnContinueContext> &request) {
+        QByteArray stateData = serializeState();
+        Q_ASSERT(stateData.size() < 100 * 1024);
+        request->setAgreeResponse(stateData);
+    });
 
-context->updateContinuationState(serialized);
-
-// 接收端：处理接续请求
-QObject::connect(context, &QOhosAbilityContext::continueRequestReceived,
-    [](const QByteArray &stateData) {
-        QJsonObject state = QJsonDocument::fromJson(stateData).object();
-        openDocument(state["document"].toString());
-        setCursorPosition(state["cursor"].toInt());
-    }
-);
+auto launchInfo = QtOhosExtras::QOhosAppContext::getAppLaunchWantInfo();
+if (launchInfo) {
+    auto stateData = QtOhosExtras::tryGetOnContinueData(launchInfo->want());
+    if (stateData)
+        deserializeState(*stateData);
+}
 ```
 
 ---
@@ -546,7 +525,7 @@ QtOhosExtras::QOhosAppContext::instance()->enableContextMenuEventOnLongPress();
 
 ## 迁移检查清单
 
-1. **进程管理** — 替换所有 `QProcess` 调用为 QtOhosExtras 接口
+1. **进程管理** — 无界面 QProcess 原样保留；有界面 Qt 用 startAppProcess；有界面非 Qt 用 startAbility；无界面需原生托管用 startNoUiChildProcess
 2. **应用间通信** — 替换 `QDesktopServices::openUrl` 为 Want 机制
 3. **窗口管理** — 为所有独立 `QDialog` 设置 parent 或标记为子窗口
 4. **关闭事件** — 在 `closeEvent` 中检查 root cause，区分用户操作与系统回收

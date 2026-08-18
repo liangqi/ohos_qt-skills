@@ -4,22 +4,24 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, lifecycle, ability, want, close-event, continuation, sharing]
 created: 2026-06-02
-updated: 2026-07-21
+updated: 2026-08-14
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-ohos-extras, semantic-qt-harmonyos-api]
 summary: >
-  Qt鸿蒙应用生命周期详解：Stage模型/UIAbility启动流程、启动其他应用
+  Stage/UIAbility 生命周期的 Qt adapter：平台回调到 Qt main/event loop 的桥接、启动其他应用
   (显式/隐式Want)、被其他应用启动(module.json5 skills)、多实例管理、
   3级关闭拦截(WindowStageClose/AbilityClose/InternalClose)、
   应用接续(跨设备迁移)、分享(ShareKit)、无UI子进程、argv组装规则、主题管理。
 ---
 
-# Qt 鸿蒙应用生命周期详解
+# Stage/UIAbility 生命周期的 Qt adapter
 
-## 启动流程 (Startup Flow)
+> Stage/UIAbility、WindowStage、Want、skills、launchType 与保存恢复的平台语义，以 common 的 [[ohos-common-kb/semantic/stage-uiability-lifecycle|Stage 模型与 UIAbility 生命周期]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)）为准。本页只维护平台回调如何映射到 Qt `main()`/event loop、`QWindow`/`QDialog`、QtOhosExtras、argv、关闭拦截、接续与分享 adapter。
 
-HarmonyOS 采用 **Stage 模型**，以 **UIAbility** 为核心应用组件。Qt 适配层将 Stage 模型的生命周期事件桥接到标准 Qt `main()` 入口，开发者无需编写 ArkTS 侧代码。
+## Qt 启动桥接 (Startup Flow)
+
+Qt 适配层将平台生命周期事件桥接到标准 Qt `main()` 入口。平台回调的权威顺序见 common；下方只展示 Qt 胶水层增加的线程、共享库和 event loop seam。
 
 ### 启动时序
 
@@ -433,7 +435,7 @@ QObject::connect(ability.get(), &QOhosUiAbilityContext::newWantInfoReceived,
 
 用于执行后台任务（网络同步、数据处理、定时任务等），不创建窗口，节省资源。这是鸿蒙**原生**的 .so 子进程托管方式（Child Process Manager）。
 
-> **与 QProcess 的关系**（2026-07-21 按领域经验补注）：无界面后台任务既可用本节 `startNoUiChildProcess`（原生托管、.so 形式、无 GUI 管线），也可直接用 `QProcess`（鸿蒙沙箱内可 fork/exec 无界面二进制）。两者不互斥——`startNoUiChildProcess` 是备选/需进程托管时，并非 QProcess 的唯一替代。有界面子进程须经 Ability 框架（Qt 用 `startAppProcess`，非 Qt 用 `startAbility`），不能用裸 QProcess 起 GUI。决策树见 [[qt-harmonyos-api-mapping]] §1。
+> **与 QProcess 的关系**：无界面后台任务既可用本节 `startNoUiChildProcess`，也可直接用 `QProcess`（沙箱内可 fork/exec 无界面二进制）；有界面子进程须经 Ability 框架。决策树见 [[qt-harmonyos-api-mapping]] §1。
 
 ### 启动子进程
 

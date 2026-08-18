@@ -8,4 +8,4 @@ description: >
 
 错误速查入口：[_lookup](_lookup.md)。Qt 平台已知限制在 semantic/qt-harmonyos-platform-limits.md。
 
-_开发者版无活跃页。_
+_（本域无活跃页）_

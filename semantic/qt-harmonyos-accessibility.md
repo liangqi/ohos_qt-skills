@@ -2,7 +2,7 @@
 id: semantic-qt-harmonyos-accessibility
 type: semantic
 domain: tech
-tags: [qt, harmonyos, accessibility, a11y, QAccessible, ArkUI_AccessibilityProvider, XComponent, Want, io.qt.experimental.enableA11ySupport, uitest, dumpLayout, ui-tree, testing, automation]
+tags: [qt, harmonyos, accessibility, a11y, QAccessible, ArkUI_AccessibilityProvider, xcomponent, want, io.qt.experimental.enableA11ySupport, uitest, dumpLayout, ui-tree, testing, automation]
 created: 2026-07-23
 updated: 2026-07-23
 status: active
@@ -20,6 +20,7 @@ leader_summary: >
 impact: [框架支撑, 迁移提效]
 deliverables: [知识页, 设备验证记录]
 evidence: [uitest dumpLayout 开参数前后对比(空树→QApplication/QPushButton/QLabel 全 Qt 树), qohosjsmain.cpp:564-627 源码, qohosplatformintegration.cpp:171-177 门控]
+---
 
 # Qt for HarmonyOS 无障碍桥与 Want 参数启用
 
@@ -110,6 +111,7 @@ hdc shell uitest dumpLayout -b <bundle>           # 存到 /data/local/tmp/layou
 - 桥已编译: `strings libqohos.so | grep -i accessibility` 命中 `QOhosPlatformAccessibility` + `OH_ArkUI_AccessibilityElementInfoSet*` = 桥在; 全空 = libqohos 以 `QT_NO_ACCESSIBILITY` 编译(需重编)。
 - 开参数后空树→Qt 全树: 即证桥已建 + XComponent provider 已注册 + QAccessible 树已发布。
 - 应用侧无需改代码(桥自动): 仅启动方式加 `--pb io.qt.experimental.enableA11ySupport true`。
+- **Qt6.12 beta2 预构建 libqohos.so 实测 = `QT_NO_ACCESSIBILITY`**（2026-08-05 FeatherPad 端到端实测（KB 内部复盘，公开版不可达）：`grep -ao` 查 a11y 桥符号 `QOhosPlatformAccessibility`/`OH_ArkUI_AccessibilityElementInfoSet*`/`experimentalEnableA11ySupport`/`isA11ySupportEnabled` 全空，"ccessibilit" 计数 0 → 桥未编入 → `--pb` 无效 → `uitest dumpLayout` 只拿 ArkUI 树取不到 Qt 控件树；实测确认）。**预构建 B' 跑不通 a11y 树自动化测试**，需策略 B 源码 superbuild 重编 libqohos（不定义 QT_NO_ACCESSIBILITY）。
 
 ## 应用场景
 

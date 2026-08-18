@@ -4,10 +4,10 @@ type: procedural
 domain: workflow
 tags: [workflow, qt, harmonyos, debugging, framework, analysis, logging, upstream-submission]
 created: 2026-06-02
-updated: 2026-07-04
+updated: 2026-08-14
 status: active
 audience: public
-refs: [semantic-harmonyos-dev-fundamentals,semantic-qt-harmonyos-api,semantic-qt-harmonyos-build,semantic-qt-harmonyos-overview]
+refs: [semantic-qt-harmonyos-api,semantic-qt-harmonyos-build,semantic-qt-harmonyos-overview]
 summary: >
   框架内部问题分析工作流（四阶段闭环）：复现demo生成→编译修复迭代→问题定位(日志法)→根因分析(框架代码调用链)→系统接口验证→上游issue打包提交（工作流最终步骤）。
   阶段四为工作流闭合点：生成clean patch、整理issue说明单、输出纯Qt复现demo、更新知识库索引。
@@ -372,7 +372,7 @@ git reset HEAD
 - [ ] **阶段三**：问题归属已明确（Qt 框架 / 系统 / 应用）
 - [ ] **阶段四**：交付件已输出到 `<WORK_DIR>/<bug-name>/`，patch 已清理
 - [ ] **知识沉淀**：复盘记录已写入 `episodic/postmortems/`
-- [ ] **索引同步**：`_index/_map.md`（如有新页面）已更新，已提交 git commit
+- [ ] **索引同步**：已运行 `bash _scripts/kb-regen-indexes.sh` 重生 `_index/_map.md` 等派生索引（如有新页面），已提交 git commit
 
 ---
 
@@ -422,7 +422,7 @@ git reset HEAD
 - [[qt-harmonyos-build]] — 编译构建（加日志后需重新编译）
 - [[qt-harmonyos-api]] — API 兼容性差异
 - [[qt-harmonyos-platform-limits]] — 已知平台限制（避免将已知限制误判为 bug）
-- [[harmonyos-dev-fundamentals]] — hdc 工具使用
+- [[ohos-common-kb/semantic/harmonyos-development-fundamentals|HarmonyOS 开发基础]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-development-fundamentals.md)）— hdc 工具使用
 
 ## 内容来源
 

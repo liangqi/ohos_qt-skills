@@ -4,7 +4,7 @@ type: procedural
 domain: tools
 tags: [bug-report, workflow]
 created: 2026-08-01
-updated: 2026-08-01
+updated: 2026-08-12
 status: active
 audience: public
 refs: [procedural-qt-bug-report-sample, procedural-framework-issue-analysis, semantic-qt-harmonyos-golden-rules]
@@ -203,11 +203,10 @@ form A 专属。交付件经**人工 review** 后才能提交华为：
 
 转换后：
 1. 移入 `problems/` 目录
-2. 补 `problems/_lookup.md` 索引条目
-3. 补 `_index/_map.md` 条目（添加 summary）
-4. 其余字段（summary/environment/error_message/symptoms/severity/keywords + 正文段）原样保留
+2. 运行 `bash _scripts/kb-regen-indexes.sh` 重生 `problems/_lookup.md` + `_index/_map.md` 等派生索引（自动从 frontmatter 重建，无需手补条目/summary）
+3. 其余字段（summary/environment/error_message/symptoms/severity/keywords + 正文段）原样保留
 
-> 转换后的 problem 页 8 字段（id/summary/refs/tags/audience/status/type/updated）对齐 `_templates/problem.md` 基准，即过 25 项门禁。
+> 转换后的 problem 页 8 字段（id/summary/refs/tags/audience/status/type/updated）对齐 `_templates/qt-problem.md` 基准，即过 25 项门禁。
 
 ---
 

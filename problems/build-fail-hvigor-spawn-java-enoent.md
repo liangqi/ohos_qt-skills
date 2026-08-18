@@ -41,6 +41,7 @@ symptoms: >
 environment: >
   Windows 11 + Git Bash(MSYS)。DevEco Studio `C:\Program Files\Huawei\DevEco Studio`(jbr/bin/java.exe =
   JBR 21.0.8)。Qt5.12 OHOS demo(${DEMOS_ROOT}/tray-ohos)。hvigorw.js 经 `node` 启动。设备 HUAWEI MateBook Fold。
+---
 
 ## 错误信息
 
@@ -91,14 +92,14 @@ node "C:\Program Files\Huawei\DevEco Studio\tools\hvigor\bin\hvigorw.js" assembl
 
 从 bash 调用:`cmd.exe //c "C:\\path\\to\\build.bat"`(`//c` 是 MSYS 对 `/c` 的转义)。
 
-`where java` 应输出 `C:\Program Files\Huawei\DevEco Studio\jbr\bin\java.exe`。之后 `BUILD SUCCESSFUL`,产物 `entry/build/default/outputs/default/entry-default-unsigned.hap`(无 signingConfig 时为 unsigned,装机需另配签名,见 [[signhap-bundlename-mismatch]])。
+`where java` 应输出 `C:\Program Files\Huawei\DevEco Studio\jbr\bin\java.exe`。之后 `BUILD SUCCESSFUL`,产物 `entry/build/default/outputs/default/entry-default-unsigned.hap`(无 signingConfig 时为 unsigned,装机需另配签名,见 signhap-bundlename-mismatch)。
 
 ## 注意事项
 
 - **CLAUDE.md "Qt OHOS 编译必须在 PowerShell" 警告只针对 `mingw32-make.exe`**(Qt 源码编译,mingw32-make 调 `/usr/bin/sh` 吞反斜杠)。demo 用 hvigor+ninja,**bash 可用**,但 PATH 格式要用 Windows 原生(本 .bat)。
 - 仅设 `JAVA_HOME` 不够(hvigor 不读它定位 java);必须把 `jbr\bin` 放进 Windows 格式 PATH。
 - 该 .bat 也适合放进 demo 根目录作为可复用构建入口(${DEMOS_ROOT}/tray-ohos/build.bat 即此模式)。
-- unsigned HAP 装:`code:9568320 error: no signature file`——需 DevEco GUI 配 signingConfig(Automatically generate signature,用华为账号生成 bundle 绑定 .p7b),或复用已有签名(见 [[signhap-bundlename-mismatch]])。
+- unsigned HAP 装:`code:9568320 error: no signature file`——需 DevEco GUI 配 signingConfig(Automatically generate signature,用华为账号生成 bundle 绑定 .p7b),或复用已有签名(见 signhap-bundlename-mismatch)。
 
 ## 成果展示
 
@@ -115,5 +116,5 @@ node "C:\Program Files\Huawei\DevEco Studio\tools\hvigor\bin\hvigorw.js" assembl
 - 见 procedural/qt-ohos-concrete-build-recipe.md（内部页）— 5.12 cmake+hvigor 命令(本 problem 补 Windows PATH 细节)
 - [[procedural-qt-ohos-run-test]] — 构建→装机→运行 CLI 流
 - [[build-hvigor-native-skip]] — 区分:DEVECO_SDK_HOME 缺失致 native 构建**跳过**(本问题是 native 全过、仅 PackageHap java 失败)
-- [[signhap-bundlename-mismatch]] — unsigned HAP 装机签名需求
+- signhap-bundlename-mismatch — unsigned HAP 装机签名需求
 - [[build-fail-bash-path-escape]] — 相关:Git Bash 路径转义问题(PROGRA~1)
