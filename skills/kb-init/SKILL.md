@@ -239,10 +239,17 @@ bash skills/kb-init/scripts/compile-qt-sdk.sh \
   --src=<KB_ROOT>/workspace/qt-src/qt<VERSION> \
   --dest=<KB_ROOT>/workspace/qt-sdk \
   --render=<RENDER_BACKEND> \
-  --build-type=<BUILD_TYPE>
+  --build-type=<BUILD_TYPE> \
+  --ohos-sdk-native=<OHOS_SDK_NATIVE_PATH>
 ```
 
 脚本会输出 `QT<VERSION>_OHOS_SDK=<路径>`。
+
+> **安全提示**：commercial 场景 clone 完成后，建议清除 git remote URL 中的凭据：
+> ```bash
+> cd <KB_ROOT>/workspace/qt-src/qt<VERSION>
+> git remote set-url origin https://codereview.qt-project.org/qt/tqtc-qt5
+> ```
 
 > **详细编译指南**：如果编译遇到问题，或需要手动编译，请参阅 `references/qt-compile-guide.md`，其中包含完整的编译步骤、参数说明和故障排除指南。
 

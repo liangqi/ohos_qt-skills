@@ -123,7 +123,7 @@ else
   warn "DevEco CLI 未找到" "安装 DevEco Studio 后自带"
 fi
 
-# 10. 磁盘空间
+# 11. 磁盘空间
 INSTALL_BASE="${1:-$HOME/dev}"
 if [ -d "$(dirname "$INSTALL_BASE")" ]; then
   AVAIL_KB=$(df -k "$(dirname "$INSTALL_BASE")" 2>/dev/null | tail -1 | awk '{print $4}')

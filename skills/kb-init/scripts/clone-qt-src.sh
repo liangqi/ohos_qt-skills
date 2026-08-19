@@ -66,7 +66,10 @@ clone_repo() {
   fi
 
   echo "  正在克隆 $label ..."
-  echo "  URL: $url"
+  # 隐藏 URL 中的凭据（如果有）
+  local _safe_url
+  _safe_url=$(echo "$url" | sed 's|://[^@]*@|://***@|')
+  echo "  URL: $_safe_url"
   echo "  分支: $branch"
   echo ""
 
@@ -87,7 +90,7 @@ clone_repo() {
   return 0
 }
 
-# 确定 URL
+# 确定 URL 和分支
 case "$METHOD" in
   commercial)
     if [ -n "$QT_USER" ] && [ -n "$QT_PASS" ]; then
@@ -95,19 +98,19 @@ case "$METHOD" in
     else
       REPO_URL="https://codereview.qt-project.org/qt/tqtc-qt5"
     fi
+    BRANCH_512="tqtc/harmonyos-5.12.12"
+    BRANCH_515="tqtc/harmonyos-5.15.16"
     ;;
   opensource)
     REPO_URL="https://gitcode.com/ohos-qt/qt-harmonyos-src.git"
+    BRANCH_512="5.12.12"
+    BRANCH_515="5.15.16"
     ;;
   *)
     echo "FAIL: 不支持的获取方式: $METHOD"
     exit 1
     ;;
 esac
-
-# 确定分支
-BRANCH_512="tqtc/harmonyos-5.12.12"
-BRANCH_515="tqtc/harmonyos-5.15.16"
 
 QT5_12_SRC=""
 QT5_15_SRC=""

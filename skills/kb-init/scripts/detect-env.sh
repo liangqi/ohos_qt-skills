@@ -192,7 +192,13 @@ if [ "$OS" = "windows" ]; then
     [ -d "$p" ] && { PERL_FOUND="true"; PERL_PATH="$p"; break; }
   done
   [ "$PERL_FOUND" = "false" ] && { PERL_FOUND=$(cmd_exists perl); [ "$PERL_FOUND" = "true" ] && PERL_PATH="$(dirname "$(dirname "$(command -v perl)")")"; }
-  POWERSHELL_FOUND=$(cmd_exists powershell.exe 2>/dev/null || cmd_exists pwsh 2>/dev/null || echo "false")
+  if command -v powershell.exe &>/dev/null; then
+    POWERSHELL_FOUND="true"
+  elif command -v pwsh &>/dev/null; then
+    POWERSHELL_FOUND="true"
+  else
+    POWERSHELL_FOUND="false"
+  fi
 elif [ "$OS" = "macos" ]; then
   xcode-select -p &>/dev/null && XCODE_CLT_FOUND="true"
 fi
