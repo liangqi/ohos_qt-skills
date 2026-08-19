@@ -12,9 +12,21 @@ set -uo pipefail
 # 辅助函数
 # ═══════════════════════════════════════════════════════════
 detect_os() {
+  # 鸿蒙检测：uname 可能返回 Linux，但 HarmonyBrew 存在说明是鸿蒙
+  if [ -d "/storage/Users/currentUser/.harmonybrew" ] || command -v brew &>/dev/null && brew --prefix 2>/dev/null | grep -q harmonybrew; then
+    echo "harmonyos"
+    return
+  fi
   case "$(uname -s)" in
     Darwin*) echo "macos";;
-    Linux*)  echo "linux";;
+    Linux*)
+      # 进一步检测鸿蒙：检查 /etc/os-release 或 hdc 环境
+      if [ -f "/etc/ohos-release" ] || [ -f "/etc/openharmony-release" ] || grep -qi "openharmony\|harmonyos" /etc/os-release 2>/dev/null; then
+        echo "harmonyos"
+      else
+        echo "linux"
+      fi
+      ;;
     MINGW*|MSYS*|CYGWIN*) echo "windows";;
     *) echo "unknown";;
   esac

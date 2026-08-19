@@ -206,6 +206,13 @@ bash skills/kb-init/scripts/install-deps-linux.sh
 bash skills/kb-init/scripts/install-deps-linux.sh
 ```
 
+**HarmonyOS**（鸿蒙 PC / 开发板 / 容器）:
+```bash
+bash skills/kb-init/scripts/install-deps-harmonyos.sh
+```
+
+> **HarmonyOS 平台说明**：鸿蒙平台使用 [HarmonyBrew](https://gitcode.com/Harmonybrew) 作为包管理器（Homebrew 的鸿蒙移植版）。如果未安装 HarmonyBrew，脚本会提示安装命令：`zsh -c "$(curl -fsSL https://harmonybrew.atomgit.com/install.sh)"`。git、cmake 等依赖可通过 `brew install` 安装。
+
 脚本会检查 git、curl、cmake、Node.js、JDK、hdc、DevEco CLI 等依赖。如果有 FAIL 项，Agent 引导用户修复后重新运行。
 
 > **cmake 是必须的**：知识库中引用 cmake 189 次，是 Qt 编译和项目构建的核心工具。如果 cmake 检查失败，必须先安装。
