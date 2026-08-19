@@ -1,0 +1,26 @@
+# RELEASE-MANIFEST.yaml — Qt External Edition v2.0.0
+# Generated: 2026-08-19
+
+release_version: v2.0.0
+released_at: "2026-08-19"
+target:
+  id: ohos_qt-skills
+  type: kb
+  kb_id: ohos-qt-kb
+root_commit: 0b02253264930ad7dd889dbd4e741761b02c1bee
+source_kbs:
+  ohos-qt-kb: 1167737006333885edf16cc86d56756587db972b
+  ohos-common-kb: 198dbd07b04c659183b2d575e24e7ef7633e6e34
+embedded_dependencies:
+  ohos-common-kb-public:
+    source_sha: 198dbd07b04c659183b2d575e24e7ef7633e6e34
+    content_tree_sha256: a609188a3fa19de42e23d179ebbc6f34bb5247bbb98c2612ce7b5ae46274e12d
+builder_version: 2
+publication_schema_version: 1
+targets_config_sha256: b6f3e1bbdb0a924a04f32837fa75e9247f618dfaea7e0155dd3ee6bd05add27f
+content_tree_sha256: afe9b533c55c039667f0dbee8830b935b67987c87af5583fe90fbdcce50dc198
+built_at: "2026-08-19T11:30:00+08:00"
+skills:
+  - kb-init
+common_pages_count: 15
+qt_pages_count: 77
