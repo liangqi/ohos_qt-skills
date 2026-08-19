@@ -104,6 +104,14 @@ elif [ "$OS" = "windows" ]; then
     [ -f "$_cli" ] && { DEVECO_CLI_PATH="$_cli"; DEVECO_CLI_FOUND="true"; }
     [ -f "$DEVECO_PATH/sdk/default/openharmony/ohpm/bin/ohpm" ] && OHPM_FOUND="true"
     [ -f "$DEVECO_PATH/tools/hvigor/bin/hvigorw.js" ] && HVIGORW_FOUND="true"
+    # Windows 版本检测
+    _pkg="$DEVECO_PATH/resources/app/package.json"
+    [ -f "$_pkg" ] && DEVECO_VERSION=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "$_pkg" 2>/dev/null | head -1 | sed 's/.*"\([^"]*\)".*/\1/')
+    # 备用路径
+    if [ -z "$DEVECO_VERSION" ]; then
+      _pkg="$DEVECO_PATH/Contents/Resources/app/package.json"
+      [ -f "$_pkg" ] && DEVECO_VERSION=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "$_pkg" 2>/dev/null | head -1 | sed 's/.*"\([^"]*\)".*/\1/')
+    fi
   fi
 elif [ "$OS" = "linux" ]; then
   for p in "$HOME/deveco-studio" "/opt/deveco-studio" "$HOME/DevEco-Studio" "$HOME/dev/deveco-studio"; do
@@ -112,8 +120,12 @@ elif [ "$OS" = "linux" ]; then
   if [ "$DEVECO_FOUND" = "true" ]; then
     _native="$DEVECO_PATH/sdk/default/openharmony/native"
     [ -d "$_native" ] && { OHOS_SDK_NATIVE_PATH="$_native"; OHOS_SDK_NATIVE_FOUND="true"; }
+    _hdc="$DEVECO_PATH/sdk/default/openharmony/toolchains/hdc"
+    [ -f "$_hdc" ] && { HDC_PATH="$_hdc"; HDC_FOUND="true"; }
     _cli="$DEVECO_PATH/tools/devecocli"
     [ -f "$_cli" ] && { DEVECO_CLI_PATH="$_cli"; DEVECO_CLI_FOUND="true"; }
+    [ -f "$DEVECO_PATH/sdk/default/openharmony/ohpm/bin/ohpm" ] && OHPM_FOUND="true"
+    [ -f "$DEVECO_PATH/tools/hvigor/bin/hvigorw.js" ] && HVIGORW_FOUND="true"
   fi
 fi
 

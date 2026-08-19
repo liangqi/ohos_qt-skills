@@ -5,8 +5,10 @@
 # 选项:
 #   --deveco-path=PATH         DevEco Studio 路径
 #   --qt5-12-src=PATH          Qt 5.12 源码路径
+#   --qt5-15-src=PATH          Qt 5.15 源码路径
 #   --qt-build-root=PATH       Qt 编译输出根目录
 #   --qt5-12-ohos-sdk=PATH     Qt 5.12 OHOS SDK 路径
+#   --qt5-15-ohos-sdk=PATH     Qt 5.15 OHOS SDK 路径
 #   --ohos-sdk-native=PATH     OHOS SDK native 路径
 # 输出: 生成 ENV.local.md 到知识库根目录
 # 退出码: 0=成功
@@ -19,16 +21,20 @@ OUTPUT="$KB_ROOT/ENV.local.md"
 
 DEVECO_PATH=""
 QT5_12_SRC=""
+QT5_15_SRC=""
 QT_BUILD_ROOT=""
 QT5_12_OHOS_SDK=""
+QT5_15_OHOS_SDK=""
 OHOS_SDK_NATIVE=""
 
 for arg in "$@"; do
   case "$arg" in
     --deveco-path=*) DEVECO_PATH="${arg#*=}";;
     --qt5-12-src=*) QT5_12_SRC="${arg#*=}";;
+    --qt5-15-src=*) QT5_15_SRC="${arg#*=}";;
     --qt-build-root=*) QT_BUILD_ROOT="${arg#*=}";;
     --qt5-12-ohos-sdk=*) QT5_12_OHOS_SDK="${arg#*=}";;
+    --qt5-15-ohos-sdk=*) QT5_15_OHOS_SDK="${arg#*=}";;
     --ohos-sdk-native=*) OHOS_SDK_NATIVE="${arg#*=}";;
     *) echo "未知选项: $arg" >&2; exit 2;;
   esac
@@ -57,19 +63,24 @@ echo "|--------|--------|" >> "$OUTPUT"
 echo "" >> "$OUTPUT"
 
 # Qt 源码路径（如果有）
-if [ -n "$QT5_12_SRC" ]; then
+if [ -n "$QT5_12_SRC" ] || [ -n "$QT5_15_SRC" ]; then
   echo "## Qt 源码路径" >> "$OUTPUT"
   echo "" >> "$OUTPUT"
   echo "| 变量名 | 你的值 |" >> "$OUTPUT"
   echo "|--------|--------|" >> "$OUTPUT"
-  echo "| \`QT5_12_SRC\` | \`$QT5_12_SRC\` |" >> "$OUTPUT"
+  [ -n "$QT5_12_SRC" ] && echo "| \`QT5_12_SRC\` | \`$QT5_12_SRC\` |" >> "$OUTPUT"
+  [ -n "$QT5_15_SRC" ] && echo "| \`QT5_15_SRC\` | \`$QT5_15_SRC\` |" >> "$OUTPUT"
   echo "" >> "$OUTPUT"
 
+  # 模板路径：优先用 5.15，其次 5.12
+  _tpl_src=""
+  [ -n "$QT5_15_SRC" ] && _tpl_src="$QT5_15_SRC"
+  [ -z "$_tpl_src" ] && _tpl_src="$QT5_12_SRC"
   echo "## 模板" >> "$OUTPUT"
   echo "" >> "$OUTPUT"
   echo "| 变量名 | 你的值 |" >> "$OUTPUT"
   echo "|--------|--------|" >> "$OUTPUT"
-  echo "| \`OHOS_TEMPLATE_SRC\` | \`$QT5_12_SRC/qtbase/src/harmonyos/templates\` |" >> "$OUTPUT"
+  echo "| \`OHOS_TEMPLATE_SRC\` | \`$_tpl_src/qtbase/src/harmonyos/templates\` |" >> "$OUTPUT"
   echo "" >> "$OUTPUT"
 fi
 
@@ -80,6 +91,7 @@ echo "| 变量名 | 你的值 |" >> "$OUTPUT"
 echo "|--------|--------|" >> "$OUTPUT"
 [ -n "$QT_BUILD_ROOT" ] && echo "| \`QT_BUILD_ROOT\` | \`$QT_BUILD_ROOT\` |" >> "$OUTPUT"
 [ -n "$QT5_12_OHOS_SDK" ] && echo "| \`QT5_12_OHOS_SDK\` | \`$QT5_12_OHOS_SDK\` |" >> "$OUTPUT"
+[ -n "$QT5_15_OHOS_SDK" ] && echo "| \`QT5_15_OHOS_SDK\` | \`$QT5_15_OHOS_SDK\` |" >> "$OUTPUT"
 echo "" >> "$OUTPUT"
 
 echo "ENV.local.md 已生成: $OUTPUT"

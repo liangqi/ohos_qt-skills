@@ -53,8 +53,10 @@ read_env() {
 
 DEVECO_PATH=$(read_env "DEVECO_PATH")
 QT5_12_SRC=$(read_env "QT5_12_SRC")
+QT5_15_SRC=$(read_env "QT5_15_SRC")
 QT_BUILD_ROOT=$(read_env "QT_BUILD_ROOT")
 QT5_12_OHOS_SDK=$(read_env "QT5_12_OHOS_SDK")
+QT5_15_OHOS_SDK=$(read_env "QT5_15_OHOS_SDK")
 OHOS_SDK_NATIVE=$(read_env "OHOS_SDK_NATIVE")
 
 # 3. DevEco Studio
@@ -85,13 +87,28 @@ else
   check "OHOS SDK native" "fail" "未配置"
 fi
 
-# 5. Qt OHOS SDK
+# 5. Qt OHOS SDK（至少一个版本必须配置）
+QT_SDK_COUNT=0
 if [ -n "$QT5_12_OHOS_SDK" ] && [ -d "$QT5_12_OHOS_SDK" ]; then
   check "Qt 5.12 OHOS SDK" "pass" "$QT5_12_OHOS_SDK"
+  QT_SDK_COUNT=$((QT_SDK_COUNT + 1))
 elif [ -n "$QT5_12_OHOS_SDK" ]; then
   check "Qt 5.12 OHOS SDK" "fail" "路径不存在: $QT5_12_OHOS_SDK"
 else
-  check "Qt 5.12 OHOS SDK" "fail" "未配置"
+  check "Qt 5.12 OHOS SDK" "skip" "未配置"
+fi
+
+if [ -n "$QT5_15_OHOS_SDK" ] && [ -d "$QT5_15_OHOS_SDK" ]; then
+  check "Qt 5.15 OHOS SDK" "pass" "$QT5_15_OHOS_SDK"
+  QT_SDK_COUNT=$((QT_SDK_COUNT + 1))
+elif [ -n "$QT5_15_OHOS_SDK" ]; then
+  check "Qt 5.15 OHOS SDK" "fail" "路径不存在: $QT5_15_OHOS_SDK"
+else
+  check "Qt 5.15 OHOS SDK" "skip" "未配置"
+fi
+
+if [ "$QT_SDK_COUNT" -eq 0 ]; then
+  check "Qt OHOS SDK (至少一个版本)" "fail" "未配置任何 Qt OHOS SDK"
 fi
 
 # 6. 基础工具
@@ -101,25 +118,33 @@ else
   check "git" "fail" "未安装"
 fi
 
-if command -v hdc &>/dev/null; then
-  check "hdc" "pass"
-else
-  check "hdc" "skip" "未安装（DevEco SDK 中通常包含，用于设备调试）"
-fi
-
 if command -v cmake &>/dev/null; then
   check "cmake" "pass" "$(cmake --version 2>/dev/null | head -1)"
 else
-  check "cmake" "skip" "未安装（仅编译 Qt 框架时需要）"
+  check "cmake" "fail" "未安装 (brew install cmake 或 https://cmake.org/download/)"
 fi
 
-# 7. Qt 源码（可选）
+if command -v hdc &>/dev/null; then
+  check "hdc" "pass"
+else
+  check "hdc" "skip" "未在 PATH 中 (DevEco SDK 中通常包含，用于设备调试)"
+fi
+
+# 7. Qt 源码（可选，仅编译框架时需要）
 if [ -n "$QT5_12_SRC" ] && [ -d "$QT5_12_SRC" ]; then
   check "Qt 5.12 源码" "pass" "$QT5_12_SRC"
 elif [ -n "$QT5_12_SRC" ]; then
   check "Qt 5.12 源码" "fail" "路径不存在: $QT5_12_SRC"
 else
-  check "Qt 5.12 源码" "skip" "未配置（仅编译 Qt 框架时需要）"
+  check "Qt 5.12 源码" "skip" "未配置 (仅编译 Qt 框架时需要)"
+fi
+
+if [ -n "$QT5_15_SRC" ] && [ -d "$QT5_15_SRC" ]; then
+  check "Qt 5.15 源码" "pass" "$QT5_15_SRC"
+elif [ -n "$QT5_15_SRC" ]; then
+  check "Qt 5.15 源码" "fail" "路径不存在: $QT5_15_SRC"
+else
+  check "Qt 5.15 源码" "skip" "未配置 (仅编译 Qt 框架时需要)"
 fi
 
 echo ""

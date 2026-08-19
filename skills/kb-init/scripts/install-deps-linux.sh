@@ -99,12 +99,14 @@ fi
 
 # 7. DevEco Studio / 命令行工具
 DEVECO_FOUND="false"
+DEVECO_PATH=""
 if [ "$IS_WINDOWS" = "true" ]; then
   # Windows: 检查常见安装路径
   for p in "/c/Program Files/Huawei/DevEco Studio" "/c/Program Files (x86)/Huawei/DevEco Studio" \
            "$LOCALAPPDATA/Programs/DevEco Studio" "/d/DevEco Studio"; do
     if [ -d "$p" ]; then
       DEVECO_FOUND="true"
+      DEVECO_PATH="$p"
       ok "DevEco Studio ($p)"
       break
     fi
@@ -117,6 +119,7 @@ else
   for p in "$HOME/deveco-studio" "/opt/deveco-studio" "$HOME/DevEco-Studio" "$HOME/dev/deveco-studio"; do
     if [ -d "$p" ]; then
       DEVECO_FOUND="true"
+      DEVECO_PATH="$p"
       ok "DevEco 工具链 ($p)"
       break
     fi

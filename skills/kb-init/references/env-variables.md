@@ -11,17 +11,22 @@
 
 ## DevEco 自带工具
 
-以下工具随 DevEco Studio 安装，无需单独安装。它们位于 `DEVECO_PATH` 下的子目录中：
+以下工具随 DevEco Studio 安装，无需单独安装。它们位于 `DEVECO_PATH` 下的子目录中。
 
-| 工具 | 路径 | 用途 | 知识库引用次数 |
-|------|------|------|----------------|
-| **devecocli** | `<DEVECO_PATH>/tools/devecocli` | DevEco 命令行工具（构建、安装、日志） | 13 次 |
-| **hvigorw** | `<DEVECO_PATH>/tools/hvigor/bin/hvigorw.js` | HarmonyOS 项目构建工具（类似 Gradle） | 41 次 |
-| **ohpm** | `<DEVECO_PATH>/sdk/default/openharmony/ohpm/bin/ohpm` | HarmonyOS 包管理器（安装依赖） | 3 次 |
-| **hdc** | `<DEVECO_PATH>/sdk/default/openharmony/toolchains/hdc` | 设备连接器（安装应用、日志、调试） | 95 次 |
-| **clang/clang++** | `<DEVECO_PATH>/sdk/default/openharmony/native/llvm/bin/clang` | 交叉编译器（编译 C/C++ 代码） | 54+48 次 |
+> **macOS 注意**：macOS 的 `.app` 包结构中，工具在 `Contents/` 子目录下。
+> 下表路径以 Windows/Linux 为基准，macOS 用户需在 `DEVECO_PATH` 后加 `/Contents`。
 
-> **提示**：建议将 `<DEVECO_PATH>/tools` 和 `<DEVECO_PATH>/sdk/default/openharmony/toolchains` 加入系统 PATH，这样可以直接在终端使用 `devecocli`、`hdc` 等命令。
+| 工具 | Windows/Linux 路径 | macOS 路径 | 用途 | 引用次数 |
+|------|-------------------|------------|------|----------|
+| **devecocli** | `<DEVECO>/tools/devecocli.bat` | `<DEVECO>/Contents/tools/devecocli` | DevEco 命令行工具（构建、安装、日志） | 13 次 |
+| **hvigorw** | `<DEVECO>/tools/hvigor/bin/hvigorw.js` | `<DEVECO>/Contents/tools/hvigor/bin/hvigorw.js` | HarmonyOS 项目构建工具（类似 Gradle） | 41 次 |
+| **ohpm** | `<DEVECO>/sdk/default/openharmony/ohpm/bin/ohpm` | `<DEVECO>/Contents/sdk/default/openharmony/ohpm/bin/ohpm` | HarmonyOS 包管理器（安装依赖） | 3 次 |
+| **hdc** | `<DEVECO>/sdk/default/openharmony/toolchains/hdc.exe` | `<DEVECO>/Contents/sdk/default/openharmony/toolchains/hdc` | 设备连接器（安装应用、日志、调试） | 95 次 |
+| **clang/clang++** | `<DEVECO>/sdk/default/openharmony/native/llvm/bin/clang.exe` | `<DEVECO>/Contents/sdk/default/openharmony/native/llvm/bin/clang` | 交叉编译器（编译 C/C++ 代码） | 54+48 次 |
+
+> **提示**：建议将工具目录加入系统 PATH，这样可以直接在终端使用 `devecocli`、`hdc` 等命令。
+> - macOS: `echo 'export PATH="/Applications/DevEco-Studio.app/Contents/tools:$PATH"' >> ~/.zshrc`
+> - Windows: 系统设置 → 环境变量 → Path → 添加 `C:\Program Files\Huawei\DevEco Studio\tools`
 
 ## Qt 源码路径
 

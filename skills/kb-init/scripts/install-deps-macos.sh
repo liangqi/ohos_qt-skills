@@ -78,9 +78,11 @@ fi
 
 # 8. DevEco Studio
 DEVECO_FOUND="false"
+DEVECO_PATH=""
 for p in "/Applications/DevEco-Studio.app" "$HOME/Applications/DevEco-Studio.app"; do
   if [ -d "$p" ]; then
     DEVECO_FOUND="true"
+    DEVECO_PATH="$p"
     ok "DevEco Studio ($p)"
     break
   fi
@@ -89,11 +91,11 @@ if [ "$DEVECO_FOUND" = "false" ]; then
   fail "DevEco Studio 未安装" "请访问 https://developer.huawei.com/consumer/cn/deveco-studio/ 下载 macOS 版"
 fi
 
-# 8. hdc（HarmonyOS Device Connector）
+# 9. hdc（HarmonyOS Device Connector）
 if command -v hdc &>/dev/null; then
   ok "hdc (PATH)"
 elif [ "$DEVECO_FOUND" = "true" ]; then
-  _hdc="/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc"
+  _hdc="$DEVECO_PATH/Contents/sdk/default/openharmony/toolchains/hdc"
   if [ -f "$_hdc" ]; then
     ok "hdc (DevEco SDK 内置)"
   else
@@ -103,17 +105,17 @@ else
   warn "hdc 未找到" "安装 DevEco Studio 后自带"
 fi
 
-# 9. DevEco CLI (devecocli)
+# 10. DevEco CLI (devecocli)
 DEVECO_CLI_FOUND="false"
 if command -v devecocli &>/dev/null; then
   DEVECO_CLI_FOUND="true"
   ok "DevEco CLI (PATH)"
 elif [ "$DEVECO_FOUND" = "true" ]; then
-  _cli="/Applications/DevEco-Studio.app/Contents/tools/devecocli"
+  _cli="$DEVECO_PATH/Contents/tools/devecocli"
   if [ -f "$_cli" ]; then
     DEVECO_CLI_FOUND="true"
     ok "DevEco CLI (DevEco Studio 内置，未加入 PATH)"
-    warn "devecocli 未加入 PATH" "建议运行: echo 'export PATH=\"/Applications/DevEco-Studio.app/Contents/tools:\$PATH\"' >> ~/.zshrc && source ~/.zshrc"
+    warn "devecocli 未加入 PATH" "建议运行: echo 'export PATH=\"$DEVECO_PATH/Contents/tools:\$PATH\"' >> ~/.zshrc && source ~/.zshrc"
   else
     warn "DevEco CLI 未找到" "DevEco Studio 应自带 devecocli"
   fi
