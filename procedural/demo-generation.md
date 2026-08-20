@@ -107,6 +107,10 @@ lzh-skill/<INTERNAL_DEMO><demo-name>/
 
 > 鸿蒙工程必须从 Qt 源码内置胶水模板创建（路径见 `ENV.md` 的 `OHOS_TEMPLATE_SRC`，即 `<QT_SRC>/qtbase/src/harmonyos/templates`）。
 > 详见 [[qt-app-harmonyos-migration]] 阶段 1.3 和 [[qt-harmonyos-project-structure]]。
+>
+> **无 Qt 源码时**：从 GitCode releases 下载 `templates-0625.zip` 到 `workspace/templates/`，
+> 然后从该目录复制模板。运行 `bash skills/kb-init/scripts/download-template.sh --dest=workspace/templates`。
+> 下载地址：https://gitcode.com/ohos-qt/qt-harmonyos-src/releases
 
 > ⚠️ **陷阱：源码树模板的 OhosExportModules.ts 是陈旧最小版，直接用必崩**
 >

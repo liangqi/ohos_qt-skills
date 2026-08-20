@@ -13,7 +13,7 @@ set -uo pipefail
 # ═══════════════════════════════════════════════════════════
 detect_os() {
   # 鸿蒙检测：uname 可能返回 Linux，但 HarmonyBrew 存在说明是鸿蒙
-  if [ -d "/storage/Users/currentUser/.harmonybrew" ] || command -v brew &>/dev/null && brew --prefix 2>/dev/null | grep -q harmonybrew; then
+  if [ -d "/storage/Users/currentUser/.harmonybrew" ] || { command -v brew &>/dev/null && brew --prefix 2>/dev/null | grep -q harmonybrew; }; then
     echo "harmonyos"
     return
   fi
@@ -139,6 +139,20 @@ elif [ "$OS" = "linux" ]; then
     [ -f "$DEVECO_PATH/sdk/default/openharmony/ohpm/bin/ohpm" ] && OHPM_FOUND="true"
     [ -f "$DEVECO_PATH/tools/hvigor/bin/hvigorw.js" ] && HVIGORW_FOUND="true"
   fi
+elif [ "$OS" = "harmonyos" ]; then
+  for p in "$HOME/deveco-studio" "/opt/deveco-studio" "$HOME/commandline-tools" "$HOME/dev/commandline-tools" "/usr/local/commandline-tools"; do
+    [ -d "$p" ] && { DEVECO_PATH="$p"; DEVECO_FOUND="true"; break; }
+  done
+  if [ "$DEVECO_FOUND" = "true" ]; then
+    _native="$DEVECO_PATH/sdk/default/openharmony/native"
+    [ -d "$_native" ] && { OHOS_SDK_NATIVE_PATH="$_native"; OHOS_SDK_NATIVE_FOUND="true"; }
+    _hdc="$DEVECO_PATH/sdk/default/openharmony/toolchains/hdc"
+    [ -f "$_hdc" ] && { HDC_PATH="$_hdc"; HDC_FOUND="true"; }
+    _cli="$DEVECO_PATH/tools/devecocli"
+    [ -f "$_cli" ] && { DEVECO_CLI_PATH="$_cli"; DEVECO_CLI_FOUND="true"; }
+    [ -f "$DEVECO_PATH/sdk/default/openharmony/ohpm/bin/ohpm" ] && OHPM_FOUND="true"
+    [ -f "$DEVECO_PATH/tools/hvigor/bin/hvigorw.js" ] && HVIGORW_FOUND="true"
+  fi
 fi
 
 # hdc 也可能在 PATH 中
@@ -158,6 +172,19 @@ echo "DEVECO_PATH=$DEVECO_PATH"
 echo "DEVECO_VERSION=$DEVECO_VERSION"
 echo "DEVECO_CLI_FOUND=$DEVECO_CLI_FOUND"
 echo "DEVECO_CLI_PATH=$DEVECO_CLI_PATH"
+
+DEVECO_CLI_OSS_FOUND="false"
+DEVECO_CLI_OSS_PATH=""
+DEVECO_CLI_OSS_VERSION=""
+if command -v deveco-cli &>/dev/null; then
+  DEVECO_CLI_OSS_FOUND="true"
+  DEVECO_CLI_OSS_PATH="$(command -v deveco-cli)"
+  DEVECO_CLI_OSS_VERSION=$(deveco-cli --version 2>/dev/null || echo "")
+fi
+echo "DEVECO_CLI_OSS_FOUND=$DEVECO_CLI_OSS_FOUND"
+echo "DEVECO_CLI_OSS_PATH=$DEVECO_CLI_OSS_PATH"
+echo "DEVECO_CLI_OSS_VERSION=$DEVECO_CLI_OSS_VERSION"
+
 echo "OHOS_SDK_NATIVE_FOUND=$OHOS_SDK_NATIVE_FOUND"
 echo "OHOS_SDK_NATIVE_PATH=$OHOS_SDK_NATIVE_PATH"
 echo "HDC_FOUND=$HDC_FOUND"
@@ -242,6 +269,21 @@ echo "QT5_12_SDK_FOUND=$QT5_12_SDK_FOUND"
 echo "QT5_12_OHOS_SDK_PATH=$QT5_12_OHOS_SDK_PATH"
 echo "QT5_15_SDK_FOUND=$QT5_15_SDK_FOUND"
 echo "QT5_15_OHOS_SDK_PATH=$QT5_15_OHOS_SDK_PATH"
+
+# ═══════════════════════════════════════════════════════════
+# 5b. 独立模板归档检测（workspace/templates/）
+# ═══════════════════════════════════════════════════════════
+TEMPLATE_STANDALONE_FOUND="false"
+TEMPLATE_STANDALONE_PATH=""
+if [ "$KB_FOUND" = "true" ]; then
+  _tpl="$KB_ROOT/workspace/templates"
+  if [ -d "$_tpl/entry" ] && [ -f "$_tpl/build-profile.json5" ]; then
+    TEMPLATE_STANDALONE_FOUND="true"
+    TEMPLATE_STANDALONE_PATH="$_tpl"
+  fi
+fi
+echo "TEMPLATE_STANDALONE_FOUND=$TEMPLATE_STANDALONE_FOUND"
+echo "TEMPLATE_STANDALONE_PATH=$TEMPLATE_STANDALONE_PATH"
 
 # ═══════════════════════════════════════════════════════════
 # 6. ENV.local.md 状态

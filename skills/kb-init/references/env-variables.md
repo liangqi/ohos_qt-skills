@@ -36,6 +36,7 @@
 |--------|------|--------|
 | `QT5_12_SRC` | Qt 5.12.12 源码目录 | `/Users/you/dev/qt-src/qt5.12` |
 | `QT5_15_SRC` | Qt 5.15.16 源码目录 | `/Users/you/dev/qt-src/qt5.15` |
+| `QT6_DEV_SRC` | Qt 6 dev 主干源码（鸿蒙化进行中，仅 qtbase） | `/Users/you/dev/qt6-work/qt6-src` |
 
 ## 编译产物与 SDK
 
@@ -49,9 +50,14 @@
 
 | 变量名 | 含义 | 示例值 |
 |--------|------|--------|
-| `OHOS_TEMPLATE_SRC` | Qt 鸿蒙胶水模板路径（在 Qt 源码树内） | `/Users/you/dev/qt-src/qt5.12/qtbase/src/harmonyos/templates` |
+| `OHOS_TEMPLATE_SRC` | Qt 鸿蒙胶水模板路径 | 有源码: `/Users/you/dev/qt-src/qt5.12/qtbase/src/harmonyos/templates`<br>无源码: `workspace/templates` |
+| `OHOS_TEMPLATE_STANDALONE` | 独立模板归档路径（无 Qt 源码时使用，文档概念，不写入 ENV.local.md） | `workspace/templates`（从 GitCode releases 下载 `templates-0625.zip`） |
 
-> 仅当有 Qt 源码时自动计算，无需手动配置。
+**有 Qt 源码时**：模板内置在源码树中，`generate-env-local.sh` 自动从 `QT5_15_SRC` 或 `QT5_12_SRC` 计算。
+
+**无 Qt 源码时（仅预编译 SDK 或鸿蒙 PC）**：从 GitCode releases 页面下载独立模板归档 `templates-0625.zip`，解压到 `workspace/templates/`，手动指定 `OHOS_TEMPLATE_SRC`。
+- 下载地址: https://gitcode.com/ohos-qt/qt-harmonyos-src/releases
+- 自动下载: `bash skills/kb-init/scripts/download-template.sh --dest=workspace/templates`
 
 ## 构建工具链（仅 Windows 编译 Qt 框架时需要）
 

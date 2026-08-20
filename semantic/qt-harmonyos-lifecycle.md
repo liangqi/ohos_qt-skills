@@ -17,7 +17,7 @@ summary: >
 
 # Stage/UIAbility 生命周期的 Qt adapter
 
-> Stage/UIAbility、WindowStage、Want、skills、launchType 与保存恢复的平台语义，以 common 的 [[ohos-common-kb/semantic/stage-uiability-lifecycle|Stage 模型与 UIAbility 生命周期]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)）为准。本页只维护平台回调如何映射到 Qt `main()`/event loop、`QWindow`/`QDialog`、QtOhosExtras、argv、关闭拦截、接续与分享 adapter。
+> Stage/UIAbility、WindowStage、Want、skills、launchType 与保存恢复的平台语义，以 common 的 [Stage 模型与 UIAbility 生命周期](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)为准。本页只维护平台回调如何映射到 Qt `main()`/event loop、`QWindow`/`QDialog`、QtOhosExtras、argv、关闭拦截、接续与分享 adapter。
 
 ## Qt 启动桥接 (Startup Flow)
 

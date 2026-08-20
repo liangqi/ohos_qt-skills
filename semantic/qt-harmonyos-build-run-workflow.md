@@ -17,9 +17,9 @@ summary: >
 
 平台工具的当前能力和选择规则以 common 为准：
 
-- [[ohos-common-kb/procedural/deveco-cli-usage-rules|DevEco CLI 使用规则]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/procedural/deveco-cli-usage-rules.md)）
-- [[ohos-common-kb/semantic/deveco-mcp-capabilities|DevEco MCP 能力与使用边界]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/deveco-mcp-capabilities.md)）
-- [[ohos-common-kb/semantic/harmonyos-development-fundamentals|HarmonyOS 开发基础]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-development-fundamentals.md)）
+- [DevEco CLI 使用规则](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/procedural/deveco-cli-usage-rules.md)
+- [DevEco MCP 能力与使用边界](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/deveco-mcp-capabilities.md)
+- [HarmonyOS 开发基础](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-development-fundamentals.md)
 
 当前 deveco-mcp 只承担静态 `check` 和 LSP `restart`，不提供项目同步、构建、启动、日志或 UI 操作。历史名称 `project_sync`、`build_project`、`start_app`、`get_app_ui_tree`、`perform_ui_action` 不得作为当前流程调用。
 
@@ -135,4 +135,4 @@ devecocli 没有对应 key/uitest 动作时，可使用最小底层调用，例�
 
 - [[qt-harmonyos-build]] — Qt SDK 与构建环境
 - [[qt-ohos-run-test]] — Qt 真机 CLI 验收
-- [[ohos-common-kb/procedural/deveco-cli-usage-rules|common：DevEco CLI 使用规则]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/procedural/deveco-cli-usage-rules.md)）
+- [common：DevEco CLI 使用规则](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/procedural/deveco-cli-usage-rules.md)

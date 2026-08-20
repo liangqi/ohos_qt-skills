@@ -26,6 +26,7 @@ QT_BUILD_ROOT=""
 QT5_12_OHOS_SDK=""
 QT5_15_OHOS_SDK=""
 OHOS_SDK_NATIVE=""
+OHOS_TEMPLATE_SRC=""
 
 for arg in "$@"; do
   case "$arg" in
@@ -36,6 +37,7 @@ for arg in "$@"; do
     --qt5-12-ohos-sdk=*) QT5_12_OHOS_SDK="${arg#*=}";;
     --qt5-15-ohos-sdk=*) QT5_15_OHOS_SDK="${arg#*=}";;
     --ohos-sdk-native=*) OHOS_SDK_NATIVE="${arg#*=}";;
+    --ohos-template-src=*) OHOS_TEMPLATE_SRC="${arg#*=}";;
     *) echo "未知选项: $arg" >&2; exit 2;;
   esac
 done
@@ -72,15 +74,32 @@ if [ -n "$QT5_12_SRC" ] || [ -n "$QT5_15_SRC" ]; then
   [ -n "$QT5_15_SRC" ] && echo "| \`QT5_15_SRC\` | \`$QT5_15_SRC\` |" >> "$OUTPUT"
   echo "" >> "$OUTPUT"
 
-  # 模板路径：优先用 5.15，其次 5.12
+  # 模板路径：显式指定 > 5.15 源码 > 5.12 源码
   _tpl_src=""
-  [ -n "$QT5_15_SRC" ] && _tpl_src="$QT5_15_SRC"
-  [ -z "$_tpl_src" ] && _tpl_src="$QT5_12_SRC"
+  if [ -n "$OHOS_TEMPLATE_SRC" ]; then
+    _tpl_src="$OHOS_TEMPLATE_SRC"
+  elif [ -n "$QT5_15_SRC" ]; then
+    _tpl_src="$QT5_15_SRC/qtbase/src/harmonyos/templates"
+  elif [ -n "$QT5_12_SRC" ]; then
+    _tpl_src="$QT5_12_SRC/qtbase/src/harmonyos/templates"
+  fi
+  if [ -n "$_tpl_src" ]; then
+    echo "## 模板" >> "$OUTPUT"
+    echo "" >> "$OUTPUT"
+    echo "| 变量名 | 你的值 |" >> "$OUTPUT"
+    echo "|--------|--------|" >> "$OUTPUT"
+    echo "| \`OHOS_TEMPLATE_SRC\` | \`$_tpl_src\` |" >> "$OUTPUT"
+    echo "" >> "$OUTPUT"
+  fi
+fi
+
+# 独立模板（无源码时）
+if [ -z "$QT5_12_SRC" ] && [ -z "$QT5_15_SRC" ] && [ -n "$OHOS_TEMPLATE_SRC" ]; then
   echo "## 模板" >> "$OUTPUT"
   echo "" >> "$OUTPUT"
   echo "| 变量名 | 你的值 |" >> "$OUTPUT"
   echo "|--------|--------|" >> "$OUTPUT"
-  echo "| \`OHOS_TEMPLATE_SRC\` | \`$_tpl_src/qtbase/src/harmonyos/templates\` |" >> "$OUTPUT"
+  echo "| \`OHOS_TEMPLATE_SRC\` | \`$OHOS_TEMPLATE_SRC\` |" >> "$OUTPUT"
   echo "" >> "$OUTPUT"
 fi
 

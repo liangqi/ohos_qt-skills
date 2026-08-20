@@ -88,7 +88,7 @@ for p in "/Applications/DevEco-Studio.app" "$HOME/Applications/DevEco-Studio.app
   fi
 done
 if [ "$DEVECO_FOUND" = "false" ]; then
-  fail "DevEco Studio 未安装" "请访问 https://developer.huawei.com/consumer/cn/deveco-studio/ 下载 macOS 版"
+  fail "DevEco Studio 未安装" "运行: bash skills/kb-init/scripts/download-cmdline-tools.sh --dest=\$HOME/dev/deveco-installer 自动下载安装包，或访问 https://developer.huawei.com/consumer/cn/deveco-studio/ 手动下载"
 fi
 
 # 9. hdc（HarmonyOS Device Connector）

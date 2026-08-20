@@ -2,8 +2,11 @@
 name: kb-init
 description: |
   Qt for HarmonyOS 知识库环境初始化。检测用户是否在 ohos_qt-skills 知识库中运行，
-  如果不在则帮助下载知识库。然后完整配置 DevEco Studio、HarmonyOS SDK、Qt SDK/源码、
+  如果不在则帮助下载知识库。然后完整配置 DevEco Studio（macOS/Windows）或
+  Command Line Tools（Linux）、HarmonyOS SDK、deveco-cli、Qt SDK/源码、
   构建工具链，生成 ENV.local.md，验证环境就绪。
+  支持 Windows / macOS / Linux / HarmonyOS 四平台，HarmonyOS 上 DevEco/CLT
+  需手动申请，其余依赖可自动安装。
   当用户说"初始化"、"配置环境"、"第一次使用"、"setup"、"install"，
   或 ENV.local.md 不存在时，必须触发此 skill。
   即使用户没有明确说"初始化"，只要是第一次与知识库交互，也应主动建议运行。
@@ -118,13 +121,48 @@ bash skills/kb-init/scripts/clone-kb.sh --dest=<KB_PARENT_DIR>
 
 记录为 `OPENSOURCE_DOWNLOAD`（`both` / `sdk-only`）。
 
-### Q4: DevEco Studio 状态
+### Q4: DevEco 开发工具状态
+
+根据 Phase 2 Step 1 检测到的 `OS` 值，走不同分支：
+
+**如果 OS = macos 或 windows**：
 
 > 你已经安装了 DevEco Studio 吗？
 > 1. **已安装** — 请告诉我安装路径（例如 macOS: `/Applications/DevEco-Studio.app`，Windows: `C:\Program Files\Huawei\DevEco Studio`）
-> 2. **未安装** — 我会引导你安装
+> 2. **未安装** — 我会自动下载安装包，你只需运行安装程序
 
 记录为 `DEVECO_STATUS`（`installed` / `not-installed`）和 `DEVECO_PATH`（如已安装）。
+
+**如果 OS = linux**：
+
+> 你已经安装了 Command Line Tools for HarmonyOS 吗？（Linux 没有 DevEco Studio GUI 版）
+> 1. **已安装** — 请告诉我安装路径
+> 2. **未安装** — 我会自动下载并安装
+
+记录为 `DEVECO_STATUS` 和 `DEVECO_PATH`。
+
+**如果 OS = harmonyos**：
+
+> 鸿蒙 PC 当前不支持 DevEco Studio 和 Command Line Tools 的自动安装。
+> 这些工具需要在 HarmonyOS 开发者官网的统一工单平台提单申请遥测版本。
+>
+> 你是否已经获得了 Command Line Tools？
+> 1. **已获得** — 请告诉我安装路径或下载链接
+> 2. **未获得** — 我会引导你提单申请，同时先完成其他可自动安装的依赖
+
+记录为 `DEVECO_STATUS`（`installed` / `not-installed` / `pending-request`）和 `DEVECO_PATH`。
+
+### Q4b: 模板获取方式
+
+如果用户在 Q3 选择了 **sdk-only**（仅预编译 SDK，无源码），或运行在 **HarmonyOS** 平台，需要单独获取鸿蒙工程模板：
+
+> 你没有 Qt 源码树，需要单独下载鸿蒙工程模板。
+> 模板位于 GitCode releases 页面，名称 `templates-0625.zip`。
+> 我会自动帮你下载并解压到 `workspace/templates/`。
+
+记录为 `TEMPLATE_SOURCE`（`source-tree` / `standalone`）。
+
+如果用户有 Qt 源码（Q3 = commercial 或 opensource+both），`TEMPLATE_SOURCE=source-tree`，模板从源码树获取，无需额外下载。
 
 ### Q5: Git 配置
 
@@ -170,22 +208,78 @@ bash skills/kb-init/scripts/detect-env.sh
 
 解析输出，向用户简要展示当前环境状态。
 
-### Step 2: 安装 DevEco Studio（如果未安装）
+### Step 2: 安装 DevEco 开发工具（按平台分流）
 
-如果 Q4 回答未安装，读取 `references/deveco-install.md`，根据用户 OS 引导安装。
+根据 `OS` 值和 Q4 的回答，执行对应操作：
+
+**macOS / Windows（DevEco Studio GUI）**：
+
+如果 Q4 = not-installed，自动下载安装包：
+
+```bash
+bash skills/kb-init/scripts/download-cmdline-tools.sh \
+  --dest=<KB_ROOT>/workspace/deveco-installer \
+  --url=<从 https://developer.huawei.com/consumer/cn/download/ 获取的下载链接>
+```
+
+> Agent 先访问下载页获取最新链接。下载完成后引导用户运行安装程序（`.dmg` 或 `.exe`）。
+> 安装程序需要用户手动操作（拖入 Applications / 点击安装向导）。
+
+如果 Q4 = installed，跳过下载。
 
 安装完成后，重新运行 `detect-env.sh` 确认 `DEVECO_FOUND=true`。
 
-**DevEco CLI（devecocli）**：
-- macOS/Windows：DevEco Studio 安装后自带 `devecocli`，位于 `<DEVECO_PATH>/tools/devecocli`
-- Linux：需要单独下载 Command Line Tools，见 `references/deveco-install.md` Linux 章节
+**Linux（Command Line Tools）**：
 
-Agent 检查 `devecocli` 是否可用：
+如果 Q4 = not-installed，自动下载安装：
+
 ```bash
-command -v devecocli || ls <DEVECO_PATH>/tools/devecocli 2>/dev/null
+bash skills/kb-init/scripts/download-cmdline-tools.sh \
+  --dest=<KB_ROOT>/workspace/commandline-tools \
+  --url=<从下载页获取的 Linux 版链接>
 ```
 
-如果不可用，引导用户将其加入 PATH 或从 DevEco 下载页获取。
+脚本会自动下载、解压，并输出 `OHOS_SDK_NATIVE` 和 `TOOLCHAINS` 路径。
+
+**HarmonyOS（需手动申请）**：
+
+如果 Q4 = pending-request：
+1. 向用户展示申请指引：
+   - 访问 https://developer.huawei.com/consumer/cn/ 统一工单平台
+   - 提单申请 "Command Line Tools for HarmonyOS 遥测版本"
+   - 获得下载链接后，运行：
+     ```bash
+     bash skills/kb-init/scripts/download-cmdline-tools.sh \
+       --dest=<KB_ROOT>/workspace/commandline-tools \
+       --url=<下载链接>
+     ```
+2. 标记为 PENDING，不阻塞后续步骤
+
+如果 Q4 = installed（用户已获得并安装了 CLT），运行 `detect-env.sh` 确认路径。
+
+### Step 2b: 安装 deveco-cli（开源 AI 开发工具）
+
+`deveco-cli` 是独立的开源工具（仓库: https://gitcode.com/openharmony-sig/deveco-cli），与 DevEco Studio 内置的 `devecocli` 不同。它集成了 HarmonyOS 应用开发工具集和 AI Skills。
+
+检查是否已安装：
+```bash
+command -v deveco-cli
+```
+
+如果未安装，自动安装：
+
+```bash
+bash skills/kb-init/scripts/install-deveco-cli.sh --method=npm
+```
+
+- npm 方式需要 Node.js >= 18（Step 3 会检查 Node.js）
+- 如果 npm 失败，脚本自动回退到 git clone 方式
+- HarmonyOS 平台：仓库未声明支持，但可尝试安装；失败则标记 PENDING，不阻塞
+
+安装完成后确认：
+```bash
+deveco-cli --version
+```
 
 ### Step 3: 平台依赖检查
 
@@ -278,6 +372,24 @@ bash skills/kb-init/scripts/download-qt-sdk.sh \
   --dest=<KB_ROOT>/workspace/qt-sdk
 ```
 
+### Step 4b: 获取鸿蒙工程模板（如果无 Qt 源码）
+
+当 Q4b 记录 `TEMPLATE_SOURCE=standalone` 时（用户选择了 sdk-only 或运行在 HarmonyOS 平台），需要单独下载模板归档：
+
+```bash
+bash skills/kb-init/scripts/download-template.sh \
+  --dest=<KB_ROOT>/workspace/templates
+```
+
+脚本从 https://gitcode.com/ohos-qt/qt-harmonyos-src/releases 下载 `templates-0625.zip` 并解压到 `workspace/templates/`。
+
+如果自动下载失败，引导用户手动操作：
+1. 访问 https://gitcode.com/ohos-qt/qt-harmonyos-src/releases
+2. 下载 `templates-0625.zip`
+3. 运行：`bash skills/kb-init/scripts/download-template.sh --dest=<KB_ROOT>/workspace/templates --url=file:///path/to/templates-0625.zip`
+
+当 `TEMPLATE_SOURCE=source-tree` 时，模板从 Qt 源码树获取（`<QT_SRC>/qtbase/src/harmonyos/templates`），跳过此步骤。
+
 ### Step 5: 生成 ENV.local.md
 
 ```bash
@@ -288,10 +400,15 @@ bash skills/kb-init/scripts/generate-env-local.sh \
   --qt-build-root="<KB_ROOT>/workspace/qt-build" \
   --qt5-12-ohos-sdk="<SDK_PATH>" \
   --qt5-15-ohos-sdk="<SDK_PATH>" \
-  --ohos-sdk-native="<OHOS_SDK_NATIVE_PATH>"
+  --ohos-sdk-native="<OHOS_SDK_NATIVE_PATH>" \
+  --ohos-template-src="<TEMPLATE_PATH>"
 ```
 
 只传用户实际有的路径，缺失的参数不传。
+
+`--ohos-template-src` 的值：
+- 有 Qt 源码时：`<QT_SRC>/qtbase/src/harmonyos/templates`（脚本自动计算，可不传）
+- 无源码（standalone）时：`<KB_ROOT>/workspace/templates`（必须显式传入）
 
 Agent 向用户展示生成结果，请用户确认。
 
@@ -310,9 +427,13 @@ bash skills/kb-init/scripts/verify-env.sh
 
 - 知识库已下载（如果是新安装）
 - `ENV.local.md` 已生成到 KB 根目录
-- DevEco Studio + OHOS SDK native + DevEco CLI 已就绪
+- DevEco Studio（macOS/Windows）或 Command Line Tools（Linux）已就绪
+- OHOS SDK native 已就绪
+- devecocli（DevEco 内置）已就绪
+- deveco-cli（开源工具）已安装（或 HarmonyOS 标记 PENDING）
 - Qt OHOS SDK 已配置
 - `verify-env.sh` 输出 `STATUS=ready`
+- HarmonyOS 平台：DevEco/CLT 允许 PENDING 状态（已提单申请即可）
 
 ## 错误处理
 
@@ -321,7 +442,10 @@ bash skills/kb-init/scripts/verify-env.sh
 | 知识库 clone 失败 | 检查网络；手动 `git clone https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills.git` |
 | `detect-env.sh` 执行失败 | `chmod +x skills/kb-init/scripts/*.sh` |
 | DevEco 安装后检测不到 | 读取 `references/deveco-install.md` 按平台检查路径 |
-| DevEco CLI 不可用 | 检查 `<DEVECO_PATH>/tools/devecocli` 是否存在；加入 PATH |
+| DevEco CLI (devecocli) 不可用 | 检查 `<DEVECO_PATH>/tools/devecocli` 是否存在；加入 PATH |
+| deveco-cli 安装失败 | npm 失败则尝试 `bash scripts/install-deveco-cli.sh --method=git`；鸿蒙平台标记 PENDING |
+| CLT 下载失败 | 手动访问 https://developer.huawei.com/consumer/cn/download/ 获取链接，用 `--url` 参数传入 |
+| 鸿蒙平台 DevEco/CLT 不可用 | 正常——需在统一工单平台提单申请遥测版本，标记 PENDING 不阻塞 |
 | git clone 失败 (commercial) | 检查 HTTP 凭据；检查网络 |
 | git clone 失败 (opensource) | 检查网络；尝试 `git config --global http.sslVerify false` |
 | SDK 下载失败 | 手动访问 https://gitcode.com/ohos-qt/qt-harmonyos-src/releases |
@@ -329,9 +453,26 @@ bash skills/kb-init/scripts/verify-env.sh
 | `verify-env.sh` 报告 FAIL | 按 FAIL 项提示修复，重新运行 |
 | Linux 用户无 DevEco Studio GUI | 正常——使用 Command Line Tools |
 
+## 脚本清单
+
+| 脚本 | 用途 |
+|------|------|
+| `scripts/detect-env.sh` | 环境检测（OS、DevEco、SDK、Qt、deveco-cli） |
+| `scripts/clone-kb.sh` | Clone 知识库到指定目录 |
+| `scripts/download-cmdline-tools.sh` | 下载安装 Command Line Tools（macOS/Windows/Linux；HarmonyOS 输出申请指引） |
+| `scripts/install-deveco-cli.sh` | 安装 deveco-cli 开源工具（npm / git clone） |
+| `scripts/install-deps-macos.sh` | macOS 依赖检查 |
+| `scripts/install-deps-linux.sh` | Linux / Windows Git Bash 依赖检查 |
+| `scripts/install-deps-harmonyos.sh` | 鸿蒙依赖检查（含 PENDING 状态） |
+| `scripts/clone-qt-src.sh` | Clone Qt 源码 |
+| `scripts/download-qt-sdk.sh` | 下载预编译 Qt SDK |
+| `scripts/compile-qt-sdk.sh` | 编译 Qt SDK（commercial） |
+| `scripts/generate-env-local.sh` | 生成 ENV.local.md |
+| `scripts/verify-env.sh` | 最终环境验证 |
+
 ## 参考文档
 
-- `references/deveco-install.md` — DevEco Studio / CLI 各平台安装详细步骤
+- `references/deveco-install.md` — DevEco Studio / CLI / deveco-cli 各平台安装详细步骤
 - `references/qt-src-acquisition.md` — Qt 源码获取的两种方式详细说明
 - `references/qt-compile-guide.md` — Qt 源码编译构建完整指南（商业版用户必读，含故障排除）
 - `references/env-variables.md` — ENV.md 中所有变量的含义和用途（含 DevEco 自带工具说明）
