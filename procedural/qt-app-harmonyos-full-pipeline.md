@@ -10,11 +10,18 @@ contributors: [lzh]
 tags: [应用鸿蒙化, 端到端, 编译, 签名, 部署, 测试]
 refs:
   - procedural-qt-app-harmonyos-migration
+  - procedural-qt6-ohos-windows-build
+  - procedural-qt6-qtcreator-harmonyos-setup
+  - procedural-qt6-ohos-windows-app-dev-guide
+  - procedural-qt6-ohos-qtmqtt-build
+  - procedural-qt6-cef-ohos-integration-guide
   - procedural-fetch-ohos-third-party-lib
   - procedural-qt-ohos-concrete-build-recipe
   - procedural-qt-ohos-run-test
   - procedural-qt-app-harmonyos-completion
   - procedural-demo-generation
+  - procedural-demo-archive-cleancode-upload
+  - procedural-fork-qt-app-to-ohos-qt-org
   - semantic-qt-harmonyos-build
   - semantic-qt-harmonyos-build-run-workflow
   - semantic-qt-harmonyos-project-structure
@@ -87,7 +94,7 @@ git submodule update --init --recursive
 ```
 
 #### 1.2 获取 Qt6 源码（源码 superbuild，策略 B）
-来源：`qt6-ohos-windows-cli-deploy`
+来源：`qt6-ohos-windows-build`
 
 ```bash
 cd <QT6_SRC_ROOT>          # 自选无空格根目录
@@ -130,7 +137,7 @@ bash _scripts/fetch-ohos-bottle.sh -f abseil -o ${DELIVERABLES_ROOT}/ohos-libs
 脚本递归拉取运行时依赖、sha256 校验、解压、Windows NTFS 自动拷贝补建缺失 .so 符号链接，产出 `<out-dir>/<formula>/<version>/{lib,include,lib/cmake}` + qmake/CMake 链接片段。无 bottle 则回退源码交叉编译（见独立小节"三方库构建"）。
 
 #### 1.6 获取附加第三方库包（Qt6 源码 superbuild 用）
-来源：`qt6-ohos-windows-cli-deploy`
+来源：`qt6-ohos-windows-build`
 
 从官方 wiki（wiki.qt.io/Building_Qt6_for_HarmonyOS）链接下载 `ohos-additional-packages-20260415.zip`（Google Drive / 百度网盘），解压到 `<ADDITIONAL_PACKAGES>`（如 `<QT6_SRC_ROOT>/additional-packages/`），含 fontconfig/freetype/openssl/unicode/node/uuid/brotli/libpng 等第三方预编译库（include/、lib/、node-addon-api/、share/）。
 
@@ -142,7 +149,7 @@ bash _scripts/fetch-ohos-bottle.sh -f abseil -o ${DELIVERABLES_ROOT}/ohos-libs
 供阶段二配置 `CMAKE_PREFIX_PATH` / `CMAKE_TOOLCHAIN_FILE` / `QT_CHAINLOAD_TOOLCHAIN_FILE`。
 
 ### 注意事项/陷阱
-来源：`qt-harmonyos-overview` / `qt6-ohos-windows-cli-deploy` / `fetch-ohos-third-party-lib`
+来源：`qt-harmonyos-overview` / `qt6-ohos-windows-build` / `fetch-ohos-third-party-lib`
 
 - 子模块必须 `--init --recursive`，否则源码不完整
 - 不要用 llvm-mingw clang 22（触发 NTSYSCALLAPI 重声明、D3D12MemAlloc -Werror），策略 B host 编译器用 MinGW g++ 13.1.0（Qt SDK 自带）
@@ -512,7 +519,7 @@ target_link_libraries(myapp PRIVATE Qt5::QOhosPlatformIntegrationPlugin)   # ④
 ### 步骤（按 Qt 版本/策略分路径）
 
 #### 4.1 Qt6 源码 superbuild（策略 B）
-来源：`qt6-ohos-windows-cli-deploy`
+来源：`qt6-ohos-windows-build`
 
 **Host Build**（编译主机工具）：
 ```powershell
@@ -546,7 +553,7 @@ cmake --build . --parallel -j8
 产出 65 .so + 7 平台插件（含 libqohos.so QPA）。
 
 #### 4.2 Qt6 OHOS 特有运行时 patch（仅策略 B 源码 superbuild）
-来源：`qt6-ohos-windows-cli-deploy` / `qt-harmonyos-qt6-status` / `qt-ohos-concrete-build-recipe` [Qt6 变体]
+来源：`qt6-ohos-windows-build` / `qt-harmonyos-qt6-status` / `qt-ohos-concrete-build-recipe` [Qt6 变体]
 
 策略 B superbuild（§4.1）仍用 `-developer-build` → 仍写绝对 NEEDED 路径，**两道检查仍必做**（部署设备前）：
 
@@ -618,11 +625,11 @@ Qt Creator → Edit → Preferences → Kits → harmonyOS kit → CMake → Ini
 -DCMAKE_C_COMPILER:FILEPATH=%{Compiler:Executable:C}
 -DCMAKE_PREFIX_PATH:PATH=%{Qt:QT_INSTALL_PREFIX}
 -DCMAKE_GENERATOR:STRING=Ninja
--DCMAKE_TOOLCHAIN_FILE:FILEPATH=C:/Qt-installer/6.12.0/harmonyos_arm64_v8a/lib/cmake/Qt6/qt.toolchain.cmake
+-DCMAKE_TOOLCHAIN_FILE:FILEPATH=<QT6_OHOS_KIT>/lib/cmake/Qt6/qt.toolchain.cmake
 -DQT_CHAINLOAD_TOOLCHAIN_FILE:FILEPATH=C:/DevecoStudio/sdk/default/openharmony/native/build/cmake/ohos.toolchain.cmake
 -DOHOS_SDK_NATIVE:PATH=C:/DevecoStudio/sdk/default/openharmony/native
 -DOHOS_ARCH:STRING=arm64-v8a
--DQT_HOST_PATH:PATH=C:/Qt-installer/6.12.0/mingw_64
+-DQT_HOST_PATH:PATH=<QT6_HOST_BUILD>
 ```
 + Kit Environment 设 5 项环境变量（NODE_HOME/JAVA_HOME/DEVECO_SDK_HOME/QT_HARMONYOS_HVIGOR/PATH）。
 
@@ -1272,12 +1279,18 @@ Harmonybrew 社区仓库        ┘   阶段三 迁移适配              → �
 
 **Procedural（13）**：
 - `procedural/qt-app-harmonyos-migration.md` — Qt 应用鸿蒙化迁移（主工作流）
-- `procedural/qt6-ohos-windows-cli-deploy.md` — Qt 6.12 for OHOS Windows CLI 部署
+- `procedural/qt6-ohos-windows-build.md` — Qt 6.12 for OHOS Windows 构建（Superbuild）
+- `procedural/qt6-qtcreator-harmonyos-setup.md` — Qt Creator 配置 Qt 6.12 鸿蒙开发环境
+- `procedural/qt6-ohos-windows-app-dev-guide.md` — Windows Qt6.12 预构建端到端 CLI 开发指南
+- `procedural/qt6-ohos-qtmqtt-build.md` — Qt6.12 qtmqtt addon 鸿蒙交叉编译
+- `procedural/qt6-cef-ohos-integration-guide.md` — Qt6 + CEF 鸿蒙集成（12 步迁移）
 - `procedural/fetch-ohos-third-party-lib.md` — 从 Harmonybrew 获取 arm64-OpenHarmony 三方库预编译包
 - `procedural/qt-ohos-concrete-build-recipe.md` — Qt→OHOS 落地编译配方（Playbook A/B）
 - `procedural/qt-ohos-run-test.md` — 鸿蒙化运行测试工作流（七阶段闭环）
 - `procedural/qt-app-harmonyos-completion.md` — 应用鸿蒙化完善（功能级测试用例闭环）
 - `procedural/demo-generation.md` — Demo 生成工作流（六步闭环）
+- `procedural/demo-archive-cleancode-upload.md` — Demo 上库归档工作流（八步闭环）
+- `procedural/fork-qt-app-to-ohos-qt-org.md` — Fork 鸿蒙化 Qt 应用到 AtomGit ohos-qt 组织
 
 **Semantic（23）**：
 - `semantic/qt-harmonyos-overview.md` — Qt for HarmonyOS 总览
