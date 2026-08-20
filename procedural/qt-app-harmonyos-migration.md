@@ -115,6 +115,13 @@ cp -r <QT5_15_SRC>/qtbase/src/harmonyos/templates/. "${PROJECTS_ROOT}/<app-name>
 # Qt 5.12 对应：<QT5_12_SRC>/qtbase/src/harmonyos/templates
 ```
 
+**无 Qt 源码时**（如仅使用预编译 SDK 或鸿蒙 PC）：从 GitCode releases 下载独立模板归档 `templates-0625.zip`，解压到 `workspace/templates/`，然后复制：
+```bash
+bash skills/kb-init/scripts/download-template.sh --dest=workspace/templates
+cp -r workspace/templates/. "${PROJECTS_ROOT}/<app-name>-ohos/"
+```
+下载地址：https://gitcode.com/ohos-qt/qt-harmonyos-src/releases
+
 **解压后得到的工程结构**（场景一：从零创建）：
 
 ```

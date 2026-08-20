@@ -17,9 +17,9 @@ summary: >
 
 本文是 **Qt 适配层的流程枢纽**，不重复维护 HarmonyOS 平台规范。开始移植前，先以公共知识库中的以下页面作为规范事实来源：
 
-- Stage/UIAbility 生命周期：[[ohos-common-kb/semantic/stage-uiability-lifecycle|公共库：Stage/UIAbility 生命周期]]（[稳定链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)）
-- ArkUI 窗口与 XComponent 模型：[[ohos-common-kb/semantic/arkui-window-xcomponent-model|公共库：ArkUI 窗口与 XComponent 模型]]（[稳定链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/arkui-window-xcomponent-model.md)）
-- HarmonyOS 平台限制：[[ohos-common-kb/semantic/harmonyos-platform-limits|公共库：HarmonyOS 平台限制]]（[稳定链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)）
+- Stage/UIAbility 生命周期：[公共库：Stage/UIAbility 生命周期](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)
+- ArkUI 窗口与 XComponent 模型：[公共库：ArkUI 窗口与 XComponent 模型](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/arkui-window-xcomponent-model.md)
+- HarmonyOS 平台限制：[公共库：HarmonyOS 平台限制](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)
 
 下文只回答这些公共约束如何映射到 Qt 应用、QPA 插件和 QtOhosExtras。
 
@@ -353,9 +353,9 @@ QtNetwork, QtSQL, QtMultimedia
 
 ## 相关
 
-- [[ohos-common-kb/semantic/stage-uiability-lifecycle|公共库：Stage/UIAbility 生命周期]]（[稳定链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)）
-- [[ohos-common-kb/semantic/arkui-window-xcomponent-model|公共库：ArkUI 窗口与 XComponent 模型]]（[稳定链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/arkui-window-xcomponent-model.md)）
-- [[ohos-common-kb/semantic/harmonyos-platform-limits|公共库：HarmonyOS 平台限制]]（[稳定链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)）
+- [公共库：Stage/UIAbility 生命周期](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)
+- [公共库：ArkUI 窗口与 XComponent 模型](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/arkui-window-xcomponent-model.md)
+- [公共库：HarmonyOS 平台限制](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)
 - [[qt-harmonyos-api]] — API 兼容性详情
 - [[qt-harmonyos-platform-limits]] — 平台限制与 QTBUG 编号
 - [[qt-harmonyos-modules]] — 模块适配状态表

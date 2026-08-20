@@ -112,7 +112,7 @@ if [ "$IS_WINDOWS" = "true" ]; then
     fi
   done
   if [ "$DEVECO_FOUND" = "false" ]; then
-    fail "DevEco Studio 未安装" "请访问 https://developer.huawei.com/consumer/cn/deveco-studio/ 下载 Windows 版"
+    fail "DevEco Studio 未安装" "运行: bash skills/kb-init/scripts/download-cmdline-tools.sh --dest=\$HOME/dev/deveco-installer 自动下载安装包，或访问 https://developer.huawei.com/consumer/cn/deveco-studio/ 手动下载"
   fi
 else
   # Linux: 检查命令行工具
@@ -125,7 +125,7 @@ else
     fi
   done
   if [ "$DEVECO_FOUND" = "false" ]; then
-    fail "DevEco 命令行工具未安装" "请访问 https://developer.huawei.com/consumer/en/download/ 下载 Command Line Tools for HarmonyOS"
+    fail "DevEco 命令行工具未安装" "运行: bash skills/kb-init/scripts/download-cmdline-tools.sh --dest=\$HOME/commandline-tools --url=<下载链接> 自动安装，或访问 https://developer.huawei.com/consumer/cn/download/ 手动下载"
   fi
 fi
 

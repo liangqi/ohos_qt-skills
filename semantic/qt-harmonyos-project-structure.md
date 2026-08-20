@@ -16,7 +16,7 @@ summary: >
 # Qt 鸿蒙工程结构详解
 
 > 模板、胶水代码、CMake 配置、库名规则——一站式掌握 Qt for HarmonyOS 工程骨架。
-> AppScope、module、product、native libs 与 signingConfig 的平台层级关系，以 common 的 [[ohos-common-kb/semantic/hap-native-project-structure|HAP 原生工程结构与签名关系]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/hap-native-project-structure.md)）为准。本页只解释 Qt 模板、QAbility 胶水、`QtAppConstants.ets`、Qt CMake 目标与部署规则。
+> AppScope、module、product、native libs 与 signingConfig 的平台层级关系，以 common 的 [HAP 原生工程结构与签名关系](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/hap-native-project-structure.md)为准。本页只解释 Qt 模板、QAbility 胶水、`QtAppConstants.ets`、Qt CMake 目标与部署规则。
 
 ## 1. 两种使用场景
 
@@ -54,11 +54,30 @@ templates/
 └── README.md
 ```
 
-### 2.2 旧方式（已退役）：从 Gerrit 下载 ZIP
+### 2.2 独立模板归档（无 Qt 源码场景）
+
+当仅有预编译 SDK 而无完整 Qt 源码树时（如鸿蒙 PC 编译构建场景），需从 GitCode releases 页面单独下载模板归档。
+
+**下载地址**：https://gitcode.com/ohos-qt/qt-harmonyos-src/releases
+**归档名称**：`templates-0625.zip`
+
+```bash
+# 使用 kb-init 脚本自动下载
+bash skills/kb-init/scripts/download-template.sh --dest=workspace/templates
+
+# 或手动下载后解压
+curl -fSL -o /tmp/templates-0625.zip "<下载链接>"
+unzip /tmp/templates-0625.zip -d workspace/templates/
+```
+
+解压后目录结构与源码内置模板一致（`AppScope/`、`entry/`、`build-profile.json5` 等）。
+`ENV.local.md` 中 `OHOS_TEMPLATE_SRC` 应指向 `workspace/templates`。
+
+### 2.3 旧方式（已退役）：从 Gerrit 下载 ZIP
 
 > **此方式已退役**：新版 Qt 鸿蒙分支已将胶水模板内置于源码树（见 §2.1），无需再从 Gerrit 下载 ZIP。
 > 旧的外部 ZIP 模板变量在 `ENV.md` 中保留仅为兼容旧 `ENV.md`，不应再使用。
-> 模板统一从 `<QT_SRC>/qtbase/src/harmonyos/templates` 复制。
+> 模板统一从 `<QT_SRC>/qtbase/src/harmonyos/templates` 复制（有源码时）或从独立归档下载（无源码时，见 §2.2）。
 
 ## 3. 目录结构
 

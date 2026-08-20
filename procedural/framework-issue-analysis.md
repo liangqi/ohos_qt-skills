@@ -422,7 +422,7 @@ git reset HEAD
 - [[qt-harmonyos-build]] — 编译构建（加日志后需重新编译）
 - [[qt-harmonyos-api]] — API 兼容性差异
 - [[qt-harmonyos-platform-limits]] — 已知平台限制（避免将已知限制误判为 bug）
-- [[ohos-common-kb/semantic/harmonyos-development-fundamentals|HarmonyOS 开发基础]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-development-fundamentals.md)）— hdc 工具使用
+- [HarmonyOS 开发基础](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-development-fundamentals.md)— hdc 工具使用
 
 ## 内容来源
 
