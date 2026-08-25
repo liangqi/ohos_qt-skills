@@ -20,7 +20,7 @@ evidence: [WORKLOG 08-05, workspace/llvm-15.0.7.src/]
 
 # LLVM OHOS 产物接入 Qt/QLogo
 
-> OHOS NDK toolchain、host/target generator 分离、ELF/依赖闭包检查及 LLVM 通用失败分类，以 common 的 [LLVM 类原生工程交叉编译到 OHOS](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/procedural/ohos-llvm-cross-compile.md)为准。本页只记录 Qt/QLogo 如何消费已验证的 AArch64 产物。
+> OHOS NDK toolchain、host/target generator 分离、ELF/依赖闭包检查及 LLVM 通用失败分类，以 common 的 [[ohos-common-kb/procedural/ohos-llvm-cross-compile|LLVM 类原生工程交叉编译到 OHOS]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/procedural/ohos-llvm-cross-compile.md)）为准。本页只记录 Qt/QLogo 如何消费已验证的 AArch64 产物。
 
 ## Why:
 

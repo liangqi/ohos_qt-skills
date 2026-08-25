@@ -18,7 +18,7 @@ summary: >
 > 来源：[HarmonyOS Platform Limitations](https://wiki.qt.io/Qt_for_HarmonyOS/platform_limitations)
 > 父 issue：[QTBUG-146618](https://bugreports.qt.io/issues/?jql=project%20%3D%20QTBUG%20AND%20parent%20%3D%20QTBUG-146618)
 >
-> 跨框架成立的平台限制、证据边界与使用方法，以 common 的 [HarmonyOS 平台限制](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)为准。本页保留 `QFile`、`QStandardPaths`、`QPluginLoader`、QML、Qt rendering 与 QTBUG 层面的症状和修复。
+> 跨框架成立的平台限制、证据边界与使用方法，以 common 的 [[ohos-common-kb/semantic/harmonyos-platform-limits|HarmonyOS 平台限制]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)）为准。本页保留 `QFile`、`QStandardPaths`、`QPluginLoader`、QML、Qt rendering 与 QTBUG 层面的症状和修复。
 
 ## 平台限制到 Qt API 的映射
 

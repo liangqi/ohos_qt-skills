@@ -16,7 +16,7 @@ summary: >
 # Qt 鸿蒙工程结构详解
 
 > 模板、胶水代码、CMake 配置、库名规则——一站式掌握 Qt for HarmonyOS 工程骨架。
-> AppScope、module、product、native libs 与 signingConfig 的平台层级关系，以 common 的 [HAP 原生工程结构与签名关系](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/hap-native-project-structure.md)为准。本页只解释 Qt 模板、QAbility 胶水、`QtAppConstants.ets`、Qt CMake 目标与部署规则。
+> AppScope、module、product、native libs 与 signingConfig 的平台层级关系，以 common 的 [[ohos-common-kb/semantic/hap-native-project-structure|HAP 原生工程结构与签名关系]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/hap-native-project-structure.md)）为准。本页只解释 Qt 模板、QAbility 胶水、`QtAppConstants.ets`、Qt CMake 目标与部署规则。
 
 ## 1. 两种使用场景
 

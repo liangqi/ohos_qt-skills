@@ -16,7 +16,7 @@ summary: >
 
 # HarmonyOS 平台能力 → Qt API adapter 映射表
 
-> 本文档汇总 13 类 Qt API adapter 与 Before/After 代码。平台概念以 common 为准：Stage/UIAbility、Want 与 launchType 见 [Stage 模型与 UIAbility 生命周期](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)；Window/XComponent/focus seam 见 [ArkUI 窗口与 XComponent 承载模型](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/arkui-window-xcomponent-model.md)；文件、loader、线程与时区限制见 [HarmonyOS 平台限制](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)。本页只维护 Qt API、QtOhosExtras/QPA 与 Qt 代码改写。
+> 本文档汇总 13 类 Qt API adapter 与 Before/After 代码。平台概念以 common 为准：Stage/UIAbility、Want 与 launchType 见 [[ohos-common-kb/semantic/stage-uiability-lifecycle|Stage 模型与 UIAbility 生命周期]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)）；Window/XComponent/focus seam 见 [[ohos-common-kb/semantic/arkui-window-xcomponent-model|ArkUI 窗口与 XComponent 承载模型]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/arkui-window-xcomponent-model.md)）；文件、loader、线程与时区限制见 [[ohos-common-kb/semantic/harmonyos-platform-limits|HarmonyOS 平台限制]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)）。本页只维护 Qt API、QtOhosExtras/QPA 与 Qt 代码改写。
 
 ---
 

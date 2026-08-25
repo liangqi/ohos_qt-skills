@@ -4,7 +4,7 @@ type: semantic
 domain: tech
 tags: [qt, qt6, harmonyos, ohos, status, cmake]
 created: 2026-06-03
-updated: 2026-08-03
+updated: 2026-08-25
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-build, semantic-qt-harmonyos-modules, semantic-qt-harmonyos-platform-limits, semantic-qt-ohos-project-analyzer-workflow]
@@ -18,6 +18,7 @@ summary: >
   QtQuick qml runtime 全在），仅缺 WebEngine/DBus/Wayland/Pdf/Script。本文旧记"非 qtbase 未开始"
   "Quick .so absent""Multimedia missing"是**源码 superbuild（策略 B）**时代过时记录，对**预构建（策略 B'）**不成立。
   第 2 批 10 应用（MathMod/SolveSpace/CopyQ/SQLiteStudio 等用 opengl/qml/uitools）全编译成功佐证。
+  **⚠️ 2026-08-25 beta3 复核**：Qt6HarmonyExtras 重新独立成模块（libQt6HarmonyExtras.so + cmake，公开头仅 exports/version 桩，16 个功能头全私有 `_p.h`）——翻 beta2「不作为独立模块存在」结论；文件权限授予=QtCore `QPermissions` 公开 API（无文件类权限类型，仅定位/日历/联系人/蓝牙/相机/麦克风）+ `QtHarmonyExtras::FileShare::persistPermission` 私有 API（对应鸿蒙 `@ohos.fileshare`）。
   Qt5→Qt6 关键差异（QStandardPaths、CMake API、QML、QPA API）。
 ---
 
@@ -106,6 +107,8 @@ Qt 6 新增了若干 `QStandardPaths::StandardLocation` 枚举值，以下映射
 
 Qt 6 将原 QtOhosExtras 模块的大部分功能**内联到了 QPA 插件中**（`src/plugins/platforms/ohos/`，196 个文件）。以下是关键 API 差异：
 
+> ⚠️ **2026-08-25 beta3 复核修正**：beta3 起 QtHarmonyExtras **重新独立成模块**（`lib/libQt6HarmonyExtras.so` + `lib/cmake/Qt6HarmonyExtras/` + `Qt6HarmonyExtrasPrivate/` cmake target），但**公开头仅 `qtharmonyextrasexports.h`/`qtharmonyextrasversion.h` 两个桩**，16 个功能头（abilitycontext/appcontext/bundlemanager/fileshare/fileutils/pasteboard/sharekit/want/windowutils 等）**全私有 `_p.h`**。即"模块回归独立"但"公开 API 面仍空"。下表 API 差异基于源码 dev 时代记录；beta3 模块化后这些功能仍存于私有头中，签名未公开化。详见下方「Qt6 beta3 文件权限授予接口」节与已知问题 #2。
+
 #### 关闭事件 API — 重大变更
 
 | 维度 | Qt 5（QtOhosExtras） | Qt 6（QPA 内部） |
@@ -137,6 +140,34 @@ Qt 6 将原 QtOhosExtras 模块的大部分功能**内联到了 QPA 插件中**�
 | 分享函数 | `shareDataWithShareKit()` | `shareDataUsingShareKit()` |
 | 记录类型 | `QOhosSharedRecord` | `ShareKit::SharedRecord` |
 
+## Qt6 beta3 文件权限授予接口（2026-08-25 复核）
+
+> 鸿蒙文件访问权限分三层，Qt6 beta3 覆盖情况如下（基于本地 `${QT6_INSTALLER_ROOT}/6.12.0/harmonyos_arm64_v8a` 头文件 ground-truth）。
+
+### (1) 公开跨平台 `QPermissions` API（QtCore，公开头）
+
+- 头：`include/QtCore/qpermissions.h`（公开，非 `_p`）；OHOS 后端 `include/QtCore/6.12.0/QtCore/private/qohospermissionshelper_p.h`（私有）
+- 入口：`QCoreApplication::checkPermission(const QPermission&)` → `Qt::PermissionStatus`（同步查）；`QCoreApplication::requestPermission(const QPermission&, context, functor)`（异步请求授权弹窗，见 `qcoreapplication.h:131-165`）
+- 状态枚举：`Qt::PermissionStatus{Undetermined, Granted, Denied}`（`qnamespace.h:1766`）
+- 内置权限类型**仅 6 种**：`QLocationPermission` / `QCalendarPermission` / `QContactsPermission` / `QBluetoothPermission` / `QCameraPermission` / `QMicrophonePermission`
+- ⚠️ **无 `QFilePermission` / `QStoragePermission` / `QMediaPermission` 类型** — 文件/存储/媒体访问**不在** Qt6 公开权限 API 里
+
+### (2) 鸿蒙文件持久化授权（QtHarmonyExtras，私有 `_p.h`）
+
+- 头：`include/QtHarmonyExtras/6.12.0/QtHarmonyExtras/private/qohosfileshare_p.h`
+- 命名空间：`QtHarmonyExtras::FileShare`
+- API：`persistPermission(QList<PathPolicy>)` / `revokePermission` / `activatePermission` / `deactivatePermission` / `checkPersistent`
+- `PathPolicy{QString path; OperationModes(Read|Write)}` — 对指定文件/目录路径持久化读写授权
+- 对应鸿蒙原生 `@ohos.fileshare` 的 `grantPersistPermission`，需 `ohos.permission.FILE_ACCESS_PERSIST`
+- ⚠️ **私有 API**，版本间无 ABI 保证，生产慎用
+
+### (3) 临时文件授权（未封装，走鸿蒙原生）
+
+- Qt 未封装文件选择器；走鸿蒙 `@ohos.file.picker`（`DocumentViewPicker` / `PhotoViewPicker`），picker 返回 URI 带临时读写权限，应用退出/重启失效
+- 要跨重启保留 → 接 (2) `FileShare::persistPermission`，或原生 `@ohos.fileshare`
+
+> **结论**：Qt6 beta3 没给"文件权限授予"公开封装。临时授权走鸿蒙 picker（无 Qt 封装），持久授权走 `QtHarmonyExtras::FileShare::persistPermission`（私有 `_p.h`）。公开 `QPermissions` 只管定位/日历/联系人/蓝牙/相机/麦克风 6 类，文件不在其中——收到"Qt6 应用如何申请文件读写权限"类需求时，勿指向 Qt 权限 API，应指引鸿蒙原生 `abilityAccessCtrl.requestPermissionsFromUser` + `@ohos.file.picker` + `@ohos.fileshare`。
+
 ## 模块适配状态
 
 Qt 6 模块适配状态**独立于 Qt 5**，当前仅 qtbase 模块已合并。
@@ -146,7 +177,7 @@ Qt 6 模块适配状态**独立于 Qt 5**，当前仅 qtbase 模块已合并。
 | **qtbase**（Core/Gui/Widgets/Network/Qml/Quick） | ✅ Completed | ✅ 已合并到 dev |
 | **qtbase**（Test/Sql/Concurrent/OpenGL） | ✅ Completed | ✅ 已验证：Test 有 OHOS hilog 集成，Sql/Concurrent/OpenGL 无需 OHOS 特定代码 |
 | **非 qtbase**（Multimedia/3D/Charts/...） | ✅/❌ 见 [[qt-harmonyos-modules]] | ⚠️ **源码 superbuild（策略 B）❌ 未开始**。**预构建安装器（策略 B'）✅ 全在**：libQt6Multimedia/Charts/3DCore/3DRender/OpenGL/OpenGLWidgets/DataVisualization/Bluetooth/Location/Positioning/Sensors/SerialBus/UiTools/Core5Compat/WebSockets/SerialPort/Svg/SvgWidgets/Help/Designer/NetworkAuth/TextToSpeech/HttpServer/ShaderTools/Qml/Quick/QuickControls2/Quick3D 全在（2026-07-25 ground-truth，见 第 2 批编译复盘 决策 1）。**仅 WebEngine/DBus/Wayland/Pdf/Script 缺失**。 |
-| **QtOhosExtras** | ✅ Completed | ❌ **不作为独立模块存在** — 功能已分散到 `corelib/platform/ohos/`（QOhosAppContext）和 `plugins/platforms/ohos/`（startAppProcess、ShareKit、窗口标记等），所有 API 均为**私有内部**（`_p.h` 头文件） |
+| **QtOhosExtras**（Qt5 名）/ **QtHarmonyExtras**（Qt6 beta3 名） | ✅ Completed | ⚠️ **beta2**：不作为独立模块，功能分散到 `corelib/platform/ohos/`（QOhosAppContext）和 `plugins/platforms/ohos/`（startAppProcess、ShareKit、窗口标记等），全私有 `_p.h`。**beta3（2026-08-25 复核）**：重新独立为 `Qt6HarmonyExtras` 模块（`libQt6HarmonyExtras.so` + cmake），但公开头仅 exports/version 桩，16 个功能头全私有 `_p.h`。 |
 
 详细 Qt 6 模块状态：参见 [Qt for HarmonyOS Module Adaptation Status](https://wiki.qt.io/Qt_for_HarmonyOS)（wiki 页面中 Qt6 部分）
 
@@ -214,7 +245,7 @@ cmake --build . -j8   # 业务 .so（qt_add_executable 自动 MODULE + main GLOB
 | # | 项目 | 状态 |
 |---|------|------|
 | 1 | Qt 6 QStandardPaths 新枚举在 OHOS 上的映射 | ✅ 已验证：`PublicShareLocation`/`TemplatesLocation` 不支持，`StateLocation`/`GenericStateLocation` → `filesDir` |
-| 2 | QtOhosExtras 模块是否有 Qt 6 版本 | ✅ 已验证：**不作为独立模块存在**。功能分散到 `corelib/platform/ohos/`（QOhosAppContext）和 `plugins/platforms/ohos/`（QPA 内部），所有 API 为私有（`_p.h`） |
+| 2 | QtOhosExtras 模块是否有 Qt 6 版本 | ✅ 已验证（beta2）+ ⚠️ beta3 修正（2026-08-25）：**beta2**（6.12.0-beta2 预构建）不作为独立模块，功能分散到 `corelib/platform/ohos/`+QPA 内部，全私有 `_p.h`。**beta3**（本地 `${QT6_INSTALLER_ROOT}/6.12.0/harmonyos_arm64_v8a` 复核）**重新独立为 `Qt6HarmonyExtras` 模块**：`lib/libQt6HarmonyExtras.so` + `lib/cmake/Qt6HarmonyExtras/` + `Qt6HarmonyExtrasPrivate/` cmake target；`include/QtHarmonyExtras/` 公开头仅 `qtharmonyextrasexports.h` + `qtharmonyextrasversion.h` 两个桩，16 个功能头全私有 `_p.h`。即：模块回归独立，但公开 API 面仍空。详见下方「Qt6 beta3 文件权限授予接口」节。 |
 | 3 | Qt 6 QPA 插件（qohos）与 Qt 5 的功能差异 | ✅ 已验证：196 文件，关闭事件 API 重大变更（私有化 + 枚举值改变），窗口标记 API 签名一致 |
 | 4 | 非 qtbase 模块的鸿蒙适配时间表 | ⚠️ **已修正（2026-07-25）**：源码 superbuild（策略 B）仅 qtbase+5 子模块，非 qtbase 模块无鸿蒙适配。**预构建安装器（策略 B'）是完整 Qt6.12 发行版**——Multimedia/3D/Charts/OpenGL/DataVisualization/Bluetooth/Location/Sensors/SerialBus/UiTools/Core5Compat/Quick/QuickControls2 等 .so + QtQuick qml runtime **全在**（ground-truth 复核）。仅 WebEngine/DBus/Wayland/Pdf/Script 缺失。第 2 批 CopyQ(qml)/SQLiteStudio(uitools+svg+qml)/MathMod(opengl)/SolveSpace(openglwidgets) 用预构建全编译成功佐证（第 2 批编译复盘 决策 1） |
 | 5 | Qt 6 的 `qt_add_qml_modules` 在 OHOS 交叉编译中的行为 | 🟡 部分验证：qtbase cmake 中仅在 `QtInitProject.cmake`（项目模板）中出现，实际实现在 `qtdeclarative` 仓库中（本地无源码）。OHOS 特定行为无法从 qtbase 源码验证 |
@@ -261,3 +292,4 @@ cmake --build . -j8   # 业务 .so（qt_add_executable 自动 MODULE + main GLOB
 | 2026-07-27 | 第 3 批 16 应用 8 成功 8 阻断，补 DBus 硬墙 / C++23 天花板 / Q_OS_LINUX 双定义三条经验 |
 | 2026-08-02 | 策略 B' 预构建 CLI 端到端验证（Qt6 预构建 CLI 端到端工作流，内部）：widgets/gallery demo configure→build→package HAP ~33MB 成功，固化 11 陷阱 + hvigor-wrapper.bat 占位符模板 |
 | 2026-08-03 | Qt6+CEF 鸿蒙集成验证（Qt6+CEF 集成工作流，内部）：OpenQtCef Qt5→Qt6 迁移，HAP 真机启动通过；IoT addon（qtmqtt）鸿蒙交叉编译验证（已知问题 \#21） |
+| 2026-08-25 | beta3 ground-truth 复核（本地 `${QT6_INSTALLER_ROOT}/6.12.0/harmonyos_arm64_v8a`）：`Qt6HarmonyExtras` 重新独立成模块（`libQt6HarmonyExtras.so` + cmake，公开头仅 exports/version 桩，16 功能头全私有 `_p.h`）→ 翻 beta2「不作为独立模块存在」结论（修正已知问题 #2 + 模块适配状态表 + QPA 变更节）；新增「Qt6 beta3 文件权限授予接口」节（`QPermissions` 公开 API 无文件类权限类型 + `QtHarmonyExtras::FileShare::persistPermission` 私有 + picker 未封装，走鸿蒙原生 `@ohos.file.picker`/`@ohos.fileshare`） |

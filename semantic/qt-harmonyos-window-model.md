@@ -24,7 +24,7 @@ summary: >
 # ArkUI 窗口模型的 Qt QPA adapter
 
 > 另见 [[semantic-qt-harmonyos-api]] 中窗口相关 API 差异、[[semantic-qt-ohos-extras]] 中 QtOhosExtras 模块、[[semantic-qt-harmonyos-code-patterns]] 中完整代码模式。
-> WindowStage/main/subwindow、XComponent/native surface、焦点、可见与可绘制状态的平台边界，以 common 的 [ArkUI 窗口与 XComponent 承载模型](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/arkui-window-xcomponent-model.md)为准。本页保留 QPA tagging、`QWindowPrivate::visible`、Qt exposure/activation、浮窗销毁链与 Qt API 模式。
+> WindowStage/main/subwindow、XComponent/native surface、焦点、可见与可绘制状态的平台边界，以 common 的 [[ohos-common-kb/semantic/arkui-window-xcomponent-model|ArkUI 窗口与 XComponent 承载模型]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/arkui-window-xcomponent-model.md)）为准。本页保留 QPA tagging、`QWindowPrivate::visible`、Qt exposure/activation、浮窗销毁链与 Qt API 模式。
 
 ## Qt QPA 映射概念 (Concepts)
 

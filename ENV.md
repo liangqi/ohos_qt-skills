@@ -73,10 +73,8 @@
 | 变量名 | 你的值 | 说明 |
 |--------|--------|------|
 | `OHOS_TEMPLATE_SRC` | `<QT_SRC>/qtbase/src/harmonyos/templates` | ★ 推荐：Qt 源码内置胶水模板（5.15 / 5.12 源码树内均有） |
-| `OHOS_TEMPLATE_STANDALONE` | `workspace/templates` | 独立模板归档（无 Qt 源码时使用，从 GitCode releases 下载 `templates-0625.zip`） |
 
 > 新版 Qt 鸿蒙分支已将胶水模板内置于 `qtbase/src/harmonyos/templates`，无需再从外部下载 ZIP。
-> **无源码场景**（如仅使用预编译 SDK 或鸿蒙 PC）：从 https://gitcode.com/ohos-qt/qt-harmonyos-src/releases 下载 `templates-0625.zip` 解压到 `workspace/templates/`，`OHOS_TEMPLATE_SRC` 指向该目录。
 
 ## 🔨 构建工具链
 

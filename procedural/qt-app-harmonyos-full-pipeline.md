@@ -6,7 +6,6 @@ type: procedural
 domain: procedural
 status: active
 audience: public
-contributors: [lzh]
 tags: [应用鸿蒙化, 端到端, 编译, 签名, 部署, 测试]
 refs:
   - procedural-qt-app-harmonyos-migration
@@ -53,9 +52,9 @@ updated: 2026-08-15
 
 本页是 **Qt 交付层的内部编排枢纽**，把 Qt KB 中分散的工作流缝合为一条从源码/SDK 获取到最终上库发布的链路。HarmonyOS 平台事实不在这里重复维护，执行前以 common KB 的以下页面为准：
 
-- Stage/UIAbility 生命周期：[公共库：Stage/UIAbility 生命周期](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)
-- ArkUI 窗口与 XComponent 模型：[公共库：ArkUI 窗口与 XComponent 模型](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/arkui-window-xcomponent-model.md)
-- HarmonyOS 平台限制：[公共库：HarmonyOS 平台限制](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)
+- Stage/UIAbility 生命周期：[[ohos-common-kb/semantic/stage-uiability-lifecycle|公共库：Stage/UIAbility 生命周期]]（[稳定链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)）
+- ArkUI 窗口与 XComponent 模型：[[ohos-common-kb/semantic/arkui-window-xcomponent-model|公共库：ArkUI 窗口与 XComponent 模型]]（[稳定链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/arkui-window-xcomponent-model.md)）
+- HarmonyOS 平台限制：[[ohos-common-kb/semantic/harmonyos-platform-limits|公共库：HarmonyOS 平台限制]]（[稳定链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)）
 
 流程按 8 个阶段组织：
 
@@ -262,7 +261,7 @@ cp -r workspace/templates/. "${PROJECTS_ROOT}/<app-name>-ohos/"
 - `entry/src/main/resources/{base,en_US,zh_CN}/element/string.json`：`QAbility_label` value → 应用名（三语言目录都改，`zh_CN` 可填中文）
 
 #### 2.6 DevEco CLI 工具速查（本流程全程用 CLI，不用 MCP）
-平台通用命令能力以 common 的 [DevEco CLI 使用规则](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/procedural/deveco-cli-usage-rules.md)为准。
+平台通用命令能力以 common 的 [[ohos-common-kb/procedural/deveco-cli-usage-rules|DevEco CLI 使用规则]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/procedural/deveco-cli-usage-rules.md)）为准。
 
 本流程全程用命令行，不依赖 DevEco MCP。正常项目操作优先使用 devecocli；下表保留的 hvigor/hdc 是 Qt 交付需要精确控制 unsigned HAP、Ability 参数、a11y Want 与底层日志时的可审计调用，使用后仍以完整 Qt 门禁收口：
 
@@ -276,7 +275,7 @@ cp -r workspace/templates/. "${PROJECTS_ROOT}/<app-name>-ohos/"
 | UI 交互 | `hdc shell uitest uiInput click <x> <y>`（控件 bounds 中心点） | perform_ui_action(click) |
 | 签名 | `java -jar <hap-sign-tool.jar> sign ...` 或 build-profile signingConfig | — |
 
-> 历史 MCP 的 `get_app_ui_tree` 只到 XComponent，且不属于当前 deveco-mcp 工具集。取 Qt 控件树使用 `uitest dumpLayout`（无障碍通道）并先开 Want 参数。当前 MCP 仅用于 check/restart，能力边界见 [DevEco MCP 能力与使用边界](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/deveco-mcp-capabilities.md)；本流程不用 MCP 执行 build/run/UI。
+> 历史 MCP 的 `get_app_ui_tree` 只到 XComponent，且不属于当前 deveco-mcp 工具集。取 Qt 控件树使用 `uitest dumpLayout`（无障碍通道）并先开 Want 参数。当前 MCP 仅用于 check/restart，能力边界见 [[ohos-common-kb/semantic/deveco-mcp-capabilities|DevEco MCP 能力与使用边界]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/deveco-mcp-capabilities.md)）；本流程不用 MCP 执行 build/run/UI。
 
 ### 产出（下游交付）
 - 可用的 Qt6.12 HarmonyOS Kit 配置（CMake Initial Configuration + 环境变量）
@@ -1129,7 +1128,7 @@ Step D 修复沉淀：成功→记入 compile_fix_pro.md；失败→向用户提
 
 来源：`qt-harmonyos-third-party-libs` / `fetch-ohos-third-party-lib`
 
-平台 NDK、ABI、sysroot、构建和 HAP native 部署契约以 [common：OHOS 原生三方库接入契约](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/ohos-native-third-party-libraries.md)为准。本流程只编排 Qt 消费动作：
+平台 NDK、ABI、sysroot、构建和 HAP native 部署契约以 [[ohos-common-kb/semantic/ohos-native-third-party-libraries|common：OHOS 原生三方库接入契约]]（[稳定链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/ohos-native-third-party-libraries.md)）为准。本流程只编排 Qt 消费动作：
 
 1. 取得已经通过 common 产物检查的 headers、静态库或共享库及完整依赖闭包；
 2. 在 Qt target 中通过 `find_package`/imported target 接入，不把 host metadata 混入交叉构建；
@@ -1230,7 +1229,7 @@ source-only 附加模块不在预构建安装器，但预构建 OHOS kit 带 `Qt
 - A6(🟠) `getCloseEventRootCause()` 是自由函数 `QtOhosExtras::getCloseEventRootCause(event)`（非成员方法）；Qt6 已私有化
 
 ### 平台限制 P1-P5
-- 平台限制内容不在本速查复制；先读 [common 平台限制](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)。
+- 平台限制内容不在本速查复制；先读 [[ohos-common-kb/semantic/harmonyos-platform-limits|common 平台限制]]（[稳定链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)）。
 - P1-P5 在本流程中的含义仅是：检查 `QFile`/`QStandardPaths`、`QPluginLoader`、Qt worker cancellation 与 `QTimeZone` adapter，并把结果记录到 Qt 应用回归。
 
 ### 生命周期 L1-L4
@@ -1316,8 +1315,8 @@ Harmonybrew 社区仓库        ┘   阶段三 迁移适配              → �
 - `semantic/qt-harmonyos-system-tray.md` — Qt 鸿蒙系统托盘
 - `semantic/qt-ohos-js-thread-gateway.md` — Qt↔JS 线程桥接
 - `semantic/qt-huawei-cleancode-rules.md` — 华为 Qt CleanCode 规范（18 条）
-- [DevEco CLI 使用规则](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/procedural/deveco-cli-usage-rules.md)
-- [HarmonyOS 开发基础](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-development-fundamentals.md)
+- [[ohos-common-kb/procedural/deveco-cli-usage-rules|DevEco CLI 使用规则]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/procedural/deveco-cli-usage-rules.md)）
+- [[ohos-common-kb/semantic/harmonyos-development-fundamentals|HarmonyOS 开发基础]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-development-fundamentals.md)）
 
 ---
 

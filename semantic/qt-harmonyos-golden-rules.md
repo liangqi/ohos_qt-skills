@@ -18,7 +18,7 @@ summary: >
 
 > **Agent 操作指引**：执行任何 Qt for HarmonyOS 相关任务前，先扫描此页。
 > 每条规则标注出处，需要细节时沿链接深入。
-> 本页是 Qt 快速决策 hub，不是平台事实的第二 canonical source。HAP/签名见 [HAP 原生工程结构与签名关系](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/hap-native-project-structure.md)；平台限制见 [HarmonyOS 平台限制](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)；Stage/UIAbility 见 [Stage 模型与 UIAbility 生命周期](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)。下表只保留这些事实会怎样影响 Qt，以及 Qt 侧必须做什么。
+> 本页是 Qt 快速决策 hub，不是平台事实的第二 canonical source。HAP/签名见 [[ohos-common-kb/semantic/hap-native-project-structure|HAP 原生工程结构与签名关系]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/hap-native-project-structure.md)）；平台限制见 [[ohos-common-kb/semantic/harmonyos-platform-limits|HarmonyOS 平台限制]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)）；Stage/UIAbility 见 [[ohos-common-kb/semantic/stage-uiability-lifecycle|Stage 模型与 UIAbility 生命周期]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)）。下表只保留这些事实会怎样影响 Qt，以及 Qt 侧必须做什么。
 >
 > **⚠️ 版本适用范围**：本规则集基于 **Qt 5.12/5.15**。Qt 6 for OHOS 有以下重大变更：
 > - **QtOhosExtras 模块不再独立存在** — 功能已内联到 QPA 插件中作为私有 API（`_p.h`），规则 B6/A3/A4/A5/A6 在 Qt6 中不适用

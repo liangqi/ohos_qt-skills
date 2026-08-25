@@ -3,22 +3,76 @@
 > 一个面向 **Qt 应用开发者** 的 HarmonyOS 移植参考知识库。它把 Qt for HarmonyOS 实战经验蒸馏成结构化的 Markdown 知识页，帮你在把 Qt 应用搬到鸿蒙时少踩坑、快定位。
 >
 > 这是 **开发者版**：由一个更大的内部工作流知识库经 `_scripts/kb-dev-edition.sh` 裁剪后生成，仅保留对应用开发者有用的技术内容，不含内部团队协作、商业支持、供应链流程，也不含 Qt 框架源码级调试方法。
+>
+> **当前版本**：v2.1.0（2026-08-25）｜ [变更日志](CHANGELOG.md) ｜ [能力规格](#能力规格)
 
 ---
 
-## 这是什么 / 能帮我做什么
+## 能力规格
 
-| 你在做 | 这里的页能帮你 |
-|------|------------|
-| 把一个 Qt 应用移植到鸿蒙 | 8 步迁移工作流 + 落地编译配方（打成 HAP）+ 工程结构 |
-| 查某 API 在鸿蒙上怎么替换 | 12 大类 API 迁移映射 + 13 组 Before/After 代码模式 |
-| 查某 Qt 模块支不支持鸿蒙 | 模块适配状态速查（核心模块全完成，WebEngine/D-Bus 不支持） |
-| 查鸿蒙平台有哪些限制 | 平台限制清单（chmod/symlink/dlopen/字体 等，含 QTBUG 编号） |
-| 窗口/对话框/生命周期行为不对 | 窗口模型详解 + 生命周期/关闭拦截/接续 + 35 条铁律 |
-| 编译失败、部署失败、运行崩溃 | 错误库（一错一文件，按错误码/症状速查）+ 构建运行全流程 |
-| 判断一个问题是不是出在 Qt 鸿蒙框架层 | 铁律 + 平台限制 + API 差异 + 错误库，帮你识别"框架问题"特征 |
+> 本节是外部知识库（开发者版）的正式功能规格：**能**做什么、**不**做什么、输入输出契约、版本与兼容策略。
+> 版本对象 = 外部仓整包（Qt 公开子集 + 内嵌 ohos-common-kb + kb-init skill + 根文档），不是单个 KB。
 
-> 本版聚焦 **应用鸿蒙化** 与 **应用问题分析**。它能帮你识别"这可能是 Qt 鸿蒙框架的已知行为/限制"，但不教你改 Qt 框架源码加日志定位根因——那是上游 Qt 团队的工作。
+### 功能清单
+
+本知识库覆盖 **12 类公开任务**（路由码见 `_index/_task-routing.md`）：
+
+| 路由码 | 任务 | 入口页 | 预期输出 |
+|------|------|--------|---------|
+| [A] | 应用移植到鸿蒙 | `procedural/qt-app-harmonyos-migration` + `semantic/qt-harmonyos-porting-workflow` | 可行性评估 → 工程创建 → 8 步迁移 → 编译验证 |
+| [B] | API 替换查询 | `semantic/qt-harmonyos-api-mapping`（12 类映射）+ `qt-harmonyos-code-patterns` | 替换方案 + Before/After 代码 |
+| [C] | Qt 模块支持查询 | `semantic/qt-harmonyos-modules` | 是否支持 + 版本(5.12/5.15) + 替代方案 |
+| [D] | 平台限制查询 | `semantic/qt-harmonyos-platform-limits` | 限制描述 + QTBUG 编号 + Workaround |
+| [E] | 构建排障 | `semantic/qt-harmonyos-build-run-workflow` §四步法 + `problems/_lookup` | 错误分类 → 根因 → 修复步骤 |
+| [F] | 窗口问题 | `semantic/qt-harmonyos-golden-rules` §二 + `qt-harmonyos-window-model` | 规则说明 + 修复代码 |
+| [G] | 生命周期 | `semantic/qt-harmonyos-lifecycle` | 行为说明 + 代码示例 + 枚举路径 |
+| [H] | QtOhosExtras API | `semantic/qt-ohos-extras`（145+ API） | API 签名 + 用途 + 使用示例 |
+| [L] | Qt6 状态 | `semantic/qt-harmonyos-qt6-status` | 当前状态 + 已知差异 + 待验证项 |
+| [M] | 三方库 | `semantic/qt-harmonyos-third-party-libs` | 交叉编译方法 / 部署步骤 / 兼容性 |
+| [N] | 工具链 | `semantic/deveco-mcp-toolchain` + `deveco-cli-commands` | 安装/配置 或 headless 编译配方 |
+| [Q] | Demo 生成 | `procedural/demo-generation` | 需求 → 设计 → 工程 → 代码 → 编译 → 文档 |
+
+**捆绑工具**：`skills/kb-init/` —— 环境探测（DevEco/SDK/Qt 源码）→ 引导安装缺失依赖 → 生成 `ENV.local.md` → 校验环境可用。
+
+**内嵌 common-KB 子集**：`ohos-common-kb-public/` 提供 HarmonyOS 平台通用知识（ArkTS/ArkUI/NAPI/Stage 模型/DevEco 工具链基础），与 Qt 知识互补。
+
+### 显式非目标（本版**不**提供）
+
+| 不做的事 | 内部路由码 |
+|---------|-----------|
+| Qt 框架源码级根因调试（加日志定位） | 上游 Qt 团队工作；本版只识别"这是框架已知行为/限制" |
+| 框架修复验证工作流 | [J] |
+| 商业 Qt 客户技术答复 | [K] |
+| 商业 Qt 疑似系统问题验证 / 上报华为 | [P] |
+| KB 维护 / 审计工作流 | [O] |
+| Demo 上库归档 / CleanCode 整理 | [R] |
+| Fork 上传 ohos-qt 组织 | [T] |
+| 应用鸿蒙化完善（10 核心用例闭环） | [U] |
+| 改进建议生成 | [V] |
+| 端到端全流程缝合（内部供应链版） | [W] |
+| 内部团队协作 / 供应链对接人 | 内部 `workflow-supply-chain` |
+
+> 这些工作流存在于更大的内部工作流知识库（本仓的源端），经 `audience: internal` 结构性排除，不随发版外发。本版聚焦 **应用鸿蒙化** 与 **应用问题分析**，能帮你识别"这可能是 Qt 鸿蒙框架的已知行为/限制"，但不教你改 Qt 框架源码加日志定位根因——那是上游 Qt 团队的工作。社区发现内容问题请提 issue（见 `CONTRIBUTING.md`），不接受直接改内容文件的 PR。
+
+### 输入 / 输出契约
+
+| 输入 | 处理 | 输出 |
+|------|------|------|
+| 自然语言请求（喂 AI 工具） | 任务路由 → 扫铁律 → 按需加载页 → 综合 | 替换方案+代码 / 模块状态 / 限制+QTBUG / 错误解决方案 / 编译配方 |
+| 直接浏览（人类 / Obsidian） | `_dashboard` 看全貌 → `_map` 看摘要 → 点开自包含页 | 结构化技术参考 |
+
+固定入口链：`_index/_task-routing → semantic/qt-harmonyos-golden-rules → _index/_map → 按需页 → refs 深追`。报错第一步：`problems/_lookup.md` 按错误码 / 症状检索。
+
+### 版本与兼容策略
+
+- **版本号**：[SemVer](https://semver.org/lang/zh-CN/) `vMAJOR.MINOR.PATCH`，版本对象 = 外部仓整包。基线 `v2.0.0`（2026-08-19），不回填 v1。
+- **MAJOR（破坏性）**：删/移走用户依赖的页、`audience` 由 public→internal、目录重排致旧链接断、铁律/API 映射被证伪并反转。
+- **MINOR（内容新增）**：新页/新节/新 API 映射条目/新 task 类型/内嵌新 KB 或 skill。
+- **PATCH（内容修正）**：typo/措辞修正、错误解决方案更新、Qt 参考版本 bump。
+- **Pin 某版**：`git clone --branch vX.Y.Z <本仓库>`。
+- **变更日志**：见 [CHANGELOG.md](CHANGELOG.md)。
+- **可复现性**：每版生成 `RELEASE-MANIFEST.yaml`（记录源端 KB 的 git SHA + `content_tree_sha256` + 页数计数），可据 `source_kbs` SHA 复现该版内容。
+- **Qt 框架版本校验基准**：Qt 5.15.16（tqtc/harmonyos-5.15.16, 962aa625）/ Qt 5.12.12（tqtc/harmonyos-5.12.12, 613336de）。
 
 ---
 
@@ -165,7 +219,7 @@ AI 的处理顺序是固定的，你不用记：
 
 ## 与源端知识库的关系
 
-本仓库由一个更大的内部工作流知识库单向裁剪生成（见 `_scripts/kb-dev-edition.sh`）。裁剪保留 `audience: public` 的技术内容，移除：内部团队协作流程、商业支持/系统问题验证工作流、工作流供应链、Qt 框架源码级调试方法。因此本版可公开给 Qt 应用开发者使用。如发现内容问题，可在本仓库提 issue。
+本仓库由更大的内部工作流知识库单向裁剪生成（`audience: public` 子集），能力边界、裁剪规则与版本策略见上方 [能力规格](#能力规格)。
 
 ## Skills（Agent 自动化脚本）
 

@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-18
+updated: 2026-08-25
 total_pages: 0
 description: >
   知识库健康仪表盘（派生计数，从 frontmatter 自动生成）。审计/评分快照见 _dashboard-audit.md。
@@ -7,7 +7,7 @@ description: >
 
 # 知识库健康仪表盘
 
-> **最后更新**：2026-08-18 | **总活跃页面**：0 | **归档**：0
+> **最后更新**：2026-08-25 | **总活跃页面**：0 | **归档**：0
 
 ---
 
@@ -34,7 +34,7 @@ description: >
 | 页面 | 状态 | 最后更新 |
 |------|:----:|:--------:|
 
-### problems（34 条目）
+### problems（36 条目）
 
 详见 [_lookup](../problems/_lookup.md)。
 

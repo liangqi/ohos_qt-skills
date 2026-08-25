@@ -27,7 +27,7 @@ related_problems: [problem-runtime-qpa-plugin-not-found]
 
 # dlopen 从可写路径加载 .so 被拒绝
 
-> 平台 loader 对普通可写代码路径的诊断以 common 的 [动态库加载失败：代码位于普通可写路径](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/problems/dlopen-rejects-writable-path.md)为准。本页保留 `QPluginLoader`/Qt plugin 的可搜索症状、部署位置与回归方法。
+> 平台 loader 对普通可写代码路径的诊断以 common 的 [[ohos-common-kb/problems/dlopen-rejects-writable-path|动态库加载失败：代码位于普通可写路径]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/problems/dlopen-rejects-writable-path.md)）为准。本页保留 `QPluginLoader`/Qt plugin 的可搜索症状、部署位置与回归方法。
 
 ## 错误信息
 

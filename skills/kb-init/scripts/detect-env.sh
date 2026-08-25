@@ -46,9 +46,9 @@ cmd_version() {
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 KB_ROOT="$(cd "$SCRIPT_DIR/../../.." 2>/dev/null && pwd || echo "")"
 
-# 验证是否在 ohos_qt-skills 知识库中
+# 验证是否在 ohos-qt-kb 内部知识库中
 KB_FOUND="false"
-if [ -n "$KB_ROOT" ] && [ -f "$KB_ROOT/AGENTS.md" ] && [ -d "$KB_ROOT/skills/kb-init" ]; then
+if [ -n "$KB_ROOT" ] && [ -f "$KB_ROOT/AGENTS.md" ] && [ -d "$KB_ROOT/skills/kb-init" ] && [ -d "$KB_ROOT/semantic" ]; then
   KB_FOUND="true"
 fi
 

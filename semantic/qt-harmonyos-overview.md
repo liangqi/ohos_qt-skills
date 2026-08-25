@@ -68,7 +68,7 @@ Qt 通过 **QPA（Qt Platform Abstraction）插件** 实现与鸿蒙系统的对
 - [[qt-harmonyos-modules]] — 模块适配状态
 - [[qt-harmonyos-lifecycle]] — 生命周期/开发指南（dev-guide 已归档）
 - [[qt-ohos-extras]] — QtOhosExtras 模块
-- [HarmonyOS 开发基础](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-development-fundamentals.md)
+- [[ohos-common-kb/semantic/harmonyos-development-fundamentals|HarmonyOS 开发基础]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-development-fundamentals.md)）
 
 ## 参考来源
 

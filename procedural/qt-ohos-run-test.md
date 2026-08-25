@@ -675,7 +675,7 @@ Start-Sleep -Seconds 5
 ## 相关上下文
 
 - [[qt-harmonyos-build-run-workflow]] — DevEco MCP 方式构建运行（本文补充 CLI 方式）
-- [DevEco MCP 能力与使用边界](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/deveco-mcp-capabilities.md)— 通用安装、配置与能力边界
+- [[ohos-common-kb/semantic/deveco-mcp-capabilities|DevEco MCP 能力与使用边界]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/deveco-mcp-capabilities.md)）— 通用安装、配置与能力边界
 - [[qt-harmonyos-project-structure]] — 工程结构详解
 - [[qt-harmonyos-golden-rules]] — 35 条铁律（B7/B12 部署、W1-W5 窗口、L1 生命周期、P1-P5/G1-G2 平台限制）
 - [[qt-harmonyos-platform-limits]] — 平台限制 8 大类（§4.6 回归清单 canonical）

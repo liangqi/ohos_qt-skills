@@ -33,7 +33,7 @@ environment: "Qt 5.15.16 OHOS / HarmonyOS 6.0 / HUAWEI MateBook 14"
 
 # OHOS 沙箱只读路径导致配置文件写入崩溃
 
-> 平台级“写入只读 bundle 路径”诊断以 common 的 [运行时写入失败：目标位于只读 bundle 路径](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/problems/runtime-write-to-readonly-bundle-path.md)为准。本页保留 Qt/FRequest 的原始错误检索、`QDir`/`QStandardPaths` 根因与修复。
+> 平台级“写入只读 bundle 路径”诊断以 common 的 [[ohos-common-kb/problems/runtime-write-to-readonly-bundle-path|运行时写入失败：目标位于只读 bundle 路径]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/problems/runtime-write-to-readonly-bundle-path.md)）为准。本页保留 Qt/FRequest 的原始错误检索、`QDir`/`QStandardPaths` 根因与修复。
 
 ## 错误信息
 

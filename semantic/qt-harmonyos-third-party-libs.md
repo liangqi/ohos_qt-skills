@@ -17,7 +17,7 @@ summary: >
 # 三方库鸿蒙化指南
 
 > 将 Qt 应用移植到鸿蒙时，除了 Qt 模块本身的适配，还需要处理应用依赖的第三方 C/C++ 库。
-> 平台通用的 NDK/toolchain、ABI、sysroot、产物检查、HAP native 部署与 loader 契约，以 common 的 [OHOS 原生三方库接入契约](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/ohos-native-third-party-libraries.md)为准。本页只维护 Qt 包发现、目标链接、Qt plugin/module 部署与 Qt 应用验证。
+> 平台通用的 NDK/toolchain、ABI、sysroot、产物检查、HAP native 部署与 loader 契约，以 common 的 [[ohos-common-kb/semantic/ohos-native-third-party-libraries|OHOS 原生三方库接入契约]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/ohos-native-third-party-libraries.md)）为准。本页只维护 Qt 包发现、目标链接、Qt plugin/module 部署与 Qt 应用验证。
 
 ---
 
