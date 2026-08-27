@@ -10,7 +10,7 @@
 
 ## 能力规格
 
-> 本节是外部知识库（开发者版）的正式功能规格：**能**做什么、**不**做什么、输入输出契约、版本与兼容策略。
+> 本节是外部知识库（开发者版）的正式功能规格：**能**做什么、输入输出契约、版本与兼容策略。
 > 版本对象 = 外部仓整包（Qt 公开子集 + 内嵌 ohos-common-kb + kb-init skill + 根文档），不是单个 KB。
 
 ### 功能清单
@@ -30,29 +30,11 @@
 | [L] | Qt6 状态 | `semantic/qt-harmonyos-qt6-status` | 当前状态 + 已知差异 + 待验证项 |
 | [M] | 三方库 | `semantic/qt-harmonyos-third-party-libs` | 交叉编译方法 / 部署步骤 / 兼容性 |
 | [N] | 工具链 | `semantic/deveco-mcp-toolchain` + `deveco-cli-commands` | 安装/配置 或 headless 编译配方 |
-| [Q] | Demo 生成 | `procedural/demo-generation` | 需求 → 设计 → 工程 → 代码 → 编译 → 文档 |
+| [Q] | Demo 生成 | `procedural/demo-generation`（Qt+CEF/WebEngine demo 见 §3.3 + `qt-cef-ohos-dev-guide` + `tools/kb-cef-graft.py`） | 需求 → 设计 → 工程 → 代码 → 编译 → 文档；Qt+CEF demo 用 `tools/kb-cef-graft.py --run` 一条龙 |
 
-**捆绑工具**：`skills/kb-init/` —— 环境探测（DevEco/SDK/Qt 源码）→ 引导安装缺失依赖 → 生成 `ENV.local.md` → 校验环境可用。
+**捆绑工具**：`skills/kb-init/` —— 环境探测（DevEco/SDK/Qt 源码）→ 引导安装缺失依赖 → 生成 `ENV.local.md` → 校验环境可用。`tools/kb-cef-graft.py` + `tools/kb-cef-graft.config.example.json` —— Qt+CEF demo 嫁接脚本（把 CEF 嫁接到 Qt OHOS 模板，`--run` 签名+装机+启动+崩溃检查，环境配置全在配置文件，见 `procedural/qt-cef-ohos-dev-guide.md`）。
 
 **内嵌 common-KB 子集**：`ohos-common-kb-public/` 提供 HarmonyOS 平台通用知识（ArkTS/ArkUI/NAPI/Stage 模型/DevEco 工具链基础），与 Qt 知识互补。
-
-### 显式非目标（本版**不**提供）
-
-| 不做的事 | 内部路由码 |
-|---------|-----------|
-| Qt 框架源码级根因调试（加日志定位） | 上游 Qt 团队工作；本版只识别"这是框架已知行为/限制" |
-| 框架修复验证工作流 | [J] |
-| 商业 Qt 客户技术答复 | [K] |
-| 商业 Qt 疑似系统问题验证 / 上报华为 | [P] |
-| KB 维护 / 审计工作流 | [O] |
-| Demo 上库归档 / CleanCode 整理 | [R] |
-| Fork 上传 ohos-qt 组织 | [T] |
-| 应用鸿蒙化完善（10 核心用例闭环） | [U] |
-| 改进建议生成 | [V] |
-| 端到端全流程缝合（内部供应链版） | [W] |
-| 内部团队协作 / 供应链对接人 | 内部 `workflow-supply-chain` |
-
-> 这些工作流存在于更大的内部工作流知识库（本仓的源端），经 `audience: internal` 结构性排除，不随发版外发。本版聚焦 **应用鸿蒙化** 与 **应用问题分析**，能帮你识别"这可能是 Qt 鸿蒙框架的已知行为/限制"，但不教你改 Qt 框架源码加日志定位根因——那是上游 Qt 团队的工作。社区发现内容问题请提 issue（见 `CONTRIBUTING.md`），不接受直接改内容文件的 PR。
 
 ### 输入 / 输出契约
 
