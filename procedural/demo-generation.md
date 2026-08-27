@@ -121,6 +121,22 @@ lzh-skill/<INTERNAL_DEMO><demo-name>/
 > 2. 用 **qView-ohos 钦定完整版**替换 `entry/src/main/ets/qability/OhosExportModules.ts` + `QtUtils.ets`（26 个 `@ohos.*` + 13 个 `@kit.*` **eager default-import**，objects API，`getModulesMapForQt`），并同步改 `QAbilityStage.ets`/`QChildProcess.ets` 的 `getModulesFactoriesMapForQt()` → `getModulesMapForQt()`
 > 3. 详见 [[problem-runtime-crash-ohos-deviceinfo-global-expression]]（含 @ohos.deviceInfo 崩溃谱两代际判据）
 
+### 3.3 Qt+CEF / WebEngine 迁移 demo（特殊：用嫁接脚本，不走常规 6 步）
+
+若 demo 需要 **web 嵌入**（QtWebEngine 在鸿蒙 Out of scope，见 [[qt-harmonyos-modules]]），走 Qt+CEF 路线——**不要从 §3.1/3.2 手工创建工程**，用嫁接脚本一键生成：
+
+- **指导**：`procedural/qt-cef-ohos-dev-guide.md`（WebEngine→CEF API 映射 + 迁移方案 + 去版本化组件包 + 版本升级适配）。
+- **脚本**：`tools/kb-cef-graft.py` + 配置 `tools/kb-cef-graft.config.example.json`（环境配置全在配置文件：deveco/device/SDK 版本/Qt .so 清单，换环境只改配置不改脚本）。
+- **一条命令**（graft + 签名 + 装机 + 启动 + 崩溃检查）：
+  ```bash
+  cp tools/kb-cef-graft.config.example.json .config.json  # 改 deveco/device/qt_libs 等
+  python tools/kb-cef-graft.py --config .config.json \
+    --template <Qt OHOS 模板> --qt-sdk <Qt OHOS SDK> \
+    --ohqtcef-glue <OpenQtCef 胶水> --output <输出工程> --run
+  ```
+  `--run` 自动 devecocli signature generate + run（build+装机+启动 QAbility）+ log --crash。**正确姿势=基于 Qt OHOS 模板嫁接 CEF**（模板 QPA 胶水版本正确），不在 CEF demo 上改。脚本固化了 15 个运行踩坑（P1-P15，见 `_PITFALLS` 注释）。
+- **验证**：进程 `com.example.qtcefdemo` + CEF 子进程（`:NetworkService`/`:Renderer`）+ `devecocli log --crash --bundle-name com.example.qtcefdemo` 无新崩溃。
+
 ---
 
 ## 阶段四：代码编写

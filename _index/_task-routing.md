@@ -4,7 +4,7 @@ type: meta
 domain: workflow
 tags: [agent, routing, task-types, workflow, decision-tree]
 created: 2026-06-27
-updated: 2026-08-25
+updated: 2026-08-27
 status: active
 refs: [semantic-qt-harmonyos-golden-rules, procedural-demo-generation]
 summary: >
@@ -35,6 +35,7 @@ summary: >
     ├─ "Qt6 相关" ─────────────────────────→ [L] Qt6 状态
     ├─ "三方库/依赖/交叉编译" ────────────→ [M] 三方库
     ├─ "DevEco/MCP/工具链" ──────────────→ [N] 工具链
+    ├─ "Qt+CEF demo / WebEngine 迁移 demo" ─→ [Q] Demo 生成（+ qt-cef-ohos-dev-guide + tools/kb-cef-graft.py）
     └─ "写个demo/生成测试工程/渲染demo" ──→ [Q] Demo 生成
 ```
 
@@ -70,8 +71,8 @@ summary: >
 | 项目 | 内容 |
 |------|------|
 | **必读页** | ① `modules.md` |
-| **按需加载** | `qt6-status.md`（如问 Qt6 模块） |
-| **预期输出** | 模块是否支持 + 版本（5.12/5.15）+ 替代方案（如不支持） |
+| **按需加载** | `qt6-status.md`（如问 Qt6 模块）；`qt-cef-ohos-dev-guide.md`（如问 QtWebEngine——Out of scope，CEF for OpenHarmony 是完整 Chromium 平替，含 WebEngine→CEF API 映射 + 迁移方案 + CEF 组件包去版本化/剥离 + `tools/kb-cef-graft.py` 一键嫁接脚本） |
+| **预期输出** | 模块是否支持 + 替代方案（如不支持：QtWebEngine→`qt-cef-ohos-dev-guide.md` CEF 平替 + `tools/kb-cef-graft.py` 嫁接；轻量展示可先用 Qt WebView 原生桥） |
 
 ### [D] 平台限制查询
 
@@ -156,14 +157,14 @@ summary: >
 
 ### [Q] Demo 生成
 
-**触发词**：写个 demo、生成 demo、测试工程、渲染 demo、功能 demo、demo 项目
+**触发词**：写个 demo、生成 demo、测试工程、渲染 demo、功能 demo、demo 项目、CEF demo、WebEngine demo
 
 | 项目 | 内容 |
 |------|------|
-| **工作流** | `procedural/demo-generation.md` |
-| **必读页** | ① 工作流本身（六步闭环） |
-| **按需加载** | `project-structure.md`（鸿蒙工程）、`build.md`（编译配置） |
-| **预期输出** | 需求理解 → 技术设计 → 工程创建 → 代码编写 → 编译验证 → 文档沉淀 |
+| **工作流** | `procedural/demo-generation.md`（六步闭环） |
+| **必读页** | ① 工作流本身 |
+| **按需加载** | `project-structure.md`（鸿蒙工程）、`build.md`（编译配置）；`qt-cef-ohos-dev-guide.md` + `tools/kb-cef-graft.py` + `tools/kb-cef-graft.config.example.json`（Qt+CEF / WebEngine 迁移 demo——鸿蒙无 WebEngine，用 CEF，`tools/kb-cef-graft.py --config <配置> --run` 一条龙嫁接+签名+装机+启动+崩溃检查） |
+| **预期输出** | 需求理解 → 技术设计 → 工程创建 → 代码编写 → 编译验证 → 文档沉淀；Qt+CEF demo 直接用 `tools/kb-cef-graft.py --run` |
 
 ---
 
