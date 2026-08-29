@@ -4,7 +4,7 @@ type: meta
 domain: workflow
 tags: [agent, routing, task-types, workflow, decision-tree]
 created: 2026-06-27
-updated: 2026-08-27
+updated: 2026-08-29
 status: active
 refs: [semantic-qt-harmonyos-golden-rules, procedural-demo-generation]
 summary: >

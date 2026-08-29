@@ -1,19 +1,19 @@
-# RELEASE-MANIFEST.yaml - Qt External Edition v2.2.0
-# Generated: 2026-08-27 by gen-release-manifest.sh (builder v2, schema v1)
+# RELEASE-MANIFEST.yaml - Qt External Edition v2.2.1
+# Generated: 2026-08-29 by gen-release-manifest.sh (builder v2, schema v1)
 # root_commit is left empty; filled by kb-publish.ps1 -Release at push time (the manifest cannot
 # describe its own commit SHA - self-reference paradox; the release commit is identified by the vX.Y.Z tag).
 # content_tree_sha256 excludes this file (avoid loop), and excludes .git/ + _scripts/ gate artifacts.
 # ASCII-only comments so Windows PS 5.1 Get-Content (GBK codepage) does not corrupt line boundaries.
 
-release_version: v2.2.0
-released_at: "2026-08-27"
+release_version: v2.2.1
+released_at: "2026-08-29"
 target:
   id: ohos_qt-skills
   type: kb
   kb_id: ohos-qt-kb
-root_commit: "7ded31feb38435210f5f4b4156a9db2fe94d6b71"
+root_commit: "abb12cad8dff027110a23546c368ccc33e558429"
 source_kbs:
-  ohos-qt-kb: d4d3deddfd5f67af48b32598d0cad672107b9e00
+  ohos-qt-kb: 019821769e474a61eac8f57fa4231e08fb431b4b
   ohos-common-kb: e6cfba1041585bfde97db02d06e4a554cae68e70
 embedded_dependencies:
   ohos-common-kb-public:
@@ -21,8 +21,8 @@ embedded_dependencies:
     content_tree_sha256: 5b9a8681c77d6831ac3fc952b0e4c662c9eab9283840f1c0995ab64da939daaf
 builder_version: 2
 publication_schema_version: 1
-content_tree_sha256: a61b3b5e8695f9045aa6bdd82319f46af731352922dcce0a36c990dff974c88f
-built_at: "2026-08-27T20:45:52+08:00"
+content_tree_sha256: 0e45255560440fbe77d59d412cebc01099a5e07d6b3d1771dc4449f518999f91
+built_at: "2026-08-29T16:20:03+08:00"
 skills: ["kb-init"]
 common_pages_count: 27
 qt_pages_count: 82

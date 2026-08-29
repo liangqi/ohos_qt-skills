@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-27
+updated: 2026-08-29
 total_pages: 46
 description: >
   知识地图（从 frontmatter summary 自动生成）。按 summary 判断相关性；沿 refs 追深度上下文。

@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-27
+updated: 2026-08-29
 total_problems: 36
 description: >
   错误速查索引（从 problem 页 frontmatter 重建）。

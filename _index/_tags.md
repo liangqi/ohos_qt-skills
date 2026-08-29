@@ -1,5 +1,5 @@
 ---
-updated: 2026-08-27
+updated: 2026-08-29
 description: >
   按标签聚合（从各页 tags 自动生成，扁平全量）。
 ---
