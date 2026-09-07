@@ -74,74 +74,30 @@ ohos-common-kb-public/  -> 内嵌的 HarmonyOS 平台通用知识
 
 ## 知识沉淀（Hook 触发 — 验证通过时自动执行）
 
+> **完整协议见 `procedural/knowledge-sedimentation.md`**（通用文件，所有 Agent 共享）。
+> 本节仅为快速参考。
+
 ### 核心原则
 
 **知识沉淀由「验证事件」触发，不由定时器触发。**
+完成鸿蒙化 = 知识经过实战验证 → 此时才值得沉淀。
 
-当一个应用成功完成鸿蒙化（编译通过 + 设备运行成功），说明相关知识经过了实战验证，
-此时 Agent 必须自动执行沉淀。未经验证的知识不值得入库。
+### 触发点速查
 
-### 触发点（Hook）
+| 验证事件 | 沉淀命令 |
+|----------|---------|
+| 应用鸿蒙化完成（编译+设备 PASS） | `bash _scripts/kb-sediment.sh --task "App" --stage done` |
+| 编译/运行时错误解决（验证修复有效） | `bash _scripts/kb-sediment.sh --error "..." --solution "..."` |
+| API 差异 / 平台限制 / 三方库（实际验证） | 直接编辑对应 semantic/ 页面 |
 
-| 验证事件 | 触发条件 | 沉淀内容 |
-|----------|---------|---------|
-| **应用鸿蒙化完成** | 编译 PASS + 设备运行 PASS | 完整复盘 → `drafts/E{N}-<app>-porting-retro.md` |
-| **编译错误解决** | 错误修复后重新编译通过 | 错误记录 → `problems/<type>-<slug>.md` |
-| **运行时问题解决** | 设备上验证修复有效 | 错误记录 → `problems/runtime-<slug>.md` |
-| **API 差异发现** | 实际代码验证了差异行为 | 更新 `semantic/qt-harmonyos-api-mapping.md` |
-| **平台限制确认** | 实际触发了限制 | 更新 `semantic/qt-harmonyos-platform-limits.md` |
-| **三方库编译成功** | 交叉编译产物在设备运行正常 | 更新 `semantic/qt-harmonyos-third-party-libs.md` |
+### 操作流程
 
-### 沉淀命令
+1. **分类**：公开安全 → 本仓；含商业/客户/内部路径 → 私有 overlay（STOP）
+2. **写入**：报错 → `problems/`；新知识 → `drafts/E{N}-<slug>.md`；小修正 → 直接编辑
+3. **验证**：`bash _scripts/verify.sh`
+4. **提交**：branch → commit → push → PR（永不直接 push main）
 
-```bash
-# 应用鸿蒙化完成时（主路径）
-bash _scripts/kb-sediment.sh --task "AppName" --stage done --notes "关键发现..."
-
-# 编译/运行时错误解决时
-bash _scripts/kb-sediment.sh --error "完整错误信息" --solution "解决方案" --type build
-
-# Agent 引导式（由 Agent 自行判断沉淀内容）
-bash _scripts/kb-sediment.sh --interactive
-```
-
-### 第一步：分类判断（强制）
-
-**在写入任何内容前，必须判断**：
-
-| 内容特征 | 归属 | 动作 |
-|----------|------|------|
-| 含商业 Qt 客户往来、合同内容 | 私有 overlay | **停止**，提醒用户写入私有仓 |
-| 含客户名称、内部项目代号 | 私有 overlay | **停止** |
-| 含内部绝对路径（C:/Users/xxx 等） | 需脱敏 | 用 `${ENV_VAR}` 占位符替代 |
-| 含同事真名 | 需脱敏 | 移除或用角色代替 |
-| 含框架内部调试 trace（带内部路径） | 私有 overlay | **停止** |
-| 通用技术知识（API、构建、错误、流程） | **本仓** | 继续写入 |
-
-### 第二步：选择写入路径
-
-| 知识类型 | 目标 | 模板 |
-|---------|------|------|
-| 编译/部署/运行时**报错**（已验证修复） | `problems/<type>-<slug>.md`（直接正式目录） | `_templates/problem.md` |
-| 对已有页面的**小修正** | 直接编辑 + bump `updated` 日期 | — |
-| **新知识**：复盘/流程/API 差异（经验证） | `drafts/E{N}-<slug>.md` | `_templates/draft.md` |
-
-### 第三步：验证 + 提交
-
-```bash
-# 1. 重生成索引（如修改了正式页面）
-bash _scripts/kb-regen-indexes.sh
-
-# 2. 运行完整门禁
-bash _scripts/verify.sh
-
-# 3. 创建分支 + commit + push + PR
-git checkout -b <MY_NAME>/<type>-<slug>
-git add <files>
-git commit -m "<type>(<scope>): <summary>"
-git push origin <branch>
-# 通过 GitCode Web 或 API 创建 PR -> main
-```
+详见 `procedural/knowledge-sedimentation.md`。
 
 **铁律**：
 - **永不直接 push main**（分支保护，PR 必须）
