@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """
-kb-bot.py — Cron orchestrator for ohos_qt-skills canonical trunk.
+kb-bot.py — PR review & index maintenance bot for ohos_qt-skills.
 
-Jobs:
-  1. PR poll: validate new/updated PRs (gate + LLM review + comment + auto-merge)
+IMPORTANT: This bot does NOT generate knowledge. Knowledge sedimentation is
+hook-triggered (see kb-sediment.sh) — it fires when a porting task completes
+and knowledge is validated through practice, not on a timer.
+
+This bot handles infrastructure automation only:
+  1. PR poll: validate new/updated PRs (gate + comment + auto-merge if eligible)
   2. Merge detect: promote drafts, fix index drift, auto-release
   3. Nightly: full audit, vendor bump check
 
@@ -21,7 +25,10 @@ Configuration:
   - LLM key: LLM_KEY env var (for semantic review)
   - Repo: hardcoded below (OpenHarmonyPCDeveloper/ohos_qt-skills)
 
-Extends: kb-pr-review.py (internal repo PR review agent)
+Knowledge sedimentation trigger (NOT in this bot):
+  - Agent completes app porting (build PASS + device run PASS) -> kb-sediment.sh
+  - Error resolved and verified -> kb-sediment.sh --error
+  - See CLAUDE.md "知识沉淀（Hook 触发）" section
 """
 
 import json

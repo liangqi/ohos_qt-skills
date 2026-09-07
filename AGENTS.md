@@ -72,7 +72,38 @@ ohos-common-kb-public/  -> 内嵌的 HarmonyOS 平台通用知识
 
 > `status: archived/deprecated` 的页面**不可用于回答**（仅供历史查阅）。
 
-## 写入新知识（沉淀流程 — 每次任务结束后必须执行）
+## 知识沉淀（Hook 触发 — 验证通过时自动执行）
+
+### 核心原则
+
+**知识沉淀由「验证事件」触发，不由定时器触发。**
+
+当一个应用成功完成鸿蒙化（编译通过 + 设备运行成功），说明相关知识经过了实战验证，
+此时 Agent 必须自动执行沉淀。未经验证的知识不值得入库。
+
+### 触发点（Hook）
+
+| 验证事件 | 触发条件 | 沉淀内容 |
+|----------|---------|---------|
+| **应用鸿蒙化完成** | 编译 PASS + 设备运行 PASS | 完整复盘 → `drafts/E{N}-<app>-porting-retro.md` |
+| **编译错误解决** | 错误修复后重新编译通过 | 错误记录 → `problems/<type>-<slug>.md` |
+| **运行时问题解决** | 设备上验证修复有效 | 错误记录 → `problems/runtime-<slug>.md` |
+| **API 差异发现** | 实际代码验证了差异行为 | 更新 `semantic/qt-harmonyos-api-mapping.md` |
+| **平台限制确认** | 实际触发了限制 | 更新 `semantic/qt-harmonyos-platform-limits.md` |
+| **三方库编译成功** | 交叉编译产物在设备运行正常 | 更新 `semantic/qt-harmonyos-third-party-libs.md` |
+
+### 沉淀命令
+
+```bash
+# 应用鸿蒙化完成时（主路径）
+bash _scripts/kb-sediment.sh --task "AppName" --stage done --notes "关键发现..."
+
+# 编译/运行时错误解决时
+bash _scripts/kb-sediment.sh --error "完整错误信息" --solution "解决方案" --type build
+
+# Agent 引导式（由 Agent 自行判断沉淀内容）
+bash _scripts/kb-sediment.sh --interactive
+```
 
 ### 第一步：分类判断（强制）
 
@@ -91,9 +122,9 @@ ohos-common-kb-public/  -> 内嵌的 HarmonyOS 平台通用知识
 
 | 知识类型 | 目标 | 模板 |
 |---------|------|------|
-| 编译/部署/运行时**报错** | `problems/<type>-<slug>.md`（直接正式目录） | `_templates/problem.md` |
+| 编译/部署/运行时**报错**（已验证修复） | `problems/<type>-<slug>.md`（直接正式目录） | `_templates/problem.md` |
 | 对已有页面的**小修正** | 直接编辑 + bump `updated` 日期 | — |
-| **新知识**：概念/流程/复盘/API 差异 | `drafts/E{N}-<slug>.md` | `_templates/draft.md` |
+| **新知识**：复盘/流程/API 差异（经验证） | `drafts/E{N}-<slug>.md` | `_templates/draft.md` |
 
 ### 第三步：验证 + 提交
 
