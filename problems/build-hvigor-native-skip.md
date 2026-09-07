@@ -6,7 +6,6 @@ tags: [hvigor, cmake, native-build, deveco-sdk-home, java, environment]
 created: 2026-06-08
 updated: 2026-08-14
 status: solved
-audience: public
 severity: high
 error_message: "spawn java ENOENT; BuildNativeWithCmake finished after 1ms with no .so artifact (DEVECO_SDK_HOME missing)"
 refs: [semantic-qt-harmonyos-build-run-workflow]

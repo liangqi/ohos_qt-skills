@@ -6,7 +6,6 @@ tags: [qt, harmonyos, ohos, porting, workflow, dependency-analysis, build-orches
 created: 2026-06-02
 updated: 2026-07-02
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-build, semantic-qt-harmonyos-overview, semantic-qt-harmonyos-platform-limits]
 summary: >
   Qt项目移植OHOS的核心工作流：铁律约束、依赖梳理方法、编译编排流程、双重交验协议

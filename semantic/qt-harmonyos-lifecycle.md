@@ -6,7 +6,6 @@ tags: [qt, harmonyos, lifecycle, ability, want, close-event, continuation, shari
 created: 2026-06-02
 updated: 2026-08-14
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-ohos-extras, semantic-qt-harmonyos-api]
 summary: >
   Stage/UIAbility 生命周期的 Qt adapter：平台回调到 Qt main/event loop 的桥接、启动其他应用

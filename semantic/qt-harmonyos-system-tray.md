@@ -6,7 +6,6 @@ tags: [qt, harmonyos, system-tray, qsystemtrayicon, statusbar, StatusBarExtensio
 created: 2026-07-23
 updated: 2026-07-23
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-golden-rules, semantic-qt-harmonyos-window-model, procedural-demo-generation, problem-runtime-crash-ohos-deviceinfo-global-expression]
 summary: >
   Qt 鸿蒙系统托盘(QSystemTrayIcon)实现与行为:底层 QOhosSystemTrayIcon(qohossystemtrayicon.cpp)经

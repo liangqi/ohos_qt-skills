@@ -6,7 +6,6 @@ tags: [llvm, cross-compile, ohos, qt, qlogo, cmake, aarch64, jit]
 created: 2026-08-06
 updated: 2026-08-14
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-build, semantic-qt-harmonyos-third-party-libs]
 summary: >
   Qt/QLogo 接入 OHOS arm64 LLVM 15 静态库的 adapter：保留 Qt 目标链接、QLogo JIT

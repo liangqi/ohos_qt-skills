@@ -6,7 +6,6 @@ tags: [qt, harmonyos, api, porting, qprocess, qwindow, dialog, modality, fullscr
 created: 2026-06-02
 updated: 2026-08-06
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-ohos-extras]
 summary: >
   Qt 鸿蒙化 API 兼容性要点：argv 参数差异、子进程按场景选（无界面 QProcess 可用/有界面 Qt 用 startAppProcess/有界面非Qt 用 startAbility）、

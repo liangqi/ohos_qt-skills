@@ -6,7 +6,6 @@ tags: [qt, harmonyos, api, mapping, porting, qprocess, window, filesystem, shari
 created: 2026-06-02
 updated: 2026-08-15
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-api, semantic-qt-harmonyos-code-patterns, semantic-qt-ohos-extras]
 summary: >
   HarmonyOS 平台能力的 Qt API adapter 映射表：13大类 Before/After 对照——进程管理、应用间通信、

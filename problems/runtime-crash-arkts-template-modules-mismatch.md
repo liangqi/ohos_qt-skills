@@ -7,7 +7,6 @@ created: 2026-08-06
 updated: 2026-08-06
 status: solved
 severity: high
-audience: public
 refs: [semantic-qt-harmonyos-window-model, semantic-qt-harmonyos-project-structure]
 summary: >
   新编译的 libqohos.so 读 modulesFactories 属性，旧 ArkTS 模板传 modules->NAPI 抛异常->启动崩溃。

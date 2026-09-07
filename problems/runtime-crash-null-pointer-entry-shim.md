@@ -7,7 +7,6 @@ created: 2026-07-08
 updated: 2026-07-10
 status: solved
 severity: critical
-audience: public
 refs: [semantic-qt-harmonyos-build-run-workflow, procedural-qt-ohos-run-test]
 summary: >
   OHOS入口shim（main.cpp）跳过原始登录流程直接传nullptr给MainWindow，

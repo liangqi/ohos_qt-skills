@@ -6,7 +6,6 @@ tags: [qt, harmonyos, cmake, project-structure, project-creation, template, glue
 created: 2026-06-02
 updated: 2026-08-14
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-build, semantic-qt-harmonyos-modules]
 summary: >
   Qt 鸿蒙工程结构详解：OHOS 模板（胶水代码）目录布局、CMake 交叉编译配置、

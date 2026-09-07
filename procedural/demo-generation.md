@@ -6,7 +6,6 @@ tags: [workflow, demo, qt, rendering, testing, opengl, project-creation]
 created: 2026-06-12
 updated: 2026-07-23
 status: active
-audience: public
 refs: [procedural-qt-app-harmonyos-migration,semantic-qt-harmonyos-build,semantic-qt-harmonyos-project-structure,problem-runtime-crash-ohos-deviceinfo-global-expression]
 summary: >
   独立 Demo 生成工作流（六步闭环）：需求理解→技术设计→工程创建→代码编写→编译验证→文档沉淀。

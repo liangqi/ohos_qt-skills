@@ -6,7 +6,6 @@ tags: [qt, pyqt, python, harmonyos, ohos, runtime, cpython, feasibility]
 created: 2026-08-26
 updated: 2026-08-26
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-build, semantic-qt-harmonyos-modules, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-golden-rules, semantic-qt-harmonyos-third-party-libs]
 summary: >
   PyQt5 for HarmonyOS 可行性状态：已通过 pyqt5-demo 验证可行（Qt 5.15.16）。

@@ -6,7 +6,6 @@ tags: [qt, harmonyos, third-party, harmonybrew, bottle]
 created: 2026-07-07
 updated: 2026-07-07
 status: active
-audience: public
 refs: [procedural-qt-app-harmonyos-migration, semantic-qt-harmonyos-third-party-libs]
 summary: >
   从 Harmonybrew 一键下载 arm64-OpenHarmony 预编译 bottle（.so）并校验解压，

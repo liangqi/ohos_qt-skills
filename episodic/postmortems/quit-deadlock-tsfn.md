@@ -6,7 +6,6 @@ tags: [bug, quit, deadlock, TSFN, ThreadSafeFunction, handleAbilityOnDestroy, Pr
 created: 2026-06-09
 updated: 2026-07-13
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-lifecycle]
 summary: >
   退出死锁复盘：<STAKEHOLDER>(<PRODUCT>) qApp->quit()后应用卡死~2分钟。

@@ -6,7 +6,6 @@ tags: [bug, window, cross-screen, flicker, system-issue, moveWindowToGlobalDispl
 created: 2026-06-05
 updated: 2026-06-05
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-window-model]
 summary: >
   ToolWindow跨屏闪烁系统问题分析：moveWindowToGlobalDisplay与resizeAsync在跨屏拖拽场景冲突，

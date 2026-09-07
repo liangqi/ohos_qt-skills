@@ -7,7 +7,6 @@ created: 2026-07-08
 updated: 2026-07-08
 status: solved
 severity: critical
-audience: public
 refs: [semantic-qt-harmonyos-build-run-workflow, procedural-qt-ohos-run-test]
 summary: >
   libqohos.so 运行时依赖 libQt5DBus.so，但 CMakeLists.txt 未链接 Qt5::DBus 导致该库未部署到 HAP，

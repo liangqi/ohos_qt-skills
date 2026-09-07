@@ -7,7 +7,6 @@ created: 2026-07-10
 updated: 2026-07-10
 status: solved
 severity: medium
-audience: public
 refs: [procedural-qt-app-harmonyos-migration, problem-build-fail-libuuid-missing-ohos-musl]
 summary: >
   glibc 暴露一批"内部"符号（__pid_t/__uid_t 等 typedef、in6_addr.s6_addr32 等 glibc-only 成员），

@@ -6,7 +6,6 @@ tags: [qt, harmonyos, opensource, survey, porting-assessment, multi-agent-workfl
 created: 2026-06-25
 updated: 2026-06-26
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-golden-rules, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-third-party-libs, semantic-qt-harmonyos-qt6-status, semantic-qt-harmonyos-modules]
 summary: >
   2026-06-25 多 agent 工作流扫描 GitHub/KDE Apps/Gitee/SourceForge/Wikipedia，筛选 229 个 Qt

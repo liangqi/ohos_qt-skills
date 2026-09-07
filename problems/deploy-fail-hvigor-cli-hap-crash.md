@@ -7,7 +7,6 @@ created: 2026-08-06
 updated: 2026-08-06
 status: workaround
 severity: medium
-audience: public
 refs: [semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-build-run-workflow]
 summary: >
   hvigor 命令行(--mode module)打包的 HAP 启动崩溃：Cannot read property handleAbilityStageOnCreate of undefined。

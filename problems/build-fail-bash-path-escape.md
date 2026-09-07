@@ -3,7 +3,6 @@ id: build-fail-bash-path-escape
 type: problem
 domain: build
 status: solved
-audience: public
 created: 2026-06-05
 updated: 2026-06-08
 severity: medium

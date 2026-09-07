@@ -6,7 +6,6 @@ tags: [bug, blockedByModalWindow, QDialog, transientParent, qpa, syntheticParent
 created: 2026-08-06
 updated: 2026-08-06
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-window-model, problem-runtime-blocked-by-modal-window-no-parent]
 summary: >
   ohostemplate matplotlib 三级窗口(Configure subplots->Export values)关不掉。根因：无 parent 的 QDialog 经

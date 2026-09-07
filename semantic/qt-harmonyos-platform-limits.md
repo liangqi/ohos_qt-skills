@@ -6,7 +6,6 @@ tags: [qt, harmonyos, platform-limits, chmod, symlink, dlopen, timezone, font, x
 created: 2026-06-02
 updated: 2026-08-15
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-api]
 summary: >
   HarmonyOS 平台限制的 Qt/QPA/QML adapter：记录 QFile/QStandardPaths/QPluginLoader/QTimeZone、

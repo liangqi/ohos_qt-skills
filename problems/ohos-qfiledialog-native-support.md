@@ -7,7 +7,6 @@ created: 2026-07-29
 updated: 2026-08-03
 status: solved
 severity: low
-audience: public
 refs: [semantic-qt-harmonyos-api-mapping]
 summary: "反模式：QFileDialog OHOS 原生可用，误加 #ifdef 是常见反模式"
 error_message: >

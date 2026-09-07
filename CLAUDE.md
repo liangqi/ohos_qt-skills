@@ -1,132 +1,189 @@
-# CLAUDE.md
+# ohos_qt-skills — Qt for HarmonyOS Knowledge Base
 
-本文件指导 AI 工具（Claude Code / Codex / Cursor 等）使用本知识库。
-
-> **这是一份 Qt for HarmonyOS 移植参考知识库**，面向进行 Qt 应用鸿蒙化与 Qt 应用问题分析的开发者。
-> 它由一个更大的个人工作流知识库裁剪、脱敏后生成（见 `_scripts/kb-dev-edition.sh`）。
+> **Canonical trunk**: Qt for HarmonyOS 移植知识的唯一公开真相源。
+>
+> 所有人（团队成员 + 外部 Qt 开发者）clone 本仓库。私有/敏感内容在独立的 overlay 仓维护，**绝不写入此处**。
+>
+> **跨 KB 知识提示**：HarmonyOS 平台通用知识见本仓内嵌 `ohos-common-kb-public/`；完整生态见 [crossplatform-harmonyos-kb](https://gitcode.com/su-meiyan/crossplatform-harmonyos-kb)（扩展阅读，非运行依赖）。
 
 ---
-
-## 首次使用（Agent 必读）
-
-如果用户是第一次使用本知识库，或 `ENV.local.md` 不存在，**必须**先执行 `skills/kb-init/SKILL.md` 完成初始化。
-
-初始化 skill 会引导用户完成：
-- 检测当前环境（DevEco Studio、HarmonyOS SDK、Qt 源码等）
-- 引导安装缺失依赖
-- 生成 `ENV.local.md`（本地路径配置）
-- 验证环境可用
-
-**触发关键词**：用户说"初始化"、"配置环境"、"第一次使用"、"ENV.local.md 不存在"时，自动执行初始化 skill。
-
+updated: 2026-09-07
 ---
 
 ## 知识库结构
 
 ```
-_index/      → 索引层（知识地图 _map、标签 _tags、仪表盘 _dashboard、任务路由 _task-routing）
-semantic/    → 语义知识：技术概念、API 参考、平台限制、模块状态、构建/工程
-procedural/  → 程序知识：工作流（应用迁移、问题分析、修复验证、Demo 生成）
-episodic/    → 情景知识：实际移植项目复盘
-problems/    → 错误知识库：实际编译/部署/运行时报错与解决方案
-ohos-common-kb-public/ → 内嵌的 HarmonyOS 平台通用知识（ArkTS、ArkUI、NAPI、Stage 模型等）
-skills/      → Agent skills（自动化脚本和工具）
+_index/      -> 索引层（知识地图、标签索引、仪表盘、任务路由）[committed, 勿手编]
+semantic/    -> 语义知识：技术概念、API 映射、平台限制、窗口模型
+procedural/  -> 程序知识：工作流、构建步骤、迁移流程
+episodic/    -> 情景知识：项目复盘、决策记录
+preference/  -> 偏好知识：编码风格、协作习惯
+problems/    -> 错误知识库：编译/部署/运行时报错及解决方案
+drafts/      -> 草稿暂存区：新知识待审核（合入后自动 promote）
+skills/      -> 自动化技能（kb-init 等）
+team/        -> 公开协作文件（贡献者列表、入门指南）
+_scripts/    -> 门禁、索引重建、promote、release 等自动化脚本
+_templates/  -> 知识页/草稿/问题模板
+ohos-common-kb-public/  -> 内嵌的 HarmonyOS 平台通用知识
 ```
 
 ## 快速开始（Agent 必读）
 
+> **30 秒了解本知识库**
+>
+> Qt for HarmonyOS 移植专用知识库，覆盖 API 映射、窗口模型、生命周期、平台限制、构建部署等核心主题。
+
 **接到任务后，按此顺序加载**：
 
 ```
-① 检查 ENV.local.md 是否存在 → 不存在则执行 skills/kb-init/SKILL.md
-② _index/_task-routing.md    → 匹配任务类型，确定工作流和必读页
-③ semantic/qt-harmonyos-golden-rules.md  → 扫描 35 条铁律（避免已知陷阱）
-④ _index/_map.md             → 知识地图，按 summary 判断相关性
-⑤ 只读相关的知识页           → 不要全量加载
-⑥ 沿 refs 字段追踪交叉引用    → 获取深度上下文
+1. _index/_task-routing.md    -> 匹配任务类型，确定工作流和必读页
+2. semantic/qt-harmonyos-golden-rules.md  -> 扫描铁律（避免已知陷阱）
+3. 按任务路由表加载具体页面    -> 只读需要的，不要全量加载
 ```
 
-**五个核心页面**：
+**核心页面速览**：
 
 | 页面 | 作用 |
 |------|------|
-| `skills/kb-init/SKILL.md` | 初始化 skill：环境检测、依赖安装、ENV.local.md 生成 |
-| `_index/_dashboard.md` | 仪表盘：计数、分域统计、使用建议入口 |
-| `_index/_task-routing.md` | 任务路由：用户请求 → 任务类型 → 必读页 |
-| `semantic/qt-harmonyos-golden-rules.md` | 35 条铁律速查（构建/窗口/API/限制/生命周期/跨平台） |
-| `_index/_map.md` | 知识地图：每页一句话摘要 |
+| `_index/_task-routing.md` | 任务路由表：请求 -> 任务类型 -> 工作流 -> 必读页 |
+| `semantic/qt-harmonyos-golden-rules.md` | 铁律速查：规则分类（构建/窗口/API/限制/生命周期/跨平台） |
+| `_index/_map.md` | 知识地图：所有页面的 summary 聚合 |
+| `_index/_dashboard.md` | KB 健康仪表盘 |
+| `ENV.md` | 环境变量与路径占位符清单 |
 
-## 按场景入口
+## 身份识别（每次会话必做）
 
-| 我想做... | 读哪些页 |
-|----------|---------|
-| 移植 Qt 应用到鸿蒙 | `procedural/qt-app-harmonyos-migration` + `semantic/qt-harmonyos-porting-workflow` + `qt-harmonyos-api-mapping` + `qt-harmonyos-code-patterns` |
-| 查 API 替换 | `semantic/qt-harmonyos-api-mapping` + `qt-harmonyos-code-patterns` |
-| 查某个 Qt 模块是否支持鸿蒙 | `semantic/qt-harmonyos-modules` |
-| 查鸿蒙平台限制 | `semantic/qt-harmonyos-platform-limits` |
-| 编译失败/构建报错/部署不了 | `semantic/qt-harmonyos-build` + `qt-harmonyos-build-run-workflow` + 先查 `problems/_lookup.md` |
-| 窗口显示异常/对话框行为不对 | `semantic/qt-harmonyos-window-model` + golden-rules §二 |
-| 生命周期/closeEvent/接续/分享 | `semantic/qt-harmonyos-lifecycle` |
-| QtOhosExtras 怎么用 | `semantic/qt-ohos-extras` |
-| 判断问题是否出在 Qt 鸿蒙框架层 | `golden-rules` + `qt-harmonyos-platform-limits` + `qt-harmonyos-api` + 先查 `problems/_lookup.md` |
-| Qt 应用行为异常的排查思路 | `qt-harmonyos-build-run-workflow` §构建失败排查四步法 + `problems/_lookup.md` |
-| 写个 demo/测试工程 | `procedural/demo-generation` |
-| 三方库/依赖/交叉编译 | `semantic/qt-harmonyos-third-party-libs` |
-| 遇到执行报错 | **先读 `problems/_lookup.md`**，按错误码/错误信息/症状搜索 |
+1. 读取 `ENV.local.md`（gitignored，由 `kb-init.py` 生成）
+2. 获取 `MY_NAME`（slug，用于 `contributors` 字段与分支命名）
+3. 获取 `GIT_USERNAME`（= git user.name）
+4. 所有新建/修改页面，`contributors` 字段填入 `MY_NAME`
+5. 如果 `ENV.local.md` 不存在 → 提示运行 `python _scripts/kb-init.py`
 
-## 读取约定
+## 读取知识
 
-- **summary**：每页 frontmatter 的一句话摘要，Agent 据此判断是否需要加载该页
-- **refs**：交叉引用的其他知识页 id，沿其追踪深度上下文
-- **tags**：经 `_index/_tags.md` 按主题聚合浏览
-- **problems/ 记录的是实际执行报错**（编译失败、部署失败、运行时崩溃），不是 Qt 文档中的平台限制——后者在 `semantic/qt-harmonyos-platform-limits.md`
+索引已 committed，fresh clone 即可用，无需 bootstrap。
 
-## 路径变量
+1. **确定任务类型**：读 `_index/_task-routing.md`
+2. **扫描铁律**：`semantic/qt-harmonyos-golden-rules.md`
+3. **知识地图**：`_index/_map.md`（按 summary 判断相关性）
+4. **错误检索**：`problems/_lookup.md`（按错误码/症状/域检索）
+5. **只读取相关页面**，沿 `refs` 追踪交叉引用
+6. **标签浏览**：`_index/_tags.md`
 
-知识页以变量名（如 `QT5_15_SRC`、`OHOS_SDK_NATIVE`）引用本地路径，不硬编码。实际路径值见 `ENV.local.md`（由 `skills/kb-init/` 生成，或手动创建）。
+> `status: archived/deprecated` 的页面**不可用于回答**（仅供历史查阅）。
 
-## 内嵌的 HarmonyOS 平台通用知识
+## 写入新知识（沉淀流程 — 每次任务结束后必须执行）
 
-本知识库内嵌了 `ohos-common-kb-public/` 目录，包含 HarmonyOS 平台通用知识（ArkTS、ArkUI、NAPI、Stage 模型、DevEco 工具链等）。当任务涉及平台机制而非 Qt 特定问题时，优先查阅该目录。
+### 第一步：分类判断（强制）
 
-## Skills（Agent 自动化脚本）
+**在写入任何内容前，必须判断**：
 
-本知识库提供以下 Agent skills，位于 `skills/` 目录：
+| 内容特征 | 归属 | 动作 |
+|----------|------|------|
+| 含商业 Qt 客户往来、合同内容 | 私有 overlay | **停止**，提醒用户写入私有仓 |
+| 含客户名称、内部项目代号 | 私有 overlay | **停止** |
+| 含内部绝对路径（C:/Users/xxx 等） | 需脱敏 | 用 `${ENV_VAR}` 占位符替代 |
+| 含同事真名 | 需脱敏 | 移除或用角色代替 |
+| 含框架内部调试 trace（带内部路径） | 私有 overlay | **停止** |
+| 通用技术知识（API、构建、错误、流程） | **本仓** | 继续写入 |
 
-| Skill | 用途 | 触发方式 |
-|-------|------|----------|
-| `kb-init` | 初始化知识库环境（检测依赖、安装缺失组件、生成 ENV.local.md、验证环境） | 用户说"初始化"、"配置环境"、"第一次使用"、"ENV.local.md 不存在"时自动触发 |
+### 第二步：选择写入路径
 
-**首次使用**：如果用户是第一次使用本知识库，或 `ENV.local.md` 不存在，**必须**先执行 `skills/kb-init/SKILL.md` 完成初始化。
+| 知识类型 | 目标 | 模板 |
+|---------|------|------|
+| 编译/部署/运行时**报错** | `problems/<type>-<slug>.md`（直接正式目录） | `_templates/problem.md` |
+| 对已有页面的**小修正** | 直接编辑 + bump `updated` 日期 | — |
+| **新知识**：概念/流程/复盘/API 差异 | `drafts/E{N}-<slug>.md` | `_templates/draft.md` |
 
-## 待办与进度同步
+### 第三步：验证 + 提交
 
-- `TODO.md`：入库的待办模板（结构/分类规范，不含实际条目）。
-- `TODO.local.md`：个人实际待办，记录进行中的任务与进展（已 gitignore，不入库）。
-- 多步骤工作流任务在阶段转换时更新 `TODO.local.md` 的进展列；纯查询类任务无需同步。
+```bash
+# 1. 重生成索引（如修改了正式页面）
+bash _scripts/kb-regen-indexes.sh
+
+# 2. 运行完整门禁
+bash _scripts/verify.sh
+
+# 3. 创建分支 + commit + push + PR
+git checkout -b <MY_NAME>/<type>-<slug>
+git add <files>
+git commit -m "<type>(<scope>): <summary>"
+git push origin <branch>
+# 通过 GitCode Web 或 API 创建 PR -> main
+```
+
+**铁律**：
+- **永不直接 push main**（分支保护，PR 必须）
+- Commit 格式：`<type>(<scope>): <简述>`（type: add/fix/update/archive/ci/doc）
+- 分支格式：`<MY_NAME>/<type>-<slug>`
+- PR 描述含：变更类型、摘要、影响文件、自检清单
+- 不加 AI 署名（无 Co-Authored-By、无 Generated with...）
+
+### 草稿 Promote 说明
+
+`drafts/` 中的草稿合入 main 后，由 bot 自动执行 promote：
+- `status: draft` -> `active`
+- 移入正式目录（按 `type` 字段路由）
+- 索引自动重建
+- **无需手动移动或编辑索引**
+
+## 更新已有知识
+
+1. 直接编辑对应页面
+2. 更新 frontmatter `updated` 日期
+3. `bash _scripts/verify.sh`
+4. 提交 PR
+
+## 归档过时知识
+
+1. `status` -> `archived`（或 `deprecated`）
+2. 添加 `archive_date`、`archive_reason`、`superseded_by`
+3. 文件顶部添加归档说明
+4. `bash _scripts/kb-regen-indexes.sh`（索引自动排除归档页）
+5. 提交 PR
+
+## 错误检索（遇到执行错误时）
+
+1. `grep -rl '<错误关键字>' problems/` 或查 `problems/_lookup.md`
+2. 匹配到 -> 读取解决方案
+3. 未匹配 -> 用 `_templates/problem.md` 新建（直接写入 `problems/`，不走草稿）
+
+## Git 操作规范
+
+**分支命名**：`<MY_NAME>/<type>-<slug>`
+**Commit message**：`<type>(<scope>): <简述>`
+**PR 流程**：branch -> push -> GitCode PR -> bot 审核 -> editor 合入
+
+## 共享文件保护
+
+以下文件修改需在 PR 描述中说明理由：
+- `CLAUDE.md` / `AGENTS.md`（必须同步修改，内容一致）
+- `ENV.md`（变量定义文档）
+- `kb.yaml`（仓库契约）
+- `_scripts/` 下的门禁脚本
 
 ## 多工具兼容
 
 | 工具 | 集成方式 |
 |------|---------|
-| Claude Code | 本文件（CLAUDE.md）自动加载 |
-| Codex | AGENTS.md 自动加载（与本文件内容相同） |
-| Cursor | 在 `.cursorrules` 中引用 `_index/_map.md` |
-| Windsurf | 在 `.windsurfrules` 中引用 `_index/_map.md` |
-| Obsidian | 直接作为 Vault 打开，利用图谱可视化 |
+| Claude Code | CLAUDE.md 自动加载 |
+| Codex | AGENTS.md 自动加载（与 CLAUDE.md 同步） |
+| Cursor | `.cursorrules` 引用 `_index/_task-routing.md` |
+| Obsidian | 直接作为 Vault 打开 |
 
 ## 内容来源
 
 | 来源类型 | 说明 |
 |----------|------|
-| Qt 官方文档 | wiki.qt.io、doc.qt.io（API 映射、模块状态） |
-| HarmonyOS 官方文档 | developer.huawei.com（生命周期、窗口模型、平台限制） |
-| Qt 源码验证 | QtOhosExtras 模块、QPA 插件源码（API 签名、枚举路径） |
-| 实践经验 | 框架问题分析、迁移项目复盘、实际报错积累 |
+| Qt 官方文档 | wiki.qt.io、doc.qt.io |
+| HarmonyOS 官方文档 | developer.huawei.com |
+| Qt 源码验证 | QtOhosExtras、QPA 插件源码 |
+| 社区贡献 | 开发者 PR（经门禁审核） |
+| 工作经验 | 移植实战、问题分析 |
 
 ### Qt 框架版本（校验基准）
 
-| 版本 | 分支 | Commit | 日期 |
-|------|------|--------|------|
-| Qt 5.15.16 | tqtc/harmonyos-5.15.16 | 962aa625 | 2026-04-19 |
-| Qt 5.12.12 | tqtc/harmonyos-5.12.12 | 613336de | 2026-05-25 |
+| 版本 | 分支 | 说明 |
+|------|------|------|
+| Qt 5.15.16 | tqtc/harmonyos-5.15.16 | 主要支持版本 |
+| Qt 5.12.12 | tqtc/harmonyos-5.12.12 | 遗留支持版本 |

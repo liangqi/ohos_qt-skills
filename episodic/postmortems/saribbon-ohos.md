@@ -6,7 +6,6 @@ tags: [saribbon, harmonyos, qt5.12, ribbon-ui, cmake]
 created: 2026-06-26
 updated: 2026-06-26
 status: active
-audience: public
 refs: [procedural-qt-app-harmonyos-migration, semantic-qt-harmonyos-modules, semantic-qt-harmonyos-build]
 summary: >
   SARibbon v2.5.5 鸿蒙化完整迁移：独立构建文件 + MainWindowExample 应用编译 (48MB HAP)

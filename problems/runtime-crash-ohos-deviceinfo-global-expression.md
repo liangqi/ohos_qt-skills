@@ -7,7 +7,6 @@ created: 2026-07-23
 updated: 2026-07-23
 status: solved
 severity: critical
-audience: public
 refs: [problem-runtime-crash-libqohos-libqt5core-version-mismatch, procedural-demo-generation, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-build-run-workflow]
 summary: >
   Qt5 鸿蒙应用运行崩:Napi::Error "global expression doesn't start with known module path: '@ohos.deviceInfo'"。

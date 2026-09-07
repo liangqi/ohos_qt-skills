@@ -1,6 +1,7 @@
 # 个人本地配置（不入库）
 ENV.local.md
 TODO.local.md
+.kb-env-verified
 
 # 构建产物
 dist/
@@ -12,3 +13,16 @@ outputs/
 # 临时/工具目录
 _temp/
 screenshot/
+workspace/
+
+# Bot state
+_scripts/.kb-bot-state.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp

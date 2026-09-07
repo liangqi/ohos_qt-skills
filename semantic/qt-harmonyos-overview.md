@@ -6,7 +6,6 @@ tags: [qt, harmonyos, ohos, huawei, cross-platform, qpa]
 created: 2026-06-02
 updated: 2026-08-14
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-build, semantic-qt-harmonyos-api, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-modules, semantic-qt-ohos-extras]
 summary: >
   Qt for HarmonyOS 总览：鸿蒙系统简介、Qt 鸿蒙化架构（QPA 插件机制）、

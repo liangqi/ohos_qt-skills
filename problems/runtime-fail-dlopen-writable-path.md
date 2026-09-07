@@ -6,7 +6,6 @@ tags: [runtime, dlopen, sandbox, writable-path, el2, plugin-loading]
 created: 2026-06-03
 updated: 2026-08-14
 status: solved
-audience: public
 summary: "运行时 dlopen 加载 .so 失败返回 EINVAL（路径在 el2 沙箱可写区）"
 severity: high
 

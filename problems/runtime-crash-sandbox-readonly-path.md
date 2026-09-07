@@ -7,7 +7,6 @@ created: 2026-07-09
 updated: 2026-08-14
 status: solved
 severity: critical
-audience: public
 refs: [procedural-qt-ohos-run-test, semantic-qt-harmonyos-platform-limits]
 summary: >
   OHOS 沙箱环境下 QDir::currentPath()/applicationDirPath() 返回只读路径，

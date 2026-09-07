@@ -6,7 +6,6 @@ tags: [coin3d, quarter, harmonyos, cross-compile, 3d, opengl-es]
 created: 2026-06-08
 updated: 2026-06-08
 status: active
-audience: public
 refs: [procedural-qt-app-harmonyos-migration, semantic-qt-harmonyos-modules, semantic-qt-harmonyos-build]
 summary: >
   Coin3D Quarter 鸿蒙化完整迁移：交叉编译 libQuarter.so (ARM aarch64) + Demo 应用构建 (37MB HAP)

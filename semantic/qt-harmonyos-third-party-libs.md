@@ -6,7 +6,6 @@ tags: [qt, harmonyos, third-party, cross-compile, cmake, vcpkg, dependency]
 created: 2026-06-03
 updated: 2026-08-15
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-build, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-platform-limits, semantic-qt-ohos-project-analyzer-workflow]
 summary: >
   Qt 应用接入 OHOS 三方库的 adapter：Qt find_package/CMake、Qt 模块与插件部署、

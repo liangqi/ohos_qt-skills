@@ -6,7 +6,6 @@ tags: [workflow, qt, harmonyos, completion, functional-test, test-case, source-s
 created: 2026-07-16
 updated: 2026-08-12
 status: active
-audience: public
 refs: [procedural-qt-ohos-run-test, procedural-qt-app-harmonyos-migration, procedural-framework-fix-verification, procedural-framework-issue-analysis, procedural-demo-generation, semantic-qt-ohos-project-analyzer-workflow, semantic-qt-harmonyos-golden-rules, semantic-qt-harmonyos-api-mapping]
 summary: >
   应用鸿蒙化完善工作流（功能级测试用例闭环,四阶段）：扫描应用源码识别核心功能点→生成10核心测试用例（AI扫源码+人工review）→

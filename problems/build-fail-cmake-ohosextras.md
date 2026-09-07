@@ -6,7 +6,6 @@ tags: [cmake, ohosextras, find_package, qmake, build-failure]
 created: 2026-06-03
 updated: 2026-06-03
 status: solved
-audience: public
 summary: "CMake configure 报 find_package 找不到 OhosExtras/Qt5OhosExtras 包（缺 FindOhosExtras.cmake）"
 severity: high
 

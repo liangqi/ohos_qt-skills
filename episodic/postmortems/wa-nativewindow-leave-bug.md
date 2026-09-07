@@ -6,7 +6,6 @@ tags: [qt, harmonyos, ohos, qpa, leave-event, wa-nativewindow, mouse, hover, xco
 created: 2026-06-04
 updated: 2026-06-09
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-window-model, semantic-qt-harmonyos-api]
 summary: >
   WA_NativeWindow Leave 事件不灵敏 Bug 完整分析：双重盲区根因（Qt Widget 层

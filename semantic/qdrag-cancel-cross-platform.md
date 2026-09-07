@@ -6,7 +6,6 @@ tags: [qt, harmonyos, drag, cancel, cross-platform, qpa, windows, x11, cocoa, oh
 created: 2026-07-13
 updated: 2026-07-13
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-api]
 summary: >
   QDrag::cancel() 编程式拖拽取消的跨平台适配现状：Windows 和 X11 已实现（OLE flag / QBasicDrag 事件循环），

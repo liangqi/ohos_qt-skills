@@ -6,7 +6,6 @@ tags: [ohos, threading, qcoreapplication, assertion, qthread, mainthread, theMai
 created: 2026-06-13
 updated: 2026-07-04
 status: open
-audience: public
 severity: high
 error_message: "Q_ASSERT(receiver->d_func()->threadData.loadAcquire()->thread.loadRelaxed() == mainThread()) in QCoreApplicationPrivate::sendThroughApplicationEventFilters (Debug 构建鼠标点击事件触发)"
 refs: [semantic-qt-harmonyos-overview]

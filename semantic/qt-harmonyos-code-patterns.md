@@ -6,7 +6,6 @@ tags: [qt, harmonyos, code-patterns, porting, before-after, examples]
 created: 2026-06-02
 updated: 2026-08-14
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-api-mapping, semantic-qt-harmonyos-porting-workflow, semantic-qt-ohos-extras]
 summary: >
   HarmonyOS 平台能力的 Qt adapter 代码速查：14 组 Before/After，覆盖子进程、Want、

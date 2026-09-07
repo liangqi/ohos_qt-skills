@@ -6,7 +6,6 @@ tags: [qt, harmonyos, window, mainwindow, subwindow, tagging, floating, embedded
 created: 2026-06-02
 updated: 2026-08-14
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-api, semantic-qt-ohos-extras, semantic-qt-harmonyos-code-patterns, episodic-ohostemplate-blockedbymodal-patch, problem-runtime-blocked-by-modal-window-no-parent]
 summary: >
   ArkUI Window/XComponent 的 Qt QPA adapter：MainWindow(有Dock/任务图标/独立生命周期) vs

@@ -6,7 +6,6 @@ tags: [qt, harmonyos, ohos, qpa, threading, node-api, arkts, napi, private-api, 
 created: 2026-06-26
 updated: 2026-07-27
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-ohos-extras, problem-ohos-mainthread-mismatch, semantic-qt-harmonyos-qt6-status, episodic-quit-deadlock-tsfn]
 summary: >
   Qt↔ArkTS/JS 线程桥接的私有 API：QOhosJsThreadGateway 命名空间（invoke/runAndWait/eval/

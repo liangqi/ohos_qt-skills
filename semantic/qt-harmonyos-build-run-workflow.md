@@ -6,7 +6,6 @@ tags: [qt, harmonyos, devecocli, hvigor, hdc, build, run, hilog, ui-test, troubl
 created: 2026-06-02
 updated: 2026-08-15
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-build, semantic-qt-harmonyos-overview]
 summary: >
   Qt HarmonyOS 编译运行工作流：devecocli 优先完成构建、安装、启动、日志和 UI 操作；

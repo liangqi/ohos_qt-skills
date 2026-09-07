@@ -7,7 +7,6 @@ created: 2026-07-11
 updated: 2026-07-11
 status: solved
 severity: high
-audience: public
 refs: [semantic-qt-harmonyos-qt6-status, procedural-qt-app-harmonyos-migration]
 summary: >
   Qt6 OHOS native file picker receives an app-private default URI and a bare qmake glob as a suffix filter, causing an

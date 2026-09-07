@@ -7,7 +7,6 @@ created: 2026-07-23
 updated: 2026-07-23
 status: solved
 severity: high
-audience: public
 refs: [procedural-qt-ohos-run-test, procedural-demo-generation]
 summary: >
   hvigor 打 HAP 卡在 PackageHap:`Error Code: 00308018 spawn java ENOENT`。根因:bash 里 export 的 PATH 用 Unix 格式

@@ -6,7 +6,6 @@ tags: [qt, harmonyos, build, configure, cmake, deveco, mingw, perl]
 created: 2026-06-02
 updated: 2026-07-03
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-overview]
 summary: >
   Qt for HarmonyOS 构建指南：macOS/Windows 编译环境搭建、configure 参数、

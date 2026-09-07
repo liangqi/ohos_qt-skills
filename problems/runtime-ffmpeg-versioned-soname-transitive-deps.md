@@ -7,7 +7,6 @@ created: 2026-08-24
 updated: 2026-08-24
 status: solved
 severity: critical
-audience: public
 refs: [semantic-qt-harmonyos-third-party-libs, procedural-fetch-ohos-third-party-lib]
 summary: >
   Harmonybrew 预编译 FFmpeg .so 的 NEEDED 引用版本化 SONAME（libavcodec.so.63 等）和大量传递依赖

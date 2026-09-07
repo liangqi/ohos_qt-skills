@@ -5,7 +5,6 @@ summary: 把 Qt 应用鸿蒙化分散工作流缝合为一份端到端编排：�
 type: procedural
 domain: procedural
 status: active
-audience: public
 tags: [应用鸿蒙化, 端到端, 编译, 签名, 部署, 测试]
 refs:
   - procedural-qt-app-harmonyos-migration

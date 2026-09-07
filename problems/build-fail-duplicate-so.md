@@ -6,7 +6,6 @@ tags: [hvigor, duplicate-so, ProcessLibs, abiFilters, x86_64]
 created: 2026-06-04
 updated: 2026-06-04
 status: solved
-audience: public
 summary: "hvigor ProcessLibs 阶段报 Duplicated files found（同 .so 在 obj/ 与 libs/ 重复）"
 severity: medium
 

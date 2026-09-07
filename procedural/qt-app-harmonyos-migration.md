@@ -6,7 +6,6 @@ tags: [workflow, qt, harmonyos, porting, migration, ohos]
 created: 2026-06-02
 updated: 2026-07-21
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-api-mapping,semantic-qt-harmonyos-build-run-workflow,semantic-qt-harmonyos-code-patterns,semantic-qt-harmonyos-lifecycle,semantic-qt-harmonyos-porting-workflow,semantic-qt-harmonyos-project-structure,semantic-qt-harmonyos-window-model]
 summary: >
   Qt应用鸿蒙化迁移工作流：评估可行性→创建工程结构→按8步决策树逐步迁移→编译验证→知识积累。

@@ -6,7 +6,6 @@ tags: [qt, harmonyos, dev-guide, lifecycle, window, qml, deployment, floating, c
 created: 2026-06-02
 updated: 2026-06-02
 status: archived
-audience: public
 archive_date: 2026-06-03
 archive_reason: 纯链接索引页，12/13 主题已在 lifecycle/window-model/build 等页蒸馏，wiki URL 路径已变更
 superseded_by: semantic-qt-harmonyos-lifecycle

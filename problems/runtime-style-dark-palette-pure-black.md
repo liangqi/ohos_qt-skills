@@ -7,7 +7,6 @@ created: 2026-07-29
 updated: 2026-07-29
 status: solved
 severity: medium
-audience: public
 refs: [semantic-qt-harmonyos-golden-rules, semantic-qt-harmonyos-platform-limits, problem-runtime-crash-libqohos-modules-mismatch]
 summary: >
   OHOS 系统暗主题下 Qt QML 应用按钮/输入框背景纯黑看不清。根因：QOhosPlatformTheme 的 Dark 调色板把

@@ -11,7 +11,6 @@ summary: >
   Qt5.15 OHOS configure 阶段 ICU 检测失败（ICU=no、ures.h not found、UCNV_FROM_U_CALLBACK_SUBSTITUTE 未声明），因 sysroot 仅含 stub libicu.so 缺完整 ICU 三件套（libicui18n/libicuuc/libicudata）；解法：升级 SDK 到 26.0.0.32+ 或打 qtbase configure.json 补丁补 OHOS 专用 ICU 源。
 error_message: "unable to find library -licui18n / ICU=no / ures.h not found / UCNV_FROM_U_CALLBACK_SUBSTITUTE undeclared"
 related_problems: [problem-build-fail-qtnetwork-no-ssl]
-audience: public
 ---
 
 # Qt5.15 OHOS ICU 检测失败

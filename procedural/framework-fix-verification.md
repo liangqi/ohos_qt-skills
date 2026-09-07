@@ -6,7 +6,6 @@ tags: [workflow, qt, harmonyos, testing, verification, framework]
 created: 2026-06-02
 updated: 2026-06-05
 status: active
-audience: public
 refs: [procedural-framework-issue-analysis,semantic-qt-harmonyos-build,semantic-qt-harmonyos-build-run-workflow,semantic-qt-harmonyos-modules]
 summary: >
   框架问题修复验证工作流：获取验证清单→编写验证工程→人工手动验证→记录验证结果。

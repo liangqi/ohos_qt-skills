@@ -7,7 +7,6 @@ created: 2026-07-10
 updated: 2026-07-10
 status: solved
 severity: high
-audience: public
 refs: [semantic-qt-harmonyos-third-party-libs, procedural-qt-app-harmonyos-migration, problem-build-fail-glibc-internal-symbols-ohos-musl]
 summary: >
   OHOS musl sysroot 不含 libuuid（无 <uuid/uuid.h>、无 -luuid）。Linux 应用 #include <uuid/uuid.h>

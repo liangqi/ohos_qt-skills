@@ -6,7 +6,6 @@ tags: [qt6, qt6.12, harmonyos, ohos, deploy, manual, harmonydeployqt6, workaroun
 created: 2026-08-06
 updated: 2026-08-06
 status: active
-audience: public
 refs: [procedural-qt6-ohos-windows-cli-deploy, semantic-qt-harmonyos-qt6-status, semantic-qt-harmonyos-project-structure]
 summary: >
   规避 harmonydeployqt6（Qt6.12 Beta2）5 个部署缺陷的手动部署流程：从 SDK templates 复制 DevEco 工程骨架

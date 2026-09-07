@@ -7,7 +7,6 @@ created: 2026-08-06
 updated: 2026-08-06
 status: solved
 severity: high
-audience: public
 refs: [episodic-ohostemplate-blockedbymodal-patch, semantic-qt-harmonyos-window-model]
 summary: >
   无 parent 的 QDialog() 在 OHOS 上被 blockedByModalWindow=1 拦截 close() 和滚轮事件。

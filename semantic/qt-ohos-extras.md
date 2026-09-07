@@ -6,7 +6,6 @@ tags: [qt, harmonyos, ohos, ohosextras, ability, want, startability, context-men
 created: 2026-06-02
 updated: 2026-07-21
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-api, semantic-qt-ohos-js-thread-gateway, semantic-qt-harmonyos-lifecycle, semantic-qt-harmonyos-qt6-status, semantic-qt-harmonyos-window-model, semantic-qt-ohos-extras-examples]
 summary: >
   QtOhosExtras 模块：Qt 与鸿蒙系统交互的桥梁。Qt5 公开 API 145+ 个（2026-07-15 源码全扫补全，此前仅录 ~9 个）。

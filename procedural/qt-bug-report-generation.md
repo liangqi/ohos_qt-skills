@@ -6,7 +6,6 @@ tags: [bug-report, workflow]
 created: 2026-08-01
 updated: 2026-08-12
 status: active
-audience: public
 refs: [procedural-qt-bug-report-sample, procedural-framework-issue-analysis, semantic-qt-harmonyos-golden-rules]
 summary: >
   Bug report 生成工作流：从对话上下文或已有 problem 页提取信息→填内嵌模板→自检可复现性（HARD 闸门）→

@@ -7,7 +7,6 @@ created: 2026-08-10
 updated: 2026-08-10
 status: solved
 severity: high
-audience: public
 refs: []
 summary: >
   QtSerialMonitor 在 Load File 路径输入框每输入一个字符即触发 getFileTimeRange（open+readAll+split 重操作），

@@ -6,7 +6,6 @@ tags: [ohos, xcomponent, surface, opaque, surfaceholder, nativexcomponent, qpa, 
 created: 2026-06-24
 updated: 2026-06-24
 status: open
-audience: public
 severity: high
 refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-window-model]
 summary: >

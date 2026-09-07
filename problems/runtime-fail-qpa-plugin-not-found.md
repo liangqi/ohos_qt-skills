@@ -6,7 +6,6 @@ tags: [runtime, QPA, libqohos, dlopen, platform-plugin]
 created: 2026-06-03
 updated: 2026-06-03
 status: solved
-audience: public
 summary: "应用启动即崩溃，报 dlopen libqohos.so not found / QPA plugin qohos 加载失败"
 severity: critical
 

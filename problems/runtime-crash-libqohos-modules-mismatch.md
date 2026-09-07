@@ -7,7 +7,6 @@ created: 2026-07-16
 updated: 2026-07-16
 status: solved
 severity: critical
-audience: public
 refs: [procedural-qt-ohos-run-test, semantic-qt-harmonyos-build-run-workflow, semantic-qt-harmonyos-project-structure]
 summary: >
   Qt5 鸿蒙应用启动即崩 jscrash "object has no property named 'modules'" at QAbilityStage.ets:22。

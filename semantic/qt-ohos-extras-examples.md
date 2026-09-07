@@ -6,7 +6,6 @@ tags: [qt, harmonyos, ohos, ohosextras, examples, cookbook, howto, ability, want
 created: 2026-07-21
 updated: 2026-07-21
 status: active
-audience: public
 refs: [semantic-qt-ohos-extras, semantic-qt-harmonyos-lifecycle, semantic-qt-harmonyos-window-model, semantic-qt-ohos-js-thread-gateway, semantic-qt-harmonyos-api-mapping]
 summary: >
   QtOhosExtras 官方示例菜谱：把 24 个 example 按"开发者问题"组织，每条给出一句话用途、所用 API、

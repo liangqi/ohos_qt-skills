@@ -7,7 +7,6 @@ created: 2026-07-10
 updated: 2026-07-10
 status: solved
 severity: medium
-audience: public
 refs: [semantic-qt-harmonyos-project-structure, procedural-qt-app-harmonyos-migration, problem-build-fail-glibc-internal-symbols-ohos-musl]
 summary: >
   Qt OHOS 入口 shim 用 `extern "C" int main`（供胶水 dlsym("main") 可见）。在 extern "C" main 内调

@@ -6,7 +6,6 @@ tags: [qt, cef, chromium, harmonyos, ohos, webengine, migration, webview, cmake,
 created: 2026-08-25
 updated: 2026-08-26
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-modules, semantic-qt-harmonyos-qt6-status, semantic-qt-harmonyos-window-model, semantic-qt-harmonyos-third-party-libs, semantic-qt-harmonyos-build-run-workflow, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-api-mapping, procedural-demo-generation]
 summary: >
   Qt + CEF 鸿蒙开发指导（公开·自含·版本中立）：鸿蒙 Qt 无 QtWebEngine（Out of scope），CEF for OpenHarmony

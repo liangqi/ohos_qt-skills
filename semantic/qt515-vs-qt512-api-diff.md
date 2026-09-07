@@ -6,7 +6,6 @@ tags: [qt, qt5, qt515, qt512, api-diff, ohos, harmonyos, migration, deprecated, 
 created: 2026-06-13
 updated: 2026-06-13
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-api,semantic-qt-harmonyos-build,semantic-qt-harmonyos-modules,semantic-qt-harmonyos-overview,semantic-qt-harmonyos-qt6-status]
 summary: >
   QtWidgets 模块 Qt 5.15.16 vs 5.12.12 (OHOS SDK) 公共 API 完整差异报告：

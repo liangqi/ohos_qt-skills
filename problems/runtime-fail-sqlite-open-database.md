@@ -6,7 +6,6 @@ tags: [runtime, sqlite, qsqlite, sqldrivers, QSqlDatabase, driver-not-loaded, re
 created: 2026-07-07
 updated: 2026-07-07
 status: solved
-audience: public
 summary: "应用启动弹「无法创建本地数据库」后 native cppcrash 退出（QSQLITE driver not loaded / 相对路径）"
 severity: high
 

@@ -7,7 +7,6 @@ created: 2026-07-14
 updated: 2026-07-14
 status: solved
 severity: high
-audience: public
 refs: [semantic-qt-harmonyos-platform-limits]
 summary: >
   OHOS ZINK(Qt5 OpenGL-over-Vulkan)下 Qt3D Texture2D 用 RGBA8 alpha-PNG + generateMipMaps:true 时，

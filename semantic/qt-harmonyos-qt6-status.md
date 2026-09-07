@@ -6,7 +6,6 @@ tags: [qt, qt6, harmonyos, ohos, status, cmake]
 created: 2026-06-03
 updated: 2026-08-25
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-build, semantic-qt-harmonyos-modules, semantic-qt-harmonyos-platform-limits, semantic-qt-ohos-project-analyzer-workflow]
 summary: >
   Qt 6 鸿蒙化状态：qtbase dev 已合并 HarmonyOS 支持（Gerrit 733351），

@@ -7,7 +7,6 @@ created: 2026-08-08
 updated: 2026-08-08
 status: solved
 severity: medium
-audience: public
 refs: [semantic-qt-harmonyos-golden-rules]
 summary: >
   使用 magic_enum 的 C++ 项目在 OHOS clang 下编译失败：fold 表达式嵌套层数超

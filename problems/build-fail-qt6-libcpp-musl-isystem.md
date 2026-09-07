@@ -6,7 +6,6 @@ tags: [qt6, ohos, build, libcxx, musl, cmake, isystem, nullptr_t]
 created: 2026-06-25
 updated: 2026-07-13
 status: solved
-audience: public
 summary: "Qt6 OHOS target 构建卡在 libc++/musl 不兼容（-isystem sysroot/usr/include 注入致 musl 遮蔽 clang builtin）"
 severity: blocker
 domain: build

@@ -6,7 +6,6 @@ tags: [qt, harmonyos, accessibility, a11y, QAccessible, ArkUI_AccessibilityProvi
 created: 2026-07-23
 updated: 2026-07-23
 status: active
-audience: public
 refs: [procedural-qt-ohos-run-test, problem-runtime-crash-ohos-deviceinfo-global-expression, semantic-qt-harmonyos-window-model, procedural-demo-generation]
 summary: >
   Qt OHOS 无障碍(a11y)桥机制与启用: libqohos 内置 QOhosPlatformAccessibility(QPlatformAccessibility 子类),

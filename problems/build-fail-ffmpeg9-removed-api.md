@@ -7,7 +7,6 @@ created: 2026-08-24
 updated: 2026-08-24
 status: solved
 severity: medium
-audience: public
 refs: [semantic-qt-harmonyos-third-party-libs]
 summary: >
   FFmpeg 9.x 移除了 av_stream_get_codec_timebase() 函数，使用旧 API 的代码编译失败。

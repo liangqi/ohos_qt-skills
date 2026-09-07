@@ -7,7 +7,6 @@ created: 2026-07-17
 updated: 2026-07-23
 status: solved
 severity: critical
-audience: public
 refs: [procedural-qt-ohos-run-test, problem-runtime-crash-libqohos-modules-mismatch, problem-runtime-crash-ohos-deviceinfo-global-expression, semantic-qt-harmonyos-build-run-workflow]
 summary: >
   Qt5 鸿蒙应用启动崩: libqohos.so 与 libQt5Core.so 的 NEW/OLD 构建版本内部不一致。

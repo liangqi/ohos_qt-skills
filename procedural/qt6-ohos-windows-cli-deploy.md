@@ -6,7 +6,6 @@ tags: [qt6, qt6.12, harmonyos, ohos, cmake, hvigor, harmonydeployqt, hap, window
 created: 2026-08-01
 updated: 2026-08-01
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-qt6-status, semantic-qt-harmonyos-build, semantic-qt-harmonyos-build-run-workflow, semantic-qt-harmonyos-project-structure]
 summary: >
   用预构建安装器装的 Qt 6.12.0 Beta2 在 Windows 命令行端到端编译 Qt 项目并生成鸿蒙 DevEco 工程：

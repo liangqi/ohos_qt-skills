@@ -1,0 +1,13 @@
+# kb.yaml - Knowledge Base Contract
+# This file defines the identity and tooling contract for the KB.
+# verify.sh reads these values to confirm repo integrity.
+
+schema_version: 1
+id: ohos-qt-kb
+kind: framework
+entrypoint: AGENTS.md
+map: _index/_map.md
+verify: bash _scripts/verify.sh
+tooling_contract_version: 2
+default_audience: public
+canonical_repo: https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills

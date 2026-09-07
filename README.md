@@ -1,17 +1,18 @@
-# Qt for HarmonyOS 知识库（开发者版）
+# Qt for HarmonyOS 知识库
 
-> 一个面向 **Qt 应用开发者** 的 HarmonyOS 移植参考知识库。它把 Qt for HarmonyOS 实战经验蒸馏成结构化的 Markdown 知识页，帮你在把 Qt 应用搬到鸿蒙时少踩坑、快定位。
+> **Canonical Trunk** — Qt for HarmonyOS 移植知识的公开主仓库。
 >
-> 这是 **开发者版**：由一个更大的内部工作流知识库经 `_scripts/kb-dev-edition.sh` 裁剪后生成，仅保留对应用开发者有用的技术内容，不含内部团队协作、商业支持、供应链流程，也不含 Qt 框架源码级调试方法。
+> 把 Qt for HarmonyOS 实战经验蒸馏成结构化的 Markdown 知识页，帮你在把 Qt 应用搬到鸿蒙时少踩坑、快定位。
+> 所有人（团队成员 + 外部 Qt 开发者）均可 clone、使用和通过 PR 贡献知识。
 >
-> **当前版本**：v2.2.1（2026-08-29）｜ [变更日志](CHANGELOG.md) ｜ [能力规格](#能力规格)
+> **当前版本**：v3.0.0（2026-09-07）｜ [变更日志](CHANGELOG.md) ｜ [贡献指南](CONTRIBUTING.md) ｜ [能力规格](#能力规格)
 
 ---
 
 ## 能力规格
 
-> 本节是外部知识库（开发者版）的正式功能规格：**能**做什么、输入输出契约、版本与兼容策略。
-> 版本对象 = 外部仓整包（Qt 公开子集 + 内嵌 ohos-common-kb + kb-init skill + 根文档），不是单个 KB。
+> 本节是知识库的正式功能规格：**能**做什么、输入输出契约、版本与兼容策略。
+> v3.0.0 起本仓为 canonical trunk（公开主仓），不再是派生视图。
 
 ### 功能清单
 
@@ -47,13 +48,13 @@
 
 ### 版本与兼容策略
 
-- **版本号**：[SemVer](https://semver.org/lang/zh-CN/) `vMAJOR.MINOR.PATCH`，版本对象 = 外部仓整包。基线 `v2.0.0`（2026-08-19），不回填 v1。
-- **MAJOR（破坏性）**：删/移走用户依赖的页、`audience` 由 public→internal、目录重排致旧链接断、铁律/API 映射被证伪并反转。
+- **版本号**：[SemVer](https://semver.org/lang/zh-CN/) `vMAJOR.MINOR.PATCH`。基线 `v3.0.0`（2026-09-07，Trunk Flip — 本仓升级为公开主仓）。
+- **MAJOR（破坏性）**：架构变更、目录重排致旧链接断、铁律/API 映射被证伪并反转。
 - **MINOR（内容新增）**：新页/新节/新 API 映射条目/新 task 类型/内嵌新 KB 或 skill。
-- **PATCH（内容修正）**：typo/措辞修正、错误解决方案更新、Qt 参考版本 bump。
+- **PATCH（内容修正）**：typo/措辞修正、错误解决方案更新、Qt 参考版本 bump、vendor sync。
 - **Pin 某版**：`git clone --branch vX.Y.Z <本仓库>`。
 - **变更日志**：见 [CHANGELOG.md](CHANGELOG.md)。
-- **可复现性**：每版生成 `RELEASE-MANIFEST.yaml`（记录源端 KB 的 git SHA + `content_tree_sha256` + 页数计数），可据 `source_kbs` SHA 复现该版内容。
+- **可复现性**：每版生成 `RELEASE-MANIFEST.yaml`（记录 `content_tree_sha256` + 页数计数 + 嵌入依赖 SHA），可据 git tag 精确复现任何历史版本。
 - **Qt 框架版本校验基准**：Qt 5.15.16（tqtc/harmonyos-5.15.16, 962aa625）/ Qt 5.12.12（tqtc/harmonyos-5.12.12, 613336de）。
 
 ---
@@ -102,17 +103,24 @@ ohos_qt-skills/
 ├── ENV.md                  # 本地路径变量（占位模板，替换为你的路径）
 ├── README.md               # 本文件
 ├── SETUP.md                # 安装指南（指向 kb-init skill）
-├── CONTRIBUTING.md         # 贡献指南（如何反馈问题、贡献知识）
+├── CONTRIBUTING.md         # 贡献指南（PR welcome）
 ├── SECURITY.md             # 安全反馈入口
-├── _index/                 # 索引层：_map（知识地图）/ _tags / _dashboard / _task-routing
-├── semantic/               # 语义知识：API 参考与映射、平台限制、模块状态、构建/工程
-├── procedural/             # 程序知识：应用迁移工作流、Demo 生成、编译配方
-├── episodic/               # 情景知识：实际移植项目复盘（SARibbon/Coin3D/退出死锁 等）
-├── problems/               # 错误库：实际编译/部署/运行时报错与解决方案（一错一文件）
-├── ohos-common-kb-public/  # 内嵌的 HarmonyOS 平台通用知识（ArkTS、ArkUI、NAPI 等）
-├── skills/                 # Agent skills（自动化脚本和工具）
-│   └── kb-init/            # 初始化 skill：环境检测、依赖安装、ENV.local.md 生成
-└── LICENSE
+├── kb.yaml                 # 仓库契约（id、验证命令）
+├── CHANGELOG.md            # 变更日志
+├── RELEASE-MANIFEST.yaml   # 版本清单（content hash + page counts）
+├── _index/                 # 索引层：_map / _tags / _dashboard / _task-routing [committed]
+├── semantic/               # 语义知识：API 映射、平台限制、模块状态、窗口模型
+├── procedural/             # 程序知识：迁移工作流、构建配方、Demo 生成
+├── episodic/               # 情景知识：移植复盘、决策记录
+├── problems/               # 错误库：编译/部署/运行时报错与解决方案
+├── preference/             # 偏好知识：编码风格、协作习惯
+├── drafts/                 # 草稿暂存区：新知识待审核（合入后自动 promote）
+├── _scripts/               # 自动化：门禁、索引重建、promote、release、bot
+├── _templates/             # 知识页/草稿/问题模板
+├── team/                   # 公开协作文件（贡献者列表、入门指南）
+├── ohos-common-kb-public/  # 内嵌 HarmonyOS 平台通用知识
+├── skills/                 # Agent skills（kb-init 等）
+└── LICENSE (MIT)
 ```
 
 | 目录 | 回答 | 例子 |
@@ -121,8 +129,10 @@ ohos_qt-skills/
 | `procedural/` | 我怎么做？ | 应用迁移工作流、落地编译配方（Playbook A/B）、Demo 生成 |
 | `episodic/` | 发生过什么？ | 真实迁移复盘、bug 根因记录 |
 | `problems/` | 遇到这个报错怎么办？ | 编译失败、dlopen 拒绝、签名不匹配（速查优先） |
+| `drafts/` | 待审核的新知识 | Agent/贡献者提交的知识草稿（合入后自动 promote） |
 | `ohos-common-kb-public/` | HarmonyOS 平台通用知识 | ArkTS、ArkUI、NAPI、Stage 模型、DevEco 工具链 |
-| `skills/` | Agent 自动化脚本 | 初始化环境、配置路径 |
+| `_scripts/` | 自动化 | 门禁、索引重建、草稿 promote、版本发布、bot |
+| `skills/` | Agent 自动化技能 | 初始化环境、配置路径 |
 
 ---
 
@@ -199,9 +209,9 @@ AI 的处理顺序是固定的，你不用记：
 - **文件即数据** — 纯 Markdown + Git，零基础设施依赖
 - **类型化记忆** — 借鉴认知科学，知识分四类 + 一个错误库
 
-## 与源端知识库的关系
+## 架构说明
 
-本仓库由更大的内部工作流知识库单向裁剪生成（`audience: public` 子集），能力边界、裁剪规则与版本策略见上方 [能力规格](#能力规格)。
+本仓库是 Qt for HarmonyOS 知识的 **canonical trunk**（公开主仓，v3.0.0 起）。团队私有内容（商业答复、内部调试记录、工作日志）维护在独立的 overlay 仓，通过 git submodule 引用本仓。知识流向：公开内容在本仓直接维护；私有知识经脱敏蒸馏后通过 PR 贡献到本仓。
 
 ## Skills（Agent 自动化脚本）
 
@@ -215,9 +225,10 @@ AI 的处理顺序是固定的，你不用记：
 
 ## 反馈与贡献
 
-- 发现内容错误或想补充知识：提 Issue（见 `CONTRIBUTING.md`）
-- 安全问题：见 `SECURITY.md`
-- 本仓库是只读派生视图，不接受直接修改内容文件的 PR
+- **提交 PR**（推荐）：修正错误、补充知识、新增问题记录 → 见 [CONTRIBUTING.md](CONTRIBUTING.md)
+- **提 Issue**：报告错误、提出知识需求、提问
+- 安全问题：见 [SECURITY.md](SECURITY.md)
+- 本仓库接受 PR 贡献，合入后自动 promote 草稿并重建索引
 
 ## License
 

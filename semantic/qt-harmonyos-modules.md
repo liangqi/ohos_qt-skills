@@ -6,7 +6,6 @@ tags: [qt, harmonyos, modules, qt5, adaptation-status]
 created: 2026-06-02
 updated: 2026-06-11
 status: active
-audience: public
 refs: [semantic-qt-harmonyos-overview]
 summary: >
   Qt 5.12/5.15 鸿蒙模块适配状态速查：核心模块(QtCore/GUI/Widgets/QML/Quick/

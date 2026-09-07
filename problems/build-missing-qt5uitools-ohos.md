@@ -6,7 +6,6 @@ tags: [qt5, ohos, cmake, uitools, missing-module]
 created: 2026-06-08
 updated: 2026-06-08
 status: workaround
-audience: public
 severity: medium
 error_message: "CMake Error: find_package(Qt5 COMPONENTS Widgets UiTools OpenGL QUIET) 失败 (OHOS Qt5 SDK 缺 Qt5UiTools 模块)"
 refs: [semantic-qt-harmonyos-modules]
