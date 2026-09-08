@@ -52,7 +52,7 @@ summary: >
 | **工作流** | `procedural/qt-app-harmonyos-migration.md` |
 | **必读页** | ① `golden-rules.md` ② `porting-workflow.md`（8 步决策树） |
 | **按需加载** | `api-mapping.md`、`code-patterns.md`、`window-model.md`、`lifecycle.md`、`project-structure.md`、`third-party-libs.md` |
-| **预期输出** | 可行性评估 → 工程创建 → 8 步迁移 → 编译验证 |
+| **预期输出** | 可行性评估 → 工程创建 → 8 步迁移 → 编译验证 → **知识沉淀** |
 
 ### [B] API 替换查询
 
@@ -184,3 +184,33 @@ summary: >
 | "鸿蒙和 Android 有什么区别" | [D] 平台限制 + [G] 生命周期 | 加载 platform-limits + lifecycle |
 | "帮我看看这个代码怎么改" | [B] API 替换 | 加载 api-mapping + code-patterns |
 | "鸿蒙上能用什么数据库" | [C] 模块 + [M] 三方库 | 先查 Qt SQL 模块，再查 SQLite 三方库 |
+
+---
+
+## ⚠️ 任务完成后必做：知识沉淀（适用所有路由）
+
+> **铁律：任何路由执行完毕后，必须执行沉淀步骤。这不是可选的。**
+
+任务完成（或遇到无法解决的阻塞）后，**立即执行**：
+
+```
+1. 判断验证事件类型（见 procedural/knowledge-sedimentation.md §验证事件）：
+   - 编译+设备运行成功 → Hook #1（应用鸿蒙化完成）
+   - 解决了编译错误 → Hook #2
+   - 解决了运行时问题 → Hook #3
+   - 发现 API 差异/平台限制 → Hook #4/#5
+   - 遇到无法解决的阻塞 → 记录为已知限制
+
+2. 执行沉淀命令：
+   bash _scripts/kb-sediment.sh --task "应用名" --stage done --notes "关键发现"
+   或
+   bash _scripts/kb-sediment.sh --error "错误信息" --solution "解决方案"
+
+3. 验证 + 提交：
+   bash _scripts/verify.sh
+   git checkout -b <MY_NAME>/sediment-<slug>
+   git add <新文件>
+   git commit -m "add(<scope>): <应用名> 知识沉淀（验证通过）"
+```
+
+**不执行沉淀 = 任务未完成。** Agent 在输出最终结果前必须确认沉淀已执行。

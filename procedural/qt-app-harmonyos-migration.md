@@ -363,13 +363,43 @@ grep -rn "winId\|setMask\|showFullScreen" src/
 3. **踩过的坑**：浪费时间的错误方向
 4. **更新的映射关系**：新发现的 API 替换
 
-### 4.2 更新知识库
+### 4.2 知识沉淀（⚠️ 必做 — 不执行则任务未完成）
 
-- 新的 API 映射 → 更新 [[qt-harmonyos-api-mapping]]
-- 新的代码模式 → 更新 [[qt-harmonyos-code-patterns]]
-- 新的平台限制 → 更新 [[qt-harmonyos-platform-limits]]
-- 执行错误 → 创建 `problems/` 条目
-- 项目经验 → 创建 `episodic/` 条目
+> **本步骤是工作流的强制最终步骤。** Agent 必须在此步骤完成后才能报告任务结束。
+> 完整协议见 `procedural/knowledge-sedimentation.md`。
+
+**触发条件**：阶段三编译验证通过（或遇到无法解决的阻塞）= 验证事件发生。
+
+**执行命令**：
+
+```bash
+# 成功完成鸿蒙化（编译+设备验证通过）
+bash _scripts/kb-sediment.sh --task "应用名" --stage done --notes "关键发现摘要"
+
+# 过程中解决了编译错误（每个已验证的错误单独一条）
+bash _scripts/kb-sediment.sh --error "完整错误信息" --solution "解决方案" --type build
+
+# 遇到无法解决的平台限制
+bash _scripts/kb-sediment.sh --error "限制描述" --solution "已知限制,无解" --type runtime
+```
+
+**沉淀内容分类**：
+
+| 发现类型 | 目标 | 方式 |
+|---------|------|------|
+| 完整移植复盘 | `drafts/E{N}-<app>-porting-retro.md` | `kb-sediment.sh --task --stage done` |
+| 编译/运行时错误已解决 | `problems/<type>-<slug>.md` | `kb-sediment.sh --error` |
+| 新 API 映射 | 编辑 `semantic/qt-harmonyos-api-mapping.md` | 直接编辑 |
+| 新平台限制 | 编辑 `semantic/qt-harmonyos-platform-limits.md` | 直接编辑 |
+| 新三方库经验 | 编辑 `semantic/qt-harmonyos-third-party-libs.md` | 直接编辑 |
+
+**完成后**：
+```bash
+bash _scripts/verify.sh    # 门禁通过
+git add <新文件>
+git commit -m "add(episodic): <应用名> 鸿蒙化知识沉淀（验证通过）"
+# push + PR
+```
 
 ---
 

@@ -39,7 +39,11 @@ ohos-common-kb-public/  -> 内嵌的 HarmonyOS 平台通用知识
 1. _index/_task-routing.md    -> 匹配任务类型，确定工作流和必读页
 2. semantic/qt-harmonyos-golden-rules.md  -> 扫描铁律（避免已知陷阱）
 3. 按任务路由表加载具体页面    -> 只读需要的，不要全量加载
+4. 任务完成后 -> 执行知识沉淀（_task-routing.md 末尾「任务完成后必做」）
 ```
+
+> **⚠️ 铁律：任务完成 ≠ 输出结果。任务完成 = 输出结果 + 知识沉淀已执行。**
+> 不执行沉淀的任务视为未完成。协议详见 `procedural/knowledge-sedimentation.md`。
 
 **核心页面速览**：
 
