@@ -96,8 +96,18 @@ skills/      → Agent skills（自动化脚本和工具）
 | Skill | 用途 | 触发方式 |
 |-------|------|----------|
 | `kb-init` | 初始化知识库环境（检测依赖、安装缺失组件、生成 ENV.local.md、验证环境） | 用户说"初始化"、"配置环境"、"第一次使用"、"ENV.local.md 不存在"时自动触发 |
+| `qt-app-porting` | Qt 应用鸿蒙化自动迁移（扫描→计划→受追踪修改→构建→装机→验证门禁→报告→知识蒸馏，统一 CLI `tools/qt-ohos-run.py`） | 用户说"迁移/移植/鸿蒙化这个 Qt 项目（要执行）"、"验证迁移结果"、"分析构建/运行日志"时触发 |
 
 **首次使用**：如果用户是第一次使用本知识库，或 `ENV.local.md` 不存在，**必须**先执行 `skills/kb-init/SKILL.md` 完成初始化。
+
+**执行纪律（qt-app-porting）**：
+
+- 迁移"成功"只以 `python tools/qt-ohos-run.py verify` 的门禁结果（G0-G12）为准；
+  编译通过 ≠ 迁移成功。LLM 负责推理，tool 负责事实。
+- 日志报错先用 `python tools/qt-ohos-run.py analyze-log <日志>` 做机器匹配（36 条
+  QOH 模式），再沿命中条目的 `refs` 读 problems/ 知识页。
+- 每次自动修改都被追踪（`.qt-ohos/changes.json` + patches/）；禁止盲目扩写
+  `Q_OS_LINUX` 守卫——鸿蒙下 `Q_OS_OHOS` 隐含 `Q_OS_LINUX`。
 
 ## 待办与进度同步
 

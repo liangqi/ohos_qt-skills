@@ -35,7 +35,7 @@ summary: >
     ├─ "Qt6 相关" ─────────────────────────→ [L] Qt6 状态
     ├─ "三方库/依赖/交叉编译" ────────────→ [M] 三方库
     ├─ "DevEco/MCP/工具链" ──────────────→ [N] 工具链
-    ├─ "Qt+CEF demo / WebEngine 迁移 demo" ─→ [Q] Demo 生成（+ qt-cef-ohos-dev-guide + tools/kb-cef-graft.py）
+    ├─ "Qt+CEF demo / WebEngine 迁移 demo" ─→ [Q] Demo 生成（+ qt-cef-ohos-dev-guide）
     └─ "写个demo/生成测试工程/渲染demo" ──→ [Q] Demo 生成
 ```
 
@@ -71,8 +71,8 @@ summary: >
 | 项目 | 内容 |
 |------|------|
 | **必读页** | ① `modules.md` |
-| **按需加载** | `qt6-status.md`（如问 Qt6 模块）；`qt-cef-ohos-dev-guide.md`（如问 QtWebEngine——Out of scope，CEF for OpenHarmony 是完整 Chromium 平替，含 WebEngine→CEF API 映射 + 迁移方案 + CEF 组件包去版本化/剥离 + `tools/kb-cef-graft.py` 一键嫁接脚本） |
-| **预期输出** | 模块是否支持 + 替代方案（如不支持：QtWebEngine→`qt-cef-ohos-dev-guide.md` CEF 平替 + `tools/kb-cef-graft.py` 嫁接；轻量展示可先用 Qt WebView 原生桥） |
+| **按需加载** | `qt6-status.md`（如问 Qt6 模块）；`qt-cef-ohos-dev-guide.md`（如问 QtWebEngine——Out of scope，CEF for OpenHarmony 是完整 Chromium 平替，含 WebEngine→CEF API 映射 + 迁移方案 + CEF 组件包去版本化/剥离） |
+| **预期输出** | 模块是否支持 + 替代方案（如不支持：QtWebEngine→`qt-cef-ohos-dev-guide.md` CEF 平替；轻量展示可先用 Qt WebView 原生桥） |
 
 ### [D] 平台限制查询
 
@@ -155,6 +155,22 @@ summary: >
 | **按需加载** | [[ohos-common-kb/semantic/harmonyos-development-fundamentals|common：HarmonyOS 开发基础]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-development-fundamentals.md)）、[[qt-harmonyos-build-run-workflow]] |
 | **预期输出** | 安装/配置步骤 |
 
+### [P] 自动迁移（Execution Plane）
+
+**触发词**：自动迁移、一键迁移、跑一遍迁移、鸿蒙化这个项目、验证迁移结果、分析构建/运行日志
+
+| 项目 | 内容 |
+|------|------|
+| **工作流** | `skills/qt-app-porting/SKILL.md`（统一 CLI：`tools/qt-ohos-run.py`） |
+| **必读页** | ① `golden-rules.md` ② `skills/qt-app-porting/SKILL.md` |
+| **按需加载** | 风险发现与日志命中自带的 `kb`/`refs` 字段（R*.yaml / QOH*.yaml 机器条目直链知识页） |
+| **预期输出** | 可行性评估（assess：portable/blocked/uncertain，`knowledge/adaptation/` 三库驱动）→ 风险报告 → 迁移计划 → 壳工程自动生成（templates/qt-ohos-app）→ 受追踪修改（.qt-ohos/patches）→ 编译/打包/装机/启动 → G0-G12 门禁判定 → 报告 + 知识草稿（draft→promote 闭环） |
+
+> 端到端数据流：`app → scan → assess → plan → project_generation → patch → compile → package → install → launch → smoke → verify → report → draft → promote → 索引再生成 → kb-release 发布`。assess 为迁移第 0 步：blocked 即止并出报告（`assessment.json`）。
+
+> 关键约束：成功与否只以 `qt-ohos-run verify` 的门禁结果为准（LLM 负责推理，tool 负责事实）。
+> 机器知识：`knowledge/rules/`（18 条预扫描规则）、`knowledge/errors/`（36 条错误模式，对应 problems/）。
+
 ### [Q] Demo 生成
 
 **触发词**：写个 demo、生成 demo、测试工程、渲染 demo、功能 demo、demo 项目、CEF demo、WebEngine demo
@@ -163,8 +179,8 @@ summary: >
 |------|------|
 | **工作流** | `procedural/demo-generation.md`（六步闭环） |
 | **必读页** | ① 工作流本身 |
-| **按需加载** | `project-structure.md`（鸿蒙工程）、`build.md`（编译配置）；`qt-cef-ohos-dev-guide.md` + `tools/kb-cef-graft.py` + `tools/kb-cef-graft.config.example.json`（Qt+CEF / WebEngine 迁移 demo——鸿蒙无 WebEngine，用 CEF，`tools/kb-cef-graft.py --config <配置> --run` 一条龙嫁接+签名+装机+启动+崩溃检查） |
-| **预期输出** | 需求理解 → 技术设计 → 工程创建 → 代码编写 → 编译验证 → 文档沉淀；Qt+CEF demo 直接用 `tools/kb-cef-graft.py --run` |
+| **按需加载** | `project-structure.md`（鸿蒙工程）、`build.md`（编译配置）；`qt-cef-ohos-dev-guide.md`（Qt+CEF / WebEngine 迁移 demo——鸿蒙无 WebEngine，用 CEF；嫁接脚本随 CEF 组件包分发，不在本知识库，用法见 dev-guide §2.3/§5） |
+| **预期输出** | 需求理解 → 技术设计 → 工程创建 → 代码编写 → 编译验证 → 文档沉淀；Qt+CEF demo 按 `qt-cef-ohos-dev-guide.md` §2.3 嫁接流程 |
 
 ---
 
@@ -180,6 +196,7 @@ summary: >
 
 | 用户说 | 实际类型 | 路由 |
 |--------|---------|------|
+| "帮我把这个 Qt 项目迁移到鸿蒙（要你执行）" | [P] 自动迁移 | 跑 `tools/qt-ohos-run.py scan/plan/patch/verify`，按 `skills/qt-app-porting/SKILL.md` |
 | "这个应用在鸿蒙上跑不起来" | [E] 构建排障 或 [A] 移植 | 先问：是新移植还是已有工程？ |
 | "鸿蒙和 Android 有什么区别" | [D] 平台限制 + [G] 生命周期 | 加载 platform-limits + lifecycle |
 | "帮我看看这个代码怎么改" | [B] API 替换 | 加载 api-mapping + code-patterns |

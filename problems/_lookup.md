@@ -1,6 +1,6 @@
 ---
-updated: 2026-08-29
-total_problems: 36
+updated: 2026-09-11
+total_problems: 39
 description: >
   错误速查索引（从 problem 页 frontmatter 重建）。
 ---
@@ -20,6 +20,9 @@ description: >
 | N/A | [build-fail-qtohosextras-camelcase-headers](build-fail-qtohosextras-camelcase-headers.md) | fatal error: 'QtOhosExtras/QOhosAppContext' file not found |
 | N/A | [runtime-curl-chinese-garbled](runtime-curl-chinese-garbled.md) | curl POST/PATCH 请求体中的中文字符在 API 端显示为乱码（如 Cyrillic 字符 ֪ʶ⽻） |
 | errno=22 (EINVAL) | [runtime-fail-dlopen-writable-path](runtime-fail-dlopen-writable-path.md) | 运行时加载 .so 插件失败，dlopen 返回 EINVAL，路径在 /data/storage/el2/ 下 |
+| N/A | [build-qt612-qos-harmony-macro](build-qt612-qos-harmony-macro.md) | Qt 6.12 kit 平台宏是 Q_OS_HARMONY 非 Q_OS_OHOS；nice_target_sources 标记 not_linux 会静默排除全部 ohos 实现文件，链接集中爆 undefined |
+| N/A | [build-clang15-libcpp15-cpp20-gaps](build-clang15-libcpp15-cpp20-gaps.md) | clang15/libc++15 的 8 类 C++20 缺口：lambda 捕获结构化绑定/P0960 聚合圆括号/P0634 省略 typename/stop_token/atomic_ref/ranges/shared_ptr<=>/variant QString |
+| N/A | [runtime-hap-missing-so-closure](runtime-hap-missing-so-closure.md) | HAP 启动 64ms 即死无 cppcrash、jscrash TypeError handleAbilityStageOnCreate of undefined——libqohos 依赖 .so 闭包缺失（libbz2/libz/libdav1d/libaom）+ aom 源码编译/dav1d 静态转 so |
 
 ## 按症状速查
 

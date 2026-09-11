@@ -69,8 +69,14 @@ echo "ARCH=$(uname -m)"
 # ═══════════════════════════════════════════════════════════
 # 2. DevEco Studio + HarmonyOS SDK + DevEco CLI
 # ═══════════════════════════════════════════════════════════
+# 优先级：DEVECO_PATH 环境变量（自定义安装位置）> 平台候选路径列表
+_DEVECO_ENV="${DEVECO_PATH:-}"
 DEVECO_PATH=""
 DEVECO_FOUND="false"
+if [ -n "$_DEVECO_ENV" ] && [ -d "$_DEVECO_ENV" ]; then
+  DEVECO_PATH="$_DEVECO_ENV"
+  DEVECO_FOUND="true"
+fi
 DEVECO_VERSION=""
 DEVECO_CLI_FOUND="false"
 DEVECO_CLI_PATH=""
@@ -86,7 +92,24 @@ JDK_FOUND=$(cmd_exists java)
 JDK_VERSION=""
 [ "$JDK_FOUND" = "true" ] && JDK_VERSION=$(java -version 2>&1 | head -1)
 
-if [ "$OS" = "macos" ]; then
+if [ "$DEVECO_FOUND" = "true" ]; then
+  # 已由 DEVECO_PATH 环境变量指定：按 OS 布局派生 native/hdc/cli
+  if [ "$OS" = "macos" ]; then
+    _pre="$DEVECO_PATH/Contents"
+  else
+    _pre="$DEVECO_PATH"
+  fi
+  _native="$_pre/sdk/default/openharmony/native"
+  [ -d "$_native" ] && { OHOS_SDK_NATIVE_PATH="$_native"; OHOS_SDK_NATIVE_FOUND="true"; }
+  _hdc="$_pre/sdk/default/openharmony/toolchains/hdc"
+  [ -f "$_hdc" ] && { HDC_PATH="$_hdc"; HDC_FOUND="true"; }
+  if [ "$OS" = "windows" ] && [ -f "$_hdc.exe" ]; then HDC_PATH="$_hdc.exe"; HDC_FOUND="true"; fi
+  _cli="$_pre/tools/devecocli"
+  [ -f "$_cli" ] && { DEVECO_CLI_PATH="$_cli"; DEVECO_CLI_FOUND="true"; }
+  if [ "$OS" = "windows" ] && [ -f "$_cli.bat" ]; then DEVECO_CLI_PATH="$_cli.bat"; DEVECO_CLI_FOUND="true"; fi
+  [ -f "$_pre/sdk/default/openharmony/ohpm/bin/ohpm" ] && OHPM_FOUND="true"
+  [ -f "$_pre/tools/hvigor/bin/hvigorw.js" ] && HVIGORW_FOUND="true"
+elif [ "$OS" = "macos" ]; then
   for p in "/Applications/DevEco-Studio.app" "$HOME/Applications/DevEco-Studio.app"; do
     [ -d "$p" ] && { DEVECO_PATH="$p"; DEVECO_FOUND="true"; break; }
   done
@@ -104,7 +127,8 @@ if [ "$OS" = "macos" ]; then
   fi
 elif [ "$OS" = "windows" ]; then
   for p in "/c/Program Files/Huawei/DevEco Studio" "/c/Program Files (x86)/Huawei/DevEco Studio" \
-           "$LOCALAPPDATA/Programs/DevEco Studio" "/d/DevEco Studio"; do
+           "$LOCALAPPDATA/Programs/DevEco Studio" "/d/DevEco Studio" \
+           "/c/DevecoStudio" "/d/DevecoStudio"; do
     [ -d "$p" ] && { DEVECO_PATH="$p"; DEVECO_FOUND="true"; break; }
   done
   if [ "$DEVECO_FOUND" = "true" ]; then

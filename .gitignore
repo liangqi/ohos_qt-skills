@@ -12,3 +12,26 @@ outputs/
 # 临时/工具目录
 _temp/
 screenshot/
+
+# qt-app-porting 执行状态（位于被迁移的目标项目内）
+.qt-ohos/
+
+# 本地实验区与工作产物（不入库，见重构计划 D4/A2）
+workspace/
+portgraph/
+_tmp_setup.cmake
+*.log
+
+# Agent 规划文档（本地）
+.trae/
+
+# 本地门禁脚本（发布树过滤 _scripts/，公开仓不带）
+_scripts/
+
+# Python 运行产物
+__pycache__/
+*.pyc
+
+# 知识沉淀草稿（本地工作产物；晋升后进入 problems/ 与 knowledge/errors/）
+knowledge/drafts/
+drafts/

@@ -4,7 +4,7 @@ type: semantic
 domain: tech
 tags: [qt, qt6, harmonyos, ohos, status, cmake]
 created: 2026-06-03
-updated: 2026-08-25
+updated: 2026-09-09
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-build, semantic-qt-harmonyos-modules, semantic-qt-harmonyos-platform-limits, semantic-qt-ohos-project-analyzer-workflow]
@@ -19,6 +19,7 @@ summary: >
   "Quick .so absent""Multimedia missing"是**源码 superbuild（策略 B）**时代过时记录，对**预构建（策略 B'）**不成立。
   第 2 批 10 应用（MathMod/SolveSpace/CopyQ/SQLiteStudio 等用 opengl/qml/uitools）全编译成功佐证。
   **⚠️ 2026-08-25 beta3 复核**：Qt6HarmonyExtras 重新独立成模块（libQt6HarmonyExtras.so + cmake，公开头仅 exports/version 桩，16 个功能头全私有 `_p.h`）——翻 beta2「不作为独立模块存在」结论；文件权限授予=QtCore `QPermissions` 公开 API（无文件类权限类型，仅定位/日历/联系人/蓝牙/相机/麦克风）+ `QtHarmonyExtras::FileShare::persistPermission` 私有 API（对应鸿蒙 `@ohos.fileshare`）。
+  **⚠️ 2026-09-09 实测校验（kb-verify-qt.py，本机 beta3 安装）**：libQt6Multimedia/Quick/OpenGL/RemoteObjects/QuickTimeline/Help/UiTools/Core5Compat 确在；但 **libQt6Charts.so 与 libQt6DataVisualization.so 缺失**——与上方 2026-07-25"Charts/DataVisualization 全在"论断不符。差异可能来自安装器组件勾选（本机为部分安装）；依赖 Charts/DataViz 前先 `ls <QT6_OHOS_SDK>/lib | grep -i chart` 核实。机器矩阵见 knowledge/adaptation/modules.yaml（charts/datavisualization 标 restricted）。
   Qt5→Qt6 关键差异（QStandardPaths、CMake API、QML、QPA API）。
 ---
 

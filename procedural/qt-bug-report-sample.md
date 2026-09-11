@@ -25,7 +25,7 @@ summary: >
 |------|------|
 | 报告编号 | 待分配 |
 | 报告日期 | 2026-07-23 |
-| 报告人 | lzh |
+| 报告人 | <REPORTER> |
 | 来源 | 内部验证 |
 | 鸿蒙 SDK 版本 | HarmonyOS 6.0.0.29（API Level 见复现环境表） |
 | 设备信息 | HUAWEI MateBook Fold（HPR-W72）/ 系统版本 6.0.0.29 / 真机 |

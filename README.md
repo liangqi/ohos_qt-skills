@@ -29,10 +29,21 @@
 | [H] | QtOhosExtras API | `semantic/qt-ohos-extras`（145+ API） | API 签名 + 用途 + 使用示例 |
 | [L] | Qt6 状态 | `semantic/qt-harmonyos-qt6-status` | 当前状态 + 已知差异 + 待验证项 |
 | [M] | 三方库 | `semantic/qt-harmonyos-third-party-libs` | 交叉编译方法 / 部署步骤 / 兼容性 |
-| [N] | 工具链 | `semantic/deveco-mcp-toolchain` + `deveco-cli-commands` | 安装/配置 或 headless 编译配方 |
-| [Q] | Demo 生成 | `procedural/demo-generation`（Qt+CEF/WebEngine demo 见 §3.3 + `qt-cef-ohos-dev-guide` + `tools/kb-cef-graft.py`） | 需求 → 设计 → 工程 → 代码 → 编译 → 文档；Qt+CEF demo 用 `tools/kb-cef-graft.py --run` 一条龙 |
+| [N] | 工具链 | `ohos-common-kb-public/semantic/deveco-mcp-capabilities` + `ohos-common-kb-public/procedural/deveco-cli-usage-rules` | 安装/配置 或 headless 编译配方 |
+| [P] | 自动迁移（执行层） | `skills/qt-app-porting` + `tools/qt-ohos-run.py` | 风险报告 → 计划 → 受追踪修改 → 编译/打包/装机/启动 → G0-G12 门禁判定 → 报告 + 知识草稿 |
+| [Q] | Demo 生成 | `procedural/demo-generation`（Qt+CEF/WebEngine demo 见 §3.3 + `qt-cef-ohos-dev-guide`） | 需求 → 设计 → 工程 → 代码 → 编译 → 文档 |
 
-**捆绑工具**：`skills/kb-init/` —— 环境探测（DevEco/SDK/Qt 源码）→ 引导安装缺失依赖 → 生成 `ENV.local.md` → 校验环境可用。`tools/kb-cef-graft.py` + `tools/kb-cef-graft.config.example.json` —— Qt+CEF demo 嫁接脚本（把 CEF 嫁接到 Qt OHOS 模板，`--run` 签名+装机+启动+崩溃检查，环境配置全在配置文件，见 `procedural/qt-cef-ohos-dev-guide.md`）。
+**捆绑工具**：`skills/kb-init/` —— 环境探测（DevEco/SDK/Qt 源码）→ 引导安装缺失依赖 → 生成 `ENV.local.md` → 校验环境。Qt+CEF demo 嫁接脚本随 CEF 组件包分发，不在本知识库（见 `procedural/qt-cef-ohos-dev-guide.md` §2.3）。
+
+**执行引擎（v2.3.0 新增）**：`tools/qt-ohos-run.py` —— Qt 应用鸿蒙化统一执行 CLI，把知识变成可执行、可恢复、可验证、可沉淀的工程闭环：
+
+- **Pre-scan 风险扫描**：`knowledge/rules/` 18 条机器规则（对应黄金铁律），`scan` 产出风险报告
+- **错误模式引擎**：`knowledge/errors/` 36 条 QOH 模式（与 `problems/` 一一对应），`analyze-log` 自动诊断日志
+- **状态机 + checkpoint/resume**：目标项目 `.qt-ohos/` 记录阶段、证据、命令日志；跨会话 `resume`
+- **Verification Gate G0-G12**：`verify` 输出门禁表——编译成功 ≠ 迁移成功，成功由工具判定
+- **Source tracking**：每次自动修改记录进 `changes.json` 并固化为 `patches/*.patch`
+- **知识蒸馏**：`draft` / `promote` 把新问题沉淀回 `knowledge/errors/`
+- **任务预算**：`QT_OHOS_TASK_BUDGET_SEC` / `QT_OHOS_TASK_DEADLINE`，TIMEOUT 永远不算 PASS
 
 **内嵌 common-KB 子集**：`ohos-common-kb-public/` 提供 HarmonyOS 平台通用知识（ArkTS/ArkUI/NAPI/Stage 模型/DevEco 工具链基础），与 Qt 知识互补。
 
@@ -147,7 +158,7 @@ AI 的处理顺序是固定的，你不用记：
 | 模块支持 | `semantic/qt-harmonyos-modules.md` |
 | 平台限制 | `semantic/qt-harmonyos-platform-limits.md` |
 | 工程结构 / 模板 / CMake | `semantic/qt-harmonyos-project-structure.md` |
-| 落地编译（打 HAP） | `procedural/qt-ohos-concrete-build-recipe.md` |
+| 落地编译（打 HAP） | `procedural/qt-ohos-run-test.md`（构建/打包/签名/装机闭环） |
 | 构建运行全流程 / DevEco MCP | `semantic/qt-harmonyos-build-run-workflow.md` |
 | 遇到报错 | **先读 `problems/_lookup.md`**，按错误码/症状检索 |
 
@@ -210,6 +221,7 @@ AI 的处理顺序是固定的，你不用记：
 | Skill | 用途 | 触发方式 |
 |-------|------|----------|
 | `kb-init` | 初始化知识库环境（检测依赖、安装缺失组件、生成 ENV.local.md、验证环境） | 用户说"初始化"、"配置环境"、"第一次使用"、"ENV.local.md 不存在"时自动触发 |
+| `qt-app-porting` | Qt 应用鸿蒙化自动迁移（统一 CLI `tools/qt-ohos-run.py`：扫描→计划→受追踪修改→构建→装机→G0-G12 门禁→报告→知识蒸馏） | 用户要求执行迁移/验证迁移结果/分析构建运行日志时触发 |
 
 **首次使用**：如果用户是第一次使用本知识库，或 `ENV.local.md` 不存在，**必须**先执行 `skills/kb-init/SKILL.md` 完成初始化。
 

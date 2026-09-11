@@ -80,7 +80,7 @@ summary: >
 ### 3.1 确定工程目录
 
 ```
-lzh-skill/<INTERNAL_DEMO><demo-name>/
+<INTERNAL_KB_ROOT>/<INTERNAL_DEMO><demo-name>/
 ```
 
 `<demo-name>` 命名规范：简短描述性名称，用 `-` 分隔单词（如 `render-layers`、`mediaplayer-duration-test`）。
@@ -126,11 +126,11 @@ lzh-skill/<INTERNAL_DEMO><demo-name>/
 若 demo 需要 **web 嵌入**（QtWebEngine 在鸿蒙 Out of scope，见 [[qt-harmonyos-modules]]），走 Qt+CEF 路线——**不要从 §3.1/3.2 手工创建工程**，用嫁接脚本一键生成：
 
 - **指导**：`procedural/qt-cef-ohos-dev-guide.md`（WebEngine→CEF API 映射 + 迁移方案 + 去版本化组件包 + 版本升级适配）。
-- **脚本**：`tools/kb-cef-graft.py` + 配置 `tools/kb-cef-graft.config.example.json`（环境配置全在配置文件：deveco/device/SDK 版本/Qt .so 清单，换环境只改配置不改脚本）。
+- **脚本**：`kb-cef-graft.py` + 配置 `kb-cef-graft.config.example.json`（环境配置全在配置文件：deveco/device/SDK 版本/Qt .so 清单，换环境只改配置不改脚本）——**随 CEF 组件包分发，不在本知识库**（见 dev-guide §2.3；维护者从内部维护仓取）。
 - **一条命令**（graft + 签名 + 装机 + 启动 + 崩溃检查）：
   ```bash
-  cp tools/kb-cef-graft.config.example.json .config.json  # 改 deveco/device/qt_libs 等
-  python tools/kb-cef-graft.py --config .config.json \
+  cp kb-cef-graft.config.example.json .config.json  # 改 deveco/device/qt_libs 等
+  python kb-cef-graft.py --config .config.json \
     --template <Qt OHOS 模板> --qt-sdk <Qt OHOS SDK> \
     --ohqtcef-glue <OpenQtCef 胶水> --output <输出工程> --run
   ```
@@ -276,7 +276,7 @@ mingw32-make.exe -j8      # Windows MinGW
 | **上游输入** | demo 目标描述、功能需求、目标平台/版本 |
 | **下游接收方** | 内部使用（测试验证）/ 宣传演示 / 客户展示 |
 | **交付件** | `<INTERNAL_DEMO><demo-name>/`：完整工程 + README（可选） |
-| **交付件路径** | `lzh-skill/<INTERNAL_DEMO>` |
+| **交付件路径** | `<INTERNAL_KB_ROOT>/<INTERNAL_DEMO>` |
 | **分流规则** | 无（独立交付）；如发现框架 bug → 转入框架问题分析；如需鸿蒙化 → 转入应用移植 |
 
 ---

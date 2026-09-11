@@ -2,7 +2,7 @@
 updated: 2026-08-29
 total_pages: 45
 description: >
-  知识库健康仪表盘（派生计数，从 frontmatter 自动生成）。审计/评分快照见 _dashboard-audit.md。
+  知识库健康仪表盘（派生计数，从 frontmatter 自动生成）。
 ---
 
 # 知识库健康仪表盘
@@ -95,4 +95,3 @@ description: >
 | preference | 0 | 个人偏好 |
 | **合计活跃** | **45** | |
 
-> 审计状态、质量评分、主题覆盖矩阵、已知空白、变更历史见 [_dashboard-audit.md](_dashboard-audit.md)（人工快照，⚠️ SNAPSHOT）。

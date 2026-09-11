@@ -64,15 +64,24 @@ bash skills/kb-init/scripts/clone-kb.sh --dest=<KB_PARENT_DIR>
 ### Q1: 你的应用需要哪个 Qt 版本？
 
 > 你的 Qt 应用需要哪个版本？
-> 1. **Qt 5.15** — 推荐，新项目使用
-> 2. **Qt 5.12** — 旧项目维护
-> 3. **不确定** — 推荐选 Qt 5.15
+> 1. **Qt 6.12** — 官方预构建安装器（新项目推荐；完整 kit 含 libqohos QPA，仅缺 WebEngine/DBus/Pdf/Script）
+> 2. **Qt 5.15** — 商业 license 源码编译
+> 3. **Qt 5.12** — 旧项目维护（有开源版本）
+> 4. **不确定** — 推荐选 Qt 6.12（预构建最快上手）
 
-记录为 `QT_VERSION`（`5.15` / `5.12`）。
+记录为 `QT_VERSION`（`6.12` / `5.15` / `5.12`）。
 
 ### Q2: Qt 获取方式
 
 根据 Q1 的版本，走不同分支：
+
+**如果 Q1 = 6.12**：
+
+> Qt 6.12 鸿蒙版有官方预构建安装器。你的机器上已经装了 Qt 6.12（含 `harmonyos_arm64_v8a` 组件）吗？
+> 1. **已安装** — 请告诉我 kit 路径（如 `C:\Qt\Qt6.12-beta3\6.12.0\harmonyos_arm64_v8a`）和 host 工具链路径（如 `C:\Qt\Qt6.12-beta3\6.12.0\mingw_64`）
+> 2. **未安装** — 从 Qt 官方在线安装器安装（自定义安装勾选 **HarmonyOS** target），装好后回来告诉我路径
+
+记录为 `QT6_OHOS_SDK` / `QT6_HOST_SDK`（跳过 Q3 编译参数，直接到 Q4）。
 
 **如果 Q1 = 5.15**：
 
@@ -278,6 +287,18 @@ bash skills/kb-init/scripts/download-qt-sdk.sh \
   --dest=<KB_ROOT>/workspace/qt-sdk
 ```
 
+**场景 C 补充（无 Qt 源码时的壳工程模板）**：sdk-only 用户没有
+`qtbase/src/harmonyos/templates`，需要下载独立模板归档供 `qt-ohos-run.py
+migrate` 的壳工程自动生成使用：
+
+```bash
+bash skills/kb-init/scripts/download-template.sh \
+  --dest=<KB_ROOT>/workspace/templates
+```
+
+> 注：知识库自带 `templates/qt-ohos-app/`（同一模板的入库副本），Qt 6.12
+> 预构建 kit 也内置 `src/harmonyos/templates`——两者任一可用时跳过本步。
+
 ### Step 5: 生成 ENV.local.md
 
 ```bash
@@ -288,7 +309,11 @@ bash skills/kb-init/scripts/generate-env-local.sh \
   --qt-build-root="<KB_ROOT>/workspace/qt-build" \
   --qt5-12-ohos-sdk="<SDK_PATH>" \
   --qt5-15-ohos-sdk="<SDK_PATH>" \
-  --ohos-sdk-native="<OHOS_SDK_NATIVE_PATH>"
+  --qt6-ohos-sdk="<QT6_OHOS_SDK>" \
+  --qt6-host-sdk="<QT6_HOST_SDK>" \
+  --ohos-sdk-native="<OHOS_SDK_NATIVE_PATH>" \
+  --ohos-template-src="<模板目录，如 Qt6 kit 的 src/harmonyos/templates>" \
+  --my-name="<贡献者名，用于知识沉淀署名>"
 ```
 
 只传用户实际有的路径，缺失的参数不传。

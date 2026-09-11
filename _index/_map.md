@@ -88,4 +88,5 @@ _（本域无活跃页）_
 | 分析 Qt 应用 bug / 定位问题 | procedural → framework-issue-analysis |
 | 验证修复是否生效 | procedural → framework-fix-verification |
 | 把 Qt 应用迁移到鸿蒙 | procedural → qt-app-harmonyos-migration |
+| 让工具自动执行迁移/验证 | skills → qt-app-porting + tools/qt-ohos-run.py |
 | 创建独立 demo / 测试工程 | procedural → demo-generation |
