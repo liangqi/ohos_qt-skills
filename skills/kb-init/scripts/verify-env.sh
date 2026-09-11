@@ -57,6 +57,8 @@ QT5_15_SRC=$(read_env "QT5_15_SRC")
 QT_BUILD_ROOT=$(read_env "QT_BUILD_ROOT")
 QT5_12_OHOS_SDK=$(read_env "QT5_12_OHOS_SDK")
 QT5_15_OHOS_SDK=$(read_env "QT5_15_OHOS_SDK")
+QT6_OHOS_SDK=$(read_env "QT6_OHOS_SDK")
+QT6_HOST=$(read_env "QT6_HOST")
 OHOS_SDK_NATIVE=$(read_env "OHOS_SDK_NATIVE")
 
 # 3. DevEco Studio
@@ -105,6 +107,28 @@ elif [ -n "$QT5_15_OHOS_SDK" ]; then
   check "Qt 5.15 OHOS SDK" "fail" "路径不存在: $QT5_15_OHOS_SDK"
 else
   check "Qt 5.15 OHOS SDK" "skip" "未配置"
+fi
+
+if [ -n "$QT6_OHOS_SDK" ] && [ -d "$QT6_OHOS_SDK" ]; then
+  check "Qt 6 OHOS SDK" "pass" "$QT6_OHOS_SDK"
+  QT_SDK_COUNT=$((QT_SDK_COUNT + 1))
+  if [ -x "$QT6_OHOS_SDK/bin/qt-cmake" ]; then
+    check "qt-cmake" "pass"
+  else
+    check "qt-cmake" "fail" "$QT6_OHOS_SDK/bin/qt-cmake 不存在或不可执行"
+  fi
+elif [ -n "$QT6_OHOS_SDK" ]; then
+  check "Qt 6 OHOS SDK" "fail" "路径不存在: $QT6_OHOS_SDK"
+else
+  check "Qt 6 OHOS SDK" "skip" "未配置"
+fi
+
+if [ -n "$QT6_HOST" ] && [ -d "$QT6_HOST" ]; then
+  check "Qt 6 host 工具链" "pass" "$QT6_HOST"
+elif [ -n "$QT6_HOST" ]; then
+  check "Qt 6 host 工具链" "fail" "路径不存在: $QT6_HOST"
+else
+  check "Qt 6 host 工具链" "skip" "未配置 (Qt 6 交叉编译与 harmonydeployqt 需要)"
 fi
 
 if [ "$QT_SDK_COUNT" -eq 0 ]; then

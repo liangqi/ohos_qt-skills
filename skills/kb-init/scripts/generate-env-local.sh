@@ -9,6 +9,8 @@
 #   --qt-build-root=PATH       Qt 编译输出根目录
 #   --qt5-12-ohos-sdk=PATH     Qt 5.12 OHOS SDK 路径
 #   --qt5-15-ohos-sdk=PATH     Qt 5.15 OHOS SDK 路径
+#   --qt6-ohos-sdk=PATH        Qt 6 鸿蒙 target SDK 路径（如 .../6.12.0/harmonyos_arm64_v8a）
+#   --qt6-host=PATH            Qt 6 host 工具链路径（如 .../6.12.0/macos）
 #   --ohos-sdk-native=PATH     OHOS SDK native 路径
 # 输出: 生成 ENV.local.md 到知识库根目录
 # 退出码: 0=成功
@@ -25,6 +27,8 @@ QT5_15_SRC=""
 QT_BUILD_ROOT=""
 QT5_12_OHOS_SDK=""
 QT5_15_OHOS_SDK=""
+QT6_OHOS_SDK=""
+QT6_HOST=""
 OHOS_SDK_NATIVE=""
 OHOS_TEMPLATE_SRC=""
 
@@ -36,6 +40,8 @@ for arg in "$@"; do
     --qt-build-root=*) QT_BUILD_ROOT="${arg#*=}";;
     --qt5-12-ohos-sdk=*) QT5_12_OHOS_SDK="${arg#*=}";;
     --qt5-15-ohos-sdk=*) QT5_15_OHOS_SDK="${arg#*=}";;
+    --qt6-ohos-sdk=*) QT6_OHOS_SDK="${arg#*=}";;
+    --qt6-host=*) QT6_HOST="${arg#*=}";;
     --ohos-sdk-native=*) OHOS_SDK_NATIVE="${arg#*=}";;
     --ohos-template-src=*) OHOS_TEMPLATE_SRC="${arg#*=}";;
     *) echo "未知选项: $arg" >&2; exit 2;;
@@ -111,6 +117,25 @@ echo "|--------|--------|" >> "$OUTPUT"
 [ -n "$QT_BUILD_ROOT" ] && echo "| \`QT_BUILD_ROOT\` | \`$QT_BUILD_ROOT\` |" >> "$OUTPUT"
 [ -n "$QT5_12_OHOS_SDK" ] && echo "| \`QT5_12_OHOS_SDK\` | \`$QT5_12_OHOS_SDK\` |" >> "$OUTPUT"
 [ -n "$QT5_15_OHOS_SDK" ] && echo "| \`QT5_15_OHOS_SDK\` | \`$QT5_15_OHOS_SDK\` |" >> "$OUTPUT"
+[ -n "$QT6_OHOS_SDK" ] && echo "| \`QT6_OHOS_SDK\` | \`$QT6_OHOS_SDK\` |" >> "$OUTPUT"
+[ -n "$QT6_HOST" ] && echo "| \`QT6_HOST\` | \`$QT6_HOST\` |" >> "$OUTPUT"
 echo "" >> "$OUTPUT"
+
+# Qt 6 构建提示
+if [ -n "$QT6_OHOS_SDK" ]; then
+  {
+    echo "### Qt 6 构建与部署"
+    echo ""
+    echo "\`\`\`bash"
+    echo "# 配置（qt-cmake 已内置 toolchain 与 QT_HOST_PATH）"
+    echo "$QT6_OHOS_SDK/bin/qt-cmake -S <项目源码目录> -B <构建目录> -DCMAKE_BUILD_TYPE=Release"
+    echo "\`\`\`"
+    echo ""
+    [ -n "$QT6_HOST" ] && echo "部署工具：\`$QT6_HOST/bin/harmonydeployqt\`"
+    [ -n "$QT6_HOST" ] && echo ""
+    echo "> Qt 6 不使用 qmake + mingw32-make 流程；\`QtOhosExtras\` 对应 \`Qt6::HarmonyExtrasPrivate\`（私有模块）。"
+    echo ""
+  } >> "$OUTPUT"
+fi
 
 echo "ENV.local.md 已生成: $OUTPUT"

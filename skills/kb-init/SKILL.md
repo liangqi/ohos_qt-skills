@@ -2,7 +2,7 @@
 name: kb-init
 description: |
   Qt for HarmonyOS 知识库环境初始化。检测用户是否在 ohos_qt-skills 知识库中运行，
-  如果不在则帮助下载知识库。然后完整配置 DevEco Studio、HarmonyOS SDK、Qt SDK/源码、
+  如果不在则帮助下载知识库。然后完整配置 DevEco Studio、HarmonyOS SDK、Qt SDK/源码（5.12 / 5.15 / 6.x）、
   构建工具链，生成 ENV.local.md，验证环境就绪。
   当用户说"初始化"、"配置环境"、"第一次使用"、"setup"、"install"，
   或 ENV.local.md 不存在时，必须触发此 skill。
@@ -64,15 +64,34 @@ bash skills/kb-init/scripts/clone-kb.sh --dest=<KB_PARENT_DIR>
 ### Q1: 你的应用需要哪个 Qt 版本？
 
 > 你的 Qt 应用需要哪个版本？
-> 1. **Qt 5.15** — 推荐，新项目使用
-> 2. **Qt 5.12** — 旧项目维护
-> 3. **不确定** — 推荐选 Qt 5.15
+> 1. **Qt 6.x** — 已通过 Qt 官方 online installer 装好鸿蒙版 SDK（目录形如 `<QtSDK>/6.12.0/harmonyos_arm64_v8a`）
+> 2. **Qt 5.15** — 新项目使用，需商业 license，从源码编译
+> 3. **Qt 5.12** — 旧项目维护，有开源版本
+> 4. **不确定** — 已装 Qt 6 选 1，否则推荐 Qt 5.15
 
-记录为 `QT_VERSION`（`5.15` / `5.12`）。
+记录为 `QT_VERSION`（`6` / `5.15` / `5.12`）。
+
+> **先查检测结果**：如果 `detect-env.sh` 或用户已给出 Qt 6 SDK 路径，直接走 Qt 6 分支，不要再问 5.x 的编译参数。
 
 ### Q2: Qt 获取方式
 
 根据 Q1 的版本，走不同分支：
+
+**如果 Q1 = 6**：
+
+Qt 6 鸿蒙版由官方 installer 提供，已含 target + host 两套产物，无需 clone 源码或编译 SDK。只需确认路径：
+
+> 请确认你的 Qt 6 安装路径：
+> - target SDK（鸿蒙侧）：形如 `<QtSDK>/6.12.0/harmonyos_arm64_v8a`
+> - host 工具链（本机侧）：形如 `<QtSDK>/6.12.0/macos`（Windows 为 `mingw_64`/`msvc2022_64`，Linux 为 `gcc_64`）
+
+记录为 `QT6_OHOS_SDK` 和 `QT6_HOST`，然后**跳过 Q3**，直接进入 Q4。
+
+校验路径可用：
+```bash
+<QT6_OHOS_SDK>/bin/qmake6 -query QT_VERSION
+ls <QT6_HOST>/bin/harmonydeployqt
+```
 
 **如果 Q1 = 5.15**：
 
@@ -278,6 +297,10 @@ bash skills/kb-init/scripts/download-qt-sdk.sh \
   --dest=<KB_ROOT>/workspace/qt-sdk
 ```
 
+**场景 D: Qt 6（已装官方 SDK）**
+
+无需获取——Q2 中已确认 `QT6_OHOS_SDK` 和 `QT6_HOST`，直接进入 Step 5。
+
 ### Step 5: 生成 ENV.local.md
 
 ```bash
@@ -288,10 +311,12 @@ bash skills/kb-init/scripts/generate-env-local.sh \
   --qt-build-root="<KB_ROOT>/workspace/qt-build" \
   --qt5-12-ohos-sdk="<SDK_PATH>" \
   --qt5-15-ohos-sdk="<SDK_PATH>" \
+  --qt6-ohos-sdk="<QT6_OHOS_SDK>" \
+  --qt6-host="<QT6_HOST>" \
   --ohos-sdk-native="<OHOS_SDK_NATIVE_PATH>"
 ```
 
-只传用户实际有的路径，缺失的参数不传。
+只传用户实际有的路径，缺失的参数不传。Qt 6 场景只需 `--deveco-path` / `--ohos-sdk-native` / `--qt6-ohos-sdk` / `--qt6-host` 四个。
 
 Agent 向用户展示生成结果，请用户确认。
 
@@ -311,7 +336,7 @@ bash skills/kb-init/scripts/verify-env.sh
 - 知识库已下载（如果是新安装）
 - `ENV.local.md` 已生成到 KB 根目录
 - DevEco Studio + OHOS SDK native + DevEco CLI 已就绪
-- Qt OHOS SDK 已配置
+- Qt OHOS SDK 已配置（5.12 / 5.15 / 6.x 至少一个）
 - `verify-env.sh` 输出 `STATUS=ready`
 
 ## 错误处理
@@ -327,6 +352,7 @@ bash skills/kb-init/scripts/verify-env.sh
 | SDK 下载失败 | 手动访问 https://gitcode.com/ohos-qt/qt-harmonyos-src/releases |
 | 编译 SDK 失败 (commercial) | 检查 MinGW/Perl/cmake 是否安装；参阅 `references/qt-compile-guide.md` 故障排除章节 |
 | `verify-env.sh` 报告 FAIL | 按 FAIL 项提示修复，重新运行 |
+| Qt 6: `qt-cmake` FAIL | 确认 `QT6_OHOS_SDK` 指向 `harmonyos_arm64_v8a` 而非 `<QtSDK>/6.x.y` 上级目录 |
 | Linux 用户无 DevEco Studio GUI | 正常——使用 Command Line Tools |
 
 ## 参考文档

@@ -59,6 +59,13 @@
 | `QT_BUILD_ROOT` | `<QT_BUILD_ROOT_PATH>` | Qt 编译输出根目录 |
 | `QT5_12_OHOS_SDK` | `<QT5_12_OHOS_SDK_PATH>` | CMake `CMAKE_PREFIX_PATH`（Qt 5.12 默认） |
 | `QT5_15_OHOS_SDK` | `<QT5_15_OHOS_SDK_PATH>` | CMake `CMAKE_PREFIX_PATH`（Qt 5.15） |
+| `QT6_OHOS_SDK` | `<QT6_OHOS_SDK_PATH>` | Qt 6 鸿蒙 target SDK，如 `<QT_SDK_ROOT>/6.12.0/harmonyos_arm64_v8a` |
+| `QT6_HOST` | `<QT6_HOST_PATH>` | Qt 6 host 工具链（`QT_HOST_PATH`），如 `<QT_SDK_ROOT>/6.12.0/macos` |
+
+> **Qt 6 与 Qt 5 的差异**：Qt 6 鸿蒙版由官方 online installer 安装，目录内已含 target + host 两套产物，
+> 构建用 `<QT6_OHOS_SDK>/bin/qt-cmake`（已内置 toolchain 与 `QT_HOST_PATH`，无需手动传 `CMAKE_PREFIX_PATH`），
+> 部署用 `<QT6_HOST>/bin/harmonydeployqt`。本页下方的 qmake + mingw32-make 编译流程仅适用于 Qt 5。
+> Qt 5 的 `QtOhosExtras` 在 Qt 6 中对应 `Qt6::HarmonyExtrasPrivate`（私有模块），API 需按实际头文件复核。
 
 ## 📚 内嵌的 HarmonyOS 平台通用知识
 
