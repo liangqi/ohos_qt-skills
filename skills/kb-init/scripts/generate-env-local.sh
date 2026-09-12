@@ -12,6 +12,7 @@
 #   --qt6-ohos-sdk=PATH        Qt 6 鸿蒙 target SDK 路径（如 .../6.12.0/harmonyos_arm64_v8a）
 #   --qt6-host=PATH            Qt 6 host 工具链路径（如 .../6.12.0/macos）
 #   --ohos-sdk-native=PATH     OHOS SDK native 路径
+#   --ohos-additional-packages=PATH  鸿蒙第三方预编译库根目录（additional-packages）
 # 输出: 生成 ENV.local.md 到知识库根目录
 # 退出码: 0=成功
 
@@ -31,6 +32,7 @@ QT6_OHOS_SDK=""
 QT6_HOST=""
 OHOS_SDK_NATIVE=""
 OHOS_TEMPLATE_SRC=""
+OHOS_ADDITIONAL_PACKAGES=""
 
 for arg in "$@"; do
   case "$arg" in
@@ -44,6 +46,7 @@ for arg in "$@"; do
     --qt6-host=*) QT6_HOST="${arg#*=}";;
     --ohos-sdk-native=*) OHOS_SDK_NATIVE="${arg#*=}";;
     --ohos-template-src=*) OHOS_TEMPLATE_SRC="${arg#*=}";;
+    --ohos-additional-packages=*) OHOS_ADDITIONAL_PACKAGES="${arg#*=}";;
     *) echo "未知选项: $arg" >&2; exit 2;;
   esac
 done
@@ -119,6 +122,7 @@ echo "|--------|--------|" >> "$OUTPUT"
 [ -n "$QT5_15_OHOS_SDK" ] && echo "| \`QT5_15_OHOS_SDK\` | \`$QT5_15_OHOS_SDK\` |" >> "$OUTPUT"
 [ -n "$QT6_OHOS_SDK" ] && echo "| \`QT6_OHOS_SDK\` | \`$QT6_OHOS_SDK\` |" >> "$OUTPUT"
 [ -n "$QT6_HOST" ] && echo "| \`QT6_HOST\` | \`$QT6_HOST\` |" >> "$OUTPUT"
+[ -n "$OHOS_ADDITIONAL_PACKAGES" ] && echo "| \`OHOS_ADDITIONAL_PACKAGES\` | \`$OHOS_ADDITIONAL_PACKAGES\` |" >> "$OUTPUT"
 echo "" >> "$OUTPUT"
 
 # Qt 6 构建提示
@@ -131,6 +135,18 @@ if [ -n "$QT6_OHOS_SDK" ]; then
     echo "$QT6_OHOS_SDK/bin/qt-cmake -S <项目源码目录> -B <构建目录> -DCMAKE_BUILD_TYPE=Release"
     echo "\`\`\`"
     echo ""
+    if [ -n "$OHOS_ADDITIONAL_PACKAGES" ]; then
+      echo "第三方预编译库（additional-packages）：\`$OHOS_ADDITIONAL_PACKAGES\`"
+      echo ""
+      echo "- 需要 find_package 找到 fontconfig/freetype/icu 等时追加："
+      echo "  \`-DCMAKE_FIND_ROOT_PATH=$OHOS_ADDITIONAL_PACKAGES\`（预构建 kit 通常可省）"
+      echo "- **打 HAP 前必须 stage 运行时 .so**：Qt6 预构建 kit 的 .so 带 HARD DT_NEEDED"
+      echo "  指向 libicui18n/libicuuc/libicudata/libfontconfig/libfreetype/libpng16/"
+      echo "  libbrotlidec/libbrotlicommon/libexpat，harmonydeployqt 不会自动拷贝。"
+      echo "  从 \`$OHOS_ADDITIONAL_PACKAGES/lib/\` 拷到 \`hap/entry/libs/arm64-v8a/\` 后重新 assembleHap，"
+      echo "  否则 HAP 装得上但启动即 dlopen 失败。"
+      echo ""
+    fi
     [ -n "$QT6_HOST" ] && echo "部署工具：\`$QT6_HOST/bin/harmonydeployqt\`"
     [ -n "$QT6_HOST" ] && echo ""
     echo "> Qt 6 不使用 qmake + mingw32-make 流程；\`QtOhosExtras\` 对应 \`Qt6::HarmonyExtrasPrivate\`（私有模块）。"

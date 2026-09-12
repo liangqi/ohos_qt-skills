@@ -45,6 +45,44 @@
 | `QT_BUILD_ROOT` | Qt 编译输出目录（仅编译 Qt 框架时需要） | `/Users/you/dev/qt-build` |
 | `QT5_12_OHOS_SDK` | Qt 5.12 OHOS SDK 路径（CMake 的 CMAKE_PREFIX_PATH） | `/Users/you/dev/qt-sdk/Qt5.12.12-arm64-v8a` |
 | `QT5_15_OHOS_SDK` | Qt 5.15 OHOS SDK 路径 | `/Users/you/dev/qt-sdk/Qt5.15.16-arm64-v8a` |
+| `QT6_OHOS_SDK` | Qt 6 鸿蒙 target SDK（官方 installer 安装） | `/Users/you/Qt/6.12.0/harmonyos_arm64_v8a` |
+| `QT6_HOST` | Qt 6 host 工具链（`QT_HOST_PATH`） | `/Users/you/Qt/6.12.0/macos` |
+
+## 第三方预编译库（additional-packages）
+
+| 变量名 | 含义 | 示例值 |
+|--------|------|--------|
+| `OHOS_ADDITIONAL_PACKAGES` | `ohos-additional-packages-*.zip` 解压根目录（含 `include/` `lib/` `share/`） | `/Users/you/.local/opt/ohos/additional-packages` |
+
+内含为鸿蒙 arm64 交叉编译好的 fontconfig / freetype / icu / brotli / libpng / libjpeg /
+expat / uuid / node-addon-api 等。下载地址见 wiki.qt.io/Building_Qt6_for_HarmonyOS
+（Google Drive / 百度网盘）。
+
+**什么时候必需**：
+
+| 场景 | 是否必需 | 用法 |
+|------|----------|------|
+| Qt 6 源码 superbuild | 必需 | `-DCMAKE_FIND_ROOT_PATH=<OHOS_ADDITIONAL_PACKAGES>` |
+| Qt 6 预构建 kit — configure/build 业务工程 | 可省 | `qt-cmake` 自设 sysroot，`find_package` 一般不需要它 |
+| Qt 6 预构建 kit — **打 HAP** | **必需** | 从 `lib/` 拷 9 个运行时 .so 到 `hap/entry/libs/arm64-v8a/` |
+
+**打 HAP 必须 stage 的 9 个 .so**（Qt6 kit 的 .so 带 HARD `DT_NEEDED` 指向它们，
+既不在 kit `lib/` 也不属 OHOS 系统库，`harmonydeployqt` 不会自动拷）：
+
+```
+libicui18n.so  libicuuc.so  libicudata.so          # libQt6Core 依赖
+libfontconfig.so  libfreetype.so  libpng16.so      # libQt6Gui 依赖
+libbrotlidec.so  libbrotlicommon.so                # libQt6Network 依赖
+libexpat.so                                        # libfontconfig 依赖
+```
+
+漏拷的症状：HAP 能安装，启动即 `dlopen(libQt6Core.so)` 失败，
+hilog 报 `libicui18n.so not found`。详见 `semantic/qt-harmonyos-qt6-status.md` #21。
+
+**探测路径**：`detect-env.sh` 依次探测 `$OHOS_ADDITIONAL_PACKAGES` 环境变量、
+`~/.local/opt/ohos/additional-packages`、`<KB_ROOT>/workspace/additional-packages`、
+`~/dev/ohos-additional-packages`、`/opt/ohos/additional-packages`、
+`C:/Dev/ohos-additional-packages`。解压到其中任一路径即可被自动识别。
 
 ## 模板
 

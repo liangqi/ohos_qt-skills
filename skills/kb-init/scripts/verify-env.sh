@@ -60,6 +60,7 @@ QT5_15_OHOS_SDK=$(read_env "QT5_15_OHOS_SDK")
 QT6_OHOS_SDK=$(read_env "QT6_OHOS_SDK")
 QT6_HOST=$(read_env "QT6_HOST")
 OHOS_SDK_NATIVE=$(read_env "OHOS_SDK_NATIVE")
+OHOS_ADDITIONAL_PACKAGES=$(read_env "OHOS_ADDITIONAL_PACKAGES")
 
 # 3. DevEco Studio
 if [ -n "$DEVECO_PATH" ] && [ -d "$DEVECO_PATH" ]; then
@@ -133,6 +134,25 @@ fi
 
 if [ "$QT_SDK_COUNT" -eq 0 ]; then
   check "Qt OHOS SDK (至少一个版本)" "fail" "未配置任何 Qt OHOS SDK"
+fi
+
+# 5b. additional-packages（第三方预编译库）
+if [ -n "$OHOS_ADDITIONAL_PACKAGES" ] && [ -d "$OHOS_ADDITIONAL_PACKAGES/lib" ]; then
+  check "additional-packages" "pass" "$OHOS_ADDITIONAL_PACKAGES"
+  _ap_missing=""
+  for _l in libicuuc.so libicui18n.so libicudata.so libfontconfig.so libfreetype.so \
+            libpng16.so libbrotlidec.so libbrotlicommon.so libexpat.so; do
+    [ -f "$OHOS_ADDITIONAL_PACKAGES/lib/$_l" ] || _ap_missing="$_ap_missing $_l"
+  done
+  if [ -z "$_ap_missing" ]; then
+    check "additional-packages 运行时 .so (9 个)" "pass"
+  else
+    check "additional-packages 运行时 .so (9 个)" "fail" "缺:$_ap_missing"
+  fi
+elif [ -n "$OHOS_ADDITIONAL_PACKAGES" ]; then
+  check "additional-packages" "fail" "路径不存在或缺 lib/: $OHOS_ADDITIONAL_PACKAGES"
+else
+  check "additional-packages" "skip" "未配置 (Qt 6 打 HAP 需从这里 stage 运行时 .so；源码 superbuild 必需)"
 fi
 
 # 6. 基础工具

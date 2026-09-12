@@ -93,6 +93,28 @@ Qt 6 鸿蒙版由官方 installer 提供，已含 target + host 两套产物，�
 ls <QT6_HOST>/bin/harmonydeployqt
 ```
 
+**additional-packages**（第三方预编译库：fontconfig/freetype/icu/brotli/libpng/expat/uuid）：
+
+先看 `detect-env.sh` 的 `OHOS_ADDITIONAL_PACKAGES_FOUND`：
+
+- `true` → 直接用 `OHOS_ADDITIONAL_PACKAGES_PATH`，不用问
+- `false` → 问用户：
+
+  > 你是否解压了 `ohos-additional-packages-*.zip`？如果有，请给出解压后的根目录
+  > （该目录下应有 `include/` `lib/` `share/`）。没有的话可以跳过，但 Qt 6 打 HAP 时
+  > 需要手动从别处补齐 9 个运行时 .so。
+  >
+  > 下载地址见 wiki.qt.io/Building_Qt6_for_HarmonyOS（Google Drive / 百度网盘）。
+  > 推荐解压到 `~/.local/opt/ohos/additional-packages`（脚本的默认探测路径之一）。
+
+记录为 `OHOS_ADDITIONAL_PACKAGES`（可为空）。
+
+> **为什么需要**：Qt 6 预构建 kit 的 `libQt6Core.so`/`libQt6Gui.so`/`libQt6Network.so` 带 HARD
+> `DT_NEEDED` 指向 libicui18n/libicuuc/libicudata/libfontconfig/libfreetype/libpng16/
+> libbrotlidec/libbrotlicommon/libexpat，这些既不在 kit `lib/` 也不属 OHOS 系统库，
+> `harmonydeployqt` 不会自动拷贝 → HAP 装得上但启动即 `dlopen` 失败。
+> 见 `semantic/qt-harmonyos-qt6-status.md` #21 的 2026-08-04 runtime 补正。
+
 **如果 Q1 = 5.15**：
 
 > Qt 5.15 鸿蒙版仅有商业 license 版本。你有 Qt 商业 license 吗？
@@ -313,10 +335,11 @@ bash skills/kb-init/scripts/generate-env-local.sh \
   --qt5-15-ohos-sdk="<SDK_PATH>" \
   --qt6-ohos-sdk="<QT6_OHOS_SDK>" \
   --qt6-host="<QT6_HOST>" \
-  --ohos-sdk-native="<OHOS_SDK_NATIVE_PATH>"
+  --ohos-sdk-native="<OHOS_SDK_NATIVE_PATH>" \
+  --ohos-additional-packages="<OHOS_ADDITIONAL_PACKAGES>"
 ```
 
-只传用户实际有的路径，缺失的参数不传。Qt 6 场景只需 `--deveco-path` / `--ohos-sdk-native` / `--qt6-ohos-sdk` / `--qt6-host` 四个。
+只传用户实际有的路径，缺失的参数不传。Qt 6 场景只需 `--deveco-path` / `--ohos-sdk-native` / `--qt6-ohos-sdk` / `--qt6-host` 四个，装了 additional-packages 再加 `--ohos-additional-packages`。
 
 Agent 向用户展示生成结果，请用户确认。
 
@@ -337,6 +360,7 @@ bash skills/kb-init/scripts/verify-env.sh
 - `ENV.local.md` 已生成到 KB 根目录
 - DevEco Studio + OHOS SDK native + DevEco CLI 已就绪
 - Qt OHOS SDK 已配置（5.12 / 5.15 / 6.x 至少一个）
+- （Qt 6）`OHOS_ADDITIONAL_PACKAGES` 已配置，或已确认不需要
 - `verify-env.sh` 输出 `STATUS=ready`
 
 ## 错误处理
@@ -353,6 +377,8 @@ bash skills/kb-init/scripts/verify-env.sh
 | 编译 SDK 失败 (commercial) | 检查 MinGW/Perl/cmake 是否安装；参阅 `references/qt-compile-guide.md` 故障排除章节 |
 | `verify-env.sh` 报告 FAIL | 按 FAIL 项提示修复，重新运行 |
 | Qt 6: `qt-cmake` FAIL | 确认 `QT6_OHOS_SDK` 指向 `harmonyos_arm64_v8a` 而非 `<QtSDK>/6.x.y` 上级目录 |
+| Qt 6: HAP 装上后启动即崩（`dlopen` … `libicui18n.so not found`） | 缺 additional-packages 运行时 .so，从 `<OHOS_ADDITIONAL_PACKAGES>/lib/` 拷 9 个 .so 到 `hap/entry/libs/arm64-v8a/` 后重新 `hvigorw assembleHap` |
+| `verify-env.sh`: additional-packages FAIL | 路径错或 zip 解压不完整，重新解压 `ohos-additional-packages-*.zip` |
 | Linux 用户无 DevEco Studio GUI | 正常——使用 Command Line Tools |
 
 ## 参考文档

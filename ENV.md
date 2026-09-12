@@ -61,6 +61,7 @@
 | `QT5_15_OHOS_SDK` | `<QT5_15_OHOS_SDK_PATH>` | CMake `CMAKE_PREFIX_PATH`（Qt 5.15） |
 | `QT6_OHOS_SDK` | `<QT6_OHOS_SDK_PATH>` | Qt 6 鸿蒙 target SDK，如 `<QT_SDK_ROOT>/6.12.0/harmonyos_arm64_v8a` |
 | `QT6_HOST` | `<QT6_HOST_PATH>` | Qt 6 host 工具链（`QT_HOST_PATH`），如 `<QT_SDK_ROOT>/6.12.0/macos` |
+| `OHOS_ADDITIONAL_PACKAGES` | `<OHOS_ADDITIONAL_PACKAGES_PATH>` | `ohos-additional-packages-*.zip` 解压根目录（fontconfig/freetype/icu/brotli/libpng/expat/uuid 等鸿蒙交叉编译产物）；Qt 6 打 HAP 时需从 `lib/` stage 9 个运行时 .so |
 
 > **Qt 6 与 Qt 5 的差异**：Qt 6 鸿蒙版由官方 online installer 安装，目录内已含 target + host 两套产物，
 > 构建用 `<QT6_OHOS_SDK>/bin/qt-cmake`（已内置 toolchain 与 `QT_HOST_PATH`，无需手动传 `CMAKE_PREFIX_PATH`），

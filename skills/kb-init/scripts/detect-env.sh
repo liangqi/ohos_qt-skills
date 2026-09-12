@@ -286,6 +286,50 @@ echo "TEMPLATE_STANDALONE_FOUND=$TEMPLATE_STANDALONE_FOUND"
 echo "TEMPLATE_STANDALONE_PATH=$TEMPLATE_STANDALONE_PATH"
 
 # ═══════════════════════════════════════════════════════════
+# 5c. additional-packages 检测（鸿蒙第三方预编译库）
+# ═══════════════════════════════════════════════════════════
+# 官方 wiki（wiki.qt.io/Building_Qt6_for_HarmonyOS）提供的
+# ohos-additional-packages-*.zip：fontconfig/freetype/icu/brotli/libpng/expat/uuid 等
+# 交叉编译好的 include/ lib/ share/。
+#   - 源码 superbuild：必需（CMAKE_FIND_ROOT_PATH）
+#   - 预构建 kit：configure 可省，但 Qt6 .so 的 HARD DT_NEEDED 指向这些库，
+#     打 HAP 时需从这里 stage 到 hap/entry/libs/arm64-v8a/，否则启动即 dlopen 失败
+OHOS_ADDITIONAL_PACKAGES_FOUND="false"
+OHOS_ADDITIONAL_PACKAGES_PATH=""
+
+_is_additional_packages() {
+  local d="$1"
+  [ -d "$d/lib" ] && [ -d "$d/include" ] || return 1
+  local f
+  for f in libfontconfig.so libfreetype.so libicuuc.so; do
+    [ -f "$d/lib/$f" ] && return 0
+  done
+  return 1
+}
+
+_ap_candidates=(
+  "${OHOS_ADDITIONAL_PACKAGES:-}"
+  "$HOME/.local/opt/ohos/additional-packages"
+  "$KB_ROOT/workspace/additional-packages"
+  "$HOME/dev/ohos-additional-packages"
+  "$HOME/ohos-additional-packages"
+  "/opt/ohos/additional-packages"
+  "/c/Dev/ohos-additional-packages"
+  "/d/Dev/ohos-additional-packages"
+)
+for _d in "${_ap_candidates[@]}"; do
+  [ -n "$_d" ] || continue
+  if _is_additional_packages "$_d"; then
+    OHOS_ADDITIONAL_PACKAGES_FOUND="true"
+    OHOS_ADDITIONAL_PACKAGES_PATH="$(cd "$_d" && pwd)"
+    break
+  fi
+done
+
+echo "OHOS_ADDITIONAL_PACKAGES_FOUND=$OHOS_ADDITIONAL_PACKAGES_FOUND"
+echo "OHOS_ADDITIONAL_PACKAGES_PATH=$OHOS_ADDITIONAL_PACKAGES_PATH"
+
+# ═══════════════════════════════════════════════════════════
 # 6. ENV.local.md 状态
 # ═══════════════════════════════════════════════════════════
 ENV_LOCAL_EXISTS="false"
