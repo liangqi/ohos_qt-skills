@@ -106,21 +106,42 @@ else
 fi
 
 # 10. DevEco CLI (devecocli)
+#     DevEco Studio 6.x 起不再内置 tools/devecocli，改由 npm 包 @deveco/deveco-cli 提供，
+#     全局安装目录（npm prefix）常不在 PATH 中 —— PATH / 内置目录 / npm prefix 三条都要探测。
 DEVECO_CLI_FOUND="false"
+DEVECO_CLI_PATH=""
 if command -v devecocli &>/dev/null; then
   DEVECO_CLI_FOUND="true"
+  DEVECO_CLI_PATH="$(command -v devecocli)"
   ok "DevEco CLI (PATH)"
-elif [ "$DEVECO_FOUND" = "true" ]; then
-  _cli="$DEVECO_PATH/Contents/tools/devecocli"
-  if [ -f "$_cli" ]; then
-    DEVECO_CLI_FOUND="true"
-    ok "DevEco CLI (DevEco Studio 内置，未加入 PATH)"
-    warn "devecocli 未加入 PATH" "建议运行: echo 'export PATH=\"$DEVECO_PATH/Contents/tools:\$PATH\"' >> ~/.zshrc && source ~/.zshrc"
-  else
-    warn "DevEco CLI 未找到" "DevEco Studio 应自带 devecocli"
-  fi
+elif [ "$DEVECO_FOUND" = "true" ] && [ -f "$DEVECO_PATH/Contents/tools/devecocli" ]; then
+  DEVECO_CLI_FOUND="true"
+  DEVECO_CLI_PATH="$DEVECO_PATH/Contents/tools/devecocli"
+  ok "DevEco CLI (DevEco Studio 5.x 内置，未加入 PATH)"
+  warn "devecocli 未加入 PATH" "建议运行: echo 'export PATH=\"$DEVECO_PATH/Contents/tools:\$PATH\"' >> ~/.zshrc && source ~/.zshrc"
 else
-  warn "DevEco CLI 未找到" "安装 DevEco Studio 后自带"
+  for _npm in "$DEVECO_PATH/Contents/tools/node/bin/npm" \
+              "/Applications/DevEco-Studio.app/Contents/tools/node/bin/npm" \
+              "$HOME/Applications/DevEco-Studio.app/Contents/tools/node/bin/npm" \
+              npm; do
+    command -v "$_npm" &>/dev/null || continue
+    _prefix=$("$_npm" config get prefix 2>/dev/null)
+    [ -n "$_prefix" ] || continue
+    for _c in "$_prefix/bin/devecocli" "$_prefix/devecocli"; do
+      { [ -x "$_c" ] || [ -f "$_c" ]; } || continue
+      DEVECO_CLI_PATH="$_c"; DEVECO_CLI_FOUND="true"; break
+    done
+    [ "$DEVECO_CLI_FOUND" = "true" ] && break
+  done
+  if [ "$DEVECO_CLI_FOUND" = "true" ]; then
+    ok "DevEco CLI (npm 全局安装: $DEVECO_CLI_PATH)"
+    case "$DEVECO_CLI_PATH" in
+      */Cellar/node/*)
+        warn "devecocli 装在 Homebrew node 的 Cellar 目录下" "node 升级后会被清空。建议: npm config set prefix ~/.local 后重装 @deveco/deveco-cli@stable" ;;
+    esac
+  else
+    warn "DevEco CLI 未找到" "DevEco 6.x 不再内置，装法: <DevEco>/Contents/tools/node/bin/npm install -g @deveco/deveco-cli@stable（非必需，命令行打 HAP 用 hvigorw 即可）"
+  fi
 fi
 
 # 11. 磁盘空间
