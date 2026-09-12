@@ -14,7 +14,8 @@ summary: >
   Qt5 时代手工套模板/配 APP_LIBRARY_NAME/手动拷 libqohosstyle.so 全部自动化。
   三条关键结论：additional-packages 的 10 个运行时 .so 必须用 QT_HARMONYOS_EXTRA_LIBS 显式补
   （ICU 还要版本化/非版本化双名字）；Qt6 的平台宏是 Q_OS_HARMONY 不是 Qt5 的 Q_OS_OHOS；
-  签名是最后一公里（未签名 HAP 装不上机）。编译/打包/依赖闭包已验证，真机运行未验证。
+  签名是最后一公里（未签名 HAP 装不上机），但六件套齐备时可全程命令行完成、无需 DevEco GUI。
+  编译/打包/依赖闭包/真机运行全部验证通过（2026-09-12，两次独立移植）。
 ---
 
 # gallery（Qt Widgets 示例）Qt 6.12 鸿蒙化 — 经验总结
@@ -134,7 +135,9 @@ endif()
 | `main.cpp` | `AA_UseHighDpiPixmaps` / `AA_EnableHighDpiScaling` / `AA_DisableHighDpiScaling` 用 `QT_VERSION < 6.0` 包住 | Qt 6 高 DPI 恒开，三者是废弃 no-op（3 条 deprecated 警告） |
 
 鸿蒙适配另加一处：`QFileSystemModel` 根路径在 `Q_OS_HARMONY` 下由 `QDir::rootPath()`（`/`）
-改为 `QStandardPaths::AppDataLocation` 并 `setRootIndex()`——沙箱里 `/` 不可读，否则 Tree View 是空的。
+改为**沙箱根** `QFileInfo(QDir::homePath()).absolutePath()` 并 `setRootIndex()`——沙箱里 `/` 不可读，
+否则 Tree View 是空的。注意换成 `AppDataLocation` / `homePath()` 同样是空的（都指向空的 `files/`），
+详见下文 §真机验证 观察 1 的实测表。
 
 窗口**无需**改动：`WidgetGallery` 虽是无 parent 的 `QDialog`，但它是首个顶层窗口，
 按 First Window Rule（W2）自动绑定系统主窗口，不触发 W3。
@@ -165,9 +168,38 @@ export PATH="$JAVA_HOME/bin:/Applications/DevEco-Studio.app/Contents/tools/node/
 ```
 
 > ⚠️ **不要再跑 `<target>_make_hap`**：`harmonydeployqt` 会重新生成工程、覆盖
-> `build-profile.json5`，刚配好的 `signingConfigs` 就没了。要让签名进 CMake 流程，
-> 得把那六个值以 `QT_HARMONYOS_SIGNING_*` 环境变量喂给 `harmonydeployqt`（口令用
-> `build-profile.json5` 里已加密的 blob 原样传）。
+> `build-profile.json5`，刚配好的 `signingConfigs` 就没了。
+
+#### 5.1 全命令行签名（2026-09-12 二次移植验证通过，推荐）
+
+上面的 GUI 往返只需做**一次**——目的是拿到那套绑定本应用 bundleName 的证书和
+hvigor 加密口令。拿到后把六个值从（任一份已配好的）`build-profile.json5` 的
+`signingConfigs[].material` 里抄出来，以 `QT_HARMONYOS_SIGNING_*` 环境变量喂给
+`harmonydeployqt`，`<target>_make_hap` 就会一步直出 **signed** HAP，不再需要打开 DevEco：
+
+```bash
+export QT_HARMONYOS_SIGNING_CERT_PATH=<...>.cer       # material.certpath
+export QT_HARMONYOS_SIGNING_PROFILE=<...>.p7b         # material.profile
+export QT_HARMONYOS_SIGNING_STORE_FILE=<...>.p12      # material.storeFile
+export QT_HARMONYOS_SIGNING_KEY_ALIAS=debugKey        # material.keyAlias
+export QT_HARMONYOS_SIGNING_KEY_PASSWORD=<blob>       # material.keyPassword（加密 blob 原样抄）
+export QT_HARMONYOS_SIGNING_STORE_PASSWORD=<blob>     # material.storePassword（同上）
+
+export DEVECO_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk
+export JAVA_HOME=/Applications/DevEco-Studio.app/Contents/jbr/Contents/Home
+export PATH="$JAVA_HOME/bin:/Applications/DevEco-Studio.app/Contents/tools/node/bin:$PATH"
+cmake --build <build> --target gallery_make_hap       # → entry-default-signed.hap
+```
+
+实测要点：
+
+- hvigor 日志里出现 `Finished :entry:default@SignHap` 即为签名生效；产物名直接是
+  `entry-default-signed.hap`（未签名时才叫 `entry-default-unsigned.hap`），可据此判断。
+- **口令是 hvigor 加密后的 blob，原样传**，不要试图解密或填明文。
+- 六个缺一就整体跳过签名（静默退回 unsigned），所以 `make_hap` 覆盖
+  `build-profile.json5` 不再是问题——签名信息此时来自环境变量，不来自工程文件。
+- 证书绑定的 bundleName 必须与 `QT_HARMONYOS_APP_BUNDLE_NAME` 一致，
+  可用 `strings <...>.p7b | grep bundle-name` 先行核对。
 
 ---
 
@@ -181,7 +213,13 @@ export PATH="$JAVA_HOME/bin:/Applications/DevEco-Studio.app/Contents/tools/node/
 | 打 HAP | ✅ `BUILD SUCCESSFUL`，`entry-default-unsigned.hap` 103 MB |
 | 运行时依赖闭包 | ✅ 补 10 个 .so 后无未解析项（脚本递归比对 NEEDED × sysroot × HAP libs） |
 | macOS host 构建 | ✅ 同一份源码/CMakeLists 桌面侧照常编译（改动跨平台安全） |
+| 全命令行签名 | ✅ **通过**（2026-09-12 二次移植）`QT_HARMONYOS_SIGNING_*` 六件套 → `make_hap` 直出 signed HAP，无需 DevEco GUI，见 §5.1 |
 | **真机运行** | ✅ **通过**（2026-09-12，HUAWEI 设备 / HarmonyOS）——见下节 |
+
+> **2026-09-12 二次移植（独立复跑）**：同一份源码从零走一遍，结论全部复现——
+> `splitRef` 是唯一编译错误、10 个 additional-packages .so 补齐后依赖闭包干净（HAP 内 26 个 .so、
+> 0 未解析）、签名 HAP 104 MB、真机渲染与 `ohos` style 正常。
+> 两处对首版的更正见 §真机验证 观察 1（沙箱路径）与 §5.1（命令行签名）。
 
 ## 真机验证（2026-09-12）
 
@@ -206,13 +244,43 @@ calling 'main' function ... argv[0]='/data/storage/el1/bundle/libs/arm64/libgall
 窗口带鸿蒙原生标题栏与最大/最小/关闭按钮。关闭后进程正常退出
 （`AbilityStage::onDestroy: calling _Exit(0)`），无崩溃。
 
-**观察 1：`AppDataLocation` 在沙箱里落在空的 `preferences/`，Tree View 因此是空的。**
-§4 的沙箱适配防住了"读 `/` 什么也没有"，但换到的目录本身也没内容——
-设备上 `/data/app/el2/100/base/<bundle>/` 下是 `cache` / `files` / `haps` /
-`preferences` / `temp` 五个子目录，而 Qt6 的 `AppDataLocation` 映射到 `preferences/`（空）。
-要让文件树有东西看，应改用 `QDir::homePath()`（沙箱根）或 `files/`。
-这条同时是 [[qt-harmonyos-qt6-status]] 「`AppLocalDataLocation` 在 Qt6 改映射到 preferencesDir」
-的运行时实证。
+**观察 1：沙箱路径的正确取法（2026-09-12 二次移植时用 `qDebug` 实测更正）。**
+
+首版此处记的两点均有误，已更正：
+
+| 首版说法 | 实测 |
+|---|---|
+| `AppDataLocation` 映射到 `preferences/` | ❌ `AppDataLocation` = `<沙箱>/files`；映射到 `preferences/` 的是 `AppLocalDataLocation` |
+| 改用 `QDir::homePath()`（沙箱根） | ❌ `homePath()` 就等于 `AppDataLocation`（`files/`），**不是**沙箱根，且同样是空的 |
+
+实测值（Qt 6.12.0 / HarmonyOS 6.1.1，新装应用）：
+
+```
+AppDataLocation      = /data/storage/el2/base/files        (空)
+AppLocalDataLocation = /data/storage/el2/base/preferences  (空)
+HomeLocation/homePath= /data/storage/el2/base/files        (空)
+TempLocation         = /data/storage/el2/base/temp         (空)
+DocumentsLocation    = /storage/Users/currentUser/Documents (沙箱外，需权限)
+QDir::rootPath()     = /                                    (沙箱内不可读)
+```
+
+**沙箱根是 `homePath()` 的上级** `/data/storage/el2/base`，下含 `cache`/`files`/`haps`/
+`preferences`/`temp`。要让 `QFileSystemModel` 立刻有内容可列，只有它：
+
+```cpp
+#ifdef Q_OS_HARMONY
+    const QString fsRootPath = QFileInfo(QDir::homePath()).absolutePath();
+#else
+    const QString fsRootPath = QDir::rootPath();
+#endif
+    const QModelIndex fsRootIndex = fileSystemModel->setRootPath(fsRootPath);
+    treeView->setModel(fileSystemModel);
+    treeView->setRootIndex(fsRootIndex);
+```
+
+真机截图确认 Tree View 列出 5 个 Folder 行。
+[[qt-harmonyos-qt6-status]] 的「`AppLocalDataLocation` 在 Qt6 改映射到 preferencesDir」
+通则本身是对的，被实测确认。
 
 **观察 2：关闭窗口时有两条非致命报错**（不影响退出，根因未定位）：
 
@@ -223,7 +291,12 @@ D OHOS plugin: Error: xComponent 0x... does not have any assigned receiver
 ```
 
 发生在 `QDialog` 关闭走鸿蒙 hide 路径时（对应铁律 W5「主窗口 `hide()` 回退为最小化」的实现路径）。
-单次观察、未复现验证，**暂不入 problems/**；如后续在别的应用上复现，再按错误码 `16000067` 立页。
+
+**2026-09-12 二次移植复现验证：同一应用两次独立构建/部署均稳定复现**（点击标题栏关闭按钮触发），
+两条报错顺序、内容完全一致，且均不影响退出——随后 `QAbility::onDestroy()` →
+`AbilityStage::onDestroy: calling _Exit(0)`，进程表清空，无崩溃。
+结论：**可稳定复现但非致命**。仍未在别的应用上观察到，故按原判据**暂不入 problems/**；
+若在第二个应用复现，即按错误码 `16000067` 立页。
 
 ## 可复用产出
 

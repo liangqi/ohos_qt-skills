@@ -78,7 +78,24 @@ Qt 6 新增了若干 `QStandardPaths::StandardLocation` 枚举值，以下映射
 
 > ⚠️ **行为变更**：`AppLocalDataLocation` 在 Qt 5 for OHOS 上映射到 `filesDir`，但在 Qt 6 中映射到 **`preferencesDir`**。迁移时需注意路径差异。
 >
-> **2026-09-12 运行时实证**（gallery 真机）：`QStandardPaths::AppDataLocation` 在沙箱里落到 `preferences/`，而该目录默认**是空的**——拿它当 `QFileSystemModel` 根路径会得到空文件树。设备上 `/data/app/el2/100/base/<bundle>/` 下为 `cache`/`files`/`haps`/`preferences`/`temp` 五个子目录，要列文件树用 `QDir::homePath()`（沙箱根）或 `files/` 更合适。见 [[gallery-qt6-harmonyos-port]] §真机验证 观察 1。
+> **2026-09-12 运行时实测**（gallery 真机，Qt 6.12.0 / HarmonyOS 6.1.1，`qDebug` 逐项打印）：
+>
+> | `QStandardPaths` / `QDir` | 沙箱内实际值 | 新装应用是否有内容 |
+> |---|---|---|
+> | `AppDataLocation` | `/data/storage/el2/base/files` | 空 |
+> | `AppLocalDataLocation` | `/data/storage/el2/base/preferences` | 空 |
+> | `HomeLocation` / `QDir::homePath()` | `/data/storage/el2/base/files` | 空 |
+> | `TempLocation` | `/data/storage/el2/base/temp` | 空 |
+> | `DocumentsLocation` | `/storage/Users/currentUser/Documents` | 沙箱外，需权限 |
+> | `QDir::rootPath()` | `/` | 沙箱内不可读 |
+>
+> 要点：**`QDir::homePath()` 不是沙箱根，而等同 `AppDataLocation`（`files/`）**；沙箱根是它的上级
+> `/data/storage/el2/base`，下含 `cache`/`files`/`haps`/`preferences`/`temp` 五个子目录。
+> 拿 `QFileSystemModel` 列文件树时唯一能立刻看到内容的是沙箱根，取法
+> `QFileInfo(QDir::homePath()).absolutePath()`。见 [[gallery-qt6-harmonyos-port]] §真机验证 观察 1。
+>
+> （此表更正了本条 2026-09-12 首版的两处口径错误：误记 `AppDataLocation`→`preferences/`，
+> 以及误称 `QDir::homePath()` 为沙箱根。）
 
 ### CMake API 变更
 
