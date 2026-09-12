@@ -77,6 +77,8 @@ Qt 6 新增了若干 `QStandardPaths::StandardLocation` 枚举值，以下映射
 | `GenericStateLocation` | ✅ 映射到 `filesDir` | ❌ 不存在 |
 
 > ⚠️ **行为变更**：`AppLocalDataLocation` 在 Qt 5 for OHOS 上映射到 `filesDir`，但在 Qt 6 中映射到 **`preferencesDir`**。迁移时需注意路径差异。
+>
+> **2026-09-12 运行时实证**（gallery 真机）：`QStandardPaths::AppDataLocation` 在沙箱里落到 `preferences/`，而该目录默认**是空的**——拿它当 `QFileSystemModel` 根路径会得到空文件树。设备上 `/data/app/el2/100/base/<bundle>/` 下为 `cache`/`files`/`haps`/`preferences`/`temp` 五个子目录，要列文件树用 `QDir::homePath()`（沙箱根）或 `files/` 更合适。见 [[gallery-qt6-harmonyos-port]] §真机验证 观察 1。
 
 ### CMake API 变更
 
@@ -292,6 +294,17 @@ gallery 实测首个 HAP 31.8 MB 缺 10 个依赖（ICU 三件套 + fontconfig/f
 （`strings <profile>.p7b | grep bundle-name` 可验），口令留在 IDE 会话里、不落工程文件，
 命令行复用不了 → 首次签名仍需 DevEco Studio 勾一次。
 
+DevEco 勾过自动签名后，`material`（含 hvigor 加密的 `keyPassword`/`storePassword`）落在
+**生成工程**的 `build-profile.json5` 里，此时直接在该目录跑 `hvigorw assembleHap` 即出
+`entry-default-signed.hap`。⚠️ **别再跑 `<target>_make_hap`** —— `harmonydeployqt` 会重新生成
+工程并覆盖 `build-profile.json5`，签名配置随之丢失；要把签名固化进 CMake 流程，需把那六个值以
+`QT_HARMONYOS_SIGNING_*` 环境变量传入（口令用已加密的 blob 原样传）。
+
+**2026-09-12 真机验证通过**（gallery，HUAWEI 设备）：`hdc install -r` → `aa start` 后 UI 渲染正常，
+hilog 显示 `opened library '/data/storage/el1/bundle/libs/arm64/libgallery.so' with main function`、
+Style 为 `ohos`（样式插件自动部署生效）、退出走 `AbilityStage::onDestroy: _Exit(0)` 无崩溃。
+细节与两条运行时观察见 [[gallery-qt6-harmonyos-port]] §真机验证。
+
 ## 已知问题与待验证项
 
 | # | 项目 | 状态 |
@@ -345,4 +358,4 @@ gallery 实测首个 HAP 31.8 MB 缺 10 个依赖（ICU 三件套 + fontconfig/f
 | 2026-08-02 | 策略 B' 预构建 CLI 端到端验证（Qt6 预构建 CLI 端到端工作流，内部）：widgets/gallery demo configure→build→package HAP ~33MB 成功，固化 11 陷阱 + hvigor-wrapper.bat 占位符模板 |
 | 2026-08-03 | Qt6+CEF 鸿蒙集成验证（Qt6+CEF 集成工作流，内部）：OpenQtCef Qt5→Qt6 迁移，HAP 真机启动通过；IoT addon（qtmqtt）鸿蒙交叉编译验证（已知问题 \#21） |
 | 2026-08-25 | beta3 ground-truth 复核（本地 `${QT6_INSTALLER_ROOT}/6.12.0/harmonyos_arm64_v8a`）：`Qt6HarmonyExtras` 重新独立成模块（`libQt6HarmonyExtras.so` + cmake，公开头仅 exports/version 桩，16 功能头全私有 `_p.h`）→ 翻 beta2「不作为独立模块存在」结论（修正已知问题 #2 + 模块适配状态表 + QPA 变更节）；新增「Qt6 beta3 文件权限授予接口」节（`QPermissions` 公开 API 无文件类权限类型 + `QtHarmonyExtras::FileShare::persistPermission` 私有 + picker 未封装，走鸿蒙原生 `@ohos.file.picker`/`@ohos.fileshare`） |
-| 2026-09-12 | 6.12.0 正式预构建 kit + macOS host 端到端复核（gallery 示例移植，见 [[gallery-qt6-harmonyos-port]]）：新增「策略 B' 的 CMake 原生打包流程」节（`<target>_make_hap` 目标 / kit 内置模板 / `QT_HARMONYOS_*` 属性表 / `QT_HARMONYOS_EXTRA_LIBS` / 签名六件套）；修正已知问题 \#20：鸿蒙平台宏是 `Q_OS_HARMONY` 而非 `Q_OS_OHOS` |
+| 2026-09-12 | 6.12.0 正式预构建 kit + macOS host 端到端复核（gallery 示例移植，见 [[gallery-qt6-harmonyos-port]]）：新增「策略 B' 的 CMake 原生打包流程」节（`<target>_make_hap` 目标 / kit 内置模板 / `QT_HARMONYOS_*` 属性表 / `QT_HARMONYOS_EXTRA_LIBS` / 签名六件套）；修正已知问题 \#20：鸿蒙平台宏是 `Q_OS_HARMONY` 而非 `Q_OS_OHOS`；当日晚些完成真机验证（签名→install→aa start→UI 渲染正常），补签名实操路径、`make_hap` 会覆盖 signingConfigs 的陷阱、`AppDataLocation` 落空目录的实证 |

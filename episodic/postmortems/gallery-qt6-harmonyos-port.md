@@ -28,7 +28,7 @@ summary: >
 | 目标 | HarmonyOS arm64-v8a |
 | Qt | **6.12.0 预构建安装器 kit**（`<QtSDK>/6.12.0/harmonyos_arm64_v8a` + host `macos`） |
 | host | macOS arm64 |
-| 产物 | `entry-default-unsigned.hap`（103 MB） |
+| 产物 | `entry-default-unsigned.hap` 103 MB / 签名后 `entry-default-signed.hap` 104 MB |
 | 移植代价 | 新增 1 个 CMakeLists.txt + 改 20 行源码 |
 
 ## 预检结论
@@ -151,6 +151,24 @@ endif()
 口令留在 IDE 会话里、工程 `build-profile.json5` 的 `signingConfigs` 是空数组，
 命令行无从复用 → 只能先用 DevEco Studio 打开生成的工程勾一次自动签名。
 
+**实际走通的路径**：用 DevEco Studio 打开 `<build>/harmonyos-build`，勾 *Automatically generate
+signature* —— DevEco 会为本工程的 bundleName 新签一套 `.cer/.p7b/.p12` 放进 `~/.ohos/config/`，
+并把 `material`（含 hvigor 加密后的 `keyPassword`/`storePassword`）写进**生成工程的**
+`build-profile.json5`。此后：
+
+```bash
+cd <build>/harmonyos-build
+export DEVECO_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk
+export JAVA_HOME=/Applications/DevEco-Studio.app/Contents/jbr/Contents/Home
+export PATH="$JAVA_HOME/bin:/Applications/DevEco-Studio.app/Contents/tools/node/bin:$PATH"
+<DevEco>/Contents/tools/hvigor/bin/hvigorw assembleHap --no-daemon   # → entry-default-signed.hap
+```
+
+> ⚠️ **不要再跑 `<target>_make_hap`**：`harmonydeployqt` 会重新生成工程、覆盖
+> `build-profile.json5`，刚配好的 `signingConfigs` 就没了。要让签名进 CMake 流程，
+> 得把那六个值以 `QT_HARMONYOS_SIGNING_*` 环境变量喂给 `harmonydeployqt`（口令用
+> `build-profile.json5` 里已加密的 blob 原样传）。
+
 ---
 
 ## 验证状态
@@ -163,7 +181,49 @@ endif()
 | 打 HAP | ✅ `BUILD SUCCESSFUL`，`entry-default-unsigned.hap` 103 MB |
 | 运行时依赖闭包 | ✅ 补 10 个 .so 后无未解析项（脚本递归比对 NEEDED × sysroot × HAP libs） |
 | macOS host 构建 | ✅ 同一份源码/CMakeLists 桌面侧照常编译（改动跨平台安全） |
-| **真机运行** | ❌ **未验证**——HAP 未签名，设备虽在线但装不上 |
+| **真机运行** | ✅ **通过**（2026-09-12，HUAWEI 设备 / HarmonyOS）——见下节 |
+
+## 真机验证（2026-09-12）
+
+```bash
+hdc install -r <...>/entry-default-signed.hap          # install bundle successfully
+hdc shell aa start -a QAbility -b org.qtproject.example.gallery -m entry
+```
+
+hilog 里 Qt 胶水链路完整，**无任何缺库**（说明 §2 的 10 个 .so 补对了）：
+
+```
+setupQtApplication() - sharedLibraryName: libgallery.so
+opened library '/data/storage/el1/bundle/libs/arm64/libgallery.so' with main function
+calling 'main' function ... argv[0]='/data/storage/el1/bundle/libs/arm64/libgallery.so'
+```
+
+> 最后一行是铁律 L2（`argv[0]` 是**库路径**不是可执行文件路径）的直接实证。
+
+截图确认渲染正常：标题 `Widget Gallery Qt 6.12.0`，Style 下拉为 **`ohos`**（说明
+`styles/libqohosstyle.so` 自动部署生效），按钮 / 单选 / 三态复选框 / 密码框 / SpinBox /
+日期时间 / 滑块 / Dial / 富文本全部正常，深色模式跟随系统，进度条动画在走，
+窗口带鸿蒙原生标题栏与最大/最小/关闭按钮。关闭后进程正常退出
+（`AbilityStage::onDestroy: calling _Exit(0)`），无崩溃。
+
+**观察 1：`AppDataLocation` 在沙箱里落在空的 `preferences/`，Tree View 因此是空的。**
+§4 的沙箱适配防住了"读 `/` 什么也没有"，但换到的目录本身也没内容——
+设备上 `/data/app/el2/100/base/<bundle>/` 下是 `cache` / `files` / `haps` /
+`preferences` / `temp` 五个子目录，而 Qt6 的 `AppDataLocation` 映射到 `preferences/`（空）。
+要让文件树有东西看，应改用 `QDir::homePath()`（沙箱根）或 `files/`。
+这条同时是 [[qt-harmonyos-qt6-status]] 「`AppLocalDataLocation` 在 Qt6 改映射到 preferencesDir」
+的运行时实证。
+
+**观察 2：关闭窗口时有两条非致命报错**（不影响退出，根因未定位）：
+
+```
+E OHOS plugin: got error from hideAbility(): name='Error',
+  message='The StartOptions check failed.', code='16000067'
+D OHOS plugin: Error: xComponent 0x... does not have any assigned receiver
+```
+
+发生在 `QDialog` 关闭走鸿蒙 hide 路径时（对应铁律 W5「主窗口 `hide()` 回退为最小化」的实现路径）。
+单次观察、未复现验证，**暂不入 problems/**；如后续在别的应用上复现，再按错误码 `16000067` 立页。
 
 ## 可复用产出
 
