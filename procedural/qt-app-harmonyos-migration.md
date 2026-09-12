@@ -4,10 +4,10 @@ type: procedural
 domain: workflow
 tags: [workflow, qt, harmonyos, porting, migration, ohos]
 created: 2026-06-02
-updated: 2026-07-21
+updated: 2026-09-12
 status: active
 audience: public
-refs: [semantic-qt-harmonyos-api-mapping,semantic-qt-harmonyos-build-run-workflow,semantic-qt-harmonyos-code-patterns,semantic-qt-harmonyos-lifecycle,semantic-qt-harmonyos-porting-workflow,semantic-qt-harmonyos-project-structure,semantic-qt-harmonyos-window-model]
+refs: [episodic-projects-gallery-qt6-harmonyos-port,semantic-qt-harmonyos-api-mapping,semantic-qt-harmonyos-build-run-workflow,semantic-qt-harmonyos-code-patterns,semantic-qt-harmonyos-lifecycle,semantic-qt-harmonyos-porting-workflow,semantic-qt-harmonyos-project-structure,semantic-qt-harmonyos-window-model]
 summary: >
   Qt应用鸿蒙化迁移工作流：评估可行性→创建工程结构→按8步决策树逐步迁移→编译验证→知识积累。
   将其他平台的Qt应用迁移到HarmonyOS平台的端到端流程。
@@ -99,6 +99,12 @@ mkdir -p "<MIGRATION_PROJECT_ROOT>/<app-name>-ohos"
 - 项目文件夹内即为完整的鸿蒙工程结构
 
 ### 1.3 准备工程结构（复制源码内置胶水模板）
+
+> **⚠️ Qt 6.12 预构建 kit 跳过本节**：`harmonydeployqt` 会自动取用 kit 内置模板
+> `<QT6_OHOS_SDK>/src/harmonyos/templates/`，不需要复制模板目录、不需要手配
+> `QtAppConstants.ets`，工程由 `<target>_make_hap` 目标生成。
+> 见 [[qt-harmonyos-qt6-status]] §策略 B' 的 CMake 原生打包流程 与 [[gallery-qt6-harmonyos-port]]。
+> 下面是 Qt 5（5.12/5.15）路径。
 
 > **⚠️ 核心原则：鸿蒙工程必须从 Qt 源码内置的胶水代码模板复制生成，禁止手动创建目录结构。**
 > 模板包含完整的 ArkTS 胶水代码、build-profile 配置、qEmbeddedUiExtensionHost 模块等，
@@ -198,6 +204,32 @@ add_library(myapp SHARED ${SOURCES})
 # 4. 链接 QPA 插件
 target_link_libraries(myapp PRIVATE Qt5::QOhosPlatformIntegrationPlugin)
 ```
+
+**Qt 6.12 预构建 kit 的对应形态**（上面四条在此路径下由工具链托管）：
+
+```cmake
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
+qt_standard_project_setup()
+qt_add_executable(myapp ${SOURCES})          # OHOS 上自动出 MODULE 库 + main GLOBAL DEFAULT
+target_link_libraries(myapp PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets)  # QPA 插件无需显式链接
+if(OHOS)
+    set_target_properties(myapp PROPERTIES
+        QT_HARMONYOS_APP_BUNDLE_NAME "org.qtproject.example.myapp"
+        QT_HARMONYOS_APP_NAME "My App"
+        QT_HARMONYOS_APP_LABEL "My App")
+    # ★ additional-packages 运行时 .so 必须显式补，否则启动即 dlopen 失败（铁律 B13）
+    set_property(TARGET myapp APPEND PROPERTY QT_HARMONYOS_EXTRA_LIBS ${_ohos_extra_libs})
+endif()
+```
+
+```bash
+<QT6_OHOS_SDK>/bin/qt-cmake -S <src> -B <build> -DCMAKE_BUILD_TYPE=Release \
+  -DHARMONYOS_HVIGOR=<DevEco>/tools/hvigor/bin/hvigorw
+cmake --build <build> --target myapp_make_hap
+```
+
+> 完整清单（`QT_HARMONYOS_*` 属性表、10 个运行时 .so、ICU 双名字、签名六件套）见
+> [[qt-harmonyos-qt6-status]] §策略 B' 的 CMake 原生打包流程；实战复盘见 [[gallery-qt6-harmonyos-port]]。
 
 ---
 

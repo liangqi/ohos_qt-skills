@@ -4,12 +4,12 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, golden-rules, quick-reference, porting, checklist]
 created: 2026-06-03
-updated: 2026-08-14
+updated: 2026-09-12
 status: active
 audience: public
-refs: [semantic-qt-harmonyos-porting-workflow, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-lifecycle, semantic-qt-harmonyos-api-mapping, semantic-qt-harmonyos-code-patterns, semantic-qt-harmonyos-window-model, semantic-qt-ohos-extras, semantic-qt-harmonyos-build, semantic-qt-harmonyos-third-party-libs]
+refs: [episodic-projects-gallery-qt6-harmonyos-port, semantic-qt-harmonyos-porting-workflow, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-lifecycle, semantic-qt-harmonyos-api-mapping, semantic-qt-harmonyos-code-patterns, semantic-qt-harmonyos-window-model, semantic-qt-ohos-extras, semantic-qt-harmonyos-build, semantic-qt-harmonyos-third-party-libs]
 summary: >
-  Qt 鸿蒙化铁律速查：35 条黄金规则覆盖构建部署、窗口管理、API/枚举路径、
+  Qt 鸿蒙化铁律速查：37 条黄金规则覆盖构建部署、窗口管理、API/枚举路径、
   平台限制对 Qt 的影响、生命周期 adapter、跨平台守卫。每条含严重度（🔴🟠🟡🟢）、"为什么"和出处。
   Agent 执行任何 Qt for HarmonyOS 任务前应先扫描此页。
 ---
@@ -24,29 +24,35 @@ summary: >
 > - **QtOhosExtras 模块不再独立存在** — 功能已内联到 QPA 插件中作为私有 API（`_p.h`），规则 B6/A3/A4/A5/A6 在 Qt6 中不适用
 > - **关闭事件 API 私有化** — `CloseEventRootCause` → `CloseRootCause`（私有），枚举值变更（`AbilityClose`→`OnPrepareToTerminate`）
 > - **CMake API 全面变更** — `find_package(Qt6...)`、`qt_add_resources()`、`qt_add_qml_modules()` 等
+> - **打包流程自动化（6.12 预构建 kit）** — `qt_add_executable` 的 finalizer 生成
+>   `${target}_make_hap` 目标，`harmonydeployqt` 自动套 kit 内置模板、部署 QPA 插件与样式插件、
+>   生成 `QtAppConstants.ets` 与 `app.json5`；B2/B3/B7 与「手工复制模板目录」等步骤不再需要
+> - **平台宏改名** — Qt6 对 `__OHOS__` 定义的是 `Q_OS_HARMONY`，不是 Qt5 的 `Q_OS_OHOS`（见 G3）
 >
-> Qt6 详细差异见 [[qt-harmonyos-qt6-status]]。
+> Qt6 详细差异见 [[qt-harmonyos-qt6-status]]；6.12 预构建 kit 的实测流程见
+> [[gallery-qt6-harmonyos-port]]。
 >
 > **严重度图例**：🔴 编译/部署阻断 | 🟠 静默失败（难调试） | 🟡 行为异常（可恢复） | 🟢 信息/最佳实践
 
 ---
 
-## 一、构建与部署（12 条）
+## 一、构建与部署（13 条）
 
 | # | 严重度 | 规则 | 为什么 | 出处 |
 |---|:------:|------|--------|------|
 | B1 | 🔴 | CMakeLists.txt 交叉编译时**必须**在 `find_package` 前设置 `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH`（三方库同理） | OHOS 工具链默认 `ONLY`，阻止找到 Qt 和三方库 | [[qt-harmonyos-project-structure]] §4.2, [[qt-harmonyos-third-party-libs]] §2.2 |
-| B2 | 🔴 | **必须**链接 `Qt${QT_VERSION_MAJOR}::QOhosPlatformIntegrationPlugin`（QPA 平台插件） | 不链接则 `dlopen failed: libqohos.so not found` | [[qt-harmonyos-project-structure]] §4.2 |
-| B3 | 🔴 | `APP_LIBRARY_NAME`（QtAppConstants.ets）**必须**与编译产物库名完全一致（含 `lib` 前缀和 `.so` 后缀） | 不一致则 ArkTS 层无法加载 .so | [[qt-harmonyos-project-structure]] §5 |
+| B2 | 🔴 | **必须**链接 `Qt${QT_VERSION_MAJOR}::QOhosPlatformIntegrationPlugin`（QPA 平台插件）。**Qt6 预构建 kit**：不用写，`qt_add_executable` + `harmonydeployqt` 自动把 `libqohos.so` 部署进 `entry/libs/<abi>/` | 不链接则 `dlopen failed: libqohos.so not found` | [[qt-harmonyos-project-structure]] §4.2 |
+| B3 | 🔴 | `APP_LIBRARY_NAME`（QtAppConstants.ets）**必须**与编译产物库名完全一致（含 `lib` 前缀和 `.so` 后缀）。**Qt6 预构建 kit**：`harmonydeployqt` 自动生成该文件，无需手配 | 不一致则 ArkTS 层无法加载 .so | [[qt-harmonyos-project-structure]] §5 |
 | B4 | 🔴 | **禁止**设置 `compileSdkVersion` 和 `targetSdkVersion` | 设置后 Schema validate failed | [[qt-harmonyos-project-structure]] §9 |
 | B5 | 🟡 | `runtimeOS` **必须**设置为 `"HarmonyOS"`（不是 `"OpenHarmony"`） | 影响应用打包和签名 | [[qt-harmonyos-project-structure]] §4.3 |
 | B6 | 🟡 | QtOhosExtras 模块**仅支持 qmake**（`CONFIG -= create_cmake`），CMake 无 find_package 支持。**Qt6**：模块不再独立存在，功能已内联到 QPA 插件 | 源码中禁用了 CMake config 生成 | [[qt-ohos-extras]] §使用方式, [[qt-harmonyos-qt6-status]] |
-| B7 | 🟡 | `libqohosstyle.so` **必须**手动复制到 `libs/${ABI_DIR}/styles/` 子目录 | 无法通过 target_link_libraries 部署到子目录 | [[qt-harmonyos-project-structure]] §6.2 |
+| B7 | 🟡 | `libqohosstyle.so` **必须**手动复制到 `libs/${ABI_DIR}/styles/` 子目录。**Qt6 预构建 kit**：自动部署（连同 `imageformats/`、`generic/` 插件子目录） | 无法通过 target_link_libraries 部署到子目录 | [[qt-harmonyos-project-structure]] §6.2 |
 | B8 | 🟡 | 场景二（已有工程鸿蒙化）`build-profile.json5` 的 `path` **必须**用绝对路径 | 相对路径找不到源文件 | [[qt-harmonyos-project-structure]] §9 |
 | B9 | 🔴 | qmake 的 `unix` 分支**必须**追加 `:!ohos`（`unix:!android:!macx:!ohos`） | 否则 ohos 同时命中 unix 分支，编译出错误的 Linux 代码 | [[qt-harmonyos-code-patterns]] §模式7 |
 | B10 | 🔴 | QML 应用**必须**启用 `CMAKE_AUTORCC ON` | 不启用则 qml.qrc 不编译，QML 文件不打包，运行时黑屏 | [[qt-harmonyos-project-structure]] §4.2 |
 | B11 | 🔴 | `bundleName` 必须使用目标 SDK schema 接受的稳定点分标识，并与最终生成工程、签名 profile、安装/启动命令一致 | 身份不一致会导致校验、签名、安装或启动失败；精确字符范围由目标 SDK 判定 | [[qt-harmonyos-project-structure]] §8 |
 | B12 | 🟠 | SQL 驱动插件 `libqsqlite.so`**必须**手动复制到 `libs/${ABI_DIR}/sqldrivers/`（与 B7 `libqohosstyle.so`→`styles/`、`libqsvg.so`→`imageformats/` 同类） | 动态分类插件无法靠 `target_link_libraries` 部署，`QFactoryLoader` 按子目录 dlopen 加载；漏部署则 `addDatabase("QSQLITE")` driver 为 null，`open()` 在碰文件系统前即返回 false（`lastError="Driver not loaded"`）。注意 OHOS SDK 文件名是 `libqsqlite.so`（非桌面 `libqsqlsqlite.so`） | [[qt-harmonyos-project-structure]] §6.2, [runtime-fail-sqlite-open-database](../problems/runtime-fail-sqlite-open-database.md) |
+| B13 | 🔴 | **Qt6 预构建 kit** 打 HAP 必须用 `QT_HARMONYOS_EXTRA_LIBS` 目标属性补 additional-packages 的运行时 .so（gallery 实测 10 个：ICU 三件套 + fontconfig/freetype/png16/expat/jpeg + ICU 无后缀名）。ICU 需**版本化与非版本化两个名字同时在场**：Qt 链接 `libicu*.so.78`，而 additional-packages 里 SONAME 无后缀，鸿蒙不能用 symlink，只能改名复制 | `harmonydeployqt` 只部署 Qt 自己的库；漏补则 HAP 装得上但启动即 `dlopen` 失败（`libicui18n.so.78 not found`）。打包后用依赖闭包脚本自查比装机看 hilog 便宜 | [[gallery-qt6-harmonyos-port]] §2, [[qt-harmonyos-qt6-status]] |
 
 ---
 
@@ -99,11 +105,12 @@ summary: >
 
 ---
 
-## 六、跨平台守卫（2 条）
+## 六、跨平台守卫（3 条）
 
 | # | 严重度 | 规则 | 为什么 | 出处 |
 |---|:------:|------|--------|------|
 | G1 | 🟢 | `Q_OS_OHOS` **隐含** `Q_OS_LINUX` — `#ifdef Q_OS_LINUX` 在鸿蒙上也会命中 | 必须检查所有 Q_OS_LINUX 分支是否兼容鸿蒙 | [[qt-harmonyos-porting-workflow]] §原则1 |
+| G3 | 🟠 | **Qt6 的鸿蒙平台宏是 `Q_OS_HARMONY`**（`qsystemdetection.h` 对 `__OHOS__` 定义），Qt5 的 `Q_OS_OHOS` 在 Qt6 **不存在** | 写错不报编译错误，整段平台适配变死代码、静默失效（gallery 移植实测踩中） | [[gallery-qt6-harmonyos-port]] §3 |
 | G2 | 🟢 | 拖放事件数据**只能**在 `dropEvent` 中读取，`dragEnterEvent`/`dragMoveEvent` 中只有 MIME 类型 | 鸿蒙拖放协议数据传输是异步的 | [[qt-harmonyos-code-patterns]] §模式9 |
 
 ---

@@ -4,10 +4,10 @@ type: semantic
 domain: tech
 tags: [qt, qt6, harmonyos, ohos, status, cmake]
 created: 2026-06-03
-updated: 2026-08-25
+updated: 2026-09-12
 status: active
 audience: public
-refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-build, semantic-qt-harmonyos-modules, semantic-qt-harmonyos-platform-limits, semantic-qt-ohos-project-analyzer-workflow]
+refs: [episodic-projects-gallery-qt6-harmonyos-port, semantic-qt-harmonyos-overview, semantic-qt-harmonyos-build, semantic-qt-harmonyos-modules, semantic-qt-harmonyos-platform-limits, semantic-qt-ohos-project-analyzer-workflow]
 summary: >
   Qt 6 鸿蒙化状态：qtbase dev 已合并 HarmonyOS 支持（Gerrit 733351），
   最低 SDK API 20（HarmonyOS 6.0.0），CMake 构建系统。
@@ -237,8 +237,60 @@ cmake --build . -j8   # 业务 .so（qt_add_executable 自动 MODULE + main GLOB
 > - **"模块层可行" ≠ "应用可编译"**：预构建再推翻 3 个旧"模块缺失"阻断（Serial-Studio 旧"Quick absent"→Quick 全在编译成功；QCTools 旧"Multimedia missing"→Multimedia 现齐，真阻断=FFmpeg native；Contour 旧"Quick hard-requires"→Quick 现齐，真阻断=DBus+xcb）。翻案后真阻断常是 native 重型库（FFmpeg/DBus+xcb），非 Qt 模块。收到"Quick/Multimedia/3D absent"类应用应：① 先验模块层（预构建大概率已齐）；② 再验 native 重型依赖层。
 > - **DBus 缺失是预构建确定性硬墙**（见已知问题 \#18）：无条件 REQUIRED DBus 的应用不可编译、不可 stub、不可 `-DCMAKE_DISABLE`；可选 DBus（`Q_OS_OHOS` 守护跳过）可编译。
 > - **C++23 deducing-this/ranges 是编译器能力缺口**（见已知问题 \#19）：OHOS clang 15.0.4 不支持 P0847（需 Clang18+），非 stub 可解，硬天花板。
-> - **`#ifdef Q_OS_LINUX` 不可信**（见已知问题 \#20）：Qt6 OHOS 同时定义 Q_OS_OHOS+Q_OS_LINUX，desktop-only 功能守护须用 `Q_OS_LINUX && !Q_OS_OHOS`。
+> - **`#ifdef Q_OS_LINUX` 不可信**（见已知问题 \#20）：Qt6 OHOS 同时定义鸿蒙宏 + `Q_OS_LINUX`，desktop-only 功能守护须排除鸿蒙（6.12 正式版宏名为 `Q_OS_HARMONY`，2026-09-12 复核修正，见 \#20）。
 > - 编译边界 stub 扩展：Merkaartor（GDAL/PROJ C++ 类层级 stub）、Drawpile（libav/libwebp/libzip/KArchive/libsodium stub）。第 3 批累计预构建 3 批 31 应用 22 成功。
+
+### 策略 B' 的 CMake 原生打包流程（macOS host 端到端，2026-09-12 gallery 实测）
+
+上面的配方是 Windows + 手工调 `harmonydeployqt6` 的形态。6.12.0 正式预构建 kit 里，
+**打 HAP 已经是一个 CMake 目标**，不必自己拼 `harmonydeployqt` 命令行：
+
+```bash
+<QT6_OHOS_SDK>/bin/qt-cmake -S <src> -B <build> -DCMAKE_BUILD_TYPE=Release \
+  -DHARMONYOS_HVIGOR=<DevEco>/Contents/tools/hvigor/bin/hvigorw
+cmake --build <build> --target <target>_make_hap
+# → <build>/harmonyos-build/entry/build/default/outputs/default/entry-default-unsigned.hap
+```
+
+- `qt_add_executable()` 的 finalizer（`Qt6HarmonyOSMacros.cmake` 的
+  `_qt_internal_harmonyos_executable_finalizer`）自动生成
+  `<target>-harmony-deployment-settings.json` 与 **`<target>_make_hap`** 目标。
+- **kit 内置鸿蒙工程模板**：`<QT6_OHOS_SDK>/src/harmonyos/templates/`（ArkTS 胶水、
+  `QAbility.ets`、`build-profile.json5`…），`harmonydeployqt` 自动取用——
+  Qt5 时代「从源码树复制 templates 目录」的步骤在此路径下**不再需要**。
+- macOS 上 `qt-cmake` 不需要 `QT_CHAINLOAD_TOOLCHAIN_FILE` 之类的补丁参数；kit 里烘焙的
+  OHOS SDK 路径在 configure 输出里可见（实测是 `/opt/harmonyos/command-line-tools/sdk/...`，
+  与 DevEco Studio 自带的那份 SDK 不是同一个）。
+- `HARMONYOS_HVIGOR`（或环境变量 `QT_HARMONYOS_HVIGOR`）在 **configure 时**读取；不给则
+  `harmonydeployqt` 到生成工程里找 hvigorw，而模板不含该 wrapper。
+
+**应用元数据用目标属性设，不再手改 json/资源文件**：
+
+| 属性 | 作用 |
+|------|------|
+| `QT_HARMONYOS_APP_BUNDLE_NAME` | `AppScope/app.json5` 的 `bundleName`（默认 `org.qtproject.example.<target>`） |
+| `QT_HARMONYOS_APP_NAME` / `_APP_LABEL` | 桌面图标名 / Ability 名（写进 `string.json` 的 value） |
+| `QT_HARMONYOS_APP_ICON` / `_APP_VENDOR` / `_APP_VERSION_NAME` / `_APP_VERSION_CODE` | 图标与版本元数据 |
+| `QT_HARMONYOS_ABILITY_ORIENTATION` / `_MODULE_DEVICE_TYPES` / `_MODULE_DESCRIPTION` | Ability 方向、设备类型、模块描述 |
+| `QT_HARMONYOS_COMPATIBLE_SDK_VERSION` / `_TARGET_SDK_VERSION` / `_COMPILE_SDK_VERSION` | SDK 版本（注意 Qt5 铁律 B4 的禁设项在此由工具链托管） |
+| **`QT_HARMONYOS_EXTRA_LIBS`** | 额外随包 .so（对标 Android `QT_ANDROID_EXTRA_LIBS`），取绝对路径或 CMake target |
+| `QT_HARMONYOS_EXTRA_PLUGINS` / `_PACKAGE_SOURCE_DIR` / `_TARGET_ARCHS` | 额外插件 / 自定义工程模板覆盖目录 / 目标架构 |
+
+`APP_LIBRARY_NAME`（`QtAppConstants.ets`）、`libqohos.so`、`styles/libqohosstyle.so`、
+`imageformats/`、`generic/` 插件均自动部署（实测 `unzip -l` 确认），铁律 B2/B3/B7 在此路径下失效。
+
+**但 additional-packages 的运行时 .so 仍要自己补**（铁律 B13）：`harmonydeployqt` 只带 Qt 自己的库，
+gallery 实测首个 HAP 31.8 MB 缺 10 个依赖（ICU 三件套 + fontconfig/freetype/png16/expat/jpeg
++ ICU 无后缀名），用 `QT_HARMONYOS_EXTRA_LIBS` 补齐后 103 MB。ICU 必须**版本化 + 非版本化双名字**
+（Qt 链 `libicu*.so.78`，additional-packages 的 SONAME 无后缀，鸿蒙又不能用 symlink → 改名复制一份；
+实测 hvigor 能打包 `*.so.78` 文件名）。详见 [[gallery-qt6-harmonyos-port]] §2。
+
+**签名**：`harmonydeployqt` 支持六件套 `--signing-cert-path` / `--signing-profile` /
+`--signing-store-file` / `--signing-key-alias` / `--signing-key-password` / `--signing-store-password`
+（或同名 `QT_HARMONYOS_SIGNING_*` 环境变量，口令须是 hvigor 加密 blob），**六个缺一即整体跳过签名**；
+`--install` 可经 hdc 直接装机。DevEco 自动生成的调试证书绑定特定 bundleName
+（`strings <profile>.p7b | grep bundle-name` 可验），口令留在 IDE 会话里、不落工程文件，
+命令行复用不了 → 首次签名仍需 DevEco Studio 勾一次。
 
 ## 已知问题与待验证项
 
@@ -263,7 +315,7 @@ cmake --build . -j8   # 业务 .so（qt_add_executable 自动 MODULE + main GLOB
 | 17 | harmonydeployqt6 `--hvigor` 参数路径要求 | ✅ **已验证（2026-07-25）**：`--hvigor <wrapper.bat>` 必须传**绝对路径**——相对路径报 'Failed to start hvigorw'（harmonydeployqt6 从生成的 project dir cwd 调 hvigor）。`harmonydeployqt6` 无 `--sdk-root` flag，stale sdk-root 在 deployment json input 里手改（第 2 批编译复盘 翻车点 1/3）|
 | 18 | DBus 缺失是预构建确定性硬墙 | ✅ **已验证（2026-07-27 第 3 批，flameshot/Contour/deepin-terminal）**：预构建缺 Qt6DBus。**无条件 REQUIRED DBus 的应用不可编译**——不可 stub（QDBusAbstractAdaptor/Interface 是 Q_OBJECT 基类需 moc + 全 QDBus API）、不可 `-DCMAKE_DISABLE_FIND_PACKAGE_Qt6DBus`（对 component `find_package` 无效）。flameshot（request.h 顶层无条件 `#include <QtDBus>` + Q_OBJECT 继承 + `!MACOS&&!WIN` 路径触发）、Contour（`find_package(Qt6 DBus REQUIRED)` 无 option 守护）、deepin-terminal（DBus core 源）。**对比可选 DBus 可编译**：Open-Typer/Serial-Studio/qlementine 用 `Q_OS_OHOS` 守护跳过 DBus，编译成功。判定规则：grep 源码 `#include <QtDBus>` 顶层无条件 + Q_OBJECT 继承 + find_package DBus REQUIRED 无守护 → 三者命中任一即不可编译（第 3 批编译复盘 决策 2）|
 | 19 | OHOS clang 是否支持 C++23 deducing-this/ranges 适配器 | ✅ **已验证（2026-07-27 第 3 批，creeper-qt）**：OHOS native clang **15.0.4 不实现 C++23 deducing-this（P0847R7）**（需 Clang 18.0+），无 -std flag 可在 15 上开启（实测 `-std=gnu++2b` 下 `auto f(this auto& self)` 报 expected parameter declarator，20 errors）；libc++ 同样缺 C++23 ranges 适配器（`std::views::zip`/`cartesian_product`）。用这些特性的应用需等 OHOS NDK 升级 Clang18+/libc++19+ 或源码层降级（deducing-this→CRTP、ranges→手写循环）。**编译器能力缺口**，非 Qt 模块/平台限制，非 stub 可解（第 3 批编译复盘 决策 3）|
-| 20 | Qt6 OHOS Q_OS_LINUX 守护是否可靠 | ✅ **已验证（2026-07-27 第 3 批，Open-Typer/Serial-Studio）**：Qt6 `qsystemdetection.h` 在 OHOS 上**同时定义 `Q_OS_OHOS` 和 `Q_OS_LINUX`**。源码用裸 `#ifdef Q_OS_LINUX` 守护 desktop-only 功能（DBus/systemd/X11/procfs）时，OHOS 上也触发 → 编译失败（DBus 预构建缺失）。**正确守护**：`#if defined(Q_OS_LINUX) && !defined(Q_OS_OHOS)`。Qt6 OHOS 独有（Qt5 qsystemdetection 可能不双定义）。grep `Q_OS_LINUX` 是 DBus 类阻断的早期信号（第 3 批编译复盘 决策 5）|
+| 20 | Qt6 OHOS Q_OS_LINUX 守护是否可靠 | ✅ **已验证（2026-07-27 第 3 批，Open-Typer/Serial-Studio）**：Qt6 `qsystemdetection.h` 在 OHOS 上**同时定义 `Q_OS_OHOS` 和 `Q_OS_LINUX`**。源码用裸 `#ifdef Q_OS_LINUX` 守护 desktop-only 功能（DBus/systemd/X11/procfs）时，OHOS 上也触发 → 编译失败（DBus 预构建缺失）。**正确守护**：`#if defined(Q_OS_LINUX) && !defined(Q_OS_OHOS)`。Qt6 OHOS 独有（Qt5 qsystemdetection 可能不双定义）。grep `Q_OS_LINUX` 是 DBus 类阻断的早期信号（第 3 批编译复盘 决策 5）。⚠️ **2026-09-12 复核修正（6.12.0 正式预构建 kit ground-truth）**：宏名是 **`Q_OS_HARMONY`**，不是 `Q_OS_OHOS` —— `qsystemdetection.h`：`#elif defined(__OHOS__)` → `#define Q_OS_HARMONY` + `Q_OS_LINUX`。故正确守护为 `#if defined(Q_OS_LINUX) && !defined(Q_OS_HARMONY)`；写成 `Q_OS_OHOS` 的守护/平台适配在 6.12 上是**死代码**（不报编译错、静默失效，[[gallery-qt6-harmonyos-port]] §3 实测踩中）。Qt5 for OHOS 用的是 `Q_OS_OHOS`，跨大版本的代码需两个都判|
 
 | 21 | Qt6.12 IoT addon 模块（Mqtt/Coap/Opcua/Knx）的鸿蒙支持 | ✅ **已验证（2026-08-03，qtmqtt `v6.12.0-beta2`）**：这些是 Qt **source-only 附加模块**，**不在预构建安装器**（开源版 installer 无此组件可勾选、商业版以源码形式提供），与"发行版缺 WebEngine/DBus"性质不同——需自编。但**预构建 OHOS kit 带 `Qt6BuildInternalsConfig.cmake`**（`lib/cmake/Qt6BuildInternals/`），设计上支持编译 Qt addon 模块。流程：clone `qt/qtmqtt` checkout 对应 tag → `qt-cmake.bat`+`ohos.toolchain.cmake` 交叉编译（`-DQT_BUILD_EXAMPLES=OFF -DQT_BUILD_TESTS=OFF`）→ `CMAKE_INSTALL_PREFIX=<QT6_OHOS_KIT>` **装进 OHOS kit**（关键招：libQt6Mqtt.so 进 kit `lib/`、cmake config 进 `lib/cmake/Qt6Mqtt/`、headers 进 `include/QtMqtt/`，业务 demo `find_package(Qt6 Mqtt)` 与 harmonydeployqt6 拷库两头顺，无需额外配路径）→ 业务用 `qt_add_executable` 正常编。验证：libQt6Mqtt.so(395KB)+libsimplemqttclient.so+HAP(36MB) 全产出，NEEDED 全裸名（libQt6Mqtt.so NEEDED 含 libQt6WebSockets.so，harmonydeployqt6 递归拖依赖正确），0 patch。⚠️ 许可：QtMqtt 开源版 **GPLv3**（非 LGPL），闭源商业发行需买 Qt 商业许可或换 Paho.mqtt-c/mosquitto（EPL/EDL 不传染）。同法可编 CoAP/Opcua/Knx（待验证）。详见 [[qt-harmonyos-third-party-libs]] §9 QtMqtt。⚠️ **2026-08-04 runtime 补正**：#21 原仅验证 build 产物（lib+HAP+NEEDED 裸名），未端到端跑设备。实跑（mqttclient-ohos demo）发现：Qt6 预构建 kit 的 Qt .so 带 HARD DT_NEEDED 三方库（libQt6Core→libicui18n/uc/data、libQt6Gui→libfontconfig/png16/freetype、libQt6Network→libbrotlidec/common、libfontconfig→libexpat），既不在 kit `lib/`、也不属 OHOS 系统库，harmonydeployqt6 不自动拷 → HAP 装得上但启动即崩 dlopen(libQt6Core)→libicui18n not found。修：手动 stage 9 个三方 .so 进 `hap/entry/libs/arm64-v8a/`（从 additional-packages 或已跑通的 gallery-ohos demo 拷）+ `hvigorw assembleHap` 重打 → HAP 34MB→73MB，依赖链完整。完整根因与修复步骤见 KB 错误库（problems/）与鸿蒙 Qt 应用开发指南 §6 陷阱 #12（均 KB 内部页，公开版不可达），此处不展开。 |
 
@@ -293,3 +345,4 @@ cmake --build . -j8   # 业务 .so（qt_add_executable 自动 MODULE + main GLOB
 | 2026-08-02 | 策略 B' 预构建 CLI 端到端验证（Qt6 预构建 CLI 端到端工作流，内部）：widgets/gallery demo configure→build→package HAP ~33MB 成功，固化 11 陷阱 + hvigor-wrapper.bat 占位符模板 |
 | 2026-08-03 | Qt6+CEF 鸿蒙集成验证（Qt6+CEF 集成工作流，内部）：OpenQtCef Qt5→Qt6 迁移，HAP 真机启动通过；IoT addon（qtmqtt）鸿蒙交叉编译验证（已知问题 \#21） |
 | 2026-08-25 | beta3 ground-truth 复核（本地 `${QT6_INSTALLER_ROOT}/6.12.0/harmonyos_arm64_v8a`）：`Qt6HarmonyExtras` 重新独立成模块（`libQt6HarmonyExtras.so` + cmake，公开头仅 exports/version 桩，16 功能头全私有 `_p.h`）→ 翻 beta2「不作为独立模块存在」结论（修正已知问题 #2 + 模块适配状态表 + QPA 变更节）；新增「Qt6 beta3 文件权限授予接口」节（`QPermissions` 公开 API 无文件类权限类型 + `QtHarmonyExtras::FileShare::persistPermission` 私有 + picker 未封装，走鸿蒙原生 `@ohos.file.picker`/`@ohos.fileshare`） |
+| 2026-09-12 | 6.12.0 正式预构建 kit + macOS host 端到端复核（gallery 示例移植，见 [[gallery-qt6-harmonyos-port]]）：新增「策略 B' 的 CMake 原生打包流程」节（`<target>_make_hap` 目标 / kit 内置模板 / `QT_HARMONYOS_*` 属性表 / `QT_HARMONYOS_EXTRA_LIBS` / 签名六件套）；修正已知问题 \#20：鸿蒙平台宏是 `Q_OS_HARMONY` 而非 `Q_OS_OHOS` |
