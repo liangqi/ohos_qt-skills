@@ -174,6 +174,30 @@ else
   check "hdc" "skip" "未在 PATH 中 (DevEco SDK 中通常包含，用于设备调试)"
 fi
 
+# devecocli：DevEco Studio 6.x 起由 npm 包 @deveco/deveco-cli 提供，
+# 全局安装目录常不在 PATH 中，故沿用 detect-env.sh 的探测口径。
+_devecocli=""
+if command -v devecocli &>/dev/null; then
+  _devecocli="$(command -v devecocli)"
+else
+  for _npm in npm \
+              "/Applications/DevEco-Studio.app/Contents/tools/node/bin/npm" \
+              "$HOME/Applications/DevEco-Studio.app/Contents/tools/node/bin/npm"; do
+    command -v "$_npm" &>/dev/null || continue
+    _prefix=$("$_npm" config get prefix 2>/dev/null)
+    [ -n "$_prefix" ] || continue
+    for _c in "$_prefix/bin/devecocli" "$_prefix/devecocli" "$_prefix/devecocli.cmd"; do
+      { [ -x "$_c" ] || [ -f "$_c" ]; } && { _devecocli="$_c"; break; }
+    done
+    [ -n "$_devecocli" ] && break
+  done
+fi
+if [ -n "$_devecocli" ]; then
+  check "devecocli" "pass" "$("$_devecocli" --version 2>/dev/null | head -1)${_devecocli:+ @ $_devecocli}"
+else
+  check "devecocli" "skip" "未找到 (npm install -g @deveco/deveco-cli@stable；命令行打 HAP 用 hvigorw 即可)"
+fi
+
 # 7. Qt 源码（可选，仅编译框架时需要）
 if [ -n "$QT5_12_SRC" ] && [ -d "$QT5_12_SRC" ]; then
   check "Qt 5.12 源码" "pass" "$QT5_12_SRC"

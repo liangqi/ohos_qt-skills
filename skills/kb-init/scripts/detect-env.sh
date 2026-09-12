@@ -167,11 +167,33 @@ if [ "$DEVECO_CLI_FOUND" = "false" ]; then
   [ "$DEVECO_CLI_FOUND" = "true" ] && DEVECO_CLI_PATH="$(command -v devecocli)"
 fi
 
+# DevEco Studio 6.x 起不再内置 tools/devecocli，改由 npm 包 @deveco/deveco-cli 提供。
+# 全局安装目录（npm prefix）常不在 PATH 中 —— 这里显式探测。
+if [ "$DEVECO_CLI_FOUND" = "false" ]; then
+  for _npm in npm \
+              "/Applications/DevEco-Studio.app/Contents/tools/node/bin/npm" \
+              "$HOME/Applications/DevEco-Studio.app/Contents/tools/node/bin/npm" \
+              "$DEVECO_PATH/tools/node/bin/npm"; do
+    command -v "$_npm" &>/dev/null || continue
+    _prefix=$("$_npm" config get prefix 2>/dev/null)
+    [ -n "$_prefix" ] || continue
+    for _c in "$_prefix/bin/devecocli" "$_prefix/devecocli" "$_prefix/devecocli.cmd"; do
+      [ -x "$_c" ] || [ -f "$_c" ] || continue
+      DEVECO_CLI_PATH="$_c"; DEVECO_CLI_FOUND="true"; break
+    done
+    [ "$DEVECO_CLI_FOUND" = "true" ] && break
+  done
+fi
+
+DEVECO_CLI_VERSION=""
+[ "$DEVECO_CLI_FOUND" = "true" ] && DEVECO_CLI_VERSION=$("$DEVECO_CLI_PATH" --version 2>/dev/null | head -1)
+
 echo "DEVECO_FOUND=$DEVECO_FOUND"
 echo "DEVECO_PATH=$DEVECO_PATH"
 echo "DEVECO_VERSION=$DEVECO_VERSION"
 echo "DEVECO_CLI_FOUND=$DEVECO_CLI_FOUND"
 echo "DEVECO_CLI_PATH=$DEVECO_CLI_PATH"
+echo "DEVECO_CLI_VERSION=$DEVECO_CLI_VERSION"
 
 DEVECO_CLI_OSS_FOUND="false"
 DEVECO_CLI_OSS_PATH=""

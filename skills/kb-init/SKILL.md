@@ -228,15 +228,18 @@ bash skills/kb-init/scripts/detect-env.sh
 安装完成后，重新运行 `detect-env.sh` 确认 `DEVECO_FOUND=true`。
 
 **DevEco CLI（devecocli）**：
-- macOS/Windows：DevEco Studio 安装后自带 `devecocli`，位于 `<DEVECO_PATH>/tools/devecocli`
+- DevEco Studio **5.x**：安装后自带，位于 `<DEVECO_PATH>/tools/devecocli`
+- DevEco Studio **6.x 起**：不再内置，改由 npm 包分发——
+  `/Applications/DevEco-Studio.app/Contents/tools/node/bin/npm install -g @deveco/deveco-cli@stable`
+  （可执行文件落在 npm 全局 prefix 的 `bin/` 下，**通常不在 PATH 中**）
 - Linux：需要单独下载 Command Line Tools，见 `references/deveco-install.md` Linux 章节
 
-Agent 检查 `devecocli` 是否可用：
-```bash
-command -v devecocli || ls <DEVECO_PATH>/tools/devecocli 2>/dev/null
-```
+直接看 `detect-env.sh` 的 `DEVECO_CLI_FOUND` / `DEVECO_CLI_PATH` / `DEVECO_CLI_VERSION`——
+脚本已覆盖内置目录、PATH、npm 全局 prefix 三条路径，不要只用 `command -v devecocli` 判断。
 
-如果不可用，引导用户将其加入 PATH 或从 DevEco 下载页获取。
+如果 `DEVECO_CLI_FOUND=false`，引导用户按上面的 npm 命令安装。
+
+> 注：命令行打 HAP 用 `hvigorw` 即可，`devecocli` 不是必需项，缺失时 `verify-env.sh` 只记 SKIP。
 
 ### Step 3: 平台依赖检查
 
@@ -380,7 +383,9 @@ bash skills/kb-init/scripts/verify-env.sh
 | 知识库 clone 失败 | 检查网络；手动 `git clone https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills.git` |
 | `detect-env.sh` 执行失败 | `chmod +x skills/kb-init/scripts/*.sh` |
 | DevEco 安装后检测不到 | 读取 `references/deveco-install.md` 按平台检查路径 |
-| DevEco CLI 不可用 | 检查 `<DEVECO_PATH>/tools/devecocli` 是否存在；加入 PATH |
+| DevEco CLI 不可用 | DevEco 6.x 不再内置：`<DEVECO>/Contents/tools/node/bin/npm install -g @deveco/deveco-cli@stable`；5.x 检查 `<DEVECO_PATH>/tools/devecocli` 是否存在 |
+| `devecocli` 装了但 `command -v` 查不到 | npm 全局 prefix 不在 PATH。`export PATH="$(npm config get prefix)/bin:$PATH"`；detect/verify 脚本已能自动探测，不影响验证 |
+| node 升级后 `devecocli` 消失 | npm prefix 默认落在 Homebrew `Cellar/node/<版本>/`，升级即被清空。`npm config set prefix ~/.local` 后重装 |
 | git clone 失败 (commercial) | 检查 HTTP 凭据；检查网络 |
 | git clone 失败 (opensource) | 检查网络；尝试 `git config --global http.sslVerify false` |
 | SDK 下载失败 | 手动访问 https://gitcode.com/ohos-qt/qt-harmonyos-src/releases |

@@ -34,10 +34,34 @@ ls /Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/
 ls /Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc
 ```
 
+### devecocli（DevEco Studio 6.x 起改由 npm 分发）
+
+DevEco Studio 6.x 的 `Contents/tools/` 下**已没有** `devecocli` 可执行文件，
+需要单独用 npm 全局安装（用 DevEco 自带的 node/npm，避免 node 版本不匹配）：
+
+```bash
+/Applications/DevEco-Studio.app/Contents/tools/node/bin/npm install -g @deveco/deveco-cli@stable
+```
+
+安装后可执行文件在 **npm 全局 prefix** 下，而非 DevEco 安装目录：
+
+```bash
+/Applications/DevEco-Studio.app/Contents/tools/node/bin/npm config get prefix   # 例如 /opt/homebrew/Cellar/node/26.7.0
+"$(npm config get prefix)"/bin/devecocli --version                              # 例如 1.3.0-stable
+```
+
+> **该目录通常不在 PATH 中**，`command -v devecocli` 会查不到。
+> `detect-env.sh` / `verify-env.sh` 已会顺着 npm prefix 探测，无需手动配置也能通过验证。
+>
+> **注意**：如果 npm prefix 落在 Homebrew 的 `Cellar/node/<版本>/` 下（默认行为），
+> 升级 node 时该目录会被清空，devecocli 随之消失。想要稳定路径，可先
+> `npm config set prefix ~/.local` 再重新 `npm install -g @deveco/deveco-cli@stable`。
+
 ### 将工具加入 PATH（推荐）
 
 ```bash
-echo 'export PATH="/Applications/DevEco-Studio.app/Contents/tools:$PATH"' >> ~/.zshrc
+# devecocli（npm 全局 prefix，见上一节；不是 DevEco 的 Contents/tools）
+echo 'export PATH="$(npm config get prefix)/bin:$PATH"' >> ~/.zshrc
 echo 'export PATH="/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains:$PATH"' >> ~/.zshrc
 source ~/.zshrc
 devecocli --version  # 验证 DevEco CLI
