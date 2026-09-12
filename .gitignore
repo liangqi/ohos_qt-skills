@@ -16,9 +16,9 @@ screenshot/
 # qt-app-porting 执行状态（位于被迁移的目标项目内）
 .qt-ohos/
 
-# 本地实验区与工作产物（不入库，见重构计划 D4/A2）
+# 本地实验区与工作产物（不入库，见重构计划 D4/A2；portgraph 本体已入库）
 workspace/
-portgraph/
+portgraph/workspace/
 _tmp_setup.cmake
 *.log
 
