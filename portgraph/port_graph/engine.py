@@ -254,7 +254,8 @@ def _dedupe(items: List[Dict]) -> List[Dict]:
     seen = set()
     out = []
     for it in items:
-        key = (it["node"], it["kind"], it.get("iface", ""), it["reason"])
+        # platform_excluded 条目无 kind 字段（见 _evaluate 中构造处），用 .get 兜底
+        key = (it["node"], it.get("kind", ""), it.get("iface", ""), it["reason"])
         if key in seen:
             continue
         seen.add(key)

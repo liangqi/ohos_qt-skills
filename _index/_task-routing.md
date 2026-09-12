@@ -4,7 +4,7 @@ type: meta
 domain: workflow
 tags: [agent, routing, task-types, workflow, decision-tree]
 created: 2026-06-27
-updated: 2026-08-29
+updated: 2026-09-12
 status: active
 refs: [semantic-qt-harmonyos-golden-rules, procedural-demo-generation]
 summary: >
@@ -50,9 +50,17 @@ summary: >
 | 项目 | 内容 |
 |------|------|
 | **工作流** | `procedural/qt-app-harmonyos-migration.md` |
-| **必读页** | ① `golden-rules.md` ② `porting-workflow.md`（8 步决策树） |
+| **必读页** | ① `golden-rules.md` ② `porting-workflow.md`（8 步决策树）③ `portgraph/docs/fetch-deps.md`（仓库工具，依赖闭包） |
 | **按需加载** | `api-mapping.md`、`code-patterns.md`、`window-model.md`、`lifecycle.md`、`project-structure.md`、`third-party-libs.md` |
-| **预期输出** | 可行性评估 → 工程创建 → 8 步迁移 → 编译验证 |
+| **预期输出** | **第 0 步 portgraph 可行性评估**（analyze + fetch-deps --dry-run：portable/blocked/uncertain + bottle 数/源码编译缺口）→ 工程创建 → 8 步迁移 → 编译验证 |
+
+> **第 0 步门禁（与 [P] 的 assess 对齐）**：接到应用移植任务先跑
+> `python portgraph/portgraph.py analyze <app>` 与 `fetch-deps <app> --dry-run`。
+> 依赖 ≥3 个三方库时禁止人工逐个判断可行性，以闭包分析输出为准；blocked 需研判
+> blockers 的 guard 证据（无条件 ohos-active 命中且核心路径才是硬阻塞，可选分支放行）；
+> unknowns 即源码编译缺口清单，要**明确逐项告知用户**。
+> 反例实证（tdesktop，2026-09）：68 个依赖首轮人工判断直接绕开依赖分析，用户纠正后才用
+> portgraph，闭包分析一次给出 59 bottle + 9 源码编译的解，避免了按全源码交叉编译的错误路径。
 
 ### [B] API 替换查询
 
