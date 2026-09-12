@@ -60,6 +60,7 @@ description: >
 - [qt-opensource-apps-harmonyos-survey](../episodic/postmortems/qt-opensource-apps-harmonyos-survey.md) — 2026-06-25 多 agent 工作流扫描 GitHub/KDE Apps/Gitee/SourceForge/Wikipedia，筛选 229 个 Qt 开源桌面应用并逐个评估鸿蒙化难度。难度分布：低 3 / 中 23 / 高 126 / 阻断 77；D-Bus(107)、 QtMultimedia(76)、QtWebEngine(62) 为三大阻断模块。产出清单在 <INTERNAL_OUTPUT>。沉淀"大 schema 输出失败→主循环生成"的工作流教训。
 - [quit-deadlock-tsfn](../episodic/postmortems/quit-deadlock-tsfn.md) — 退出死锁复盘：<STAKEHOLDER>(<PRODUCT>) qApp->quit()后应用卡死~2分钟。 根因：HarmonyOS在Ability销毁阶段不处理N-API ThreadSafeFunction回调， 导致qWindowDestroyPromise的resolve回调永远不被执行，Promise永不resolve。 修复：外部补丁通过原子变量+并行轮询绕过TSFN机制，已验证有效。 关联确认：退出流程中sensor插件触发崩溃，伙伴确认移除即规避（2026-07-13）。
 - [saribbon-ohos](../episodic/postmortems/saribbon-ohos.md) — SARibbon v2.5.5 鸿蒙化完整迁移：独立构建文件 + MainWindowExample 应用编译 (48MB HAP) + 两个编译问题修复（QDesktopWidget::screen 类型不匹配 + lazy import 语法不兼容）。 关键发现：SARibbon 源码内 QDesktopWidget API 在 Qt 5.12 OHOS 下返回 QWidget* 而非 QScreen*、 模板 lazy import 语法需 API 12 beta3、需为项目创建独立 CMakeLists.txt 避免改源码。 可复用：三方 Qt 库鸿蒙化时保持源码完整性的独立构建文件模式。
+- [tdesktop-harmonyos-porting](../episodic/postmortems/tdesktop-harmonyos-porting.md) — tdesktop (Telegram Desktop) v7.0.2 不裁剪功能全量鸿蒙化：portgraph fetch-deps 59 bottle+9 源码编译解决依赖、2088 目标适配（Q_OS_HARMONY/not_ohos/C++20 缺口）、harmonydeployqt+签名注入+hvigor 打包 550MB HAP、DT_NEEDED 闭包分析修启动即死、Qt 6.12 平台插件重编替换链、IME reset 修复与 IMEPROBE 探针法。60s smoke 零崩溃；含「中文搜索无结果」三角验证定性（服务器不索引中文短词，非移植 bug）。
 - [toolwindow-crossscreen-flicker](../episodic/postmortems/toolwindow-crossscreen-flicker.md) — ToolWindow跨屏闪烁系统问题分析：moveWindowToGlobalDisplay与resizeAsync在跨屏拖拽场景冲突， screenIdChanged仅拖拽结束时触发，Qt已通过完整调用链追踪定位根因，归属鸿蒙系统接口。
 - [wa-nativewindow-leave-bug](../episodic/postmortems/wa-nativewindow-leave-bug.md) — WA_NativeWindow Leave 事件不灵敏 Bug 完整分析：双重盲区根因（Qt Widget 层 internalWinId() 跳过 + OHOS QPA hover 回调不可靠）、完整调用链追踪、 修复策略评估（3 种方案对比）、10 场景风险矩阵、时序图。Qt 5.12 OHOS。 ✅ 手动验证通过，交付件已输出至 <WORK_DIR>/leave-event-fix/（2026-06-09 最终整理）。
 
@@ -69,7 +70,7 @@ _（本域无活跃页）_
 
 ## problems
 
-- [_lookup](../problems/_lookup.md) — 错误速查表（36 条）
+- [_lookup](../problems/_lookup.md) — 错误速查表（41 条）
 
 
 ---

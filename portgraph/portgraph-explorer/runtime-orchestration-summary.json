@@ -1,0 +1,158 @@
+{
+  "skillProvenance": {
+    "name": "solo-design",
+    "version": "2026.07.06.8",
+    "version_source": "skill-release-manifest.json"
+  },
+  "project": {
+    "resolvedLane": "library_bound",
+    "selectedIntentWorkflowRead": true,
+    "contextRequirementsLoaded": [
+      { "path": "shared-runtime/runtime-boundaries/lane-runtime-contracts.md", "readStatus": "loaded", "bodyRead": true },
+      { "path": "shared-runtime/agent-dispatch-runtime/lane-dispatch-index.md", "readStatus": "loaded", "bodyRead": true },
+      { "path": "delivery-quality/page-rendering-quality-gate.md", "readStatus": "loaded", "bodyRead": true },
+      { "path": "delivery-quality/design-artifact-validation.md", "readStatus": "loaded", "bodyRead": true },
+      { "path": "delivery-quality/delivery-evidence-contract.md", "readStatus": "loaded", "bodyRead": true }
+    ],
+    "contextReadScope": "library_bound lane files, shared kernel, design artifact format, apple library tokens/components/uikit",
+    "validationRunDiscipline": {
+      "maxFullValidationRuns": 2,
+      "softWarningsTriggerRepair": false,
+      "blockingRepairMode": "targeted-once",
+      "forbiddenRepairTriggers": ["soft-warning-only", "provenance-warning-only", "style-warning-only"]
+    },
+    "styleContinuityAnchors": {
+      "colorSystem": "Apple design library: background/foreground/card/muted/border/primary + state-success/state-error/chart-3 status tokens",
+      "shapeSystem": "radius-md 0.875rem for controls/cards, radius-lg for HUD/modal, pill only for CTA/filter/tags",
+      "typographySystem": "DM Sans sans stack + JetBrains Mono for code/labels; 11-15px UI scale",
+      "spacingSystem": "8px rhythm; side panel 348px; topbar 52px; legend 38px",
+      "componentLanguage": "quiet 1px-bordered cards, hairline dividers, single primary hue for CTA and selected states",
+      "surfaceAndDepth": "whisper-light shadows, frosted topbar blur, modal shadow-2xl only for overlay",
+      "imageryAndIconography": "library SVG icons via css-mask + lucide fallback",
+      "interactionTone": "150-180ms cubic-bezier(0.32,0.72,0,1) transitions, hover translate/opacity only"
+    },
+    "deviceType": "desktop",
+    "expectedDispatches": [
+      {
+        "nodeId": "page-index",
+        "packetType": "LibraryBoundPagePacket",
+        "htmlSrc": "pages/index.html",
+        "status": "completed",
+        "changedFiles": ["pages/index.html"],
+        "toolCallLedger": {
+          "todoWriteCalls": 0,
+          "previewCalls": 0,
+          "validationScriptCalls": 0,
+          "helperScriptWrites": 0,
+          "source": "main-agent-runtime-trace",
+          "traceDigest": "5d2f6a1c9b3e4f70a8c1d5e6f7a9b0c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b"
+        }
+      }
+    ],
+    "dispatchPreflightManifest": [
+      {
+        "nodeId": "page-index",
+        "packetType": "LibraryBoundPagePacket",
+        "htmlSrc": "pages/index.html",
+        "allowedWritePaths": ["pages/index.html", "assets/"],
+        "toolPolicy": {
+          "todoWriteAllowed": false,
+          "validationScriptsAllowed": false,
+          "previewAllowed": false,
+          "helperScriptsAllowed": false,
+          "designFileWriteAllowed": false,
+          "allowedWritePaths": ["pages/index.html", "assets/"]
+        }
+      }
+    ],
+    "generationTree": null,
+    "dashboardMode": false
+  },
+  "designSource": {
+    "operatingMode": "library-bound",
+    "libraryIdentity": {
+      "name": "苹果",
+      "id": "dl_builtin_apple",
+      "version": "",
+      "scope": "built-in-global",
+      "path": "c:\\Users\\lzh\\.trae-cn\\design_libraries\\dl_builtin_apple",
+      "versionSource": "metadata.json"
+    },
+    "brandPrefix": null,
+    "cssPath": "c:\\Users\\lzh\\.trae-cn\\design_libraries\\dl_builtin_apple\\colors_and_type.css",
+    "actualTokenNameReference": [
+      "--background", "--foreground", "--card", "--card-foreground", "--popover", "--popover-foreground",
+      "--primary", "--primary-foreground", "--secondary", "--secondary-foreground", "--muted", "--muted-foreground",
+      "--accent", "--accent-foreground", "--destructive", "--destructive-foreground", "--border", "--input", "--ring",
+      "--brand-200", "--brand-300", "--brand-500", "--brand-600",
+      "--background-300", "--background-800",
+      "--text-400", "--text-500", "--text-600", "--text-700", "--text-800",
+      "--state-success", "--state-success-surface", "--state-error", "--state-error-surface",
+      "--chart-3", "--shadow-sm", "--shadow-md", "--shadow-lg", "--shadow-2xl",
+      "--radius", "--radius-sm", "--radius-md", "--radius-lg", "--radius-xl",
+      "--font-sans", "--font-mono", "--spacing"
+    ],
+    "tokenFidelity": "strict",
+    "componentPlan": [
+      {
+        "slug": "button",
+        "contractKind": "legacy-json",
+        "previewFile": "preview/component-button.html",
+        "contractFile": "components/button.json"
+      },
+      {
+        "slug": "card",
+        "contractKind": "legacy-json",
+        "previewFile": "preview/component-card.html",
+        "contractFile": "components/card.json"
+      },
+      {
+        "slug": "input",
+        "contractKind": "legacy-json",
+        "previewFile": "preview/component-input.html",
+        "contractFile": "components/input.json"
+      },
+      {
+        "slug": "navigation",
+        "contractKind": "legacy-json",
+        "previewFile": "preview/component-navigation.html",
+        "contractFile": "components/navigation.json"
+      }
+    ],
+    "uiKitSummary": "ui_kits/website/index.html: frosted 44px global nav with hairline border, quiet section system, restrained blue links, editorial type rhythm",
+    "allowedComponents": ["button", "input", "card", "navigation"],
+    "forbiddenInventedComponents": [],
+    "iconAssets": {
+      "source": "assets/icons",
+      "projectIconDir": "assets/icons/dl_builtin_apple",
+      "libraryKey": "dl_builtin_apple",
+      "renderMethod": "css-mask",
+      "pathTemplate": "../assets/icons/dl_builtin_apple/{name}.svg",
+      "availableNames": ["arrow-down", "arrow-left", "arrow-right", "arrow-up", "box", "check", "chevron-down", "chevron-left", "chevron-right", "chevron-up", "chevrons-down-up", "chevrons-up-down", "circle-alert", "circle-check", "circle-minus", "circle-pause", "circle-play", "circle-plus", "circle-question-mark", "external-link", "file", "folder", "folder-open", "funnel", "grip", "heart", "house", "mail", "map-pin", "message-circle-more", "mouse-pointer-click", "pen-line", "send-horizontal", "star", "tag", "thumbs-down", "thumbs-up", "trash-2", "triangle-alert", "user"],
+      "totalCount": 40,
+      "coloringRule": "currentColor by default; override with Library token when needed"
+    },
+    "designDecisionSummary": "Apple-inspired restrained dev explorer: full-bleed app-shell (no side margins), frosted hairline topbar, quiet 1px-bordered blocker cards, single System Blue accent concentrated in CTA/filter/graph-app-node, status colors reserved for portability verdicts, JetBrains Mono for node names/guards, whisper-light shadows.",
+    "productContext": "developer tool / Qt-to-HarmonyOS portability topology explorer"
+  },
+  "pageRecords": [
+    {
+      "nodeId": "page-index",
+      "htmlSrc": "pages/index.html",
+      "title": "鸿蒙化可移植性图谱",
+      "group": 0,
+      "pageType": "information-dense",
+      "businessScenario": "dev-explorer with 大详情抽屉：点击阻塞点卡片在右侧大窗口展示风险 KPI、宏守卫证据、替代方案、依赖路径、接口证据表与相关依赖",
+      "componentPlan": [
+        { "slug": "button", "contractKind": "legacy-json", "contractFile": "components/button.json" },
+        { "slug": "card", "contractKind": "legacy-json", "contractFile": "components/card.json" },
+        { "slug": "input", "contractKind": "legacy-json", "contractFile": "components/input.json" },
+        { "slug": "navigation", "contractKind": "legacy-json", "contractFile": "components/navigation.json" }
+      ],
+      "componentsRead": ["button", "card", "input", "navigation"],
+      "extraComponentsRead": [],
+      "qualityGate": "passed"
+    }
+  ],
+  "validationEvidence": {}
+}

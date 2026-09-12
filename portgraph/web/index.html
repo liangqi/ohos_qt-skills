@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qt 应用鸿蒙化可移植性图谱</title>
+<link rel="stylesheet" href="style.css?v=5">
+<script src="https://cdn.jsdelivr.net/npm/@antv/g6@5/dist/g6.min.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-dot"></span>
+    <div>
+      <h1>鸿蒙化可移植性图谱</h1>
+      <p>Qt 应用 × HarmonyOS 依赖拓扑分析</p>
+    </div>
+  </div>
+  <div class="controls">
+    <label>目标应用
+      <select id="app-select"></select>
+    </label>
+    <label>布局
+      <select id="layout-select">
+        <option value="dagre" selected>横向层级</option>
+        <option value="force">力导向</option>
+        <option value="circular">环形</option>
+      </select>
+    </label>
+    <input id="search-input" type="search" placeholder="搜索节点名，回车定位">
+    <button id="add-app-btn" class="btn">添加分析</button>
+    <button id="reload-btn" class="btn primary">重新分析</button>
+    <span id="verdict-badge" class="badge"></span>
+  </div>
+</header>
+
+<div class="legend">
+  <span class="legend-item"><i style="background:#3b82f6"></i>目标应用</span>
+  <span class="legend-item"><i style="background:#22c55e"></i>已移植</span>
+  <span class="legend-item"><i style="background:#ef4444"></i>阻塞</span>
+  <span class="legend-item"><i style="background:#94a3b8"></i>未知</span>
+  <span class="legend-item"><i style="background:#eab308"></i>待确认</span>
+  <span class="legend-item combo-legend"><i class="combo-chip"></i>Qt 模块聚合（点击展开/收起）</span>
+  <span id="graph-stats" class="graph-stats"></span>
+</div>
+
+<main class="layout">
+  <div id="graph-container"></div>
+
+  <aside class="side-panel">
+    <section id="blocker-panel" class="panel">
+      <h2>阻塞点 <span id="blocker-count" class="count"></span></h2>
+      <div class="filter-row" id="risk-filter">
+        <button class="filter-btn active" data-risk="all">全部</button>
+        <button class="filter-btn" data-risk="high">高风险</button>
+        <button class="filter-btn" data-risk="medium">中风险</button>
+        <button class="filter-btn" data-risk="low">低风险</button>
+      </div>
+      <ul id="blocker-list"></ul>
+      <h2>平台排除项（不编译）<span id="excluded-count" class="count"></span></h2>
+      <p class="panel-hint">被非鸿蒙平台条件编译守卫包裹，鸿蒙构建时不参与编译；列出其功能类别的鸿蒙替代接口。</p>
+      <ul id="excluded-list" class="excluded"></ul>
+      <h2>待确认项 <span id="unknown-count" class="count"></span></h2>
+      <ul id="unknown-list" class="secondary"></ul>
+    </section>
+    <section id="detail-panel" class="panel hidden">
+      <div class="detail-head">
+        <h2 id="detail-name"></h2>
+        <button id="detail-close" class="btn ghost">×</button>
+      </div>
+      <div id="detail-body"></div>
+    </section>
+  </aside>
+</main>
+
+<div id="clone-modal" class="modal hidden">
+  <div class="modal-card">
+    <h2>添加分析目标</h2>
+    <p class="panel-hint">输入 GitHub 仓库地址，后端将 shallow clone 到
+      <code>workspace/</code> 并自动扫描分析。任务在后台运行，可随时关闭或刷新查询。</p>
+    <input id="clone-url" type="url"
+           placeholder="https://github.com/owner/repo">
+    <div id="clone-progress" class="progress hidden">
+      <div class="progress-bar"><div id="clone-fill" class="progress-fill"></div></div>
+      <div class="progress-meta">
+        <span id="clone-pct">0%</span><span id="clone-msg"></span>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button id="clone-cancel" class="btn ghost">取消</button>
+      <button id="clone-bg" class="btn ghost hidden">后台运行</button>
+      <button id="clone-submit" class="btn primary">克隆并分析</button>
+    </div>
+    <p id="clone-status" class="clone-status"></p>
+  </div>
+</div>
+
+<button id="job-chip" class="job-chip hidden" title="点击查看进度">
+  <span class="job-chip-fill"></span><span id="job-chip-text">0%</span>
+</button>
+
+<script src="app.js?v=14"></script>
+</body>
+</html>

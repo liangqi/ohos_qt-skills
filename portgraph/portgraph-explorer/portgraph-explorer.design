@@ -1,0 +1,42 @@
+{
+  "data": [
+    {
+      "id": "page-index",
+      "title": "鸿蒙化可移植性图谱",
+      "type": "page",
+      "version": 2,
+      "createdAt": 1725762160000,
+      "canvasData": {
+        "x": 0,
+        "y": 0,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-bbf09b2e",
+          "measuredAt": 1788865402492
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/index.html",
+        "interactions": []
+      }
+    }
+  ],
+  "config": {
+    "autoLayout": true,
+    "deviceType": "desktop",
+    "projectName": "鸿蒙化可移植性图谱",
+    "designLibrary": {
+      "name": "苹果",
+      "id": "dl_builtin_apple",
+      "version": "",
+      "scope": "built-in-global",
+      "path": "c:\\Users\\lzh\\.trae-cn\\design_libraries\\dl_builtin_apple",
+      "versionSource": "metadata.json"
+    },
+    "visualEditorEnabled": true,
+    "showEdge": true
+  }
+}

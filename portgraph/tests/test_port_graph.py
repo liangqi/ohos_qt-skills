@@ -1,0 +1,463 @@
+"""port_graph 自测：formula/README 解析器 + 可移植性推导引擎。
+
+运行方式（portgraph 项目根目录）:
+
+    python -m unittest discover -s tests -v
+"""
+
+from __future__ import annotations
+
+import io
+import sys
+import tarfile
+import tempfile
+import unittest
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from port_graph import (cmdpkgs, db, deps_fetch, engine, harmonybrew,  # noqa: E402
+                        kb_seed, project_scanner)
+
+CURL_RB = PROJECT_ROOT / "workspace" / "hb-core" / "Formula" / "c" / "curl.rb"
+
+
+class TestFormulaParser(unittest.TestCase):
+
+    def test_curl_formula(self):
+        if not CURL_RB.exists():
+            self.skipTest("hb-core sparse checkout not present")
+        info = harmonybrew.parse_formula(CURL_RB)
+        self.assertEqual(info["name"], "curl")
+        self.assertEqual(info["version"], "8.21.0")
+        self.assertTrue(info["ohos_bottle"])
+        self.assertTrue(info["keg_only_macos"])
+        deps = {d[0]: (d[1], d[2]) for d in info["deps"]}
+        self.assertIn("brotli", deps)
+        self.assertEqual(deps["brotli"][0], ["runtime"])
+        self.assertIn("openssl@3", deps)
+        # head do 块内依赖被忽略
+        self.assertNotIn("autoconf", deps)
+        # 平台条件块
+        self.assertEqual(deps["zlib-ng-compat"][1], "linux")
+        self.assertEqual(deps["libidn2"][1], "linux+macos-old")
+        self.assertEqual(deps["pkgconf"][0], ["build", "test"])
+        ufm = [u[0] for u in info["uses_from_macos"]]
+        self.assertIn("krb5", ufm)
+        self.assertIn("openldap", ufm)
+
+    def test_formula_without_ohos_bottle(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            f = Path(tmp) / "foo.rb"
+            f.write_text(
+                'class Foo < Formula\n'
+                '  desc "demo"\n'
+                '  url "https://example.com/foo-1.2.3.tar.gz"\n'
+                '  depends_on "bar"\n'
+                '  bottle do\n'
+                '    sha256 cellar: :any, arm64_sonoma: "abc"\n'
+                '  end\n'
+                'end\n', encoding="utf-8")
+            info = harmonybrew.parse_formula(f)
+            self.assertFalse(info["ohos_bottle"])
+            self.assertEqual(info["version"], "1.2.3")
+            self.assertEqual([d[0] for d in info["deps"]], ["bar"])
+
+
+class TestCmdpkgsParser(unittest.TestCase):
+
+    def test_readme_tables(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            readme = Path(tmp) / "README.md"
+            readme.write_text(
+                "# t\n\n## 语言运行时列表\n"
+                "|软件|版本|安装命令|\n|---|---|---|\n"
+                "|node|24.0.0|curl x \\| sh|\n\n"
+                "## 命令行&&三方库列表\n"
+                "|软件|版本|安装命令|\n|-----|----|----|\n"
+                "|openssl|1.1.1w|curl y|\n"
+                "|openssl|3.0.1|curl z|\n"
+                "\n其他文本行结束表格。\n", encoding="utf-8")
+            entries = cmdpkgs.parse_readme(readme)
+            names = {e["name"]: e["version"] for e in entries}
+            self.assertEqual(names["node"], "24.0.0")
+            # 同名多版本取最后出现
+            self.assertEqual(names["openssl"], "3.0.1")
+            self.assertEqual(len(entries), 2)
+
+
+class TestKbSeed(unittest.TestCase):
+
+    def test_normalize_module(self):
+        self.assertEqual(kb_seed.normalize_module("Qt Core"), "core")
+        self.assertEqual(kb_seed.normalize_module("Qt Quick Controls"),
+                         "quickcontrols")
+        self.assertEqual(kb_seed.normalize_module("Qt D-Bus"), "dbus")
+        self.assertEqual(kb_seed.normalize_module("Qt 3D"), "3d")
+
+    def test_seed_from_real_page(self):
+        if not kb_seed.MODULES_PAGE.exists():
+            self.skipTest("modules page missing")
+        conn = db.connect(":memory:")
+        db.init_db(conn)
+        r = kb_seed.ingest(conn)
+        self.assertGreaterEqual(r["qt_modules"], 40)
+        self.assertIn("Qt WebEngine (全子模块)", r["blocked_modules"])
+        core = db.get_node(conn, "qtmod:core")
+        self.assertEqual(core["port_status"], "ported")
+        we = db.get_node(conn, "qtmod:webengine")
+        self.assertEqual(we["port_status"], "blocked")
+        self.assertEqual(core["cluster_id"], "cluster:qt")
+        conn.close()
+
+
+def _build_graph(conn):
+    """小图：app 依赖链 + Qt 模块 + 接口。"""
+    db.init_db(conn)
+    kb_seed.seed_interfaces(conn)
+    db.upsert_cluster(conn, "cluster:qt", "Qt", "framework")
+    db.upsert_node(conn, "app:demo", "app", "demo", "scan", "unknown")
+    db.upsert_node(conn, "hb:pkga", "package", "pkga", "harmonybrew", "ported")
+    db.upsert_node(conn, "hb:pkgb", "package", "pkgb", "harmonybrew", "ported")
+    db.upsert_node(conn, "hb:pkgu", "package", "pkgu", "harmonybrew", "unknown")
+    db.upsert_node(conn, "qtmod:core", "qt-module", "Qt Core", "kb-seed",
+                   "ported", cluster_id="cluster:qt")
+    db.upsert_node(conn, "qtmod:webengine", "qt-module", "Qt WebEngine",
+                   "kb-seed", "blocked", cluster_id="cluster:qt")
+
+
+class TestEngine(unittest.TestCase):
+
+    def _conn(self):
+        conn = db.connect(":memory:")
+        _build_graph(conn)
+        return conn
+
+    def test_portable_chain(self):
+        conn = self._conn()
+        db.upsert_edge(conn, "app:demo", "hb:pkga", "runtime")
+        db.upsert_edge(conn, "hb:pkga", "hb:pkgb", "runtime")
+        db.upsert_edge(conn, "app:demo", "qtmod:core", "uses-module")
+        r = engine.analyze(conn, "app:demo")
+        self.assertEqual(r["verdict"], "portable")
+        self.assertEqual(r["blockers"], [])
+        conn.close()
+
+    def test_blocked_module(self):
+        conn = self._conn()
+        db.upsert_edge(conn, "app:demo", "qtmod:webengine", "uses-module")
+        r = engine.analyze(conn, "app:demo")
+        self.assertEqual(r["verdict"], "blocked")
+        kinds = {b["kind"] for b in r["blockers"]}
+        self.assertIn("unsupported-module", kinds)
+        paths = [b["path"] for b in r["blockers"]
+                 if b["node"] == "qtmod:webengine"]
+        self.assertIn(["app:demo", "qtmod:webengine"], paths)
+        conn.close()
+
+    def test_unknown_dependency_uncertain(self):
+        conn = self._conn()
+        db.upsert_edge(conn, "app:demo", "hb:pkgu", "runtime")
+        r = engine.analyze(conn, "app:demo")
+        self.assertEqual(r["verdict"], "uncertain")
+        self.assertTrue(any(u["kind"] == "unknown-package"
+                            for u in r["unknowns"]))
+        conn.close()
+
+    def test_unsupported_interface_blocks(self):
+        conn = self._conn()
+        db.add_node_interface(conn, "app:demo", "iface:dbus",
+                              evidence="QDBusConnection @ main.cpp")
+        r = engine.analyze(conn, "app:demo")
+        self.assertEqual(r["verdict"], "blocked")
+        self.assertTrue(any(b["kind"] == "unsupported-interface"
+                            for b in r["blockers"]))
+        conn.close()
+
+    def test_dependency_cycle_terminates(self):
+        conn = self._conn()
+        db.upsert_edge(conn, "app:demo", "hb:pkga", "runtime")
+        db.upsert_edge(conn, "hb:pkga", "hb:pkgb", "runtime")
+        db.upsert_edge(conn, "hb:pkgb", "hb:pkga", "runtime")
+        r = engine.analyze(conn, "app:demo")
+        self.assertEqual(r["verdict"], "portable")
+        conn.close()
+
+    def test_macos_only_dep_skipped(self):
+        conn = self._conn()
+        db.upsert_node(conn, "hb:macdep", "package", "macdep", "harmonybrew",
+                       "blocked")
+        db.upsert_edge(conn, "app:demo", "hb:macdep", "runtime",
+                       platform_cond="macos")
+        r = engine.analyze(conn, "app:demo")
+        # macOS 条件依赖在鸿蒙上不需要，不应阻塞
+        self.assertEqual(r["verdict"], "portable")
+        conn.close()
+
+    def test_build_deps_not_considered(self):
+        conn = self._conn()
+        db.upsert_node(conn, "hb:tool", "package", "tool", "harmonybrew",
+                       "blocked")
+        db.upsert_edge(conn, "app:demo", "hb:tool", "build")
+        r = engine.analyze(conn, "app:demo")
+        self.assertEqual(r["verdict"], "portable")
+        conn.close()
+
+
+class TestMacroStack(unittest.TestCase):
+    """宏栈追踪：#ifdef/#if defined/#else/#endif 守卫状态判断。"""
+
+    def test_platform_macro_excludes(self):
+        # Q_OS_WIN 包裹的代码在鸿蒙上不编译
+        code = (
+            "#ifdef Q_OS_WIN\n"
+            "  QDBusConnection c;\n"
+            "#endif\n"
+        )
+        g = project_scanner._macro_stack_status(code)
+        # QDBusConnection 在第 2 行，应被 platform 守卫排除
+        self.assertIn(2, g)
+        self.assertEqual(g[2], "platform-excluded")
+
+    def test_else_branch_switches(self):
+        code = (
+            "#ifdef Q_OS_WIN\n"
+            "  // win code\n"
+            "#else\n"
+            "  // ohos/linux code\n"
+            "#endif\n"
+        )
+        g = project_scanner._macro_stack_status(code)
+        self.assertEqual(g[2], "platform-excluded")  # #ifdef 分支
+        # #else 分支在鸿蒙会编译（Q_OS_WIN 为假 → NOT Q_OS_WIN 为真）
+        self.assertEqual(g[4], "ohos-active")
+
+    def test_nested_macros(self):
+        code = (
+            "#ifdef Q_OS_LINUX\n"
+            "  #ifdef Q_OS_WIN\n"
+            "    win inside linux\n"
+            "  #endif\n"
+            "  linux only\n"
+            "#endif\n"
+        )
+        g = project_scanner._macro_stack_status(code)
+        # Q_OS_LINUX 在鸿蒙上是 active（鸿蒙隐含 Linux），所以外层不算排除
+        # 内层 Q_OS_WIN 才是排除
+        self.assertEqual(g[3], "platform-excluded")  # win inside linux
+        self.assertEqual(g[5], "ohos-active")        # linux only
+
+    def test_ohos_macro_active(self):
+        code = (
+            "#ifdef Q_OS_OHOS\n"
+            "  ohos specific\n"
+            "#endif\n"
+        )
+        g = project_scanner._macro_stack_status(code)
+        self.assertEqual(g[2], "ohos-active")
+
+    def test_if_defined_form(self):
+        code = (
+            "#if defined(_WIN32) || defined(_WIN64)\n"
+            "  win code\n"
+            "#endif\n"
+        )
+        g = project_scanner._macro_stack_status(code)
+        self.assertEqual(g[2], "platform-excluded")
+
+    def test_or_with_ohos_macro_compiles(self):
+        """defined(Q_OS_WIN) || defined(Q_OS_OHOS) 在鸿蒙会编译。"""
+        code = (
+            "#if defined(Q_OS_WIN) || defined(Q_OS_OHOS)\n"
+            "  compiles on ohos\n"
+            "#endif\n"
+        )
+        g = project_scanner._macro_stack_status(code)
+        self.assertEqual(g[2], "ohos-active")
+
+    def test_and_with_win_macro_excluded(self):
+        """defined(Q_OS_LINUX) && defined(Q_OS_WIN) 在鸿蒙不编译。"""
+        code = (
+            "#if defined(Q_OS_LINUX) && defined(Q_OS_WIN)\n"
+            "  not on ohos\n"
+            "#endif\n"
+        )
+        g = project_scanner._macro_stack_status(code)
+        self.assertEqual(g[2], "platform-excluded")
+
+    def test_ifndef_win_compiles_on_ohos(self):
+        """#ifndef Q_OS_WIN 在鸿蒙为真（Q_OS_WIN 未定义）。"""
+        code = (
+            "#ifndef Q_OS_WIN\n"
+            "  non-win code\n"
+            "#endif\n"
+        )
+        g = project_scanner._macro_stack_status(code)
+        self.assertEqual(g[2], "ohos-active")
+
+
+class TestFilePlatformExclusion(unittest.TestCase):
+    """文件级平台隔离：路径含平台关键词 → platform-file-excluded。"""
+
+    def test_macos_path_excluded(self):
+        self.assertEqual(
+            project_scanner._file_platform_excluded(
+                "src/platform/macos/foo.mm"),
+            "macos")
+        self.assertEqual(
+            project_scanner._file_platform_excluded(
+                "src/framework/mac/util.mm"),
+            "macos")
+
+    def test_windows_path_excluded(self):
+        self.assertEqual(
+            project_scanner._file_platform_excluded(
+                "src/platform/windows/foo.cpp"),
+            "windows")
+        self.assertEqual(
+            project_scanner._file_platform_excluded(
+                "src/ui/win/helper.cpp"),
+            "windows")
+
+    def test_linux_path_not_excluded(self):
+        # Linux 通用代码鸿蒙会编译，不应排除
+        self.assertIsNone(project_scanner._file_platform_excluded(
+            "src/platform/linux/foo.cpp"))
+
+    def test_generic_path_not_excluded(self):
+        self.assertIsNone(project_scanner._file_platform_excluded(
+            "src/core/main.cpp"))
+
+
+class TestDepsFetch(unittest.TestCase):
+    """fetch-deps：依赖闭包 + 产物分类（全部离线，dry-run / 本地解压）。"""
+
+    def _conn(self):
+        conn = db.connect(":memory:")
+        db.init_db(conn)
+        db.upsert_node(conn, "app:demo", "app", "demo", "scan", "blocked")
+        db.upsert_node(conn, "hb:pkga", "package", "pkga", "harmonybrew",
+                       "ported", version="1.0",
+                       links={"artifact_url": "https://harmonybrew.atomgit.com"
+                              "/bottles/pkga-1.0.arm64_ohos.bottle.tar.gz",
+                              "artifact_cmd": "brew install pkga"})
+        db.upsert_node(conn, "hb:pkgb", "package", "pkgb", "harmonybrew",
+                       "ported", version="2.0",
+                       links={"artifact_url": "https://gitcode.com/x/y"
+                              "/releases/download/pkgs/pkgb-2.0-ohos-aarch64.tar.gz"})
+        db.upsert_node(conn, "hb:pkgc", "package", "pkgc", "harmonybrew",
+                       "ported", links={"artifact_cmd": "brew install pkgc"})
+        db.upsert_node(conn, "hb:pkgd", "package", "pkgd", "harmonybrew",
+                       "unknown",
+                       links={"source_url": "https://example.com/pkgd-1.tar.gz"})
+        db.upsert_node(conn, "hb:zeta", "package", "zeta", "harmonybrew",
+                       "unknown")
+        db.upsert_node(conn, "cmdpkgs:zeta", "package", "zeta", "cmdpkgs",
+                       "ported", version="3.3",
+                       links={"artifact_url": "https://gitcode.com/x/y"
+                              "/releases/download/pkgs/zeta-3.3-ohos-aarch64.tar.gz"})
+        db.upsert_node(conn, "qtmod:core", "qt-module", "Qt Core", "kb-seed",
+                       "ported")
+        db.upsert_node(conn, "hb:toolx", "package", "toolx", "harmonybrew",
+                       "ported")
+        db.upsert_node(conn, "hb:pkgx", "package", "pkgx", "harmonybrew",
+                       "ported")
+        db.upsert_edge(conn, "app:demo", "hb:pkga", "runtime")
+        db.upsert_edge(conn, "hb:pkga", "hb:pkgb", "runtime")
+        db.upsert_edge(conn, "app:demo", "hb:pkgc", "runtime")
+        db.upsert_edge(conn, "app:demo", "hb:pkgd", "runtime")
+        db.upsert_edge(conn, "app:demo", "hb:zeta", "runtime")
+        db.upsert_edge(conn, "app:demo", "cmdpkgs:zeta", "runtime")
+        db.upsert_edge(conn, "app:demo", "qtmod:core", "uses-module")
+        db.upsert_edge(conn, "app:demo", "hb:toolx", "build")
+        db.upsert_edge(conn, "app:demo", "hb:pkgx", "runtime",
+                       platform_cond="macos")
+        return conn
+
+    def test_closure_rules(self):
+        conn = self._conn()
+        ids = {n["id"] for n in deps_fetch.dependency_closure(
+            conn, "app:demo")}
+        self.assertIn("hb:pkgb", ids)       # ported 包的 runtime 依赖仍展开
+        self.assertIn("qtmod:core", ids)    # provided 节点在闭包内
+        self.assertNotIn("hb:toolx", ids)   # build 边不产生目标侧产物需求
+        self.assertNotIn("hb:pkgx", ids)    # macos 条件依赖跳过
+        conn.close()
+
+    def test_dry_run_classification(self):
+        conn = self._conn()
+        with tempfile.TemporaryDirectory() as tmp:
+            m = deps_fetch.fetch_app_deps(conn, "app:demo", Path(tmp),
+                                          dry_run=True)
+            by_id = {e["id"]: e for e in m["deps"]}
+            self.assertEqual(by_id["app:demo"]["status"], "target")
+            self.assertEqual(by_id["qtmod:core"]["status"], "provided")
+            self.assertEqual(by_id["hb:pkga"]["status"], "would_download")
+            self.assertEqual(by_id["hb:pkgb"]["status"], "would_download")
+            self.assertEqual(by_id["hb:pkgc"]["status"], "cmd_only")
+            self.assertEqual(by_id["hb:pkgd"]["status"], "need_port")
+            self.assertEqual(by_id["hb:pkgd"]["source_url"],
+                             "https://example.com/pkgd-1.tar.gz")
+            # 跨源互补：hb:zeta 无直链，同名 cmdpkgs:zeta 的直链补位
+            self.assertEqual(by_id["hb:zeta"]["status"], "would_download")
+            self.assertEqual(by_id["cmdpkgs:zeta"]["status"], "covered")
+            self.assertNotIn("manifest_path", m)
+            self.assertEqual(sorted(Path(tmp).iterdir()), [])  # dry-run 不写盘
+            self.assertIn("would_download", m["summary"])
+            self.assertTrue(m["toolchain"]["cmake_prefix_path"])
+        conn.close()
+
+    def test_extract_replaces_readonly_leftover(self):
+        """上次失败留下的只读半成品：重新提取应整体替换而非 PermissionError。"""
+        import os
+        import stat as stat_mod
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            tar_path = tmp / "pkg.tar.gz"
+            with tarfile.open(tar_path, "w:gz") as tar:
+                ti = tarfile.TarInfo("lib/libz.so.1.3")
+                ti.size = 1
+                tar.addfile(ti, io.BytesIO(b"Z"))
+            target = tmp / "out" / "zeta" / "3.3"
+            stale = target / "lib" / "stale.so"
+            stale.parent.mkdir(parents=True)
+            stale.write_bytes(b"old")
+            os.chmod(stale, stat_mod.S_IREAD)   # brew 只读残留
+            deps_fetch._extract_tarball(tar_path, target)
+            self.assertFalse(stale.exists())
+            self.assertTrue((target / "lib" / "libz.so.1.3").is_file())
+
+    def test_extract_flat_tarball(self):
+        """cmd-pkgs 扁平结构：链接以拷贝落地（NTFS），根定位与库列表正确。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            tar_path = tmp / "pkg.tar.gz"
+            with tarfile.open(tar_path, "w:gz") as tar:
+                ti = tarfile.TarInfo("lib/libz.so.1.3")
+                ti.size = 1
+                tar.addfile(ti, io.BytesIO(b"Z"))
+                for lname in ("lib/libz.so.1", "lib/libz.so"):
+                    link = tarfile.TarInfo(lname)
+                    link.type = tarfile.SYMTYPE
+                    link.linkname = "libz.so.1.3"
+                    tar.addfile(link)
+                ti2 = tarfile.TarInfo("include/zlib.h")
+                ti2.size = 1
+                tar.addfile(ti2, io.BytesIO(b"h"))
+            target = tmp / "out" / "zeta" / "3.3"
+            fixed = deps_fetch._extract_tarball(tar_path, target)
+            self.assertEqual(fixed, ["lib/libz.so.1", "lib/libz.so"])
+            self.assertTrue((target / "lib" / "libz.so.1").is_file())
+            root = deps_fetch._locate_root(target)
+            self.assertEqual(root, target)
+            self.assertEqual(deps_fetch._list_libs(root), ["z"])
+        self.assertEqual(
+            deps_fetch._ver_from_url(
+                "https://gitcode.com/x/releases/download/pkgs/"
+                "zeta-3.3-ohos-aarch64.tar.gz"),
+            "3.3")
+
+
+if __name__ == "__main__":
+    unittest.main()
