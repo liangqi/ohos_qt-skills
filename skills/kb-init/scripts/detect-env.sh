@@ -271,6 +271,67 @@ echo "QT5_15_SDK_FOUND=$QT5_15_SDK_FOUND"
 echo "QT5_15_OHOS_SDK_PATH=$QT5_15_OHOS_SDK_PATH"
 
 # ═══════════════════════════════════════════════════════════
+# 5a. Qt 6 鸿蒙 SDK 检测（官方 online installer 安装，通常在 workspace 之外）
+# ═══════════════════════════════════════════════════════════
+# 目录形如 <QtSDK>/6.12.0/harmonyos_arm64_v8a（target）+ <QtSDK>/6.12.0/macos（host）
+QT6_SDK_FOUND="false"; QT6_OHOS_SDK_PATH=""; QT6_HOST_PATH=""; QT6_VERSION=""
+
+_version_sort() {
+  if sort -V </dev/null &>/dev/null; then sort -V; else sort; fi
+}
+
+# host 工具链：同版本目录下的非 harmonyos_* 子目录，需含 bin/qmake6
+_find_qt6_host() {
+  local vdir="$1" c
+  for c in macos gcc_64 mingw_64 msvc2022_64 msvc2019_64 llvm-mingw_64 android_arm64_v8a; do
+    [ -x "$vdir/$c/bin/qmake6" ] && { echo "$vdir/$c"; return 0; }
+  done
+  for c in "$vdir"/*; do
+    case "$(basename "$c")" in harmonyos_*) continue;; esac
+    [ -x "$c/bin/qmake6" ] && { echo "$c"; return 0; }
+  done
+  return 1
+}
+
+# 1) 环境变量优先
+if [ -n "${QT6_OHOS_SDK:-}" ] && [ -x "${QT6_OHOS_SDK}/bin/qt-cmake" ]; then
+  QT6_OHOS_SDK_PATH="$(cd "$QT6_OHOS_SDK" && pwd)"
+else
+  # 2) 扫描常见 Qt installer 根目录下的 6.*/harmonyos_*
+  _qt6_cands=""
+  for _root in "$HOME/QtSDK" "$HOME/Qt" "$HOME/Qt6" "$HOME/qt" "/opt/Qt" "/opt/qt" "/c/Qt" "/d/Qt" "$KB_ROOT/workspace/qt-sdk"; do
+    [ -d "$_root" ] || continue
+    for _d in "$_root"/6.*/harmonyos_*; do
+      [ -x "$_d/bin/qt-cmake" ] && _qt6_cands="$_qt6_cands$_d"$'\n'
+    done
+  done
+  if [ -n "$_qt6_cands" ]; then
+    # 取版本最高的一个
+    QT6_OHOS_SDK_PATH="$(printf '%s' "$_qt6_cands" | grep -v '^$' | _version_sort | tail -1)"
+  fi
+fi
+
+if [ -n "$QT6_OHOS_SDK_PATH" ] && [ -d "$QT6_OHOS_SDK_PATH" ]; then
+  QT6_SDK_FOUND="true"
+  _vdir="$(dirname "$QT6_OHOS_SDK_PATH")"
+  QT6_VERSION="$("$QT6_OHOS_SDK_PATH/bin/qmake6" -query QT_VERSION 2>/dev/null || basename "$_vdir")"
+  if [ -n "${QT6_HOST:-}" ] && [ -d "${QT6_HOST}" ]; then
+    QT6_HOST_PATH="$(cd "$QT6_HOST" && pwd)"
+  else
+    QT6_HOST_PATH="$(_find_qt6_host "$_vdir" || echo "")"
+  fi
+fi
+
+QT6_HARMONYDEPLOYQT_FOUND="false"
+[ -n "$QT6_HOST_PATH" ] && [ -x "$QT6_HOST_PATH/bin/harmonydeployqt" ] && QT6_HARMONYDEPLOYQT_FOUND="true"
+
+echo "QT6_SDK_FOUND=$QT6_SDK_FOUND"
+echo "QT6_OHOS_SDK_PATH=$QT6_OHOS_SDK_PATH"
+echo "QT6_HOST_PATH=$QT6_HOST_PATH"
+echo "QT6_VERSION=$QT6_VERSION"
+echo "QT6_HARMONYDEPLOYQT_FOUND=$QT6_HARMONYDEPLOYQT_FOUND"
+
+# ═══════════════════════════════════════════════════════════
 # 5b. 独立模板归档检测（workspace/templates/）
 # ═══════════════════════════════════════════════════════════
 TEMPLATE_STANDALONE_FOUND="false"
@@ -343,5 +404,5 @@ APP_READY="true"
 [ "$KB_FOUND" = "false" ] && APP_READY="false"
 [ "$DEVECO_FOUND" = "false" ] && APP_READY="false"
 [ "$OHOS_SDK_NATIVE_FOUND" = "false" ] && APP_READY="false"
-[ "$QT5_12_SDK_FOUND" = "false" ] && [ "$QT5_15_SDK_FOUND" = "false" ] && APP_READY="false"
+[ "$QT5_12_SDK_FOUND" = "false" ] && [ "$QT5_15_SDK_FOUND" = "false" ] && [ "$QT6_SDK_FOUND" = "false" ] && APP_READY="false"
 echo "APP_DEVELOPER_READY=$APP_READY"

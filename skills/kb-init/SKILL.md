@@ -71,7 +71,11 @@ bash skills/kb-init/scripts/clone-kb.sh --dest=<KB_PARENT_DIR>
 
 记录为 `QT_VERSION`（`6` / `5.15` / `5.12`）。
 
-> **先查检测结果**：如果 `detect-env.sh` 或用户已给出 Qt 6 SDK 路径，直接走 Qt 6 分支，不要再问 5.x 的编译参数。
+> **先查检测结果**：`detect-env.sh` 会自动扫描官方 installer 的安装根目录
+> （`~/QtSDK`、`~/Qt`、`/opt/Qt`、`C:\Qt` 等，也认 `QT6_OHOS_SDK` 环境变量）。
+> 如果 `QT6_SDK_FOUND=true`，**不要再问 Q1/Q2**：直接取 `QT6_OHOS_SDK_PATH` / `QT6_HOST_PATH`
+> 作为 `QT6_OHOS_SDK` / `QT6_HOST`，跳到 Q4（也不要问 5.x 的编译参数）。
+> 只有用户明确说要用 5.12/5.15 时才走 5.x 分支。
 
 ### Q2: Qt 获取方式
 
@@ -81,9 +85,15 @@ bash skills/kb-init/scripts/clone-kb.sh --dest=<KB_PARENT_DIR>
 
 Qt 6 鸿蒙版由官方 installer 提供，已含 target + host 两套产物，无需 clone 源码或编译 SDK。只需确认路径：
 
-> 请确认你的 Qt 6 安装路径：
-> - target SDK（鸿蒙侧）：形如 `<QtSDK>/6.12.0/harmonyos_arm64_v8a`
-> - host 工具链（本机侧）：形如 `<QtSDK>/6.12.0/macos`（Windows 为 `mingw_64`/`msvc2022_64`，Linux 为 `gcc_64`）
+先看 `detect-env.sh` 的 `QT6_SDK_FOUND`：
+
+- `true` → 直接用 `QT6_OHOS_SDK_PATH` / `QT6_HOST_PATH`（连同 `QT6_VERSION`
+  一起向用户复述一句确认即可，不要逐项追问）
+- `false` → 问用户：
+
+  > 请给出你的 Qt 6 安装路径：
+  > - target SDK（鸿蒙侧）：形如 `<QtSDK>/6.12.0/harmonyos_arm64_v8a`
+  > - host 工具链（本机侧）：形如 `<QtSDK>/6.12.0/macos`（Windows 为 `mingw_64`/`msvc2022_64`，Linux 为 `gcc_64`）
 
 记录为 `QT6_OHOS_SDK` 和 `QT6_HOST`，然后**跳过 Q3**，直接进入 Q4。
 
@@ -376,6 +386,7 @@ bash skills/kb-init/scripts/verify-env.sh
 | SDK 下载失败 | 手动访问 https://gitcode.com/ohos-qt/qt-harmonyos-src/releases |
 | 编译 SDK 失败 (commercial) | 检查 MinGW/Perl/cmake 是否安装；参阅 `references/qt-compile-guide.md` 故障排除章节 |
 | `verify-env.sh` 报告 FAIL | 按 FAIL 项提示修复，重新运行 |
+| Qt 6 已装但 `QT6_SDK_FOUND=false` | installer 根目录不在探测列表内，`export QT6_OHOS_SDK=<.../6.x.y/harmonyos_arm64_v8a>` 后重跑 detect-env，或直接给 `generate-env-local.sh` 传 `--qt6-ohos-sdk` / `--qt6-host` |
 | Qt 6: `qt-cmake` FAIL | 确认 `QT6_OHOS_SDK` 指向 `harmonyos_arm64_v8a` 而非 `<QtSDK>/6.x.y` 上级目录 |
 | Qt 6: HAP 装上后启动即崩（`dlopen` … `libicui18n.so not found`） | 缺 additional-packages 运行时 .so，从 `<OHOS_ADDITIONAL_PACKAGES>/lib/` 拷 9 个 .so 到 `hap/entry/libs/arm64-v8a/` 后重新 `hvigorw assembleHap` |
 | `verify-env.sh`: additional-packages FAIL | 路径错或 zip 解压不完整，重新解压 `ohos-additional-packages-*.zip` |
