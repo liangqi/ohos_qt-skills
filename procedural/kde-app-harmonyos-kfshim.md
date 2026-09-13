@@ -82,15 +82,20 @@ grep -rn 'QRegExp\|QDesktopWidget\|QStringRef\|qSort\|QLinkedList\|QTextCodec' -
 
 ### 2. 搭 shim 骨架
 
+shim 单独一个仓库（理由见 §3 末），应用侧只留一个薄壳工程：
+
 ```
-ohos/
-  kfshim/
-    include/
-      klocalizedstring.h  kxmlguiwindow.h  kconfigskeleton.h  ...   # 小写实名头
-      KLocalizedString    KXmlGuiWindow    KConfigSkeleton    ...   # CamelCase 转发头
-    src/*.cpp
-  kcfgc_lite.py          # kconfig_compiler 替代
-  CMakeLists.txt         # 独立工程，不动上游 CMakeLists.txt
+kfshim/                    # 独立仓库，跨应用复用
+  include/
+    klocalizedstring.h  kxmlguiwindow.h  kconfigskeleton.h  ...   # 小写实名头
+    KLocalizedString    KXmlGuiWindow    KConfigSkeleton    ...   # CamelCase 转发头
+  src/*.cpp
+  tools/kcfgc_lite.py      # kconfig_compiler 替代
+  cmake/KFShimMacros.cmake # kfshim_add_kcfg_files()
+  tests/                   # 不依赖任何应用的自测
+  CMakeLists.txt           # add_library(kfshim STATIC ...)
+
+<app>/ohos/CMakeLists.txt  # 薄壳：add_subdirectory(${KFSHIM_ROOT}) + 引用上游源码
 ```
 
 CamelCase 转发头一行生成（KF 的两种 include 风格上游都会用）：
