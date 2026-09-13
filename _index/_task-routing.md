@@ -33,6 +33,7 @@ summary: >
     ├─ "生命周期/closeEvent/接续/分享" ────→ [G] 生命周期
     ├─ "QtOhosExtras 怎么用/某个函数" ────→ [H] QtOhosExtras API
     ├─ "Qt6 相关" ─────────────────────────→ [L] Qt6 状态
+    ├─ "KDE 应用/依赖 KF5/KF6" ────────────→ [K] KDE 应用移植
     ├─ "三方库/依赖/交叉编译" ────────────→ [M] 三方库
     ├─ "DevEco/MCP/工具链" ──────────────→ [N] 工具链
     ├─ "Qt+CEF demo / WebEngine 迁移 demo" ─→ [Q] Demo 生成（+ qt-cef-ohos-dev-guide + tools/kb-cef-graft.py）
@@ -124,6 +125,20 @@ summary: >
 | **必读页** | ① `ohos-extras.md`（~36 APIs） |
 | **按需加载** | `lifecycle.md`（使用示例）、`golden-rules.md` §三（A1-A6） |
 | **预期输出** | API 签名 + 用途 + 使用示例 |
+
+### [K] KDE 应用移植
+
+**触发词**：KDE、KF5、KF6、KDE Frameworks、KXmlGui、KConfig、kcfg、kcalc/kate/okular 一类 KDE 应用
+
+| 项目 | 内容 |
+|------|------|
+| **工作流** | `procedural/kde-app-harmonyos-kfshim.md`（kfshim 方法六步） |
+| **必读页** | ① 本工作流 ② `golden-rules.md` |
+| **按需加载** | `qt-app-harmonyos-migration.md`（通用流程，本页是其"KF 依赖"分支）、`third-party-libs.md`（GMP/MPFR 一类原生依赖）、`gallery-qt6-harmonyos-port.md`（Qt6.12 打包与签名） |
+| **预期输出** | KF 接触面量化 → shim 实现 → 独立 ohos/CMakeLists → host 自测 → 真机验证 |
+
+> **先量化再动手**：按 include 而非 `target_link_libraries` 统计 KF 接触面。
+> 命中 KIO / KParts / KTextEditor / Akonadi 则 shim 不适用。
 
 ### [L] Qt6 状态
 

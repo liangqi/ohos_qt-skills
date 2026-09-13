@@ -84,6 +84,7 @@ Qt 6 新增了若干 `QStandardPaths::StandardLocation` 枚举值，以下映射
 > |---|---|---|
 > | `AppDataLocation` | `/data/storage/el2/base/files` | 空 |
 > | `AppLocalDataLocation` | `/data/storage/el2/base/preferences` | 空 |
+> | `AppConfigLocation` | `/data/storage/el2/base/preferences` | 空 |
 > | `HomeLocation` / `QDir::homePath()` | `/data/storage/el2/base/files` | 空 |
 > | `TempLocation` | `/data/storage/el2/base/temp` | 空 |
 > | `DocumentsLocation` | `/storage/Users/currentUser/Documents` | 沙箱外，需权限 |
@@ -96,6 +97,11 @@ Qt 6 新增了若干 `QStandardPaths::StandardLocation` 枚举值，以下映射
 >
 > （此表更正了本条 2026-09-12 首版的两处口径错误：误记 `AppDataLocation`→`preferences/`，
 > 以及误称 `QDir::homePath()` 为沙箱根。）
+>
+> **2026-09-13 补充**（KCalc 真机，Qt 6.12.0 / HarmonyOS 6.1.0 API 24）：`AppConfigLocation`
+> 与 `AppLocalDataLocation` **落点相同**，都是 `<沙箱>/preferences`。该目录可写，
+> `QSettings` 的 INI 后端在其中正常读写并跨进程持久化（hdc 侧路径
+> `/data/app/el2/100/base/<bundle>/preferences/`）。见 [[kde-app-harmonyos-kfshim]]。
 
 ### CMake API 变更
 

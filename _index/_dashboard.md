@@ -1,13 +1,13 @@
 ---
-updated: 2026-09-12
-total_pages: 46
+updated: 2026-09-13
+total_pages: 47
 description: >
   知识库健康仪表盘（派生计数，从 frontmatter 自动生成）。审计/评分快照见 _dashboard-audit.md。
 ---
 
 # 知识库健康仪表盘
 
-> **最后更新**：2026-09-12 | **总活跃页面**：46 | **归档**：1
+> **最后更新**：2026-09-13 | **总活跃页面**：47 | **归档**：1
 
 ---
 
@@ -33,7 +33,7 @@ description: >
 | `qt-harmonyos-porting-workflow.md` | ✅ 活跃 | 2026-08-14 |
 | `qt-harmonyos-project-structure.md` | ✅ 活跃 | 2026-08-14 |
 | `qt-harmonyos-pyqt-status.md` | ✅ 活跃 | 2026-08-26 |
-| `qt-harmonyos-qt6-status.md` | ✅ 活跃 | 2026-08-25 |
+| `qt-harmonyos-qt6-status.md` | ✅ 活跃 | 2026-09-13 |
 | `qt-harmonyos-system-tray.md` | ✅ 活跃 | 2026-07-23 |
 | `qt-harmonyos-third-party-libs.md` | ✅ 活跃 | 2026-08-15 |
 | `qt-harmonyos-window-model.md` | ✅ 活跃 | 2026-08-14 |
@@ -43,7 +43,7 @@ description: >
 | `qt-ohos-project-analyzer-workflow.md` | ✅ 活跃 | 2026-07-02 |
 | `qt515-vs-qt512-api-diff.md` | ✅ 活跃 | 2026-06-13 |
 
-### procedural（14 活跃）
+### procedural（15 活跃）
 
 | 页面 | 状态 | 最后更新 |
 |------|:----:|:--------:|
@@ -51,10 +51,11 @@ description: >
 | `fetch-ohos-third-party-lib.md` | ✅ 活跃 | 2026-07-07 |
 | `framework-fix-verification.md` | ✅ 活跃 | 2026-06-05 |
 | `framework-issue-analysis.md` | ✅ 活跃 | 2026-08-14 |
+| `kde-app-harmonyos-kfshim.md` | ✅ 活跃 | 2026-09-13 |
 | `llvm-ohos-cross-compile.md` | ✅ 活跃 | 2026-08-14 |
 | `qt-app-harmonyos-completion.md` | ✅ 活跃 | 2026-08-12 |
 | `qt-app-harmonyos-full-pipeline.md` | ✅ 活跃 | 2026-08-15 |
-| `qt-app-harmonyos-migration.md` | ✅ 活跃 | 2026-07-21 |
+| `qt-app-harmonyos-migration.md` | ✅ 活跃 | 2026-09-13 |
 | `qt-bug-report-generation.md` | ✅ 活跃 | 2026-08-12 |
 | `qt-bug-report-sample.md` | ✅ 活跃 | 2026-08-01 |
 | `qt-cef-ohos-dev-guide.md` | ✅ 活跃 | 2026-08-26 |

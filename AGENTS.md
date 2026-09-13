@@ -62,6 +62,7 @@ skills/      → Agent skills（自动化脚本和工具）
 |----------|---------|
 | 移植 Qt 应用到鸿蒙 | `procedural/qt-app-harmonyos-migration` + `semantic/qt-harmonyos-porting-workflow` + `qt-harmonyos-api-mapping` + `qt-harmonyos-code-patterns` |
 | 查 API 替换 | `semantic/qt-harmonyos-api-mapping` + `qt-harmonyos-code-patterns` |
+| 移植 KDE 应用（依赖 KF5/KF6） | `procedural/kde-app-harmonyos-kfshim` — 不编译 KF，用 shim 层顶掉 |
 | 查某个 Qt 模块是否支持鸿蒙 | `semantic/qt-harmonyos-modules` |
 | 查鸿蒙平台限制 | `semantic/qt-harmonyos-platform-limits` |
 | 编译失败/构建报错/部署不了 | `semantic/qt-harmonyos-build` + `qt-harmonyos-build-run-workflow` + 先查 `problems/_lookup.md` |

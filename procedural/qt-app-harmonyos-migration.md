@@ -4,10 +4,10 @@ type: procedural
 domain: workflow
 tags: [workflow, qt, harmonyos, porting, migration, ohos]
 created: 2026-06-02
-updated: 2026-09-12
+updated: 2026-09-13
 status: active
 audience: public
-refs: [episodic-projects-gallery-qt6-harmonyos-port,semantic-qt-harmonyos-api-mapping,semantic-qt-harmonyos-build-run-workflow,semantic-qt-harmonyos-code-patterns,semantic-qt-harmonyos-lifecycle,semantic-qt-harmonyos-porting-workflow,semantic-qt-harmonyos-project-structure,semantic-qt-harmonyos-window-model]
+refs: [episodic-projects-gallery-qt6-harmonyos-port,procedural-kde-app-harmonyos-kfshim,semantic-qt-harmonyos-api-mapping,semantic-qt-harmonyos-build-run-workflow,semantic-qt-harmonyos-code-patterns,semantic-qt-harmonyos-lifecycle,semantic-qt-harmonyos-porting-workflow,semantic-qt-harmonyos-project-structure,semantic-qt-harmonyos-window-model]
 summary: >
   Qt应用鸿蒙化迁移工作流：评估可行性→创建工程结构→按8步决策树逐步迁移→编译验证→知识积累。
   将其他平台的Qt应用迁移到HarmonyOS平台的端到端流程。
@@ -20,6 +20,9 @@ summary: >
 ---
 
 ## 触发条件
+
+> **应用依赖 KDE Frameworks（`find_package(KF5/KF6 ...)`）**：先读 [[kde-app-harmonyos-kfshim]]。
+> 不要试图把 KF 交叉编译到鸿蒙——用 shim 层顶掉应用实际调用的那几个 KF 类，上游 KF 调用点零改动。
 
 - 收到新的 Qt 应用鸿蒙化迁移任务
 - 需要将已有 Qt 项目移植到鸿蒙平台
