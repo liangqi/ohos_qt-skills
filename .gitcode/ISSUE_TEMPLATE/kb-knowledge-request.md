@@ -1,30 +1,30 @@
 ---
-name: 知识需求 / 补充
-about: 希望加入某些知识（Qt 或鸿蒙某主题）
-title: "[知识需求] "
+name: Knowledge request / addition
+about: Request that some knowledge be added (a Qt or HarmonyOS topic)
+title: "[Knowledge request] "
 labels: ["kb-knowledge-request"]
 ---
 
-## 期望的知识主题
-<!-- Qt API 迁移 / 鸿蒙某能力 / 某三方库 / 某平台限制 / 其它 -->
+## Desired knowledge topic
+<!-- Qt API migration / a HarmonyOS capability / a third-party library / a platform limitation / other -->
 
-## 你的使用场景
-<!-- 在做什么、卡在哪、为什么现在知识库帮不到你 -->
+## Your use case
+<!-- What you're working on, where you're stuck, why the knowledge base can't help you today -->
 
-## 期望的产出形式
-- [ ] API 映射（某 API 在鸿蒙怎么替换）
-- [ ] Before/After 代码模式
-- [ ] 错误解决方案（编译/部署/运行时报错）
-- [ ] 工作流（步骤指南）
-- [ ] 平台限制说明
+## Desired output format
+- [ ] API mapping (how to replace a given API on HarmonyOS)
+- [ ] Before/after code patterns
+- [ ] Error solutions (build/deployment/runtime failures)
+- [ ] Workflow (step-by-step guide)
+- [ ] Platform limitation write-up
 
-## 已有的参考
-<!-- Qt 文档 / 鸿蒙文档 / 其它链接；若有现成实现贴链接 -->
+## Existing references
+<!-- Qt docs / HarmonyOS docs / other links; paste a link if an implementation already exists -->
 
-## 环境信息（便于对齐版本）
-- Qt 版本：<!-- 5.12.12 / 5.15.16 / 6.x -->
-- 鸿蒙版本 / API：<!-- API 17 / 20 等 + 设备型号 -->
-- 涉及的三方库 / 依赖（如有）：
+## Environment details (so we can align on versions)
+- Qt version: <!-- 5.12.12 / 5.15.16 / 6.x -->
+- HarmonyOS version / API: <!-- API 17 / 20 etc. + device model -->
+- Third-party libraries / dependencies involved (if any):
 
-## 是否有可分享的最小复现 / demo
-<!-- 链接或简述，便于我们把经验沉淀进知识库 -->
+## Can you share a minimal reproduction / demo?
+<!-- A link or a short description, so we can fold the experience into the knowledge base -->

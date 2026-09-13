@@ -1,9 +1,9 @@
 ---
 id: ohos-llvm-cross-compile
-title: LLVM 类原生工程交叉编译到 OHOS
+title: Cross-compiling LLVM-style native projects for OHOS
 status: active
 confidence: 0.5
-sources: [{type: experience, name: "Qt KB LLVM OHOS 交叉编译流程", date: 2026-08-05}]
+sources: [{type: experience, name: "Qt KB LLVM OHOS cross-compilation process", date: 2026-08-05}]
 created: 2026-08-13
 updated: 2026-08-14
 last_confirmed: 2026-08-05
@@ -11,27 +11,27 @@ review_by: null
 superseded_by: null
 tags: [ohos, llvm, cross-compile, cmake, ndk]
 refs: [ohos-native-third-party-libraries, ohos-cross-compile-pitfalls]
-summary: "用 OHOS NDK toolchain 构建 LLVM 类 CMake 原生工程，并验证 target artifact 与依赖闭包。"
+summary: "Building LLVM-style native CMake projects with the OHOS NDK toolchain, and verifying the target artifacts and dependency closure."
 audience: public
 ---
 
-# LLVM 类原生工程交叉编译到 OHOS
+# Cross-compiling LLVM-style native projects for OHOS
 
 ## Why:
 
-LLVM 及同类大型 CMake 工程经常同时构建 host generator 与 target library。只设置 `CC/CXX` 容易让 CMake 混用主机 sysroot、运行 target 工具或生成错误 ABI 产物。
+LLVM and similar large CMake projects often build host generators and target libraries in the same run. Setting only `CC/CXX` makes it easy for CMake to mix in the host sysroot, try to run target tools, or produce artifacts with the wrong ABI.
 
 ## How to apply:
 
-1. 固定目标 SDK/NDK、API level、ABI 与源码版本。
-2. 清理旧的主机构建目录，为 host tools 与 target artifacts 使用不同 build directory。
-3. 用 OHOS toolchain file 配置 target build；显式关闭目标系统不支持或任务不需要的组件。
-4. 若工程需要 tablegen/code generator，先构建 host 版本并通过工程支持的变量传入，禁止在主机执行 OHOS target binary。
-5. 构建后检查 ELF、`NEEDED`、导出符号、RPATH 和主机路径泄漏。
-6. 把 `.so` 按 HAP ABI 目录部署，用最小 native consumer 验证 load 与核心 API。
-7. 最后再接入 Qt、Rust、JVM 或 .NET adapter，并在对应框架仓验证。
+1. Pin the target SDK/NDK, API level, ABI, and source version.
+2. Clean out old host build directories, and use separate build directories for host tools and target artifacts.
+3. Configure the target build with the OHOS toolchain file; explicitly disable components the target system doesn't support or that your task doesn't need.
+4. If the project needs tablegen or another code generator, build the host version first and pass it in through the variable the project supports — never run an OHOS target binary on the host.
+5. After the build, check the ELF, its `NEEDED` entries, exported symbols, RPATH, and for leaked host paths.
+6. Deploy the `.so` files into the HAP's ABI directories and verify loading and the core APIs with a minimal native consumer.
+7. Only then wire in the Qt, Rust, JVM, or .NET adapter, and verify that in the corresponding framework repository.
 
-最小配置骨架：
+Minimal configuration skeleton:
 
 ```bash
 cmake -S <source> -B <target-build> \
@@ -42,15 +42,15 @@ cmake -S <source> -B <target-build> \
 cmake --build <target-build> --parallel
 ```
 
-## 失败分类
+## Failure taxonomy
 
-| 阶段 | 常见原因 | 首查 |
+| Stage | Common cause | Check first |
 |---|---|---|
-| configure | toolchain/sysroot 混用、host tool 缺失 | CMake cache、compiler target、try_compile 日志 |
-| compile | POSIX/glibc 假设、SDK header/API 差异 | 首个 target compile error，不先改框架代码 |
-| link | 系统库缺失、符号可见性、依赖顺序 | link line、undefined symbol、目标 SDK stubs |
-| load | 依赖未打包、ABI/RPATH、loader policy | ELF dynamic section、HAP 内容、系统日志 |
+| configure | Mixed toolchain/sysroot, missing host tool | CMake cache, compiler target, try_compile logs |
+| compile | POSIX/glibc assumptions, SDK header/API differences | The first target compile error — don't start by editing framework code |
+| link | Missing system library, symbol visibility, dependency order | The link line, undefined symbols, target SDK stubs |
+| load | Dependency not packaged, ABI/RPATH, loader policy | The ELF dynamic section, HAP contents, system logs |
 
-## 验收
+## Acceptance
 
-构建成功不等于可复用：必须保存版本/flags/补丁来源，完成 target artifact 检查、最小加载验证和 fresh-clone 重建。
+A successful build is not the same as a reusable one: you must record the versions/flags/patch provenance, and complete the target artifact inspection, the minimal load verification, and a fresh-clone rebuild.

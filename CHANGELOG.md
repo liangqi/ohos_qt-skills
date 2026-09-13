@@ -1,38 +1,38 @@
-# 变更日志
+# Changelog
 
-> 外部知识库（开发者版）发版记录。版本号遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
-> 版本对象 = 外部仓整包（Qt 公开子集 + 内嵌 ohos-common-kb + kb-init skill + 根文档）。
+> Release history of the external knowledge base (developer edition). Version numbers follow [Semantic Versioning](https://semver.org/).
+> The versioned object = the whole external repository bundle (the public Qt subset + the embedded ohos-common-kb + the kb-init skill + the root documents).
 >
-> - **MAJOR** — 破坏性：删/移走用户依赖的页、`audience` 由 public→internal、目录重排致旧链接断、铁律/API 映射被证伪并反转
-> - **MINOR** — 内容新增：新页/新节/新 API 映射条目/新 task 类型/内嵌新 KB 或 skill
-> - **PATCH** — 内容修正：typo/措辞修正、错误解决方案更新、Qt 参考版本 bump
+> - **MAJOR** — breaking: deleting/relocating a page users depend on, changing `audience` from public to internal, directory reshuffles that break old links, or an iron rule / API mapping being disproven and reversed
+> - **MINOR** — content additions: a new page/section/API mapping entry/task type, or a newly embedded KB or skill
+> - **PATCH** — content corrections: typos and wording fixes, updated error solutions, Qt reference version bumps
 >
-> 发版流程见内部 `procedural/release-external-edition.md`。每版的 `RELEASE-MANIFEST.yaml` 记录源端 KB git SHA + content_tree_sha256，可复现。
+> The release process is documented in the internal `procedural/release-external-edition.md`. Each release's `RELEASE-MANIFEST.yaml` records the source KB's git SHA plus content_tree_sha256, so it is reproducible.
 
 ---
 
 ## v2.2.1 — 2026-08-29
 
-- fix(procedural+semantic): 修复 skills 自嵌套与 manifest 幽灵 skill
+- fix(procedural+semantic): fix skills self-nesting and phantom skills in the manifest
 
-- copy_skills 在持久化/复用 OUT（如 dist/dev-edition 二次构建）下 cp -r src dst 会把 src 拷进已存在的 dst → 产出 skills/skills/ 双层嵌套；改 rm -rf + /. 拷内容防嵌套。
-- gen-release-manifest skills 枚举盲目收所有子目录，把自嵌套的 skills/ 登记成幽灵 skill（manifest 出现 skills: ["kb-init","skills"]）；加 SKILL.md 校验 + 跳过自嵌套目录兜底。
-- PR#9 曾手动清理外部仓 skills/skills/ 产物，本次在源端两层加固固化，避免复发。
+- With a persisted/reused OUT (e.g. a second build into dist/dev-edition), `copy_skills` ran `cp -r src dst`, which copies src *into* the already-existing dst → producing a doubly nested skills/skills/. Changed to `rm -rf` + copying `/.` contents to prevent nesting.
+- gen-release-manifest's skills enumeration blindly collected every subdirectory, registering the self-nested skills/ as a phantom skill (the manifest showed skills: ["kb-init","skills"]). Added a SKILL.md check plus a fallback that skips self-nested directories.
+- PR #9 previously cleaned up the skills/skills/ artifact in the external repository by hand; this change hardens both layers at the source so it can't recur.
 
 ## v2.2.0 — 2026-08-27
 
-- Qt5+CEF 鸿蒙开发指导 + issue 模板（.gitcode/ISSUE_TEMPLATE/）+ xsy-letos/xsy-pyqt 迁移经验 + 版本化发版机制（kb-publish.py 固定脚本从 main 发版）
+- Qt5+CEF HarmonyOS development guide + issue templates (.gitcode/ISSUE_TEMPLATE/) + xsy-letos/xsy-pyqt migration experience + versioned release mechanism (kb-publish.py, a fixed script that releases from main)
 
 ## v2.1.0 — 2026-08-25
 
-- Qt6.12 beta3 模块状态更新（QtHarmonyExtras 重新独立成模块 + 文件权限接口修正）；新增 QCTools/xi-qt OHOS 迁移经验；修正公开页硬编码 Qt 路径脱敏；新增版本化发版机制（README 能力规格节 + RELEASE-MANIFEST + CHANGELOG）
+- Updated Qt 6.12 beta3 module status (QtHarmonyExtras is a standalone module again + corrected file permission interfaces); added QCTools/xi-qt OHOS migration experience; scrubbed hard-coded Qt paths from public pages; added a versioned release mechanism (README "Capability spec" section + RELEASE-MANIFEST + CHANGELOG)
 
 ## v2.0.0 — 2026-08-19
 
-- **MINOR** 内嵌 `ohos-common-kb` 公开子集（ArkTS/ArkUI/NAPI/Stage 模型/DevEco 工具链基础）到 `ohos-common-kb-public/`
-- **MINOR** 新增 `skills/kb-init/` 初始化 skill：环境探测 → 引导安装缺失依赖 → 生成 `ENV.local.md` → 校验环境
-- **MINOR** 多渠道 Qt 源码获取（商业 license `codereview.qt-project.org` / 开源镜像 `ohos-qt/qt-harmonyos-src` / 预编译 SDK releases）
-- **MINOR** 新增根文档 `SETUP.md` / `CONTRIBUTING.md` / `SECURITY.md`
-- **MINOR** `RELEASE-MANIFEST.yaml` 记录多源 SHA + `content_tree_sha256` + 页数计数（builder v2, schema v1）
+- **MINOR** Embedded the public subset of `ohos-common-kb` (ArkTS/ArkUI/NAPI/Stage model/DevEco toolchain basics) into `ohos-common-kb-public/`
+- **MINOR** Added the `skills/kb-init/` initialization skill: detect the environment → guide installation of missing dependencies → generate `ENV.local.md` → validate the environment
+- **MINOR** Multi-channel Qt source acquisition (commercial license via `codereview.qt-project.org` / open-source mirror `ohos-qt/qt-harmonyos-src` / prebuilt SDK releases)
+- **MINOR** Added the root documents `SETUP.md` / `CONTRIBUTING.md` / `SECURITY.md`
+- **MINOR** `RELEASE-MANIFEST.yaml` records multi-source SHAs + `content_tree_sha256` + page counts (builder v2, schema v1)
 
-> v2.0.0 之前的旧 5-skill 仓库历史见 `legacy/pre-rewrite-*` tag（已快照至内部 `raw/imports/ohos_qt-skills-legacy/` 供未来继承）。未回填 v1.0.0。
+> The history of the old 5-skill repository from before v2.0.0 lives under the `legacy/pre-rewrite-*` tags (snapshotted into the internal `raw/imports/ohos_qt-skills-legacy/` for future reference). v1.0.0 was never backfilled.

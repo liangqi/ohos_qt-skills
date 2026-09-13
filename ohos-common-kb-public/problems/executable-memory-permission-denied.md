@@ -1,14 +1,14 @@
 ---
 id: executable-memory-permission-denied
-title: "JIT/运行时启动崩溃：可执行内存权限未授权"
+title: "JIT/runtime startup crash: executable memory permission not granted"
 status: active
 confidence: 0.7
 sources:
   - type: experience
-    name: "AWT/Swing JVM CodeCache 真机验证"
+    name: "AWT/Swing JVM CodeCache, on-device verification"
     date: 2026-07-30
   - type: experience
-    name: "Node V8 与 JVM hap-bin 真机验证"
+    name: "Node V8 and JVM hap-bin, on-device verification"
     date: 2026-08-05
 created: 2026-08-13
 updated: 2026-08-15
@@ -16,7 +16,7 @@ last_confirmed: 2026-08-05
 superseded_by: null
 tags: [problem, runtime, jit, mmap, permission, signing]
 refs: [native-runtime-embedding, hap-native-project-structure]
-summary: "V8/HotSpot 等 JIT 因 writable executable memory 权限或 profile ACL 不成立而 ENOMEM/SIGABRT；声明权限并验证签名授权。"
+summary: "JITs such as V8/HotSpot hit ENOMEM/SIGABRT because writable-executable-memory permission or the profile ACL isn't in place; declare the permission and verify the signing grant."
 audience: public
 error_message: |
   Check failed: 12==errno (ENOMEM)
@@ -25,30 +25,30 @@ error_message: |
   Reason: Signal:SIGABRT
 ---
 
-# JIT/运行时启动崩溃：可执行内存权限未授权
+# JIT/runtime startup crash: executable memory permission not granted
 
-## 错误信息
+## Error message
 
 ```text
 V8: Check failed: 12==errno (ENOMEM)
 HotSpot: CodeCache::initialize -> JNI_CreateJavaVM -> SIGABRT
 ```
 
-## 场景与原因
+## Scenario and cause
 
-V8、HotSpot 等 JIT 需要动态生成机器码。平台安全策略限制可写/可执行内存；只在 `module.json5` 写权限名但签名 profile 没有相应 ACL，也不会获得授权。
+JITs such as V8 and HotSpot need to generate machine code dynamically. The platform security policy restricts writable/executable memory; and writing the permission name in `module.json5` alone, without the corresponding ACL in the signing profile, will not get it granted either.
 
-## 解决方案
+## Solution
 
-1. 确认失败确实发生在 JIT/code cache 的 executable-memory 分配，而不是普通内存不足；
-2. 按目标系统要求声明 `ohos.permission.kernel.ALLOW_WRITABLE_CODE_MEMORY`；
-3. 使用获准该系统权限、与 bundle/设备匹配的 profile 完成签名；
-4. clean install 后验证权限结果、进程启动和运行时日志。
+1. Confirm the failure really occurs in the JIT/code-cache executable-memory allocation, not in ordinary out-of-memory.
+2. Declare `ohos.permission.kernel.ALLOW_WRITABLE_CODE_MEMORY` as the target system requires.
+3. Sign with a profile that is approved for that system permission and matches your bundle/device.
+4. After a clean install, verify the permission outcome, process startup, and runtime logs.
 
-不要宣称任意“自动签名”一定授予系统权限。是否可申请、授予和在哪类设备生效由平台策略、账号/证书类型与 profile 决定。
+Don't assume that some "automatic signing" always grants system permissions. Whether a permission can be requested, is granted, and takes effect on a given class of device is determined by platform policy, account/certificate type, and the profile.
 
-解释器模式或关闭 JIT 可作为运行时支持时的风险降低方案，但必须单独验证性能与功能，不能作为默认通用修复。
+Interpreter mode or disabling the JIT can reduce risk where the runtime supports it, but you must verify performance and functionality separately — it is not a default general-purpose fix.
 
-## 预防措施
+## Prevention
 
-运行时选型阶段列出 JIT/exec/mmap 要求；发布证书和调试证书分别验证，不复用其他项目 profile。
+List your JIT/exec/mmap requirements during runtime selection. Verify with the release certificate and the debug certificate separately, and don't reuse another project's profile.

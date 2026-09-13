@@ -9,39 +9,39 @@ status: active
 audience: public
 refs: [semantic-qt-harmonyos-api, semantic-qt-harmonyos-code-patterns, semantic-qt-ohos-extras]
 summary: >
-  HarmonyOS 平台能力的 Qt API adapter 映射表：13大类 Before/After 对照——进程管理、应用间通信、
-  窗口管理、关闭事件、文件系统、启动参数、拖放、主题外观、时区、线程、
-  分享、应用接续、触摸长按上下文菜单。每类含映射表和代码示例。
+  The Qt API adapter mapping table for HarmonyOS platform capabilities: 13 categories of before/after comparisons — process management, inter-application communication,
+  window management, close events, the filesystem, launch arguments, drag and drop, theme and appearance, time zones, threading,
+  sharing, application continuation, and long-press context menus. Each category has a mapping table and code examples.
 ---
 
-# HarmonyOS 平台能力 → Qt API adapter 映射表
+# HarmonyOS platform capabilities → the Qt API adapter mapping table
 
-> 本文档汇总 13 类 Qt API adapter 与 Before/After 代码。平台概念以 common 为准：Stage/UIAbility、Want 与 launchType 见 [[ohos-common-kb/semantic/stage-uiability-lifecycle|Stage 模型与 UIAbility 生命周期]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)）；Window/XComponent/focus seam 见 [[ohos-common-kb/semantic/arkui-window-xcomponent-model|ArkUI 窗口与 XComponent 承载模型]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/arkui-window-xcomponent-model.md)）；文件、loader、线程与时区限制见 [[ohos-common-kb/semantic/harmonyos-platform-limits|HarmonyOS 平台限制]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)）。本页只维护 Qt API、QtOhosExtras/QPA 与 Qt 代码改写。
+> This document collects 13 categories of Qt API adapter and before/after code. The platform concepts come from the common knowledge base: for Stage/UIAbility, Want, and launchType, see [[ohos-common-kb/semantic/stage-uiability-lifecycle|The Stage model and the UIAbility lifecycle]] ([standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)); for the Window/XComponent/focus seam, see [[ohos-common-kb/semantic/arkui-window-xcomponent-model|The ArkUI window and XComponent hosting model]] ([standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/arkui-window-xcomponent-model.md)); for the file, loader, threading, and time zone limitations, see [[ohos-common-kb/semantic/harmonyos-platform-limits|HarmonyOS platform limitations]] ([standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)). This page maintains only the Qt APIs, QtOhosExtras/QPA, and the Qt code rewrites.
 
 ---
 
-## 1. 进程管理 (Process Management)
+## 1. Process management
 
-HarmonyOS 上启动子进程/外部程序，要按"子进程是否有界面"与"是否 Qt 程序"分场景选择，**不能一刀切**。旧版 KB 笼统断言"QProcess 不可用/不推荐"是不准确的（2026-07-21 按领域经验修正，见本节末「来源与修正」）。
+To start a child process or external program on HarmonyOS, choose your approach based on "does the child have a UI?" and "is it a Qt program?" — **there's no one-size-fits-all answer**. The old KB's blanket claim that "QProcess is unavailable/not recommended" was inaccurate (corrected 2026-07-21 based on domain expertise; see "Source and correction" at the end of this section).
 
-**决策树**：
+**The decision tree**:
 
-| 子进程场景 | 推荐方案 | 说明 |
+| Child process scenario | Recommended approach | Notes |
 |---|---|---|
-| **无界面**（后台/计算任务） | `QProcess` **可用**，保持原样 | ★ 鸿蒙沙箱内可 fork/exec 无界面二进制；无需改 QProcess |
-| 有界面 + Qt 程序 | `QtOhosExtras::startAppProcess()` / `startNewAbilityInstance()` | 用 Qt extra 接口让子进程以带 UI 的 Ability 形态运行 |
-| 有界面 + 非 Qt 程序 | `QtOhosExtras::startAbility(want)` | Want 模型启动任意 Ability（含系统/第三方应用） |
-| 无界面但需鸿蒙原生托管 | `QtOhosExtras::QOhosAppContext::startNoUiChildProcess(libName, args)` | 子进程以 `.so` 形式经 Child Process Manager 托管，无 `QApplication`/GUI 管线 |
+| **No UI** (a background/compute task) | `QProcess` **works**; leave it as-is | ★ You can fork/exec a headless binary inside the HarmonyOS sandbox; no need to change QProcess |
+| A UI + a Qt program | `QtOhosExtras::startAppProcess()` / `startNewAbilityInstance()` | Use the Qt extras interfaces to run the child as a UI-bearing Ability |
+| A UI + a non-Qt program | `QtOhosExtras::startAbility(want)` | Launch any Ability through the Want model (including system/third-party applications) |
+| No UI but needing native HarmonyOS supervision | `QtOhosExtras::QOhosAppContext::startNoUiChildProcess(libName, args)` | The child runs as a `.so` supervised by the Child Process Manager, with no `QApplication`/GUI pipeline |
 
-| Other Platform API | HarmonyOS Replacement | Notes |
+| Other platform API | HarmonyOS replacement | Notes |
 |---|---|---|
-| `QProcess::start(program)` 无界面 | `QProcess` 原样可用 | ★ 无界面子进程 QProcess 不需替换 |
-| `QProcess::start(program)` 有界面且 Qt | `QtOhosExtras::startAppProcess(name, want)` / `startNewAbilityInstance(widget)` | 用 extra 接口启动带 UI 的 Qt 子进程 |
-| `QProcess::start(program)` 有界面非 Qt | `QtOhosExtras::startAbility(want)` | Want 模型启动目标 Ability |
-| `QProcess::start(program)` 无界面需托管 | `QtOhosExtras::QOhosAppContext::startNoUiChildProcess(libName, args)` | 鸿蒙原生 .so 子进程（Child Process Manager） |
-| `QProcess::startDetached(program)` | `QtOhosExtras::startAppProcess(name, want)` | 启动新的应用进程 |
-| `QProcess` for GUI child | `QtOhosExtras::startAbility(want)` / `startAppProcess()` | 有界面子进程用 Ability/Want 或 extra 接口，不能用裸 QProcess 起 GUI |
-| `system()`, `popen()`, `exec*()` | 无界面计算可继续用；有界面改 `startAbility`/`startAppProcess` | 不再一刀切"不可用" |
+| `QProcess::start(program)`, no UI | `QProcess` works as-is | ★ A headless child process doesn't need QProcess replaced |
+| `QProcess::start(program)`, a UI and Qt | `QtOhosExtras::startAppProcess(name, want)` / `startNewAbilityInstance(widget)` | Use the extras interfaces to start a UI-bearing Qt child |
+| `QProcess::start(program)`, a UI and non-Qt | `QtOhosExtras::startAbility(want)` | Launch the target Ability through the Want model |
+| `QProcess::start(program)`, no UI but supervised | `QtOhosExtras::QOhosAppContext::startNoUiChildProcess(libName, args)` | A native HarmonyOS .so child process (the Child Process Manager) |
+| `QProcess::startDetached(program)` | `QtOhosExtras::startAppProcess(name, want)` | Starts a new application process |
+| `QProcess` for a GUI child | `QtOhosExtras::startAbility(want)` / `startAppProcess()` | A UI-bearing child uses Ability/Want or the extras interfaces; you can't start a GUI with a bare QProcess |
+| `system()`, `popen()`, `exec*()` | Headless computation can keep using them; with a UI, switch to `startAbility`/`startAppProcess` | No longer a blanket "unavailable" |
 
 ### Before
 
@@ -54,16 +54,16 @@ QString output = proc.readAllStandardOutput();
 
 ### After
 
-无界面（保持 QProcess，无需改）：
+Headless (keep QProcess; no change needed):
 
 ```cpp
-// QProcess 原样保留——无界面计算子进程在鸿蒙沙箱内可正常运行
+// QProcess stays as-is — a headless compute child process runs fine inside the HarmonyOS sandbox
 QProcess proc;
 proc.start("worker", {"--task", "compute"});
 proc.waitForFinished();
 ```
 
-无界面但用鸿蒙原生托管（需 .so 子进程）：
+Headless but with native HarmonyOS supervision (needing a .so child process):
 
 ```cpp
 #include <QtOhosExtras/qohosappcontext.h>
@@ -72,26 +72,26 @@ QtOhosExtras::QOhosAppContext::startNoUiChildProcess(
     "libWorker.so",
     QStringList{"--task", "compute"}
 );
-// 子进程以 .so 库形式加载，经 Child Process Manager 托管（无 GUI 管线）
+// The child is loaded as a .so library and supervised by the Child Process Manager (no GUI pipeline)
 ```
 
-> **来源与修正**（2026-07-21）：本节原写"QProcess 均不可用或不被推荐"，按领域经验修正——**无界面子进程 QProcess 可用**，一刀切替换为 `startNoUiChildProcess` 是误导。`startNoUiChildProcess` 是鸿蒙原生 .so 托管方式（备选/需进程托管时），并非 QProcess 的唯一替代。来源：用户（领域专家）经验；与 [[qt-harmonyos-dev-guide]] `uiless_child_process` 互参（该 wiki 讲的是原生托管方式，非禁止 QProcess）。
+> **Source and correction** (2026-07-21): this section used to say "QProcess is unavailable or not recommended in all cases". Corrected from domain expertise — **QProcess works for headless child processes**, and blanket-replacing it with `startNoUiChildProcess` is misleading. `startNoUiChildProcess` is HarmonyOS's native .so supervision mechanism (an alternative, for when you need process supervision), not the only replacement for QProcess. Source: a user (a domain expert); cross-reference [[qt-harmonyos-dev-guide]]'s `uiless_child_process` (that wiki page describes the native supervision mechanism, not a prohibition on QProcess).
 
-> **QFileDialog 原生可用**：QFileDialog 在 OHOS 上无需 `#ifdef` 替代——平台插件 `QOhosPlatformIntegrationPlugin` 已内置原生文件对话框支持，`getSaveFileName`/`getOpenFileName` 可直接使用。详见 [ohos-qfiledialog-native-support](../problems/ohos-qfiledialog-native-support.md)。
+> **QFileDialog works natively**: QFileDialog needs no `#ifdef` alternative on OHOS — the platform plugin `QOhosPlatformIntegrationPlugin` has built-in native file dialog support, and `getSaveFileName`/`getOpenFileName` can be used directly. See [ohos-qfiledialog-native-support](../problems/ohos-qfiledialog-native-support.md).
 
 ---
 
-## 2. 应用间通信 (Inter-Application Communication)
+## 2. Inter-application communication
 
-Qt 在 HarmonyOS 上通过 QtOhosExtras 的 Want adapter 实现应用间调用与 URL 打开；Want 匹配语义本身由 common 维护。
+On HarmonyOS, Qt uses QtOhosExtras' Want adapter for calling other applications and opening URLs; the Want matching semantics themselves are maintained in the common knowledge base.
 
-| Other Platform API | HarmonyOS Replacement | Notes |
+| Other platform API | HarmonyOS replacement | Notes |
 |---|---|---|
-| `QDesktopServices::openUrl(url)` | `startAbility(want)` with `want.uri` | 隐式匹配，系统选择合适应用 |
-| `QDesktopServices::openUrl(mailto:)` | `startAbility(want)` with action | 设置 `want.action` 为对应 action |
-| `xdg-open` / `ShellExecute` | `startAbility(want)` | 统一使用 Want 模型 |
-| D-Bus calls | Not available on OHOS | 使用 Want-based IPC |
-| `QProcess` to launch other apps | `startAbility(want)` | 显式或隐式匹配目标 Ability |
+| `QDesktopServices::openUrl(url)` | `startAbility(want)` with `want.uri` | Implicit matching; the system picks a suitable application |
+| `QDesktopServices::openUrl(mailto:)` | `startAbility(want)` with an action | Set `want.action` to the corresponding action |
+| `xdg-open` / `ShellExecute` | `startAbility(want)` | Use the Want model uniformly |
+| D-Bus calls | Not available on OHOS | Use Want-based IPC |
+| `QProcess` to launch other apps | `startAbility(want)` | Explicit or implicit matching of the target Ability |
 
 ### Before
 
@@ -112,36 +112,36 @@ QtOhosExtras::startAbility(want);
 
 ---
 
-## 3. 窗口管理 (Window Management)
+## 3. Window management
 
-Qt QPA 把平台窗口层级映射到 `QWindow`/`QWidget`。独立 `QDialog`（无 parent）在该 adapter 中会成为新主窗口，需显式标记为子窗口。
+Qt's QPA maps the platform window hierarchy onto `QWindow`/`QWidget`. A standalone `QDialog` (with no parent) becomes a new main window in that adapter, so it must be explicitly tagged as a subwindow.
 
-| Other Platform API | HarmonyOS Behavior / Replacement | Notes |
+| Other platform API | HarmonyOS behavior / replacement | Notes |
 |---|---|---|
-| Independent `QDialog()` | 成为新的主窗口 | 设置 `transientParent` 或使用 `tagWindowOrWidgetAsSubWindowOf()` |
-| `Qt::Popup` | 自动回退到子窗口模式 | 通常可用 |
-| `setMask()` on main window | Not supported | 改用子窗口或自定义绘制 |
-| `showFullScreen()` on 1st window | 启动时不支持 | 在窗口显示后再调用 |
-| `showMinimized()` on subwindow | Not supported | 仅主窗口可最小化 |
-| `hide()` on main window | 回退为最小化 | 使用 `showMinimized()` 替代 |
-| `Qt::WindowStaysOnTopHint` | 仅主窗口，且仅 PC 模式 | 移动端不生效 |
-| `Qt::ApplicationModal` | 仅子窗口场景 | 主窗口不支持 |
+| A standalone `QDialog()` | Becomes a new main window | Set a `transientParent` or use `tagWindowOrWidgetAsSubWindowOf()` |
+| `Qt::Popup` | Falls back to subwindow mode automatically | Generally works |
+| `setMask()` on the main window | Not supported | Use a subwindow or custom painting instead |
+| `showFullScreen()` on the 1st window | Not supported at launch | Call it after the window is shown |
+| `showMinimized()` on a subwindow | Not supported | Only the main window can be minimized |
+| `hide()` on the main window | Falls back to minimizing | Use `showMinimized()` instead |
+| `Qt::WindowStaysOnTopHint` | Main window only, and only in PC mode | No effect on mobile |
+| `Qt::ApplicationModal` | Subwindow scenarios only | Not supported for the main window |
 
 ### Before
 
 ```cpp
-QDialog *dlg = new QDialog();   // 无 parent
+QDialog *dlg = new QDialog();   // no parent
 dlg->exec();
 ```
 
 ### After
 
 ```cpp
-// 方式一：设置 parent
+// Option 1: set a parent
 QDialog *dlg = new QDialog(mainWindow);
 dlg->exec();
 
-// 方式二：显式标记为子窗口
+// Option 2: tag it explicitly as a subwindow
 #include <QtPlatformHeaders/QOhosFunctions>
 QDialog *dlg = new QDialog();
 QOhosFunctions::tagWindowOrWidgetAsSubWindowOf(dlg, mainWindow);
@@ -150,34 +150,34 @@ dlg->exec();
 
 ---
 
-## 4. 关闭事件处理 (Close Event Handling)
+## 4. Close event handling
 
-Qt adapter 会把用户窗口关闭与系统生命周期回调都映射到 `closeEvent()`，因此必须按 root cause 区分处理。
+The Qt adapter maps both a user closing a window and system lifecycle callbacks onto `closeEvent()`, so you must handle them differently based on the root cause.
 
-| Other Platform Behavior | HarmonyOS Behavior | Notes |
+| Other platform behavior | HarmonyOS behavior | Notes |
 |---|---|---|
-| `closeEvent()` 即用户主动关闭 | 可能是系统生命周期回调 | 检查 root cause |
-| `event->ignore()` 阻止关闭 | Level 1 场景有效 | Level 2（系统强制回收）有时间限制 |
+| `closeEvent()` means the user closed it | It may be a system lifecycle callback | Check the root cause |
+| `event->ignore()` prevents closing | Works in level 1 scenarios | Level 2 (a forced system reclaim) has a time limit |
 
 ### After
 
-closeEvent 根因处理（区分 WindowStageClose / AbilityClose / InternalClose）详见 [[qt-harmonyos-lifecycle]] §3 级关闭拦截。
+For handling closeEvent by root cause (distinguishing WindowStageClose / AbilityClose / InternalClose), see [[qt-harmonyos-lifecycle]] §the three levels of close interception.
 
 ---
 
-## 5. 文件系统 (File System)
+## 5. The filesystem
 
-以下是平台沙箱/loader 限制在 Qt 文件 API 上的表现；平台原因和证据边界以 common 为准。
+Below is how the platform's sandbox/loader limitations manifest in Qt's file APIs; the platform-level causes and evidence boundaries come from the common knowledge base.
 
-| Other Platform API | HarmonyOS Behavior | Notes |
+| Other platform API | HarmonyOS behavior | Notes |
 |---|---|---|
-| `QFile::setPermissions()` on existing file | No-op（静默失败） | 用 `#ifndef Q_OS_OHOS` 包裹 |
-| `QFile::link()` / `symlink()` | 返回 `EACCES` | 使用文件拷贝替代 |
-| `QFileInfo::isFile()` on system paths | 返回 `false` | 结合 `exists()` + `isExecutable()` 判断 |
-| `QStandardPaths::findExecutable()` | 无法找到系统可执行文件 | 系统二进制不在沙箱可见范围 |
-| `QStandardPaths::PublicShareLocation` | 返回空字符串 | 该路径不存在 |
-| `dlopen()` from writable paths | 被拒绝（`EINVAL`） | 仅可从应用 lib 目录加载 .so |
-| `chmod()`, `fchmod()` | Not supported | 沙箱内文件权限由系统管理 |
+| `QFile::setPermissions()` on an existing file | A no-op (a silent failure) | Wrap it in `#ifndef Q_OS_OHOS` |
+| `QFile::link()` / `symlink()` | Returns `EACCES` | Copy the file instead |
+| `QFileInfo::isFile()` on system paths | Returns `false` | Combine `exists()` + `isExecutable()` to decide |
+| `QStandardPaths::findExecutable()` | Can't find system executables | System binaries aren't visible inside the sandbox |
+| `QStandardPaths::PublicShareLocation` | Returns an empty string | That path doesn't exist |
+| `dlopen()` from writable paths | Rejected (`EINVAL`) | `.so` files can only be loaded from the application's lib directory |
+| `chmod()`, `fchmod()` | Not supported | File permissions inside the sandbox are managed by the system |
 
 ### Before
 
@@ -199,20 +199,20 @@ file.close();
 #ifndef Q_OS_OHOS
 file.setPermissions(QFile::ReadOwner | QFile::WriteOwner);
 #endif
-// OHOS 沙箱自动管理文件权限，setPermissions 为 no-op
+// The OHOS sandbox manages file permissions automatically; setPermissions is a no-op
 ```
 
 ---
 
-## 6. 启动参数 (Startup Arguments)
+## 6. Launch arguments
 
-HarmonyOS 应用的 `argv` 布局与桌面平台不同：`argv[0]` 指向 .so 库而非可执行文件，业务参数位置不固定。
+A HarmonyOS application's `argv` layout differs from desktop platforms: `argv[0]` points at the `.so` library rather than an executable, and your own arguments aren't at a fixed position.
 
-| Other Platform Behavior | HarmonyOS Behavior | Notes |
+| Other platform behavior | HarmonyOS behavior | Notes |
 |---|---|---|
-| `argv[0]` = 可执行文件路径 | `argv[0]` = 库文件路径（`.so`） | 不要用 `argv[0]` 推断应用目录 |
-| 业务参数在 `argv[1]` 起 | `want.uri` 可能占据 `argv[1]` | 参数位置不固定 |
-| 固定参数位置 | 位置随系统版本变化 | 使用 `QCommandLineParser` 解析 |
+| `argv[0]` = the executable path | `argv[0]` = the library file path (`.so`) | Don't use `argv[0]` to infer the application directory |
+| Your arguments start at `argv[1]` | `want.uri` may occupy `argv[1]` | The argument positions aren't fixed |
+| Fixed argument positions | The positions change with the system version | Use `QCommandLineParser` to parse them |
 
 ### Before
 
@@ -220,7 +220,7 @@ HarmonyOS 应用的 `argv` 布局与桌面平台不同：`argv[0]` 指向 .so �
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
-    QString taskFile = argv[1];   // 假设第一个参数是任务文件
+    QString taskFile = argv[1];   // assumes the first argument is the task file
     // ...
 }
 ```
@@ -237,35 +237,35 @@ int main(int argc, char *argv[])
     parser.process(app);
 
     QString taskFile = parser.value("task");
-    // 通过 QCommandLineParser 可靠获取参数，不依赖位置
+    // QCommandLineParser gets the arguments reliably, without depending on position
 }
 ```
 
 ---
 
-## 7. 拖放 (Drag and Drop)
+## 7. Drag and drop
 
-HarmonyOS 在拖放过程中，`dragEnterEvent` 和 `dragMoveEvent` 阶段仅可获取 MIME 类型列表，完整数据仅在 `dropEvent` 中可用。
+During a drag on HarmonyOS, only the MIME type list is available in the `dragEnterEvent` and `dragMoveEvent` phases; the full data is only available in `dropEvent`.
 
-| Other Platform Behavior | HarmonyOS Behavior | Notes |
+| Other platform behavior | HarmonyOS behavior | Notes |
 |---|---|---|
-| `dragEnterEvent` 中读取 `QMimeData` | 仅 MIME types 可用 | 可根据 MIME type 决定是否接受拖放 |
-| `dragMoveEvent` 中读取 `QMimeData` | 仅 MIME types 可用 | 同上 |
-| `dropEvent` 中读取 `QMimeData` | 完整数据可用 | 在 drop 阶段读取实际内容 |
+| Reading `QMimeData` in `dragEnterEvent` | Only the MIME types are available | You can decide whether to accept the drop based on the MIME type |
+| Reading `QMimeData` in `dragMoveEvent` | Only the MIME types are available | Same as above |
+| Reading `QMimeData` in `dropEvent` | The full data is available | Read the actual content in the drop phase |
 
 ### Before
 
 ```cpp
 void MyWidget::dragEnterEvent(QDragEnterEvent *event)
 {
-    if (event->mimeData()->hasText()) {          // 读取了数据
+    if (event->mimeData()->hasText()) {          // reads the data
         event->acceptProposedAction();
     }
 }
 
 void MyWidget::dropEvent(QDropEvent *event)
 {
-    QString text = event->mimeData()->text();    // 读取数据
+    QString text = event->mimeData()->text();    // reads the data
     processText(text);
 }
 ```
@@ -275,7 +275,7 @@ void MyWidget::dropEvent(QDropEvent *event)
 ```cpp
 void MyWidget::dragEnterEvent(QDragEnterEvent *event)
 {
-    // 仅检查 MIME type，不读取实际数据
+    // Only check the MIME type; don't read the actual data
     if (event->mimeData()->formats().contains("text/plain")) {
         event->acceptProposedAction();
     }
@@ -283,7 +283,7 @@ void MyWidget::dragEnterEvent(QDragEnterEvent *event)
 
 void MyWidget::dropEvent(QDropEvent *event)
 {
-    // 完整数据在 drop 阶段才可用
+    // The full data is only available in the drop phase
     QString text = event->mimeData()->text();
     processText(text);
 }
@@ -291,20 +291,20 @@ void MyWidget::dropEvent(QDropEvent *event)
 
 ---
 
-## 8. 主题/外观 (Theme/Appearance)
+## 8. Theme/appearance
 
-HarmonyOS 的暗色模式需通过 QtOhosExtras 接口启用跟随系统设置，且系统不内置等宽字体。
+HarmonyOS dark mode must be enabled to follow the system setting through a QtOhosExtras interface, and the system has no built-in monospace font.
 
-| Other Platform Behavior | HarmonyOS Replacement | Notes |
+| Other platform behavior | HarmonyOS replacement | Notes |
 |---|---|---|
-| Platform-native dark mode | `QOhosAppContext::setColorThemeMode(FollowSystemSetting)` | 通过 QtOhosExtras 设置 |
-| `QPalette` customization | 仍然有效 | 需监听 `darkThemeActiveChanged` 信号动态切换 |
-| System monospace font | Not available | 使用 `addApplicationFont()` 内置字体 |
+| Platform-native dark mode | `QOhosAppContext::setColorThemeMode(FollowSystemSetting)` | Set it through QtOhosExtras |
+| `QPalette` customization | Still works | You need to listen for the `darkThemeActiveChanged` signal to switch dynamically |
+| A system monospace font | Not available | Bundle your own font with `addApplicationFont()` |
 
 ### Before
 
 ```cpp
-// 桌面平台自动跟随系统暗色模式
+// On desktop platforms, dark mode follows the system automatically
 QApplication app(argc, argv);
 ```
 
@@ -315,13 +315,13 @@ QApplication app(argc, argv);
 
 QApplication app(argc, argv);
 
-// 启用跟随系统暗色/亮色模式
+// Enable following the system's dark/light mode
 auto *ctx = QtOhosExtras::QOhosAppContext::instance();
 ctx->setColorThemeMode(
     QtOhosExtras::QOhosAppContext::ColorThemeMode::FollowSystemSetting
 );
 
-// 监听主题变化，更新自定义 palette
+// Listen for theme changes and update your custom palette
 QObject::connect(
     ctx,
     &QtOhosExtras::QOhosAppContext::darkThemeActiveChanged,
@@ -338,13 +338,13 @@ QObject::connect(
 
 ---
 
-## 9. 时区 (Timezone)
+## 9. Time zones
 
-平台时区资源限制在 Qt 中的响应是使用已验证的 ICU 后端；不在本页重复维护平台资源结论。
+Qt's response to the platform's time zone resource limitations is to use the verified ICU backend; the platform resource conclusions aren't duplicated on this page.
 
-| Other Platform Behavior | HarmonyOS Replacement | Notes |
+| Other platform behavior | HarmonyOS replacement | Notes |
 |---|---|---|
-| `QTimeZone` with tz backend | 无 tzdata | 使用 ICU backend |
+| `QTimeZone` with the tz backend | There's no tzdata | Use the ICU backend |
 
 ### Before
 
@@ -356,30 +356,30 @@ QDateTime dt = QDateTime::currentDateTime().toTimeZone(tz);
 ### After
 
 ```cpp
-// 确保 Qt 编译时启用了 ICU 后端
-// QTimeZone API 不变，但底层依赖 ICU 而非 tzdata
-QTimeZone tz("Asia/Shanghai");   // 正常工作，前提是 ICU 可用
+// Make sure Qt was built with the ICU backend enabled
+// The QTimeZone API is unchanged, but underneath it depends on ICU rather than tzdata
+QTimeZone tz("Asia/Shanghai");   // works, provided ICU is available
 QDateTime dt = QDateTime::currentDateTime().toTimeZone(tz);
 ```
 
-> **注意**：构建 Qt for OHOS 时需确认 ICU 库已链接，否则 `QTimeZone` 可能返回无效时区。
+> **Note**: when building Qt for OHOS, confirm the ICU libraries are linked, or `QTimeZone` may return an invalid time zone.
 
 ---
 
-## 10. 线程 (Threading)
+## 10. Threading
 
-平台线程限制在 Qt 中的响应是采用 `QThread::quit()`、中断标志等协作式终止，不依赖 `pthread_cancel`。
+Qt's response to the platform's threading limitations is cooperative termination — `QThread::quit()`, interruption flags, and so on — rather than relying on `pthread_cancel`.
 
-| Other Platform Behavior | HarmonyOS Behavior | Notes |
+| Other platform behavior | HarmonyOS behavior | Notes |
 |---|---|---|
-| `PTHREAD_CANCEL_DISABLE` 等宏 | 已定义但函数不可用 | 用 `#ifdef` 守卫或 `#undef` |
+| Macros such as `PTHREAD_CANCEL_DISABLE` | They're defined, but the functions are unavailable | Guard with `#ifdef` or `#undef` |
 
 ### Before
 
 ```cpp
 #include <pthread.h>
 
-// 禁用线程取消
+// Disable thread cancellation
 int oldState;
 pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldState);
 doCriticalWork();
@@ -401,25 +401,25 @@ doCriticalWork();
 #ifndef Q_OS_OHOS
 pthread_setcancelstate(oldState, nullptr);
 #endif
-// OHOS 不支持 pthread_cancel 系列函数，改用协作式终止（如 QThread::quit + wait）
+// OHOS doesn't support the pthread_cancel family; use cooperative termination instead (e.g. QThread::quit + wait)
 ```
 
 ---
 
-## 11. 分享 (Sharing)
+## 11. Sharing
 
-HarmonyOS 提供 ShareKit 框架实现系统级分享，通过 `QOhosAbilityContext` 调用。
+HarmonyOS provides the ShareKit framework for system-level sharing, invoked through `QOhosAbilityContext`.
 
-| Other Platform Behavior | HarmonyOS Replacement | Notes |
+| Other platform behavior | HarmonyOS replacement | Notes |
 |---|---|---|
-| Platform share sheet (iOS/Android) | `QOhosAbilityContext::shareDataWithShareKit()` | 用 `ShareKit::create*Record()` 创建分享记录 |
+| A platform share sheet (iOS/Android) | `QOhosAbilityContext::shareDataWithShareKit()` | Create share records with `ShareKit::create*Record()` |
 
 ### Before
 
 ```cpp
 // iOS: UIActivityViewController
 // Android: Intent.ACTION_SEND
-// 桌面: 无统一分享机制
+// Desktop: no unified sharing mechanism
 ```
 
 ### After
@@ -435,24 +435,24 @@ auto urlRecord = QtOhosExtras::ShareKit::createUrlRecord(
 
 auto context = QtOhosExtras::QOhosAbilityContext::getDefaultInstance();
 context->shareDataWithShareKit({textRecord, urlRecord}, nullptr);
-// 系统弹出分享面板，用户选择目标应用
+// The system share sheet appears and the user picks a target application
 ```
 
 ---
 
-## 12. 应用接续 (Application Continuation)
+## 12. Application continuation
 
-HarmonyOS 支持跨设备应用接续（类似 Apple Handoff），通过 `continueRequestReceived` 信号接收接续请求，状态序列化限制在 100KB 以内。
+HarmonyOS supports cross-device application continuation (similar to Apple's Handoff), receiving continuation requests through the `continueRequestReceived` signal, with the serialized state limited to 100 KB.
 
-| Other Platform Behavior | HarmonyOS Replacement | Notes |
+| Other platform behavior | HarmonyOS replacement | Notes |
 |---|---|---|
-| Handoff / Continuity (Apple) | `continueRequestReceived` signal | 序列化状态 < 100KB |
+| Handoff / Continuity (Apple) | The `continueRequestReceived` signal | The serialized state must be < 100 KB |
 
 ### Before
 
 ```cpp
 // Apple: NSUserActivity
-// 桌面: 无对应机制
+// Desktop: no equivalent
 ```
 
 ### After
@@ -482,20 +482,20 @@ if (launchInfo) {
 
 ---
 
-## 13. 触摸长按上下文菜单 (Touch Long-Press Context Menu)
+## 13. Long-press context menus on touch
 
-HarmonyOS 触摸屏默认**不**为长按生成 `QContextMenuEvent`（桌面平台鼠标右键自动触发）。需通过 QtOhosExtras 显式启用。
+By default, a HarmonyOS touchscreen **doesn't** generate a `QContextMenuEvent` on a long press (on desktop, a right click does so automatically). You must enable it explicitly through QtOhosExtras.
 
-| Other Platform Behavior | HarmonyOS Replacement | Notes |
+| Other platform behavior | HarmonyOS replacement | Notes |
 |---|---|---|
-| 右键自动产生 `QContextMenuEvent` | `QOhosAppContext::enableContextMenuEventOnLongPress()` | 启用后长按触发，reason 为 `Other` |
+| A right click automatically produces a `QContextMenuEvent` | `QOhosAppContext::enableContextMenuEventOnLongPress()` | Once enabled, a long press triggers it with the reason `Other` |
 
 ### Before
 
 ```cpp
-// 桌面：右键即收到 contextMenuEvent，无需额外设置
+// Desktop: a right click delivers contextMenuEvent with no extra setup
 QApplication app(argc, argv);
-// QWidget::contextMenuEvent() 自动被右键触发
+// QWidget::contextMenuEvent() is triggered by a right click automatically
 ```
 
 ### After
@@ -504,43 +504,43 @@ QApplication app(argc, argv);
 #include <QtOhosExtras>
 
 QApplication app(argc, argv);
-// 必须在 exec() 前调用一次，全局生效
+// Must be called once before exec(); it applies globally
 QtOhosExtras::QOhosAppContext::instance()->enableContextMenuEventOnLongPress();
-// 此后触摸长按会以 QContextMenuEvent::Other 触发 contextMenuEvent()
+// From then on, a touch long press triggers contextMenuEvent() with QContextMenuEvent::Other
 ```
 
-> **注意**：长按产生的 `QContextMenuEvent::reason()` 为 `QContextMenuEvent::Other`（非 `Mouse`）。若处理函数按 reason 过滤，需同时接受 `Other`。详见 [[qt-ohos-extras]] §触摸长按。
+> **Note**: a `QContextMenuEvent` produced by a long press has `reason()` == `QContextMenuEvent::Other` (not `Mouse`). If your handler filters by reason, it must also accept `Other`. See [[qt-ohos-extras]] §Touch long press.
 
 ---
 
-## 快速参考：条件编译宏
+## Quick reference: the conditional compilation macro
 
 ```cpp
 #ifdef Q_OS_OHOS
-    // HarmonyOS / OpenHarmony 专用代码路径
+    // The HarmonyOS / OpenHarmony code path
 #else
-    // 桌面/其他平台代码路径
+    // The desktop/other platform code path
 #endif
 ```
 
-## 迁移检查清单
+## Migration checklist
 
-1. **进程管理** — 无界面 QProcess 原样保留；有界面 Qt 用 startAppProcess；有界面非 Qt 用 startAbility；无界面需原生托管用 startNoUiChildProcess
-2. **应用间通信** — 替换 `QDesktopServices::openUrl` 为 Want 机制
-3. **窗口管理** — 为所有独立 `QDialog` 设置 parent 或标记为子窗口
-4. **关闭事件** — 在 `closeEvent` 中检查 root cause，区分用户操作与系统回收
-5. **文件系统** — 移除 `setPermissions`、`symlink` 调用，用条件编译守卫
-6. **启动参数** — 改用 `QCommandLineParser`，不依赖 `argv` 位置
-7. **拖放** — `dragEnter`/`dragMove` 中仅检查 MIME type
-8. **主题** — 调用 `setColorThemeMode`，内置等宽字体
-9. **时区** — 确认 ICU 后端已链接
-10. **线程** — 守卫 `pthread_cancel` 相关调用
-11. **分享** — 集成 ShareKit
-12. **接续** — 实现 `continueRequestReceived`，控制状态大小
-13. **触摸长按** — 调用 `enableContextMenuEventOnLongPress()` 启用长按触发右键菜单（exec 前调用一次）
+1. **Process management** — keep QProcess as-is when headless; use startAppProcess for a Qt UI; use startAbility for a non-Qt UI; use startNoUiChildProcess when headless work needs native supervision
+2. **Inter-application communication** — replace `QDesktopServices::openUrl` with the Want mechanism
+3. **Window management** — give every standalone `QDialog` a parent or tag it as a subwindow
+4. **Close events** — check the root cause in `closeEvent`, distinguishing a user action from a system reclaim
+5. **The filesystem** — remove `setPermissions` and `symlink` calls, guarded by conditional compilation
+6. **Launch arguments** — switch to `QCommandLineParser` and don't depend on `argv` positions
+7. **Drag and drop** — only check MIME types in `dragEnter`/`dragMove`
+8. **Themes** — call `setColorThemeMode` and bundle a monospace font
+9. **Time zones** — confirm the ICU backend is linked
+10. **Threading** — guard the `pthread_cancel`-related calls
+11. **Sharing** — integrate ShareKit
+12. **Continuation** — implement `continueRequestReceived` and keep the state size in check
+13. **Touch long press** — call `enableContextMenuEventOnLongPress()` to enable long-press context menus (once, before exec)
 
-## 参考来源
+## References
 
-| 来源类型 | 说明 |
-|----------|------|
-| 🛠️ 工作经验 | 日常 Qt 鸿蒙化开发实践积累 |
+| Source type | Notes |
+|-------------|-------|
+| 🛠️ Hands-on experience | Accumulated from day-to-day Qt HarmonyOS porting work |

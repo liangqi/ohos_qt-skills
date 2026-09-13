@@ -7,93 +7,93 @@ created: 2026-07-07
 updated: 2026-07-07
 status: solved
 audience: public
-summary: "应用启动弹「无法创建本地数据库」后 native cppcrash 退出（QSQLITE driver not loaded / 相对路径）"
+summary: "The application shows \"cannot create the local database\" at startup and then exits with a native cppcrash (QSQLITE driver not loaded / relative path)"
 severity: high
 
-# ====== 检索关键字（Agent 快速匹配用）======
+# ====== Search keywords (for fast agent matching) ======
 error_message: >
-  无法创建本地数据库 !
+  Cannot create the local database!
   QSqlDatabase: QSQLITE driver not loaded
   unable to open database file
   LastFatalMessage: [appspawn_server.c:69]Unexpected call: exit(-1)
   Reason: Signal:SIGABRT(SI_TKILL)
   #03 libOhosChessGame.so(Database::Database()+352)
 error_code: ""
-keywords: [QSQLITE, libqsqlite, sqldrivers, QSqlDatabase, driver not loaded, setDatabaseName, 相对路径, QStandardPaths, AppLocalDataLocation, exit(-1), SIGABRT, cppcrash]
-symptoms: "应用启动即弹 QMessageBox '无法创建本地数据库 !' 后崩溃退出（实为 native cppcrash），Login 窗口未显示"
+keywords: [QSQLITE, libqsqlite, sqldrivers, QSqlDatabase, driver not loaded, setDatabaseName, relative path, QStandardPaths, AppLocalDataLocation, exit(-1), SIGABRT, cppcrash]
+symptoms: "On launch the application shows a QMessageBox reading \"Cannot create the local database!\" and then exits (actually a native cppcrash); the Login window never appears"
 
-# ====== 问题详情 ======
-environment: "Qt 5.12.12 OHOS SDK（CMAKE_PREFIX_PATH=<QT5_12_OHOS_SDK>），ChessClient 鸿蒙化（场景二 OhosExampleApp 包装），真机 HUAWEI MateBook Fold，bundleName=com.example.chessgame"
+# ====== Problem details ======
+environment: "Qt 5.12.12 OHOS SDK (CMAKE_PREFIX_PATH=<QT5_12_OHOS_SDK>), the ChessClient HarmonyOS port (scenario two, wrapped in OhosExampleApp), a HUAWEI MateBook Fold device, bundleName=com.example.chessgame"
 refs: [semantic-qt-harmonyos-golden-rules, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-code-patterns]
 related_problems: [problem-runtime-qpa-plugin-not-found, problem-runtime-dlopen-writable-path, problem-build-hvigor-native-skip]
 ---
 
-# QSqlDatabase open() 失败致启动崩溃（驱动未部署 + 相对路径双根因）
+# QSqlDatabase open() failure crashes at startup (a dual root cause: undeployed driver + a relative path)
 
-## 错误信息
+## Error message
 
-### 用户侧
-应用启动即弹 `QMessageBox`：「无法创建本地数据库 !」，点确定后应用消失。
+### What the user sees
+On launch the application shows a `QMessageBox` reading "Cannot create the local database!", and after clicking OK the application disappears.
 
-### faultlog（cppcrash-com.example.chessgame-20260707084730）
+### The faultlog (cppcrash-com.example.chessgame-20260707084730)
 ```
 LastFatalMessage: [appspawn_server.c:69]Unexpected call: exit(-1)
 Reason: Signal:SIGABRT(SI_TKILL)
 #00 raise
 #01 abort
 #02 libappspawn_helper.z.so(exit+144)
-#03 libOhosChessGame.so(Database::Database()+352)   ← exit(-1) 调用点
+#03 libOhosChessGame.so(Database::Database()+352)   ← where exit(-1) is called
 #04 Database::GetInstance()+80
 #05 Login::loadStatusFromDB()+40
 #06 Login::Login(QWidget*)+332
 #07 main+96
-#08..#45 libqohos.so（Qt OHOS bootstrap）
+#08..#45 libqohos.so (the Qt OHOS bootstrap)
 ```
 
-### 关键诊断信号
-- 崩溃进程内存映射 `grep "qsqlsqlite|sqldrivers|QSqlDriver"` **无任何匹配**——Qt 驱动 .so 从未 dlopen 进进程（仅有系统原生 `libsqlite.z.so`，Qt 用不了）
-- 磁盘 `entry/libs/arm64-v8a/` 只有 `styles/libqohosstyle.so`，**无 `sqldrivers/` 目录、无 `libqsqlite.so`**
-- `db->lastError().text()`（修复时补打）= `"Driver not loaded"`
+### Key diagnostic signals
+- `grep "qsqlsqlite|sqldrivers|QSqlDriver"` over the crashed process's memory map yields **no matches** — the Qt driver .so was never dlopen'd into the process (only the native system `libsqlite.z.so` is present, which Qt can't use)
+- On disk, `entry/libs/arm64-v8a/` contains only `styles/libqohosstyle.so` — there's **no `sqldrivers/` directory and no `libqsqlite.so`**
+- `db->lastError().text()` (added while fixing) = `"Driver not loaded"`
 
-## 场景
+## Scenario
 
-开源 Qt Widgets 应用（象棋游戏 ChessClient）鸿蒙化迁移。原桌面 `.pro` 用 `QT += sql`，`database.cpp` 在单例构造函数里 `setDatabaseName("ChineseChess.db")`（裸文件名）+ `open()` 失败即 `exit(-1)`。`Login` 构造时调 `Database::GetInstance()` 首次实例化 → `open()` 失败 → 弹框 → `exit(-1)`，发生在 `a.exec()` 之前（启动早期）。
+Porting an open-source Qt Widgets application (the ChessClient chess game) to HarmonyOS. The original desktop `.pro` uses `QT += sql`, and `database.cpp` calls `setDatabaseName("ChineseChess.db")` (a bare filename) in a singleton constructor and calls `exit(-1)` if `open()` fails. When `Login` is constructed it calls `Database::GetInstance()`, instantiating it for the first time → `open()` fails → the message box appears → `exit(-1)`, all before `a.exec()` (early in startup).
 
-编译通过、HAP 能安装启动（QPA 插件已加载，能跑到弹 QMessageBox），但数据库初始化即崩。
+The build succeeds and the HAP installs and launches (the QPA plugin loads, and it gets far enough to show the QMessageBox), but database initialization crashes.
 
-## 原因
+## Cause
 
-**双根因并存，须同修：**
+**Two root causes coexist and both must be fixed:**
 
-### 根因 1（触发根因，high）：QSQLITE 驱动插件未部署
-`OhosExampleApp/CMakeLists.txt` 已 `find_package(Qt5 ... Sql)` + `target_link_libraries(... Qt5::Sql ...)`（链接 `libQt5Sql.so` 主库，已进 HAP），但 **`libqsqlite.so` 驱动插件未部署**。
+### Root cause 1 (the triggering one, high): the QSQLITE driver plugin isn't deployed
+`OhosExampleApp/CMakeLists.txt` already does `find_package(Qt5 ... Sql)` + `target_link_libraries(... Qt5::Sql ...)` (linking the main `libQt5Sql.so`, which is in the HAP), but **the `libqsqlite.so` driver plugin isn't deployed**.
 
-- 驱动性质：`Qt5Sql_QSQLiteDriverPlugin.cmake` 声明 `add_library(Qt5::QSQLiteDriverPlugin MODULE IMPORTED)` + `PLUGIN_LOCATION=sqldrivers/libqsqlite.so`——**动态 MODULE 插件**，运行时由 `QFactoryLoader` 按 `sqldrivers/` 子目录 dlopen 加载。
-- 非 NEEDED 依赖：`libQt5Sql.so` 与业务库的 strings 均无 `libqsqlite` 引用，CMake/HVigor **不会自动打包**它。
-- SDK 无 sqlite 静态 `.a`，`Q_IMPORT_PLUGIN` 静态路径不可行。
-- 对比：`libqohosstyle.so`→`styles/`、`libqsvg.so`→`imageformats/` 都手拷部署（铁律 B7），`sqldrivers/` 被遗漏。
+- The nature of the driver: `Qt5Sql_QSQLiteDriverPlugin.cmake` declares `add_library(Qt5::QSQLiteDriverPlugin MODULE IMPORTED)` + `PLUGIN_LOCATION=sqldrivers/libqsqlite.so` — a **dynamic MODULE plugin** that `QFactoryLoader` dlopens at runtime from the `sqldrivers/` subdirectory.
+- It's not a NEEDED dependency: neither `libQt5Sql.so` nor the business library has any `libqsqlite` reference in its strings, so CMake/HVigor **won't package it automatically**.
+- The SDK has no static sqlite `.a`, so the `Q_IMPORT_PLUGIN` static path isn't viable.
+- For comparison: `libqohosstyle.so` → `styles/` and `libqsvg.so` → `imageformats/` are both copied manually (iron rule B7); `sqldrivers/` was simply overlooked.
 
-**决定性逻辑**：driver 缺失时 `QSqlDatabase::open()` 第一步检查 `d->driver` 为空，**直接返回 false 并置 `lastError="Driver not loaded"`，根本不调用 `sqlite3_open`、不碰文件系统**。所以根因 2（路径）的因果链在本次运行中从未启动——只改路径不部署驱动，崩溃不变。
+**The decisive logic**: when the driver is missing, the first thing `QSqlDatabase::open()` does is check `d->driver`, find it empty, and **return false with `lastError="Driver not loaded"` — it never calls `sqlite3_open` or touches the filesystem at all**. So root cause 2 (the path) never even got started in this run: changing only the path without deploying the driver leaves the crash unchanged.
 
-### 根因 2（并发隐患，medium）：setDatabaseName 用相对路径
-`setDatabaseName("ChineseChess.db")` 仅文件名，依赖进程 CWD 可写。OHOS 应用以共享库方式加载（铁律 L2：`argv[0]` 是 .so 路径），CWD 多落在只读 `el1/bundle` 区（faultlog 显示 `libOhosChessGame.so` 来自 `/data/storage/el1/bundle/libs/arm64/`）。驱动部署到位后，该缺陷会作为第二故障显现——SQLite `CANTOPEN(14)`/`EACCES`。
+### Root cause 2 (a latent second failure, medium): setDatabaseName uses a relative path
+`setDatabaseName("ChineseChess.db")` is just a filename, which relies on the process's CWD being writable. OHOS applications are loaded as shared libraries (iron rule L2: `argv[0]` is the .so path), and the CWD usually lands in the read-only `el1/bundle` area (the faultlog shows `libOhosChessGame.so` coming from `/data/storage/el1/bundle/libs/arm64/`). Once the driver is deployed, this defect surfaces as the second failure — SQLite `CANTOPEN(14)`/`EACCES`.
 
-### 崩溃机制（非根因）
-`exit(-1)` 被 OHOS `libappspawn_helper.z.so` 拦截判为 "Unexpected call"，转 `raise(SIGABRT)`→`abort()` 生成 cppcrash（故用户看到的是 native 崩溃而非静默退出）。
+### The crash mechanism (not a root cause)
+OHOS's `libappspawn_helper.z.so` intercepts `exit(-1)` and treats it as an "Unexpected call", converting it into `raise(SIGABRT)` → `abort()` and producing a cppcrash (which is why the user sees a native crash rather than a silent exit).
 
-## 解决方案
+## Solution
 
-### 1. 部署 QSQLITE 驱动插件（首要，对齐铁律 B7）
+### 1. Deploy the QSQLITE driver plugin (the priority; consistent with iron rule B7)
 
 ```bash
-mkdir -p <工程>/HarmonyOS/entry/libs/arm64-v8a/sqldrivers/
+mkdir -p <project>/HarmonyOS/entry/libs/arm64-v8a/sqldrivers/
 cp <Qt_SDK>/plugins/sqldrivers/libqsqlite.so \
-   <工程>/HarmonyOS/entry/libs/arm64-v8a/sqldrivers/libqsqlite.so
+   <project>/HarmonyOS/entry/libs/arm64-v8a/sqldrivers/libqsqlite.so
 ```
 
-⚠️ **OHOS SDK 驱动文件名是 `libqsqlite.so`，不是桌面的 `libqsqlsqlite.so`**（`Qt5Sql_QSQLiteDriverPlugin.cmake` 的 `PLUGIN_LOCATION` 已核实）。
+⚠️ **In the OHOS SDK the driver file is named `libqsqlite.so`, not desktop's `libqsqlsqlite.so`** (verified against `PLUGIN_LOCATION` in `Qt5Sql_QSQLiteDriverPlugin.cmake`).
 
-**CMake 不用改**——动态分类插件 `target_link_libraries` 无效，SDK 也无静态 `.a` 故 `Q_IMPORT_PLUGIN` 不可行。可选：在 `CMakeLists.txt` 末尾加 `add_custom_command(POST_BUILD)` 自动拷贝防复发：
+**No CMake changes are needed** — `target_link_libraries` does nothing for a dynamic plugin of this class, and the SDK has no static `.a`, so `Q_IMPORT_PLUGIN` isn't viable. Optionally, add an `add_custom_command(POST_BUILD)` at the end of `CMakeLists.txt` to copy it automatically and prevent regressions:
 
 ```cmake
 add_custom_command(TARGET <app> POST_BUILD
@@ -105,7 +105,7 @@ add_custom_command(TARGET <app> POST_BUILD
   COMMENT "Deploy qsqlite driver plugin to HAP libs/sqldrivers/")
 ```
 
-### 2. database.cpp 路径改沙箱可写绝对路径（并发必修）
+### 2. Change database.cpp to a writable absolute sandbox path (also required)
 
 ```cpp
 #include <QStandardPaths>
@@ -113,63 +113,63 @@ add_custom_command(TARGET <app> POST_BUILD
 #include <QSqlError>
 // ...
 QString dataDir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
-if (dataDir.isEmpty()) dataDir = QDir::currentPath();   // 兜底
+if (dataDir.isEmpty()) dataDir = QDir::currentPath();   // fallback
 QDir().mkpath(dataDir);
 db->setDatabaseName(dataDir + QDir::separator() + "ChineseChess.db");
 if (!db->open()) {
     qWarning() << "[DB] open failed:" << db->lastError().text() << "path:" << db->databaseName();
-    QMessageBox::information(nullptr, "错误",
-        QString("无法创建本地数据库 !\n路径: %1\n错误: %2").arg(db->databaseName(), db->lastError().text()));
-    exit(-1);  // 可选改 QCoreApplication::exit(-1) 避免 SIGABRT cppcrash
+    QMessageBox::information(nullptr, "Error",
+        QString("Cannot create the local database!\nPath: %1\nError: %2").arg(db->databaseName(), db->lastError().text()));
+    exit(-1);  // optionally change to QCoreApplication::exit(-1) to avoid the SIGABRT cppcrash
 }
 ```
 
-`AppLocalDataLocation` 在 OHOS 映射 `preferencesDir`（`/data/storage/el2/` 下可写沙箱，文件 IO 允许，仅 `.so` dlopen 被拒——故放 `.db` 安全）。桌面端返回 `~/.local/share/<Org>/<App>`，统一使用无需 `#ifdef`。
+On OHOS, `AppLocalDataLocation` maps to `preferencesDir` (a writable sandbox under `/data/storage/el2/` where file IO is allowed and only `.so` dlopen is rejected — so a `.db` there is safe). On desktop it returns `~/.local/share/<Org>/<App>`, so the same code works without `#ifdef`.
 
-### 3.（可选）main.cpp 补应用名/组织名
+### 3. (Optional) set the application/organization name in main.cpp
 
 ```cpp
 QCoreApplication::setOrganizationName("MyOrg");
 QCoreApplication::setApplicationName("MyApp");
 ```
-桌面端使路径含合理 `<App>` 段；OHOS 端由 bundleName 决定不受影响。
+On desktop this gives the path a sensible `<App>` segment; on OHOS the path is determined by the bundleName, so it makes no difference.
 
-## 验证
+## Verification
 
 ```bash
-# 1. 驱动进 bundle（只读 el1）
+# 1. The driver is in the bundle (read-only el1)
 hdc shell find /data/storage/el1/bundle -name 'libqsqlite*'
-# 2. 启动应用，不再弹"无法创建本地数据库"、Login 正常显示
-# 3. db 文件生成在可写沙箱
+# 2. Launch the application: no more "cannot create the local database", and Login displays normally
+# 3. The db file is created in the writable sandbox
 hdc shell find /data/storage/el2 -name 'ChineseChess.db'
-# 4. qWarning 诊断（默认走 stderr 不入 hilog，需重定向）
+# 4. qWarning diagnostics (they go to stderr by default and don't reach hilog; redirect them)
 hdc shell hilog | grep -iE 'QSqlDatabase|QSQLITE|driver|open'
-# 5. 无新 cppcrash
+# 5. No new cppcrash
 hdc shell faultloggerd
 ```
 
-修复后 faultlog 不再出现 `cppcrash-com.example.chessgame`（`exit(-1)` 分支不再触发）。本次修复已真机验证通过。
+After the fix, `cppcrash-com.example.chessgame` no longer appears (the `exit(-1)` branch is never taken). This fix has been verified on a real device.
 
-## 注意事项
+## Notes
 
-- **库链接 ≠ 驱动部署**：`target_link_libraries(Qt5::Sql)` 只部署 `libQt5Sql.so`，驱动 `libqsqlite.so` 是独立运行时 dlopen 插件，须手拷到 `sqldrivers/`（与 `libqohosstyle.so`→`styles/`、`libqsvg.so`→`imageformats/` 同范式）。
-- **两种 open() 失败不可区分**：原代码 `open()` 失败只弹固定文案，不输出 `lastError()`，导致"驱动未加载"与"路径不可写"表现同框。修复时务必把 `lastError().text()` 带进弹框/qWarning——"Driver not loaded"=驱动问题，"unable to open database file"=路径问题。
-- **dlopen 限制边界**：`dlopen()` 拒绝 el2 可写路径（平台限制 P3）**仅针对 .so 加载**，不影响数据库文件本身写入 el2 沙箱。驱动 .so 必须放 `entry/libs/`（安装后映射 el1 只读，dlopen 允许）。
-- **文件名差异**：OHOS SDK 是 `libqsqlite.so`，桌面是 `libqsqlsqlite.so`。从 SDK 拷贝时按实际文件名。
-- **静态内建排除**：本 SDK 的 `libQt5Sql.so` strings 扫描 `qsqlite` 匹配数=0，驱动未静态内建（若静态内建则无需部署插件，但 OHOS SDK 不是）。
-- **构建缓存陷阱**：部署驱动 + 改源码后，若 hvigor 增量构建 no-op（产物 mtime 不变、`.cxx`/`build` 不重建），需清 `.hvigor` + `.cxx` + `build` 并带 env（`DEVECO_SDK_HOME`+`JAVA_HOME`）全量 sync 重建，见 [build-hvigor-native-skip](build-hvigor-native-skip.md)。
+- **Linking the library ≠ deploying the driver**: `target_link_libraries(Qt5::Sql)` only deploys `libQt5Sql.so`; the `libqsqlite.so` driver is a separate runtime dlopen plugin that must be copied into `sqldrivers/` (the same pattern as `libqohosstyle.so` → `styles/` and `libqsvg.so` → `imageformats/`).
+- **The two kinds of open() failure are indistinguishable**: the original code showed a fixed message on `open()` failure without printing `lastError()`, so "driver not loaded" and "path not writable" looked identical. When fixing, always include `lastError().text()` in the message box/qWarning — "Driver not loaded" = a driver problem, "unable to open database file" = a path problem.
+- **The boundary of the dlopen restriction**: `dlopen()` rejecting writable el2 paths (platform limitation P3) applies **only to loading .so files**; it doesn't prevent writing the database file itself into the el2 sandbox. The driver .so must go in `entry/libs/` (mapped read-only into el1 after installation, where dlopen is permitted).
+- **Filename difference**: the OHOS SDK has `libqsqlite.so`; desktop has `libqsqlsqlite.so`. Use the actual filename when copying from the SDK.
+- **Static built-in ruled out**: scanning this SDK's `libQt5Sql.so` strings for `qsqlite` gives 0 matches, so the driver isn't statically built in (if it were, the plugin wouldn't need deploying — but the OHOS SDK doesn't do that).
+- **A build cache trap**: after deploying the driver and changing the source, if the hvigor incremental build is a no-op (artifact mtimes unchanged, `.cxx`/`build` not rebuilt), clear `.hvigor` + `.cxx` + `build` and do a full sync/rebuild with the environment set (`DEVECO_SDK_HOME` + `JAVA_HOME`) — see [build-hvigor-native-skip](build-hvigor-native-skip.md).
 
-## 相关
+## Related
 
-- [[qt-harmonyos-golden-rules]] — 规则 B7（style 手拷）/B12（SQL 驱动手拷）/L2（argv 是库路径）
-- [[qt-harmonyos-project-structure]] — §6.2 手动复制表格（含 libqsqlite.so）
-- [[qt-harmonyos-platform-limits]] — §dlopen 拒绝可写路径（仅 .so）/§QStandardPaths 约束
-- [[qt-harmonyos-code-patterns]] — 模式 14（数据库文件沙箱可写路径）
+- [[qt-harmonyos-golden-rules]] — Rules B7 (copy the style manually) / B12 (copy the SQL driver manually) / L2 (argv is the library path)
+- [[qt-harmonyos-project-structure]] — §6.2 the manual-copy table (including libqsqlite.so)
+- [[qt-harmonyos-platform-limits]] — §dlopen rejects writable paths (.so only) / §QStandardPaths constraints
+- [[qt-harmonyos-code-patterns]] — Pattern 14 (a writable sandbox path for the database file)
 
-### 相关问题
+### Related problems
 
-- [runtime-fail-qpa-plugin-not-found](runtime-fail-qpa-plugin-not-found.md) — 同类"插件未部署"范式（QPA libqohos.so）
-- [runtime-fail-dlopen-writable-path](runtime-fail-dlopen-writable-path.md) — dlopen 限制边界（.so 不能放 el2，但 .db 可以）
-- [build-hvigor-native-skip](build-hvigor-native-skip.md) — 修复后重建若 no-op 的缓存清理
+- [runtime-fail-qpa-plugin-not-found](runtime-fail-qpa-plugin-not-found.md) — The same "plugin not deployed" pattern (the QPA libqohos.so)
+- [runtime-fail-dlopen-writable-path](runtime-fail-dlopen-writable-path.md) — The boundary of the dlopen restriction (.so files can't live in el2, but a .db can)
+- [build-hvigor-native-skip](build-hvigor-native-skip.md) — Clearing caches when the post-fix rebuild is a no-op
 
-> 📋 返回 [错误速查表](_lookup.md)
+> 📋 Back to the [error quick-reference table](_lookup.md)

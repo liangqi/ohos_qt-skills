@@ -1,12 +1,12 @@
 ---
 updated: 2026-08-29
 description: >
-  按标签聚合（从各页 tags 自动生成，扁平全量）。
+  Aggregated by tag (generated automatically from each page's tags; a flat, complete list).
 ---
 
-# 标签索引
+# Tag index
 
-## 全部标签
+## All tags
 
 - **3d**: [coin3d-quarter-ohos](../episodic/postmortems/coin3d-quarter-ohos.md)
 - **ArkUI_AccessibilityProvider**: [qt-harmonyos-accessibility](../semantic/qt-harmonyos-accessibility.md)
@@ -39,7 +39,7 @@ description: >
 - **breaking-change**: [qt515-vs-qt512-api-diff](../semantic/qt515-vs-qt512-api-diff.md)
 - **bug**: [ohostemplate-blockedbymodal-patch](../episodic/postmortems/ohostemplate-blockedbymodal-patch.md), [quit-deadlock-tsfn](../episodic/postmortems/quit-deadlock-tsfn.md), [toolwindow-crossscreen-flicker](../episodic/postmortems/toolwindow-crossscreen-flicker.md)
 - **bug-report**: [qt-bug-report-generation](../procedural/qt-bug-report-generation.md), [qt-bug-report-sample](../procedural/qt-bug-report-sample.md)
-- **build**: [qt-ohos-run-test](../procedural/qt-ohos-run-test.md), [qt-harmonyos-build-run-workflow](../semantic/qt-harmonyos-build-run-workflow.md), [qt-harmonyos-build](../semantic/qt-harmonyos-build.md)
+- **build**: [qt-ohos-run-test](../procedural/qt-ohos-run-test.md), [qt-harmonyos-build-run-workflow](../semantic/qt-harmonyos-build-run-workflow.md), [qt-harmonyos-build](../semantic/qt-harmonyos-build.md), [qt-app-harmonyos-full-pipeline](../procedural/qt-app-harmonyos-full-pipeline.md)
 - **build-orchestration**: [qt-ohos-project-analyzer-workflow](../semantic/qt-ohos-project-analyzer-workflow.md)
 - **cancel**: [qdrag-cancel-cross-platform](../semantic/qdrag-cancel-cross-platform.md)
 - **cef**: [qt-cef-ohos-dev-guide](../procedural/qt-cef-ohos-dev-guide.md)
@@ -73,7 +73,7 @@ description: >
 - **demo**: [demo-generation](../procedural/demo-generation.md)
 - **dependency**: [qt-harmonyos-third-party-libs](../semantic/qt-harmonyos-third-party-libs.md)
 - **dependency-analysis**: [qt-ohos-project-analyzer-workflow](../semantic/qt-ohos-project-analyzer-workflow.md)
-- **deploy**: [qt-ohos-run-test](../procedural/qt-ohos-run-test.md), [qt6-ohos-manual-deploy](../procedural/qt6-ohos-manual-deploy.md)
+- **deploy**: [qt-ohos-run-test](../procedural/qt-ohos-run-test.md), [qt6-ohos-manual-deploy](../procedural/qt6-ohos-manual-deploy.md), [qt-app-harmonyos-full-pipeline](../procedural/qt-app-harmonyos-full-pipeline.md)
 - **deprecated**: [qt515-vs-qt512-api-diff](../semantic/qt515-vs-qt512-api-diff.md)
 - **deveco**: [qt-harmonyos-build](../semantic/qt-harmonyos-build.md), [qt-harmonyos-project-structure](../semantic/qt-harmonyos-project-structure.md)
 - **devecocli**: [qt-harmonyos-build-run-workflow](../semantic/qt-harmonyos-build-run-workflow.md)
@@ -83,6 +83,7 @@ description: >
 - **drag**: [qdrag-cancel-cross-platform](../semantic/qdrag-cancel-cross-platform.md)
 - **dumpLayout**: [qt-harmonyos-accessibility](../semantic/qt-harmonyos-accessibility.md)
 - **embedded**: [qt-harmonyos-window-model](../semantic/qt-harmonyos-window-model.md)
+- **end-to-end**: [qt-app-harmonyos-full-pipeline](../procedural/qt-app-harmonyos-full-pipeline.md)
 - **examples**: [qt-harmonyos-code-patterns](../semantic/qt-harmonyos-code-patterns.md), [qt-ohos-extras-examples](../semantic/qt-ohos-extras-examples.md)
 - **feasibility**: [qt-harmonyos-pyqt-status](../semantic/qt-harmonyos-pyqt-status.md)
 - **fileshare**: [qt-ohos-extras-examples](../semantic/qt-ohos-extras-examples.md), [qt-ohos-extras](../semantic/qt-ohos-extras.md)
@@ -102,6 +103,7 @@ description: >
 - **harmonydeployqt**: [qt6-ohos-windows-cli-deploy](../procedural/qt6-ohos-windows-cli-deploy.md)
 - **harmonydeployqt6**: [qt6-ohos-manual-deploy](../procedural/qt6-ohos-manual-deploy.md)
 - **harmonyos**: [coin3d-quarter-ohos](../episodic/postmortems/coin3d-quarter-ohos.md), [ohostemplate-blockedbymodal-patch](../episodic/postmortems/ohostemplate-blockedbymodal-patch.md), [qt-opensource-apps-harmonyos-survey](../episodic/postmortems/qt-opensource-apps-harmonyos-survey.md), [saribbon-ohos](../episodic/postmortems/saribbon-ohos.md), [wa-nativewindow-leave-bug](../episodic/postmortems/wa-nativewindow-leave-bug.md), [fetch-ohos-third-party-lib](../procedural/fetch-ohos-third-party-lib.md), [framework-fix-verification](../procedural/framework-fix-verification.md), [framework-issue-analysis](../procedural/framework-issue-analysis.md), [qt-app-harmonyos-completion](../procedural/qt-app-harmonyos-completion.md), [qt-app-harmonyos-migration](../procedural/qt-app-harmonyos-migration.md), [qt-cef-ohos-dev-guide](../procedural/qt-cef-ohos-dev-guide.md), [qt-ohos-run-test](../procedural/qt-ohos-run-test.md), [qt6-ohos-manual-deploy](../procedural/qt6-ohos-manual-deploy.md), [qt6-ohos-windows-cli-deploy](../procedural/qt6-ohos-windows-cli-deploy.md), [qdrag-cancel-cross-platform](../semantic/qdrag-cancel-cross-platform.md), [qt-harmonyos-accessibility](../semantic/qt-harmonyos-accessibility.md), [qt-harmonyos-api-mapping](../semantic/qt-harmonyos-api-mapping.md), [qt-harmonyos-api](../semantic/qt-harmonyos-api.md), [qt-harmonyos-build-run-workflow](../semantic/qt-harmonyos-build-run-workflow.md), [qt-harmonyos-build](../semantic/qt-harmonyos-build.md), [qt-harmonyos-code-patterns](../semantic/qt-harmonyos-code-patterns.md), [qt-harmonyos-golden-rules](../semantic/qt-harmonyos-golden-rules.md), [qt-harmonyos-lifecycle](../semantic/qt-harmonyos-lifecycle.md), [qt-harmonyos-modules](../semantic/qt-harmonyos-modules.md), [qt-harmonyos-overview](../semantic/qt-harmonyos-overview.md), [qt-harmonyos-platform-limits](../semantic/qt-harmonyos-platform-limits.md), [qt-harmonyos-porting-workflow](../semantic/qt-harmonyos-porting-workflow.md), [qt-harmonyos-project-structure](../semantic/qt-harmonyos-project-structure.md), [qt-harmonyos-pyqt-status](../semantic/qt-harmonyos-pyqt-status.md), [qt-harmonyos-qt6-status](../semantic/qt-harmonyos-qt6-status.md), [qt-harmonyos-system-tray](../semantic/qt-harmonyos-system-tray.md), [qt-harmonyos-third-party-libs](../semantic/qt-harmonyos-third-party-libs.md), [qt-harmonyos-window-model](../semantic/qt-harmonyos-window-model.md), [qt-ohos-extras-examples](../semantic/qt-ohos-extras-examples.md), [qt-ohos-extras](../semantic/qt-ohos-extras.md), [qt-ohos-js-thread-gateway](../semantic/qt-ohos-js-thread-gateway.md), [qt-ohos-project-analyzer-workflow](../semantic/qt-ohos-project-analyzer-workflow.md), [qt515-vs-qt512-api-diff](../semantic/qt515-vs-qt512-api-diff.md)
+- **harmonyos-porting**: [qt-app-harmonyos-full-pipeline](../procedural/qt-app-harmonyos-full-pipeline.md)
 - **hdc**: [qt-ohos-run-test](../procedural/qt-ohos-run-test.md), [qt-harmonyos-build-run-workflow](../semantic/qt-harmonyos-build-run-workflow.md)
 - **highlight**: [qt-harmonyos-window-model](../semantic/qt-harmonyos-window-model.md)
 - **hilog**: [qt-harmonyos-build-run-workflow](../semantic/qt-harmonyos-build-run-workflow.md)
@@ -187,7 +189,7 @@ description: >
 - **share**: [qt-ohos-extras-examples](../semantic/qt-ohos-extras-examples.md), [qt-ohos-extras](../semantic/qt-ohos-extras.md)
 - **sharing**: [qt-harmonyos-api-mapping](../semantic/qt-harmonyos-api-mapping.md), [qt-harmonyos-lifecycle](../semantic/qt-harmonyos-lifecycle.md)
 - **shiftAppWindowFocus**: [qt-harmonyos-window-model](../semantic/qt-harmonyos-window-model.md)
-- **signing**: [qt-ohos-run-test](../procedural/qt-ohos-run-test.md)
+- **signing**: [qt-ohos-run-test](../procedural/qt-ohos-run-test.md), [qt-app-harmonyos-full-pipeline](../procedural/qt-app-harmonyos-full-pipeline.md)
 - **source-scan**: [qt-app-harmonyos-completion](../procedural/qt-app-harmonyos-completion.md)
 - **startability**: [qt-ohos-extras](../semantic/qt-ohos-extras.md)
 - **startoptions**: [qt-ohos-extras](../semantic/qt-ohos-extras.md)
@@ -204,7 +206,7 @@ description: >
 - **tagging**: [qt-harmonyos-window-model](../semantic/qt-harmonyos-window-model.md)
 - **template**: [qt-harmonyos-project-structure](../semantic/qt-harmonyos-project-structure.md)
 - **test-case**: [qt-app-harmonyos-completion](../procedural/qt-app-harmonyos-completion.md)
-- **testing**: [demo-generation](../procedural/demo-generation.md), [framework-fix-verification](../procedural/framework-fix-verification.md), [qt-harmonyos-accessibility](../semantic/qt-harmonyos-accessibility.md)
+- **testing**: [demo-generation](../procedural/demo-generation.md), [framework-fix-verification](../procedural/framework-fix-verification.md), [qt-harmonyos-accessibility](../semantic/qt-harmonyos-accessibility.md), [qt-app-harmonyos-full-pipeline](../procedural/qt-app-harmonyos-full-pipeline.md)
 - **third-party**: [fetch-ohos-third-party-lib](../procedural/fetch-ohos-third-party-lib.md), [qt-harmonyos-third-party-libs](../semantic/qt-harmonyos-third-party-libs.md)
 - **threading**: [qt-ohos-js-thread-gateway](../semantic/qt-ohos-js-thread-gateway.md)
 - **three-level-window**: [ohostemplate-blockedbymodal-patch](../episodic/postmortems/ohostemplate-blockedbymodal-patch.md)
@@ -232,9 +234,3 @@ description: >
 - **x11**: [qdrag-cancel-cross-platform](../semantic/qdrag-cancel-cross-platform.md)
 - **xcomponent**: [wa-nativewindow-leave-bug](../episodic/postmortems/wa-nativewindow-leave-bug.md), [qt-harmonyos-accessibility](../semantic/qt-harmonyos-accessibility.md), [qt-harmonyos-platform-limits](../semantic/qt-harmonyos-platform-limits.md)
 - **zink**: [qt-harmonyos-platform-limits](../semantic/qt-harmonyos-platform-limits.md)
-- **应用鸿蒙化**: [qt-app-harmonyos-full-pipeline](../procedural/qt-app-harmonyos-full-pipeline.md)
-- **测试**: [qt-app-harmonyos-full-pipeline](../procedural/qt-app-harmonyos-full-pipeline.md)
-- **端到端**: [qt-app-harmonyos-full-pipeline](../procedural/qt-app-harmonyos-full-pipeline.md)
-- **签名**: [qt-app-harmonyos-full-pipeline](../procedural/qt-app-harmonyos-full-pipeline.md)
-- **编译**: [qt-app-harmonyos-full-pipeline](../procedural/qt-app-harmonyos-full-pipeline.md)
-- **部署**: [qt-app-harmonyos-full-pipeline](../procedural/qt-app-harmonyos-full-pipeline.md)

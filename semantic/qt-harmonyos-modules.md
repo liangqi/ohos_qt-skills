@@ -9,90 +9,90 @@ status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview]
 summary: >
-  Qt 5.12/5.15 鸿蒙模块适配状态速查：核心模块(QtCore/GUI/Widgets/QML/Quick/
-  Network/SQL)全部完成；**QtMultimedia 未包含在 SDK 中**（需自行编译）；
-  不支持的模块(QtWebEngine/D-Bus/RemoteObjects/SerialBus)；
-  部分支持的模块(QtPDF/QtQuickTimeline 仅5.15)。
+  Quick reference for Qt 5.12/5.15 HarmonyOS module porting status: all the core modules (QtCore/GUI/Widgets/QML/Quick/
+  Network/SQL) are done; **QtMultimedia is not included in the SDK** (you must build it yourself);
+  unsupported modules (QtWebEngine/D-Bus/RemoteObjects/SerialBus);
+  partially supported modules (QtPDF/QtQuickTimeline, 5.15 only).
 ---
 
-# Qt 模块鸿蒙适配状态
+# Qt module porting status on HarmonyOS
 
-> 来源：[Qt5 Module Adaptation Status](https://wiki.qt.io/Qt_for_HarmonyOS/support_modules)
+> Source: [Qt5 Module Adaptation Status](https://wiki.qt.io/Qt_for_HarmonyOS/support_modules)
 
-## 快速查找
+## Quick lookup
 
-| 我想确认... | 看下表哪行 |
-|------------|-----------|
-| 某个核心模块是否支持 | Essentials 区域 |
-| WebEngine 是否可用 | Add-Ons → Qt WebEngine（Out of scope） |
-| 3D 渲染是否支持 | Add-Ons → Qt 3D（Completed） |
-| 数据库是否支持 | Essentials → Qt SQL（Completed） |
+| I want to check... | Which row below |
+|--------------------|-----------------|
+| Whether a core module is supported | The Essentials section |
+| Whether WebEngine is available | Add-Ons → Qt WebEngine (Out of scope) |
+| Whether 3D rendering is supported | Add-Ons → Qt 3D (Completed) |
+| Whether databases are supported | Essentials → Qt SQL (Completed) |
 
-## Essentials（核心模块）
+## Essentials (core modules)
 
-| 模块 | 5.12 | 5.15 | 备注 |
-|------|------|------|------|
-| Qt Core | ✅ | ✅ | 信号槽、对象树、属性系统 |
-| Qt GUI | ✅ | ✅ | 窗口集成、事件、OpenGL/ES、2D 图形、字体文本 |
-| Qt Widgets | ✅ | ✅ | C++ 经典桌面风格 UI |
-| Qt QML | ✅ | ✅ | QML 语言和引擎基础设施 |
-| Qt Quick | ✅ | ✅ | QML 声明式 UI 标准库 |
-| Qt Quick Controls | ✅ | ✅ | 轻量 QML 控件 |
-| Qt Quick Dialogs | ✅ | ✅ | 系统对话框 |
-| Qt Quick Layouts | ✅ | ✅ | QML 布局 |
-| Qt Quick Test | ✅ | ✅ | QML 单元测试 |
-| Qt Network | ✅ | ✅ | TCP/IP、HTTP、Cookie |
-| Qt SQL | ✅ | ✅ | 数据库集成 |
-| Qt Test | ✅ | ✅ | 单元测试 |
-| Qt Multimedia | ❌ | ❌ | **SDK 未包含**，wiki 标注 Completed 但实际 SDK 无 CMake/QML 模块（2026-06-11 验证） |
-| Qt Multimedia Widgets | ❌ | ❌ | **SDK 未包含**，随 Qt Multimedia 一起缺失 |
+| Module | 5.12 | 5.15 | Notes |
+|--------|------|------|-------|
+| Qt Core | ✅ | ✅ | Signals/slots, object tree, property system |
+| Qt GUI | ✅ | ✅ | Window integration, events, OpenGL/ES, 2D graphics, fonts and text |
+| Qt Widgets | ✅ | ✅ | Classic C++ desktop-style UI |
+| Qt QML | ✅ | ✅ | The QML language and engine infrastructure |
+| Qt Quick | ✅ | ✅ | The standard declarative UI library for QML |
+| Qt Quick Controls | ✅ | ✅ | Lightweight QML controls |
+| Qt Quick Dialogs | ✅ | ✅ | System dialogs |
+| Qt Quick Layouts | ✅ | ✅ | QML layouts |
+| Qt Quick Test | ✅ | ✅ | QML unit testing |
+| Qt Network | ✅ | ✅ | TCP/IP, HTTP, cookies |
+| Qt SQL | ✅ | ✅ | Database integration |
+| Qt Test | ✅ | ✅ | Unit testing |
+| Qt Multimedia | ❌ | ❌ | **Not included in the SDK**; the wiki marks it Completed, but the SDK actually has no CMake/QML module (verified 2026-06-11) |
+| Qt Multimedia Widgets | ❌ | ❌ | **Not included in the SDK**; missing along with Qt Multimedia |
 
-## Add-Ons — 已完成 ✅
+## Add-Ons — completed ✅
 
-| 模块 | 5.12 | 5.15 | 备注 |
-|------|------|------|------|
-| Qt 3D (全子模块) | ✅ | ✅ | 近实时 2D/3D 渲染 |
-| Qt Data Visualization | ✅ | ✅ | 3D 数据可视化（wiki 标 Completed；5.15.16 源码无 ohos{} scope + warning_clean，需补 `ohos{ -Wno-deprecated-declarations -Wno-misleading-indentation }` patch 才能在 API 26 SDK 编，同 qt3d/qtcharts 警告抑制模式） |
-| Qt Bluetooth | ✅ | ✅ | 蓝牙硬件访问 |
-| Qt Concurrent | ✅ | ✅ | 多线程（不用底层原语） |
-| Qt Graphical Effects | ✅ | ✅ | Quick 2 图形效果 |
-| Qt Help | ✅ | ✅ | 文档集成 |
+| Module | 5.12 | 5.15 | Notes |
+|--------|------|------|-------|
+| Qt 3D (all submodules) | ✅ | ✅ | Near-real-time 2D/3D rendering |
+| Qt Data Visualization | ✅ | ✅ | 3D data visualization (the wiki marks it Completed; the 5.15.16 source has no ohos{} scope + warning_clean, so it needs an `ohos{ -Wno-deprecated-declarations -Wno-misleading-indentation }` patch to build against the API 26 SDK — the same warning-suppression pattern as qt3d/qtcharts) |
+| Qt Bluetooth | ✅ | ✅ | Bluetooth hardware access |
+| Qt Concurrent | ✅ | ✅ | Multithreading (without low-level primitives) |
+| Qt Graphical Effects | ✅ | ✅ | Quick 2 graphical effects |
+| Qt Help | ✅ | ✅ | Documentation integration |
 | Qt Image Formats | ✅ | ✅ | TIFF/MNG/TGA/WBMP |
-| Qt Location | ✅ | ✅ | 地图导航 |
-| Qt PDF | ❌ | ✅ | **仅 5.15 支持** |
-| Qt Platform Headers | ✅ | ✅ | 平台特定信息封装 |
-| Qt Positioning | ✅ | ✅ | 定位/卫星/区域 |
-| Qt Print Support | ✅ | ✅ | 打印 |
-| Qt Quick Extras | ✅ | ✅ | 专用控件 |
-| Qt Quick Timeline | ❌ | ✅ | **仅 5.15 支持** |
-| Qt Quick Widgets | ✅ | ✅ | Widget 中显示 Quick UI |
-| Qt SCXML | ✅ | ✅ | SCXML 状态机 |
-| Qt Sensors | ✅ | ✅ | 传感器硬件 |
-| Qt Serial Port | ✅ | ✅ | 物理/虚拟串口 |
-| Qt Speech | ✅ | ✅ | 文字转语音 |
-| Qt SVG | ✅ | ✅ | SVG 渲染 |
-| Qt UI Tools | ✅ | ✅ | 运行时加载 Designer 表单 |
-| Qt WebChannel | ✅ | ✅ | Qt↔HTML/JS 集成 |
-| Qt WebSockets | ✅ | ✅ | RFC 6455 WebSocket |
-| Qt WebView | ✅ | ✅ | 原生 WebView |
+| Qt Location | ✅ | ✅ | Maps and navigation |
+| Qt PDF | ❌ | ✅ | **5.15 only** |
+| Qt Platform Headers | ✅ | ✅ | Platform-specific information wrappers |
+| Qt Positioning | ✅ | ✅ | Positioning/satellites/areas |
+| Qt Print Support | ✅ | ✅ | Printing |
+| Qt Quick Extras | ✅ | ✅ | Specialized controls |
+| Qt Quick Timeline | ❌ | ✅ | **5.15 only** |
+| Qt Quick Widgets | ✅ | ✅ | Displaying a Quick UI inside a widget |
+| Qt SCXML | ✅ | ✅ | SCXML state machines |
+| Qt Sensors | ✅ | ✅ | Sensor hardware |
+| Qt Serial Port | ✅ | ✅ | Physical/virtual serial ports |
+| Qt Speech | ✅ | ✅ | Text to speech |
+| Qt SVG | ✅ | ✅ | SVG rendering |
+| Qt UI Tools | ✅ | ✅ | Loading Designer forms at runtime |
+| Qt WebChannel | ✅ | ✅ | Qt↔HTML/JS integration |
+| Qt WebSockets | ✅ | ✅ | RFC 6455 WebSockets |
+| Qt WebView | ✅ | ✅ | Native WebView |
 
-## Add-Ons — 不在范围内 ❌ (Out of scope)
+## Add-Ons — out of scope ❌
 
-| 模块 | 原因 |
-|------|------|
-| Active Qt | Windows 专属（ActiveX/COM） |
-| Qt Android Extras | Android 专属 |
-| Qt D-Bus | 鸿蒙无 D-Bus |
-| Qt Gamepad | 无手柄支持 |
-| Qt Mac Extras | macOS 专属 |
-| Qt NFC | 无 NFC 支持 |
-| Qt Purchasing | Android/iOS/macOS 应用内购买 |
-| Qt Remote Objects | 不在范围内 |
-| Qt Serial Bus | Windows/Linux 专属 |
-| Qt WebEngine (全子模块) | Windows/Linux/macOS 专属（Chromium） |
-| Qt Win Extras | Windows 专属 |
-| Qt X11 Extras | X11 专属 |
+| Module | Reason |
+|--------|--------|
+| Active Qt | Windows-only (ActiveX/COM) |
+| Qt Android Extras | Android-only |
+| Qt D-Bus | HarmonyOS has no D-Bus |
+| Qt Gamepad | No gamepad support |
+| Qt Mac Extras | macOS-only |
+| Qt NFC | No NFC support |
+| Qt Purchasing | In-app purchase on Android/iOS/macOS |
+| Qt Remote Objects | Out of scope |
+| Qt Serial Bus | Windows/Linux-only |
+| Qt WebEngine (all submodules) | Windows/Linux/macOS-only (Chromium) |
+| Qt Win Extras | Windows-only |
+| Qt X11 Extras | X11-only |
 
-## 参考来源
+## References
 
 - [Qt for HarmonyOS Module Adaptation Status](https://wiki.qt.io/Qt_for_HarmonyOS/support_modules)

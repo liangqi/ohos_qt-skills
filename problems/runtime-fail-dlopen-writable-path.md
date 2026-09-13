@@ -7,66 +7,66 @@ created: 2026-06-03
 updated: 2026-08-14
 status: solved
 audience: public
-summary: "运行时 dlopen 加载 .so 失败返回 EINVAL（路径在 el2 沙箱可写区）"
+summary: "Runtime dlopen of a .so fails with EINVAL (the path is in the el2 sandbox's writable area)"
 severity: high
 
-# ====== 检索关键字（Agent 快速匹配用）======
+# ====== Search keywords (for fast agent matching) ======
 error_message: >
   dlopen failed: cannot open shared object file
   dlopen: errno=22 (EINVAL)
   library not found in writable path
 error_code: "errno=22 (EINVAL)"
 keywords: [dlopen, writable, el2, sandbox, plugin, dynamic-loading, EINVAL]
-symptoms: "运行时加载 .so 插件失败，dlopen 返回 EINVAL，路径在 /data/storage/el2/ 下"
+symptoms: "Loading a .so plugin at runtime fails, dlopen returns EINVAL, and the path is under /data/storage/el2/"
 
-# ====== 问题详情 ======
-environment: "Qt 5.12/5.15 for HarmonyOS, 真机"
+# ====== Problem details ======
+environment: "Qt 5.12/5.15 for HarmonyOS, real device"
 refs: [semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-third-party-libs, semantic-qt-harmonyos-golden-rules]
 related_problems: [problem-runtime-qpa-plugin-not-found]
 ---
 
-# dlopen 从可写路径加载 .so 被拒绝
+# dlopen from a writable path is rejected
 
-> 平台 loader 对普通可写代码路径的诊断以 common 的 [[ohos-common-kb/problems/dlopen-rejects-writable-path|动态库加载失败：代码位于普通可写路径]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/problems/dlopen-rejects-writable-path.md)）为准。本页保留 `QPluginLoader`/Qt plugin 的可搜索症状、部署位置与回归方法。
+> For diagnosing the platform loader's treatment of ordinary writable code paths, the authority is the common knowledge base's [[ohos-common-kb/problems/dlopen-rejects-writable-path|Shared library fails to load: the code lives on an ordinary writable path]] ([standalone link](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/problems/dlopen-rejects-writable-path.md)). This page keeps the searchable `QPluginLoader`/Qt plugin symptoms, the deployment location, and the regression method.
 
-## 错误信息
+## Error message
 
 ```
 dlopen failed: library "/data/storage/el2/100/base/files/plugins/libMyPlugin.so"
 cannot open shared object file: errno=22 (EINVAL)
 ```
 
-或 Qt 层面的报错：
+Or, at the Qt level:
 
 ```
 QPluginLoader: Could not load plugin: dlopen failed
 ```
 
-## 场景
+## Scenario
 
-应用尝试从 `QStandardPaths::writableLocation()` 返回的路径（通常在 `/data/storage/el2/` 下）动态加载 .so 插件文件，`dlopen()` 返回 EINVAL。
+The application tries to dynamically load a plugin `.so` from the path returned by `QStandardPaths::writableLocation()` (typically under `/data/storage/el2/`), and `dlopen()` returns EINVAL.
 
-常见于：
-- 插件系统（将插件 .so 下载到可写目录后加载）
-- JIT 编译器（运行时生成代码写入文件后加载）
-- 热更新机制（替换 .so 后重新加载）
+Common cases:
+- Plugin systems (downloading a plugin `.so` to a writable directory and then loading it)
+- JIT compilers (generating code at runtime, writing it to a file, and loading it)
+- Hot-update mechanisms (replacing a `.so` and reloading it)
 
-## 解决方案
+## Solution
 
-此为鸿蒙平台限制 P3，根因与 Workaround（放入应用 lib 目录 / 静态链接 / Qt 插件机制）详见平台限制页：
+This is HarmonyOS platform limitation P3. For the root cause and workarounds (place it in the application's lib directory / static linking / the Qt plugin mechanism), see the platform limitations page:
 
-→ [[qt-harmonyos-platform-limits]] §dlopen() 拒绝可写路径
+→ [[qt-harmonyos-platform-limits]] §dlopen() rejects writable paths
 
-> 如需运行时下载代码执行，可考虑 ArkTS/JS 脚本替代 .so 插件；第三方库（如 Qt 自身的插件加载）同样受此限制，确保所有 .so 在打包时部署到 lib 目录。
+> If you need to download and execute code at runtime, consider ArkTS/JS scripts instead of `.so` plugins. Third-party libraries (including Qt's own plugin loading) are subject to the same limitation, so make sure every `.so` is deployed into the lib directory at packaging time.
 
-## 相关
+## Related
 
-- [[qt-harmonyos-platform-limits]] — §dlopen 限制详情
-- [[qt-harmonyos-third-party-libs]] — §3 .so 部署规则
-- [[qt-harmonyos-golden-rules]] — 规则 P3
+- [[qt-harmonyos-platform-limits]] — §dlopen limitation details
+- [[qt-harmonyos-third-party-libs]] — §3 .so deployment rules
+- [[qt-harmonyos-golden-rules]] — Rule P3
 
-### 相关问题
+### Related problems
 
-- [runtime-fail-qpa-plugin-not-found](runtime-fail-qpa-plugin-not-found.md) — 同类 dlopen 失败，但原因是 .so 文件缺失而非路径权限
+- [runtime-fail-qpa-plugin-not-found](runtime-fail-qpa-plugin-not-found.md) — the same kind of dlopen failure, but caused by a missing .so rather than path permissions
 
-> 📋 返回 [错误速查表](_lookup.md)
+> 📋 Back to the [error quick-reference table](_lookup.md)

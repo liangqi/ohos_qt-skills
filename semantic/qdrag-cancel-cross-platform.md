@@ -9,20 +9,20 @@ status: active
 audience: public
 refs: [semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-api]
 summary: >
-  QDrag::cancel() 编程式拖拽取消的跨平台适配现状：Windows 和 X11 已实现（OLE flag / QBasicDrag 事件循环），
-  macOS (Cocoa) 和 OHOS 均未实现（cancelDrag 落到 Q_UNIMPLEMENTED 空操作）。OHOS 上调用不会崩溃/卡死但静默无效，
-  原生 drag 自然结束后 exec 返回。含官方 draggableicons 示例扩展 demo 和各平台 file:line 证据链。
+  The state of cross-platform support for programmatic drag cancellation via QDrag::cancel(): Windows and X11 implement it (an OLE flag / the QBasicDrag event loop),
+  while macOS (Cocoa) and OHOS do not (cancelDrag falls through to a Q_UNIMPLEMENTED no-op). On OHOS, calling it doesn't crash or hang but silently does nothing,
+  and exec returns once the native drag ends naturally. Includes a demo extending the official draggableicons example and a file:line evidence chain for each platform.
 ---
 
-# QDrag::cancel() 跨平台适配现状分析
+# Cross-platform support for QDrag::cancel()
 
-> 基于 Qt 5.15 鸿蒙适配分支（tqtc/harmonyos-5.15.16）源码，所有结论附 `file:line` 引用。
+> Based on the Qt 5.15 HarmonyOS branch (tqtc/harmonyos-5.15.16) source; every conclusion carries a `file:line` reference.
 
 ---
 
-## 一、背景功能概述
+## 1. What the feature does
 
-`QDrag::cancel()` 是 Qt 提供的**静态公共 API**，用于编程式取消一个正在进行中的拖拽操作。
+`QDrag::cancel()` is a **static public API** Qt provides for programmatically cancelling a drag that's in progress.
 
 ```cpp
 // qdrag.h:87
@@ -38,128 +38,128 @@ void QDrag::cancel()
 }
 ```
 
-- **引入版本**：Qt 5.7（`qdrag.cpp:393` `// \since 5.7`）
-- **调用链**：`QDrag::cancel()` → `QPlatformDrag::cancelDrag()`（虚函数）→ 各平台 QPA 插件实现
-- **QPA 默认实现**：`Q_UNIMPLEMENTED()`，即空操作（`qplatformdrag.cpp:171-174`）
+- **Introduced in**: Qt 5.7 (`qdrag.cpp:393` `// \since 5.7`)
+- **The call chain**: `QDrag::cancel()` → `QPlatformDrag::cancelDrag()` (a virtual) → each platform's QPA plugin implementation
+- **The QPA default implementation**: `Q_UNIMPLEMENTED()`, i.e. a no-op (`qplatformdrag.cpp:171-174`)
 
 ```cpp
-// qplatformdrag.cpp:171-174 — 默认实现，什么都不做
+// qplatformdrag.cpp:171-174 — the default implementation, which does nothing
 void QPlatformDrag::cancelDrag()
 {
     Q_UNIMPLEMENTED();
 }
 ```
 
-### 架构总览
+### Architecture overview
 
 ```mermaid
 graph TB
-    QDrag["QDrag::cancel()<br/>qdrag.cpp:396"] -->|"platformDrag->cancelDrag()"| QPD["QPlatformDrag::cancelDrag()<br/>qplatformdrag.cpp:171<br/>默认: Q_UNIMPLEMENTED()"]
+    QDrag["QDrag::cancel()<br/>qdrag.cpp:396"] -->|"platformDrag->cancelDrag()"| QPD["QPlatformDrag::cancelDrag()<br/>qplatformdrag.cpp:171<br/>default: Q_UNIMPLEMENTED()"]
 
-    QPD -->|"Windows 直接 override"| QWD["QWindowsDrag::cancelDrag()<br/>qwindowsdrag.h:93<br/>m_canceled = true"]
-    QWD --> QCD["QueryContinueDrag 检查<br/>qwindowsdrag.cpp:395<br/>→ DRAGDROP_S_CANCEL"]
+    QPD -->|"Windows overrides it directly"| QWD["QWindowsDrag::cancelDrag()<br/>qwindowsdrag.h:93<br/>m_canceled = true"]
+    QWD --> QCD["The QueryContinueDrag check<br/>qwindowsdrag.cpp:395<br/>→ DRAGDROP_S_CANCEL"]
 
-    QPD -->|"X11 继承 QBasicDrag"| QBD["QBasicDrag::cancelDrag()<br/>qsimpledrag.cpp:243<br/>→ 调用 cancel()"]
-    QBD --> QXC["QXcbDrag::cancel()<br/>qxcbdrag.cpp:1166<br/>退出事件循环"]
+    QPD -->|"X11 inherits QBasicDrag"| QBD["QBasicDrag::cancelDrag()<br/>qsimpledrag.cpp:243<br/>→ calls cancel()"]
+    QBD --> QXC["QXcbDrag::cancel()<br/>qxcbdrag.cpp:1166<br/>exits the event loop"]
 
-    QPD -->|"Cocoa 未 override"| Unimpl1["Q_UNIMPLEMENTED()<br/>空操作"]
-    QPD -->|"OHOS 未 override"| Unimpl2["Q_UNIMPLEMENTED()<br/>空操作"]
+    QPD -->|"Cocoa doesn't override it"| Unimpl1["Q_UNIMPLEMENTED()<br/>a no-op"]
+    QPD -->|"OHOS doesn't override it"| Unimpl2["Q_UNIMPLEMENTED()<br/>a no-op"]
 ```
 
 ---
 
-## 二、场景概述
+## 2. The scenario
 
-### 2.1 什么是编程式取消
+### 2.1 What programmatic cancellation is
 
-`QDrag::cancel()` 与用户按 ESC 键取消不同。它是**应用代码主动中止**正在进行中的拖拽，典型场景：
+`QDrag::cancel()` is different from the user pressing ESC. It's the **application code actively aborting** a drag in progress. Typical scenarios:
 
-| 场景 | 说明 |
-|------|------|
-| 超时取消 | 拖拽超过 N 秒未释放，自动中止（防止用户卡住或拖拽超时） |
-| 业务中断 | 拖拽过程中数据校验失败 / 网络状态变化，主动中止拖拽 |
-| 页面切换 | 拖拽进行中触发了页面跳转或弹窗，需要取消当前拖拽 |
-| 竞争条件 | 另一个操作需要获取拖拽资源的独占控制权 |
+| Scenario | Description |
+|----------|-------------|
+| Timeout cancellation | The drag isn't released within N seconds, so it's aborted automatically (preventing a stuck user or a drag timeout) |
+| A business interruption | Data validation fails or the network state changes mid-drag, so the drag is aborted |
+| A page transition | A page navigation or dialog is triggered mid-drag and the current drag needs cancelling |
+| A race condition | Another operation needs exclusive control of the drag resources |
 
-### 2.2 与 ESC 键取消的区别
+### 2.2 How it differs from ESC cancellation
 
-| 机制 | 触发方 | 路径 |
-|------|--------|------|
-| ESC 键取消 | 用户按键 | 各平台 OS 原生处理（Windows: `fEscapePressed`，`qwindowsdrag.cpp:395`） |
-| `QDrag::cancel()` | 应用代码 | `QDrag::cancel()` → `QPlatformDrag::cancelDrag()` → 平台实现 |
+| Mechanism | Triggered by | Path |
+|-----------|--------------|------|
+| ESC cancellation | The user pressing a key | Each platform's native OS handling (Windows: `fEscapePressed`, `qwindowsdrag.cpp:395`) |
+| `QDrag::cancel()` | Application code | `QDrag::cancel()` → `QPlatformDrag::cancelDrag()` → the platform implementation |
 
-> **注意**：Windows 的 ESC 取消走的是 OLE 原生回调 `QueryContinueDrag`，不经过 `QDrag::cancel()`。`QDrag::cancel()` 纯粹用于编程式取消。
+> **Note**: on Windows, ESC cancellation goes through the native OLE callback `QueryContinueDrag` and doesn't involve `QDrag::cancel()`. `QDrag::cancel()` is purely for programmatic cancellation.
 
 ---
 
-## 三、多个平台的适配情况
+## 3. Platform support
 
-### 3.1 适配总览
+### 3.1 Overview
 
-| 平台 | 是否实现 | 实现方式 | 关键代码 |
-|------|:--------:|---------|---------|
-| **Windows** | ✅ | 直接 override `cancelDrag()`，设静态 flag，OLE 回调检查 | `qwindowsdrag.h:93`, `qwindowsdrag.cpp:390-396` |
-| **X11 (Linux)** | ✅ | 继承 `QBasicDrag`，`cancelDrag()` → `cancel()` 退出事件循环 | `qsimpledrag.cpp:243`, `qxcbdrag.cpp:1166` |
-| **macOS (Cocoa)** | ❌ | 未 override，未继承 `QBasicDrag` | `qcocoadrag.mm/h` 全文无 cancelDrag |
-| **OHOS (鸿蒙)** | ❌ | 未 override，未继承 `QBasicDrag` | `qohosplatformdrag.h:12-21` 无 override |
+| Platform | Implemented? | How | Key code |
+|----------|:------------:|-----|----------|
+| **Windows** | ✅ | Overrides `cancelDrag()` directly, setting a static flag the OLE callback checks | `qwindowsdrag.h:93`, `qwindowsdrag.cpp:390-396` |
+| **X11 (Linux)** | ✅ | Inherits `QBasicDrag`, whose `cancelDrag()` → `cancel()` exits the event loop | `qsimpledrag.cpp:243`, `qxcbdrag.cpp:1166` |
+| **macOS (Cocoa)** | ❌ | Doesn't override it and doesn't inherit `QBasicDrag` | No cancelDrag anywhere in `qcocoadrag.mm/h` |
+| **OHOS (HarmonyOS)** | ❌ | Doesn't override it and doesn't inherit `QBasicDrag` | No override in `qohosplatformdrag.h:12-21` |
 
-> Qt 官方文档（`qdrag.cpp:391`）明确注释：`"This is currently implemented on Windows and X11."`
+> The official Qt documentation (`qdrag.cpp:391`) says so explicitly in a comment: `"This is currently implemented on Windows and X11."`
 
-### 3.2 详细对比
+### 3.2 A detailed comparison
 
-| 对比维度 | Windows | X11 (xcb) | macOS (Cocoa) | OHOS |
-|---------|---------|-----------|---------------|------|
-| `cancelDrag()` override | ✅ `qwindowsdrag.h:93` | ✅ 继承 `QBasicDrag`<br/>`qsimpledrag_p.h:77` | ❌ | ❌ |
-| 继承 QBasicDrag | ❌ 直接继承 QPlatformDrag | ✅ `qxcbdrag.h:71` | ❌ | ❌ |
-| cancel 检查点 | OLE `QueryContinueDrag`<br/>`qwindowsdrag.cpp:395`<br/>→ `DRAGDROP_S_CANCEL` | `QBasicDrag::cancelDrag()`<br/>`qsimpledrag.cpp:243-246`<br/>→ `cancel()` 退出事件循环 | 无 | 无 |
-| ESC 键处理 | OS 原生 `fEscapePressed`<br/>`qwindowsdrag.cpp:395` | `QBasicDrag` 事件过滤<br/>`qsimpledrag.cpp:172,195` | 仓库无 cancel 相关代码 | 事件过滤器吞掉 KeyPress<br/>`qohosplatformdrag.cpp:82-88` |
-| drag 阻塞机制 | OLE `DoDragDrop()` 同步阻塞 | `QBasicDrag` 本地事件循环 | 默认 Qt 机制 | `QEventLoop::exec()`<br/>`qohosplatformdrag.cpp:130` |
-| 退出阻塞的途径 | OLE 返回 (cancel/drop) | 回调 quit 事件循环 | 默认 Qt 机制 | 原生回调 `ARKUI_DRAG_STATUS_ENDED`<br/>`qnativenode.cpp:479` |
+| Dimension | Windows | X11 (xcb) | macOS (Cocoa) | OHOS |
+|-----------|---------|-----------|---------------|------|
+| `cancelDrag()` override | ✅ `qwindowsdrag.h:93` | ✅ Inherited from `QBasicDrag`<br/>`qsimpledrag_p.h:77` | ❌ | ❌ |
+| Inherits QBasicDrag | ❌ Inherits QPlatformDrag directly | ✅ `qxcbdrag.h:71` | ❌ | ❌ |
+| Where cancel is checked | The OLE `QueryContinueDrag`<br/>`qwindowsdrag.cpp:395`<br/>→ `DRAGDROP_S_CANCEL` | `QBasicDrag::cancelDrag()`<br/>`qsimpledrag.cpp:243-246`<br/>→ `cancel()` exits the event loop | None | None |
+| ESC key handling | The OS-native `fEscapePressed`<br/>`qwindowsdrag.cpp:395` | `QBasicDrag`'s event filter<br/>`qsimpledrag.cpp:172,195` | No cancel-related code in the repository | The event filter swallows KeyPress<br/>`qohosplatformdrag.cpp:82-88` |
+| How the drag blocks | The OLE `DoDragDrop()` blocks synchronously | A `QBasicDrag` local event loop | The default Qt mechanism | `QEventLoop::exec()`<br/>`qohosplatformdrag.cpp:130` |
+| How the block ends | OLE returns (cancel/drop) | A callback quits the event loop | The default Qt mechanism | The native callback `ARKUI_DRAG_STATUS_ENDED`<br/>`qnativenode.cpp:479` |
 
-### 3.3 各平台实现详解
+### 3.3 Each platform's implementation in detail
 
-#### Windows — ✅ 已实现
+#### Windows — ✅ implemented
 
 ```cpp
-// qwindowsdrag.h:93 — override cancelDrag
+// qwindowsdrag.h:93 — the cancelDrag override
 void cancelDrag() override { QWindowsDrag::m_canceled = true; }
 ```
 
 ```cpp
-// qwindowsdrag.cpp:390-396 — OLE 回调检查 canceled flag
+// qwindowsdrag.cpp:390-396 — the OLE callback checks the canceled flag
 STDMETHODIMP QWindowsOleDropSource::QueryContinueDrag(BOOL fEscapePressed, DWORD grfKeyState)
 {
     SCODE result = S_OK;
     if (fEscapePressed || QWindowsDrag::isCanceled()) {
-        result = DRAGDROP_S_CANCEL;  // 通知 OLE 取消拖拽
+        result = DRAGDROP_S_CANCEL;  // tells OLE to cancel the drag
     }
     // ...
 }
 ```
 
-**机制**：`cancelDrag()` 设置静态 `m_canceled = true` flag → OLE 在 `QueryContinueDrag` 回调中检查此 flag → 返回 `DRAGDROP_S_CANCEL` → OLE 取消拖拽 → `DoDragDrop()` 返回 → `drag->exec()` 返回 `Qt::IgnoreAction`。
+**The mechanism**: `cancelDrag()` sets the static `m_canceled = true` flag → OLE checks that flag in the `QueryContinueDrag` callback → it returns `DRAGDROP_S_CANCEL` → OLE cancels the drag → `DoDragDrop()` returns → `drag->exec()` returns `Qt::IgnoreAction`.
 
-#### X11 (xcb) — ✅ 已实现
+#### X11 (xcb) — ✅ implemented
 
 ```cpp
-// qsimpledrag_p.h:71,77 — QBasicDrag 中间层 override 了 cancelDrag
+// qsimpledrag_p.h:71,77 — the intermediate QBasicDrag layer overrides cancelDrag
 class QBasicDrag : public QPlatformDrag, public QObject {
     void cancelDrag() override;  // line 77
-    virtual void cancel();       // line 85 — 模板方法，子类实现
+    virtual void cancel();       // line 85 — a template method for subclasses to implement
 };
 ```
 
 ```cpp
-// qsimpledrag.cpp:243-246 — cancelDrag 委托给 cancel()
+// qsimpledrag.cpp:243-246 — cancelDrag delegates to cancel()
 void QBasicDrag::cancelDrag()
 {
-    // ... 退出事件循环
+    // ... exits the event loop
     cancel();
 }
 ```
 
 ```cpp
-// qxcbdrag.h:80 — QXcbDrag override cancel()
+// qxcbdrag.h:80 — QXcbDrag overrides cancel()
 void cancel() override;
 
 // qxcbdrag.cpp:1166-1177
@@ -167,42 +167,42 @@ void QXcbDrag::cancel()
 {
     qCDebug(lcQpaXDnd) << "dnd was canceled";
     QBasicDrag::cancel();
-    // ... 清理 Xdnd 状态
+    // ... cleans up the Xdnd state
     canceled = true;
 }
 ```
 
-**机制**：`cancelDrag()`（QBasicDrag 继承）→ `cancel()`（QXcbDrag override）→ 退出本地事件循环 → 发送 XdndLeave 通知目标取消 → `drag->exec()` 返回。
+**The mechanism**: `cancelDrag()` (inherited from QBasicDrag) → `cancel()` (overridden by QXcbDrag) → exits the local event loop → sends XdndLeave to tell the target it's cancelled → `drag->exec()` returns.
 
-#### macOS (Cocoa) — ❌ 未实现
+#### macOS (Cocoa) — ❌ not implemented
 
-`QCocoaDrag` 直接继承 `QPlatformDrag`，未 override `cancelDrag()`，也未继承 `QBasicDrag`。调用 `QDrag::cancel()` 落到 `QPlatformDrag::cancelDrag()` → `Q_UNIMPLEMENTED()` 空操作。
+`QCocoaDrag` inherits `QPlatformDrag` directly, doesn't override `cancelDrag()`, and doesn't inherit `QBasicDrag`. Calling `QDrag::cancel()` falls through to `QPlatformDrag::cancelDrag()` → the `Q_UNIMPLEMENTED()` no-op.
 
-> 源码证据：`qcocoadrag.mm`、`qcocoadrag.h`、`qnsview_dragging.mm` 三个文件中 "cancel" / "abort" 关键词零匹配。
+> Source evidence: the keywords "cancel" / "abort" have zero matches across `qcocoadrag.mm`, `qcocoadrag.h`, and `qnsview_dragging.mm`.
 
-#### OHOS (鸿蒙) — ❌ 未实现
+#### OHOS (HarmonyOS) — ❌ not implemented
 
 ```cpp
-// qohosplatformdrag.h:12-21 — QOhosPlatformDrag 声明，无 cancelDrag override
+// qohosplatformdrag.h:12-21 — the QOhosPlatformDrag declaration, with no cancelDrag override
 class QOhosPlatformDrag : public QPlatformDrag
 {
 public:
     QOhosPlatformDrag();
     ~QOhosPlatformDrag() override;
-    virtual void handlePreDrop() = 0;       // 有 pre-drop 处理
-    virtual void updateDropAction(Qt::DropAction) = 0;  // 有 action 更新
-    // ❌ 无 cancelDrag() override
+    virtual void handlePreDrop() = 0;       // there is pre-drop handling
+    virtual void updateDropAction(Qt::DropAction) = 0;  // there is action updating
+    // ❌ no cancelDrag() override
 };
 ```
 
-OHOS drag 阻塞机制（`qohosplatformdrag.cpp:108-135`）：
+The OHOS drag blocking mechanism (`qohosplatformdrag.cpp:108-135`):
 
 ```cpp
-// qohosplatformdrag.cpp:108-135 — drag() 用 QEventLoop 阻塞
+// qohosplatformdrag.cpp:108-135 — drag() blocks on a QEventLoop
 Qt::DropAction QOhosPlatformDragImpl::drag(QDrag *drag)
 {
     auto *initiatorView = findInitiatorViewForDragOrNull();
-    m_activeEventFilterHandle = installDragEventFilter();  // 吞掉所有输入事件
+    m_activeEventFilterHandle = installDragEventFilter();  // swallows all input events
 
     auto eventLoop = std::make_shared<QEventLoop>();
     m_dropAction = drag->defaultAction();
@@ -210,24 +210,24 @@ Qt::DropAction QOhosPlatformDragImpl::drag(QDrag *drag)
     initiatorView->startDrag(
         {dragPixmap.toImage()}, drag->hotSpot(),
         *drag->mimeData(),
-        [this, eventLoop](Qt::DropAction dropAction) {  // 原生回调
+        [this, eventLoop](Qt::DropAction dropAction) {  // the native callback
             m_dropAction = dropAction;
-            eventLoop->quit();  // 唯一退出途径
+            eventLoop->quit();  // the only way out
         });
 
-    eventLoop->exec();  // 阻塞等待原生回调
+    eventLoop->exec();  // blocks waiting for the native callback
     return m_dropAction;
 }
 ```
 
-OHOS 原生 drag 回调处理（`qnativenode.cpp:473-501`）：
+The OHOS native drag callback handling (`qnativenode.cpp:473-501`):
 
 ```cpp
-// qnativenode.cpp:473-493 — 原生回调处理 drag 结果
+// qnativenode.cpp:473-493 — the native callback handles the drag result
 [context](::ArkUI_DragAndDropInfo *dragAndDropInfo) mutable {
     auto dragStatus = OH_ArkUI_DragAndDropInfo_GetDragStatus(dragAndDropInfo);
 
-    if (dragStatus == ARKUI_DRAG_STATUS_ENDED) {  // 只处理 ENDED 状态
+    if (dragStatus == ARKUI_DRAG_STATUS_ENDED) {  // only the ENDED status is handled
         ArkUI_DragResult dragResult = ARKUI_DRAG_RESULT_FAILED;
         OH_ArkUI_DragEvent_GetDragResult(dragEvent, &dragResult);
 
@@ -236,34 +236,34 @@ OHOS 原生 drag 回调处理（`qnativenode.cpp:473-501`）：
                 ? mapQOhosArkUiDropOperationToQt(...)
                 : Qt::IgnoreAction;  // FAILED → IgnoreAction
 
-        dropActionConsumer(qtDropAction);  // 触发 eventLoop->quit()
+        dropActionConsumer(qtDropAction);  // triggers eventLoop->quit()
     }
 }
 ```
 
-**OHOS 影响分析**：
+**Impact analysis for OHOS**:
 
-| 影响项 | 说明 |
-|--------|------|
-| 编程式 `QDrag::cancel()` | ❌ 无效。`cancelDrag()` → `Q_UNIMPLEMENTED()` 空操作，拖拽不会中止 |
-| 是否会崩溃/卡死 | ❌ 不会。原生 drag 必然会结束（用户松手），回调触发 `eventLoop->quit()` |
-| 用户 drop 到无效区域 | ✅ 正常。原生回调 `ARKUI_DRAG_RESULT_FAILED` → `Qt::IgnoreAction` |
-| 用户正常 drop | ✅ 正常。原生回调 `ARKUI_DRAG_RESULT_SUCCESSFUL` → Qt drop action |
-| ESC 键 | ❌ Qt 层不感知（事件过滤器吞掉 KeyPress，`qohosplatformdrag.cpp:82-88`） |
+| Aspect | Notes |
+|--------|-------|
+| Programmatic `QDrag::cancel()` | ❌ Ineffective. `cancelDrag()` → the `Q_UNIMPLEMENTED()` no-op, so the drag isn't aborted |
+| Does it crash or hang? | ❌ No. The native drag is bound to end (the user lets go), and the callback triggers `eventLoop->quit()` |
+| The user drops on an invalid area | ✅ Works. The native callback gives `ARKUI_DRAG_RESULT_FAILED` → `Qt::IgnoreAction` |
+| A normal drop | ✅ Works. The native callback gives `ARKUI_DRAG_RESULT_SUCCESSFUL` → the Qt drop action |
+| The ESC key | ❌ Invisible at the Qt layer (the event filter swallows KeyPress, `qohosplatformdrag.cpp:82-88`) |
 
-> **结论**：OHOS 缺少 `cancelDrag()` 导致**编程式取消场景失效**，但不会崩溃或死锁。拖拽会继续到原生系统自然结束。
+> **Conclusion**: OHOS's missing `cancelDrag()` makes the **programmatic cancellation scenario ineffective**, but it doesn't crash or deadlock. The drag simply continues until the native system ends it naturally.
 
 ---
 
-## 四、使用 Demo（基于 Qt 官方示例）
+## 4. A demo (based on the official Qt example)
 
-以下基于 Qt 官方 `draggableicons` 示例（`qtbase/examples/widgets/draganddrop/draggableicons/`），在其基础上增加编程式取消（超时自动取消拖拽）的演示。
+The following builds on Qt's official `draggableicons` example (`qtbase/examples/widgets/draganddrop/draggableicons/`), adding a demonstration of programmatic cancellation (automatically cancelling a drag on a timeout).
 
-> **官方示例路径**：`qtbase/examples/widgets/draganddrop/draggableicons/dragwidget.cpp`
+> **The official example's path**: `qtbase/examples/widgets/draganddrop/draggableicons/dragwidget.cpp`
 
-### 4.1 官方示例：标准拖拽发起
+### 4.1 The official example: starting a standard drag
 
-Qt 官方 `draggableicons` 的 `mousePressEvent`（`dragwidget.cpp:140-176`）：
+`mousePressEvent` from the official `draggableicons` (`dragwidget.cpp:140-176`):
 
 ```cpp
 void DragWidget::mousePressEvent(QMouseEvent *event)
@@ -274,7 +274,7 @@ void DragWidget::mousePressEvent(QMouseEvent *event)
 
     QPixmap pixmap = *child->pixmap();
 
-    // 序列化拖拽数据
+    // Serialize the drag data
     QByteArray itemData;
     QDataStream dataStream(&itemData, QIODevice::WriteOnly);
     dataStream << pixmap << QPoint(event->pos() - child->pos());
@@ -287,7 +287,7 @@ void DragWidget::mousePressEvent(QMouseEvent *event)
     drag->setPixmap(pixmap);
     drag->setHotSpot(event->pos() - child->pos());
 
-    // 半透明效果
+    // A translucent effect
     QPixmap tempPixmap = pixmap;
     QPainter painter;
     painter.begin(&tempPixmap);
@@ -295,7 +295,7 @@ void DragWidget::mousePressEvent(QMouseEvent *event)
     painter.end();
     child->setPixmap(tempPixmap);
 
-    // exec() 同步阻塞，直到拖拽结束
+    // exec() blocks synchronously until the drag ends
     if (drag->exec(Qt::CopyAction | Qt::MoveAction, Qt::CopyAction) == Qt::MoveAction) {
         child->close();
     } else {
@@ -304,21 +304,21 @@ void DragWidget::mousePressEvent(QMouseEvent *event)
 }
 ```
 
-### 4.2 扩展：增加编程式取消（超时自动取消）
+### 4.2 The extension: adding programmatic cancellation (an automatic timeout)
 
-在官方示例基础上，增加一个超时定时器：拖拽超过 5 秒未释放，自动调用 `QDrag::cancel()` 取消。
+Building on the official example, add a timeout timer: if the drag isn't released within 5 seconds, call `QDrag::cancel()` to cancel it.
 
 ```cpp
-// dragwidget.h — 增加 timeout 成员
+// dragwidget.h — add the timeout member
 class DragWidget : public QWidget {
     // ...
 private:
-    QTimer *m_dragTimeout;  // 拖拽超时定时器
+    QTimer *m_dragTimeout;  // the drag timeout timer
 };
 ```
 
 ```cpp
-// dragwidget.cpp — 增加超时取消逻辑
+// dragwidget.cpp — add the timeout cancellation logic
 void DragWidget::mousePressEvent(QMouseEvent *event)
 {
     QLabel *child = static_cast<QLabel*>(childAt(event->pos()));
@@ -339,11 +339,11 @@ void DragWidget::mousePressEvent(QMouseEvent *event)
     drag->setPixmap(pixmap);
     drag->setHotSpot(event->pos() - child->pos());
 
-    // ★ 新增：5 秒超时自动取消
+    // ★ New: cancel automatically after 5 seconds
     m_dragTimeout = new QTimer;
     m_dragTimeout->setSingleShot(true);
     connect(m_dragTimeout, &QTimer::timeout, [] {
-        QDrag::cancel();  // 编程式取消当前拖拽
+        QDrag::cancel();  // programmatically cancel the current drag
     });
     m_dragTimeout->start(5000);
 
@@ -354,7 +354,7 @@ void DragWidget::mousePressEvent(QMouseEvent *event)
     painter.end();
     child->setPixmap(tempPixmap);
 
-    // exec() 同步阻塞
+    // exec() blocks synchronously
     Qt::DropAction result = drag->exec(Qt::CopyAction | Qt::MoveAction, Qt::CopyAction);
 
     m_dragTimeout->stop();
@@ -368,65 +368,65 @@ void DragWidget::mousePressEvent(QMouseEvent *event)
 }
 ```
 
-### 4.3 运行效果（按平台）
+### 4.3 What happens on each platform
 
-| 平台 | 5 秒超时后行为 | `exec()` 返回值 |
-|------|--------------|----------------|
-| Windows | ✅ 拖拽立即中止，`exec()` 返回 | `Qt::IgnoreAction` |
-| X11 (Linux) | ✅ 拖拽立即中止，`exec()` 返回 | `Qt::IgnoreAction` |
-| macOS | ❌ 无效，拖拽继续，5 秒后定时器触发但 `cancel()` 空操作 | 用户松手后才返回 |
-| OHOS | ❌ 无效，拖拽继续，5 秒后定时器触发但 `cancel()` 空操作 | 用户松手后才返回 |
+| Platform | Behavior after the 5-second timeout | `exec()`'s return value |
+|----------|-------------------------------------|-------------------------|
+| Windows | ✅ The drag aborts immediately and `exec()` returns | `Qt::IgnoreAction` |
+| X11 (Linux) | ✅ The drag aborts immediately and `exec()` returns | `Qt::IgnoreAction` |
+| macOS | ❌ Nothing happens; the drag continues, and although the timer fires after 5 seconds, `cancel()` is a no-op | It only returns once the user lets go |
+| OHOS | ❌ Nothing happens; the drag continues, and although the timer fires after 5 seconds, `cancel()` is a no-op | It only returns once the user lets go |
 
-> **注意**：在 Windows 上，`drag->exec()` 内部走 OLE `DoDragDrop()`，Qt 的 `QTimer` 依赖事件循环。OLE 的消息泵会处理 Qt 定时器事件，因此 `QTimer::timeout` 可以在拖拽期间触发。X11 上 `exec()` 走 `QBasicDrag` 本地事件循环，`QTimer` 同样可以正常触发。
-
----
-
-## 五、结论汇总
-
-| # | 结论 | 证据等级 | 关键代码引用 |
-|---|------|:--------:|-------------|
-| 1 | Windows ✅ 实现了 `cancelDrag()`，通过 OLE `DRAGDROP_S_CANCEL` 取消 | 充分 | qwindowsdrag.h:93, qwindowsdrag.cpp:390-396 |
-| 2 | X11 ✅ 通过继承 `QBasicDrag` 间接实现，`cancelDrag()` → `cancel()` | 充分 | qsimpledrag_p.h:77, qsimpledrag.cpp:243, qxcbdrag.cpp:1166 |
-| 3 | macOS ❌ 未实现，`cancelDrag()` 落到 `Q_UNIMPLEMENTED()` 空操作 | 充分 | qcocoadrag.mm/h 无 cancelDrag, qplatformdrag.cpp:171-174 |
-| 4 | OHOS ❌ 未实现，`cancelDrag()` 落到 `Q_UNIMPLEMENTED()` 空操作 | 充分 | qohosplatformdrag.h:12-21 无 override, qplatformdrag.cpp:171-174 |
-| 5 | OHOS 调用 `QDrag::cancel()` 不会崩溃/卡死，但静默无效 | 充分 | qplatformdrag.cpp:173 空操作 + qohosplatformdrag.cpp:130 事件循环靠原生回调退出 |
-| 6 | OHOS 原生 drag 能感知 cancel 结果（`ARKUI_DRAG_RESULT_FAILED` → `Qt::IgnoreAction`） | 充分 | qnativenode.cpp:484-493 |
-
-### 待验证事项
-
-- [ ] OHOS 原生 ArkUI 拖拽框架是否有独立的 ESC/取消 API（需查 OHOS SDK 文档，当前仓库代码未调用）
-- [ ] macOS 是否有其他非 QPA 层面的 drag cancel 机制（如 NSDraggingSession 原生 API）
+> **Note**: on Windows, `drag->exec()` internally goes through the OLE `DoDragDrop()`, and Qt's `QTimer` depends on an event loop. OLE's message pump processes Qt timer events, so `QTimer::timeout` can still fire during a drag. On X11, `exec()` runs a `QBasicDrag` local event loop, where `QTimer` likewise fires normally.
 
 ---
 
-## 附：源码文件索引
+## 5. Summary of conclusions
 
-| 文件 | 路径（相对 qtbase/src） | 说明 |
-|------|------------------------|------|
-| qdrag.h / qdrag.cpp | gui/kernel/ | Qt 公共 API，`cancel()` 静态方法 |
-| qplatformdrag.h / .cpp | gui/kernel/ | QPA 抽象层，`cancelDrag()` 虚函数 |
-| qsimpledrag_p.h / .cpp | gui/kernel/ | `QBasicDrag` 中间基类，override `cancelDrag()` |
-| qwindowsdrag.h / .cpp | plugins/platforms/windows/ | Windows QPA drag 实现 |
-| qxcbdrag.h / .cpp | plugins/platforms/xcb/ | X11 QPA drag 实现 |
-| qcocoadrag.h / .mm | plugins/platforms/cocoa/ | macOS QPA drag 实现 |
-| qohosplatformdrag.h / .cpp | plugins/platforms/ohos/ | OHOS QPA drag 实现 |
-| qnativenode.cpp | plugins/platforms/ohos/render/ | OHOS 原生 drag 回调处理 |
+| # | Conclusion | Evidence level | Key code references |
+|---|------------|:--------------:|---------------------|
+| 1 | Windows ✅ implements `cancelDrag()`, cancelling via the OLE `DRAGDROP_S_CANCEL` | Strong | qwindowsdrag.h:93, qwindowsdrag.cpp:390-396 |
+| 2 | X11 ✅ implements it indirectly by inheriting `QBasicDrag`, with `cancelDrag()` → `cancel()` | Strong | qsimpledrag_p.h:77, qsimpledrag.cpp:243, qxcbdrag.cpp:1166 |
+| 3 | macOS ❌ doesn't implement it; `cancelDrag()` falls through to the `Q_UNIMPLEMENTED()` no-op | Strong | No cancelDrag in qcocoadrag.mm/h, qplatformdrag.cpp:171-174 |
+| 4 | OHOS ❌ doesn't implement it; `cancelDrag()` falls through to the `Q_UNIMPLEMENTED()` no-op | Strong | No override in qohosplatformdrag.h:12-21, qplatformdrag.cpp:171-174 |
+| 5 | Calling `QDrag::cancel()` on OHOS doesn't crash or hang, but silently does nothing | Strong | The no-op at qplatformdrag.cpp:173 + the event loop at qohosplatformdrag.cpp:130 exiting via the native callback |
+| 6 | The OHOS native drag can report a cancel result (`ARKUI_DRAG_RESULT_FAILED` → `Qt::IgnoreAction`) | Strong | qnativenode.cpp:484-493 |
+
+### Still to verify
+
+- [ ] Whether the OHOS native ArkUI drag framework has its own ESC/cancel API (this needs checking against the OHOS SDK documentation; the current repository code doesn't call one)
+- [ ] Whether macOS has a drag cancel mechanism outside the QPA layer (such as the native NSDraggingSession API)
 
 ---
 
-## 参考来源
+## Appendix: source file index
 
-- 🛠️ Qt 源码验证（Qt 5.15.16 OHOS 分支 `tqtc/harmonyos-5.15.16` commit 962aa625）：
-  - `gui/kernel/qdrag.cpp:391,393,396` — `QDrag::cancel()` 静态方法实现 + 官方注释 "This is currently implemented on Windows and X11."
-  - `gui/kernel/qplatformdrag.cpp:171,173` — `QPlatformDrag::cancelDrag()` 默认实现落到 `Q_UNIMPLEMENTED()`
-  - `gui/kernel/qsimpledrag_p.h:71,77` / `qsimpledrag.cpp:172,243` — `QBasicDrag` 中间基类 override `cancelDrag()`（X11 事件循环）
-  - `plugins/platforms/windows/qwindowsdrag.cpp:390,395` — Windows QPA 用 OLE flag 实现
-  - `plugins/platforms/xcb/qxcbdrag.cpp:1166` — X11/XCB QPA 实现
-  - `plugins/platforms/cocoa/` — macOS Cocoa QPA（`cancelDrag` 落 `Q_UNIMPLEMENTED()`）
-  - `plugins/platforms/ohos/qohosplatformdrag.cpp:82,108,130` / `qohosplatformdrag.h:12` — OHOS QPA 空实现
-  - `plugins/platforms/ohos/render/qnativenode.cpp:473,479,484` — OHOS 原生 drag 回调处理
-- 📖 Qt 官方文档：
-  - [draggableicons 示例](https://doc.qt.io/qt-5/qtwidgets-draganddrop-draggableicons-example.html)（`qtbase/examples/widgets/draganddrop/draggableicons/`）— 官方拖拽示例，本页 demo 基于此扩展
-  - [QDrag Class 文档](https://doc.qt.io/qt-5/qdrag.html) — `cancel()` 静态方法 API 参考
-- 💼 工作经验：OHOS 平台 `QDrag::cancel()` 行为验证（调用后静默无效，原生 drag 自然结束后 exec 返回，不崩溃不卡死）
-- 相关知识页：[[qt-harmonyos-platform-limits]] §跨平台 API 差异、[[qt-harmonyos-api]] §拖拽 API
+| File | Path (relative to qtbase/src) | Notes |
+|------|-------------------------------|-------|
+| qdrag.h / qdrag.cpp | gui/kernel/ | The Qt public API, with the static `cancel()` method |
+| qplatformdrag.h / .cpp | gui/kernel/ | The QPA abstraction layer, with the `cancelDrag()` virtual |
+| qsimpledrag_p.h / .cpp | gui/kernel/ | The intermediate `QBasicDrag` base class, which overrides `cancelDrag()` |
+| qwindowsdrag.h / .cpp | plugins/platforms/windows/ | The Windows QPA drag implementation |
+| qxcbdrag.h / .cpp | plugins/platforms/xcb/ | The X11 QPA drag implementation |
+| qcocoadrag.h / .mm | plugins/platforms/cocoa/ | The macOS QPA drag implementation |
+| qohosplatformdrag.h / .cpp | plugins/platforms/ohos/ | The OHOS QPA drag implementation |
+| qnativenode.cpp | plugins/platforms/ohos/render/ | The OHOS native drag callback handling |
+
+---
+
+## References
+
+- 🛠️ Verified in the Qt source (the Qt 5.15.16 OHOS branch `tqtc/harmonyos-5.15.16`, commit 962aa625):
+  - `gui/kernel/qdrag.cpp:391,393,396` — the `QDrag::cancel()` static method implementation + the official comment "This is currently implemented on Windows and X11."
+  - `gui/kernel/qplatformdrag.cpp:171,173` — `QPlatformDrag::cancelDrag()`'s default implementation falling through to `Q_UNIMPLEMENTED()`
+  - `gui/kernel/qsimpledrag_p.h:71,77` / `qsimpledrag.cpp:172,243` — the intermediate `QBasicDrag` base class overriding `cancelDrag()` (the X11 event loop)
+  - `plugins/platforms/windows/qwindowsdrag.cpp:390,395` — the Windows QPA implementation using an OLE flag
+  - `plugins/platforms/xcb/qxcbdrag.cpp:1166` — the X11/XCB QPA implementation
+  - `plugins/platforms/cocoa/` — the macOS Cocoa QPA (`cancelDrag` falls through to `Q_UNIMPLEMENTED()`)
+  - `plugins/platforms/ohos/qohosplatformdrag.cpp:82,108,130` / `qohosplatformdrag.h:12` — the OHOS QPA's empty implementation
+  - `plugins/platforms/ohos/render/qnativenode.cpp:473,479,484` — the OHOS native drag callback handling
+- 📖 Official Qt documentation:
+  - [The draggableicons example](https://doc.qt.io/qt-5/qtwidgets-draganddrop-draggableicons-example.html) (`qtbase/examples/widgets/draganddrop/draggableicons/`) — the official drag example this page's demo extends
+  - [The QDrag class documentation](https://doc.qt.io/qt-5/qdrag.html) — the API reference for the static `cancel()` method
+- 💼 Hands-on experience: verifying `QDrag::cancel()`'s behavior on OHOS (silently ineffective; exec returns once the native drag ends naturally, with no crash or hang)
+- Related knowledge pages: [[qt-harmonyos-platform-limits]] §Cross-platform API differences, [[qt-harmonyos-api]] §Drag-and-drop APIs

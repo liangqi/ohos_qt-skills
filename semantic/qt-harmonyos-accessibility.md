@@ -9,126 +9,126 @@ status: active
 audience: public
 refs: [procedural-qt-ohos-run-test, problem-runtime-crash-ohos-deviceinfo-global-expression, semantic-qt-harmonyos-window-model, procedural-demo-generation]
 summary: >
-  Qt OHOS 无障碍(a11y)桥机制与启用: libqohos 内置 QOhosPlatformAccessibility(QPlatformAccessibility 子类),
-  把 Qt 的 QAccessible 控件树经每个 QWindow 的 XComponent 原生 ArkUI_AccessibilityProvider 发布到 OHOS 无障碍框架
-  (findAccessibilityNodeInfosById 等回调)。桥默认关, 由【启动 Want 布尔参数 io.qt.experimental.enableA11ySupport】开启
-  (aa start --pb io.qt.experimental.enableA11ySupport true), 非 env 变量/非 appArg/非系统读屏自动触发。
-  开启后 uitest dumpLayout -b <bundle> 可取完整 Qt 控件树(QApplication/QWidget/QPushButton/QLabel+text+bounds);
-  DevEco MCP get_app_ui_tree 走 ArkUI inspector 只到 XComponent 节点(不含 Qt 控件)。
+  The Qt OHOS accessibility (a11y) bridge and how to enable it: libqohos contains QOhosPlatformAccessibility (a QPlatformAccessibility subclass)
+  that publishes Qt's QAccessible widget tree to the OHOS accessibility framework through each QWindow's XComponent native ArkUI_AccessibilityProvider
+  (via callbacks such as findAccessibilityNodeInfosById). The bridge is off by default and is enabled by the [boolean launch Want parameter io.qt.experimental.enableA11ySupport]
+  (aa start --pb io.qt.experimental.enableA11ySupport true) — not by an env variable, not by an appArg, and not automatically by a system screen reader.
+  Once enabled, uitest dumpLayout -b <bundle> returns the complete Qt widget tree (QApplication/QWidget/QPushButton/QLabel + text + bounds);
+  the DevEco MCP get_app_ui_tree goes through the ArkUI inspector and only reaches the XComponent node (no Qt widgets).
 leader_summary: >
-  沉淀 Qt 鸿蒙无障碍桥的 Want 参数启用机制与 uitest 取 Qt 控件树方法, 支撑 Qt 鸿蒙应用 UI 自动化验证/控件定位/点击驱动。
-impact: [框架支撑, 迁移提效]
-deliverables: [知识页, 设备验证记录]
-evidence: [uitest dumpLayout 开参数前后对比(空树→QApplication/QPushButton/QLabel 全 Qt 树), qohosjsmain.cpp:564-627 源码, qohosplatformintegration.cpp:171-177 门控]
+  Captured the Want-parameter mechanism for enabling the Qt HarmonyOS accessibility bridge and the uitest method for obtaining the Qt widget tree, enabling UI automation verification / widget location / click driving for Qt HarmonyOS applications.
+impact: [Framework support, Migration efficiency]
+deliverables: [knowledge page, device verification record]
+evidence: [uitest dumpLayout before/after enabling the parameter (empty tree → the full Qt tree of QApplication/QPushButton/QLabel), qohosjsmain.cpp:564-627 source, the gate at qohosplatformintegration.cpp:171-177]
 ---
 
-# Qt for HarmonyOS 无障碍桥与 Want 参数启用
+# The Qt for HarmonyOS accessibility bridge and enabling it via a Want parameter
 
-## 核心机制(源码核实, qtbase/src/plugins/platforms/ohos)
+## The core mechanism (verified in the source, qtbase/src/plugins/platforms/ohos)
 
-Qt OHOS QPA 内置完整无障碍桥, 把 Qt 的 `QAccessible` 控件树桥接到 OHOS 无障碍框架。链路:
+The Qt OHOS QPA contains a complete accessibility bridge that connects Qt's `QAccessible` widget tree to the OHOS accessibility framework. The chain:
 
 ```
-Qt QAccessible 控件树
-  → QOhosPlatformAccessibility(QPlatformAccessibility 子类, setActive(true), setRootObject 时映射树)
-  → AccessibilityTree(Qt 可访问树副本)
-  → 每个 QWindow+XComponent: qnativenode.cpp:248 → tryInitializeAccessibilityForQWindowWithXComponent
-    → 向 XComponent 原生 ArkUI_AccessibilityProvider 注册回调
+The Qt QAccessible widget tree
+  → QOhosPlatformAccessibility (a QPlatformAccessibility subclass; setActive(true), maps the tree on setRootObject)
+  → AccessibilityTree (a copy of the Qt accessible tree)
+  → per QWindow+XComponent: qnativenode.cpp:248 → tryInitializeAccessibilityForQWindowWithXComponent
+    → registers callbacks with the XComponent's native ArkUI_AccessibilityProvider
        (findAccessibilityNodeInfosById / executeAccessibilityAction / findFocusedAccessibilityNode ...)
-  → OHOS 无障碍框架(ArkUI accessibility) → 可被读屏/uitest 等消费者查询
+  → the OHOS accessibility framework (ArkUI accessibility) → queryable by consumers such as screen readers and uitest
 ```
 
-**桥编译进 libqohos.so**(受 `QT_NO_ACCESSIBILITY` 门控, Qt5 默认未定义即编入; strings libqohos.so 可见 `QOhosPlatformAccessibility` + 全部 `OH_ArkUI_AccessibilityElementInfoSet*`(SetAccessibilityText/ComponentType/Clickable/ChildNodeIds…) + `findAccessibilityNodeInfosById` 错误串)。
+**The bridge is compiled into libqohos.so** (gated on `QT_NO_ACCESSIBILITY`, which is undefined by default in Qt5, so it's compiled in; `strings libqohos.so` shows `QOhosPlatformAccessibility` plus all the `OH_ArkUI_AccessibilityElementInfoSet*` symbols (SetAccessibilityText/ComponentType/Clickable/ChildNodeIds…) and the `findAccessibilityNodeInfosById` error strings).
 
-## 启用:启动 Want 参数(关键)
+## Enabling it: the launch Want parameter (the key point)
 
-桥**默认关**(`experimentalEnableA11ySupport{false}`, qohosjsmain.cpp:106), 由 **app 启动 Want 的布尔参数**开启, 不是 env 变量、不是 appArgs、不是系统读屏自动触发:
+The bridge is **off by default** (`experimentalEnableA11ySupport{false}`, qohosjsmain.cpp:106) and is enabled by a **boolean parameter in the application's launch Want** — not an env variable, not appArgs, and not automatically by a system screen reader:
 
 ```
 getProcessLaunchOptionsFromWant(launchWant)                  // qohosjsmain.cpp:564
   assignWantParamIfPresent(experimentalA11ySupport,
-      "io.qt.experimental.enableA11ySupport")                // :583-584  ← Want 参数名
-setGlobalFlagsFromAppProcessLaunchOptions(launchOpts)        // :616, 调用于 :803
+      "io.qt.experimental.enableA11ySupport")                // :583-584  ← the Want parameter name
+setGlobalFlagsFromAppProcessLaunchOptions(launchOpts)        // :616, called at :803
   experimentalEnableA11ySupport = launchOpts.experimentalA11ySupport.Value()  // :626-627
 isA11ySupportEnabled() → return experimentalEnableA11ySupport   // :1968
-QOhosPlatformIntegration 构造:                                // qohosplatformintegration.cpp:171-177
+QOhosPlatformIntegration constructor:                        // qohosplatformintegration.cpp:171-177
   #ifndef QT_NO_ACCESSIBILITY
-    if (QtOhos::isA11ySupportEnabled())                      // :172  ← 仅 true 才建桥
+    if (QtOhos::isA11ySupportEnabled())                      // :172  ← only builds the bridge when true
        m_accessibilityContext = makeAccessibilityContext();
        installEventFilter(makeAccessibilityEventHandler());
   #endif
 ```
 
-**开启命令**(`aa start` 用 `--pb` 传布尔 Want 参数):
+**The command to enable it** (`aa start` passes boolean Want parameters with `--pb`):
 
 ```bash
 hdc shell aa start -b <bundle> -a <ability> \
     --pb io.qt.experimental.enableA11ySupport true
 ```
 
-### 其他 io.qt.* 启动 Want 参数(同机制, getProcessLaunchOptionsFromWant)
+### Other io.qt.* launch Want parameters (the same mechanism, getProcessLaunchOptionsFromWant)
 
-| Want 参数 | 类型 | 作用 |
-|-----------|------|------|
-| `io.qt.experimental.enableA11ySupport` | bool | **启用无障碍桥(本页)** |
-| `io.qt.useDefaultUiAbilityInstanceInQt` | bool | 用默认 UIAbility 实例 |
-| `io.qt.appSharedLibNameOverride` | string | 覆盖应用 .so 名 |
-| `io.qt.experimental.enableGlBackingStore` | bool | 实验性 GL backing store |
-| `io.qt.experimental.enableSupportContextMenuEventOnLongPress` | bool | 长按触发上下文菜单事件 |
-| `io.qt.experimental.enableVsyncOnSoftwareBackingStore` | bool | 软件 backing store vsync |
-| `io.qt.experimental.enableNativeNodeApiKeyEvents` | bool | NativeNode API 键盘事件 |
-| `io.qt.experimental.enableNativeNodeApiMouseEvents` | bool | NativeNode API 鼠标事件 |
+| Want parameter | Type | Purpose |
+|----------------|------|---------|
+| `io.qt.experimental.enableA11ySupport` | bool | **Enables the accessibility bridge (this page)** |
+| `io.qt.useDefaultUiAbilityInstanceInQt` | bool | Use the default UIAbility instance |
+| `io.qt.appSharedLibNameOverride` | string | Override the application's .so name |
+| `io.qt.experimental.enableGlBackingStore` | bool | Experimental GL backing store |
+| `io.qt.experimental.enableSupportContextMenuEventOnLongPress` | bool | Long press triggers a context menu event |
+| `io.qt.experimental.enableVsyncOnSoftwareBackingStore` | bool | vsync for the software backing store |
+| `io.qt.experimental.enableNativeNodeApiKeyEvents` | bool | NativeNode API keyboard events |
+| `io.qt.experimental.enableNativeNodeApiMouseEvents` | bool | NativeNode API mouse events |
 | `io.qt.watchdogEnabled` | bool | QtWatchdog |
-| `io.qt.debug.drawQtRasterBackingStoreFlushedRegion` | bool | 调试绘制刷新区 |
-| `io.qt.debug.useBasicStyleAndTheme` | bool | 调试用基础样式/主题 |
-| `io.qt.debug.redirectedStdoutPath` | string | stdout 重定向文件 |
-| `io.qt.debug.autoRequestPermissions` | string | 自动申请权限 |
+| `io.qt.debug.drawQtRasterBackingStoreFlushedRegion` | bool | Debug-draw the flushed region |
+| `io.qt.debug.useBasicStyleAndTheme` | bool | Use the basic style/theme for debugging |
+| `io.qt.debug.redirectedStdoutPath` | string | File to redirect stdout to |
+| `io.qt.debug.autoRequestPermissions` | string | Request permissions automatically |
 
-> 注:系统无障碍服务(`startup.service.ctl.accessibility`, 设备 `BarrierFree.Accessibility.Core/Vision/Hearing=true`)无论此参数都常驻运行; 但**应用侧 Qt 桥的创建**取决于本参数。系统读屏(屏幕朗读)是消费者, 不等于应用桥已开。
+> Note: the system accessibility service (`startup.service.ctl.accessibility`, with the device reporting `BarrierFree.Accessibility.Core/Vision/Hearing=true`) runs continuously regardless of this parameter; but **whether the Qt bridge is created on the application side** depends on it. A system screen reader is a consumer — its presence doesn't mean the application's bridge is up.
 
-## 取 Qt 控件树:uitest vs DevEco MCP
+## Getting the Qt widget tree: uitest vs. the DevEco MCP
 
-| 工具 | 机制 | 开参数前 | 开参数后 |
-|------|------|---------|---------|
-| **`uitest dumpLayout -b <bundle>`** | 基于无障碍框架查询 | 空树(无 Qt 控件) | **完整 Qt 控件树**(QApplication/QWidget/QPushButton/QLabel + text + origBounds) |
-| DevEco MCP `get_app_ui_tree` full | ArkUI inspector dump(ArkUI 组件树) | 只有 XComponent 节点+容器 | 仍只到 XComponent(Qt 控件在 provider 后, 非 ArkUI 节点) |
-| DevEco MCP `get_app_ui_tree` simple | WMS 窗口 dump | 窗口 bounds | 同(窗口级) |
+| Tool | Mechanism | Before enabling the parameter | After enabling it |
+|------|-----------|-------------------------------|-------------------|
+| **`uitest dumpLayout -b <bundle>`** | Queries through the accessibility framework | An empty tree (no Qt widgets) | **The complete Qt widget tree** (QApplication/QWidget/QPushButton/QLabel + text + origBounds) |
+| DevEco MCP `get_app_ui_tree` full | An ArkUI inspector dump (the ArkUI component tree) | Only the XComponent node + containers | Still only the XComponent (Qt widgets live behind the provider and aren't ArkUI nodes) |
+| DevEco MCP `get_app_ui_tree` simple | A WMS window dump | Window bounds | The same (window level) |
 
-**取 Qt 控件树方法**:
+**How to get the Qt widget tree**:
 
 ```bash
-hdc shell uitest dumpLayout -b <bundle>           # 存到 /data/local/tmp/layout_*.json
-# 拉取/读取后, 控件节点含 "type":"QPushButton"/"QLabel"/"QWidget", "text":..., "origBounds":"[l,t][r,b]"
+hdc shell uitest dumpLayout -b <bundle>           # saved to /data/local/tmp/layout_*.json
+# After pulling/reading it, widget nodes include "type":"QPushButton"/"QLabel"/"QWidget", "text":..., "origBounds":"[l,t][r,b]"
 ```
 
-控件 bounds 为 `[left,top][right,bottom]`, 中心点 `(l+r)/2, (t+b)/2` 可喂给 `uitest uiInput click <x> <y>` 驱动点击。
+Widget bounds are `[left,top][right,bottom]`, and the center point `(l+r)/2, (t+b)/2` can be fed to `uitest uiInput click <x> <y>` to drive clicks.
 
-**为何 DevEco MCP get_app_ui_tree 取不到 Qt 控件**: Qt Widgets 渲染在 XComponent surface 内, 不是 ArkUI 节点; 它们经 XComponent 的 `ArkUI_AccessibilityProvider` 回调暴露为无障碍元素, 不在 ArkUI inspector 树里。ArkUI inspector 只到 XComponent 节点本身。故**取 Qt 控件树须用 `uitest dumpLayout`(无障碍通道), 且须先开 `io.qt.experimental.enableA11ySupport`**。
+**Why the DevEco MCP's get_app_ui_tree can't see Qt widgets**: Qt Widgets render inside the XComponent surface and aren't ArkUI nodes; they're exposed as accessibility elements through the XComponent's `ArkUI_AccessibilityProvider` callbacks, not in the ArkUI inspector tree. The ArkUI inspector stops at the XComponent node itself. So **getting the Qt widget tree requires `uitest dumpLayout` (the accessibility channel), and you must enable `io.qt.experimental.enableA11ySupport` first**.
 
-## 关键判据
+## Key diagnostic signals
 
-- 桥默认关: 不开参数 → libqohos 不建 `QOhosPlatformAccessibility`, `uitest dumpLayout -b` 对 Qt 窗口返回空树(只有窗口/容器, 无 Qt 控件)。
-- 桥已编译: `strings libqohos.so | grep -i accessibility` 命中 `QOhosPlatformAccessibility` + `OH_ArkUI_AccessibilityElementInfoSet*` = 桥在; 全空 = libqohos 以 `QT_NO_ACCESSIBILITY` 编译(需重编)。
-- 开参数后空树→Qt 全树: 即证桥已建 + XComponent provider 已注册 + QAccessible 树已发布。
-- 应用侧无需改代码(桥自动): 仅启动方式加 `--pb io.qt.experimental.enableA11ySupport true`。
-- **Qt6.12 beta2 预构建 libqohos.so 实测 = `QT_NO_ACCESSIBILITY`**（2026-08-05 FeatherPad 端到端实测（KB 内部复盘，公开版不可达）：`grep -ao` 查 a11y 桥符号 `QOhosPlatformAccessibility`/`OH_ArkUI_AccessibilityElementInfoSet*`/`experimentalEnableA11ySupport`/`isA11ySupportEnabled` 全空，"ccessibilit" 计数 0 → 桥未编入 → `--pb` 无效 → `uitest dumpLayout` 只拿 ArkUI 树取不到 Qt 控件树；实测确认）。**预构建 B' 跑不通 a11y 树自动化测试**，需策略 B 源码 superbuild 重编 libqohos（不定义 QT_NO_ACCESSIBILITY）。
+- The bridge is off by default: without the parameter → libqohos doesn't create `QOhosPlatformAccessibility`, and `uitest dumpLayout -b` returns an empty tree for Qt windows (only the window/containers, no Qt widgets).
+- The bridge is compiled in: `strings libqohos.so | grep -i accessibility` hitting `QOhosPlatformAccessibility` + `OH_ArkUI_AccessibilityElementInfoSet*` means the bridge is present; nothing at all means libqohos was built with `QT_NO_ACCESSIBILITY` (and needs rebuilding).
+- Going from an empty tree to the full Qt tree after enabling the parameter proves the bridge was created, the XComponent provider was registered, and the QAccessible tree was published.
+- No application code changes are needed (the bridge is automatic): just add `--pb io.qt.experimental.enableA11ySupport true` to the launch.
+- **The prebuilt Qt 6.12 beta2 libqohos.so was measured to be built with `QT_NO_ACCESSIBILITY`** (2026-08-05, end-to-end testing with FeatherPad (an internal KB retrospective, not reachable in the public edition): `grep -ao` for the a11y bridge symbols `QOhosPlatformAccessibility`/`OH_ArkUI_AccessibilityElementInfoSet*`/`experimentalEnableA11ySupport`/`isA11ySupportEnabled` found nothing, with a "ccessibilit" count of 0 → the bridge isn't compiled in → `--pb` has no effect → `uitest dumpLayout` only returns the ArkUI tree and never the Qt widget tree; confirmed by measurement). **Prebuilt B′ can't run a11y-tree automated tests**; you need strategy B's source superbuild to rebuild libqohos (without defining QT_NO_ACCESSIBILITY).
 
-## 应用场景
+## Use cases
 
-1. **UI 自动化/验证**: 取 Qt 控件 bounds → `uitest uiInput click` 驱动按钮(替代盲点坐标)。例: qapp-recreate-test 用此定位 btn1(origBounds) → 点击触发 QApplication 二次构造 recreate。
-2. **控件树检视**: 确认 Qt 控件结构/文本/可见性(替代看不到内容的截图)。
-3. **无障碍回归**: 验证 Qt 控件的 accessible text/role 是否正确暴露给系统读屏。
+1. **UI automation/verification**: get a Qt widget's bounds → drive the button with `uitest uiInput click` (instead of blind coordinates). Example: qapp-recreate-test uses this to locate btn1 (origBounds) → clicking it triggers a second QApplication construction/recreate.
+2. **Widget tree inspection**: confirm the Qt widget structure/text/visibility (instead of screenshots where you can't see the content).
+3. **Accessibility regression**: verify that Qt widgets' accessible text/role are exposed correctly to the system screen reader.
 
-## 关联
+## Related
 
-- [[procedural-qt-ohos-run-test]] — OHOS 真机运行验证(uitest 取树 + 点击驱动)
-- [[problem-runtime-crash-ohos-deviceinfo-global-expression]] — 本机制用于定位/点击触发 recreate, 验证 deviceInfo 修复
-- [[semantic-qt-harmonyos-window-model]] — XComponent/窗口模型(无障碍 provider 绑定于 XComponent)
-- [[procedural-demo-generation]] — demo 生成后用 uitest 取树验证
+- [[procedural-qt-ohos-run-test]] — OHOS on-device run verification (getting the tree with uitest + driving clicks)
+- [[problem-runtime-crash-ohos-deviceinfo-global-expression]] — This mechanism is used to locate/click to trigger the recreate that verifies the deviceInfo fix
+- [[semantic-qt-harmonyos-window-model]] — The XComponent/window model (the accessibility provider is bound to the XComponent)
+- [[procedural-demo-generation]] — After generating a demo, use uitest to get the tree and verify
 
-## 参考来源
+## References
 
-| 来源类型 | 说明 |
-|----------|------|
-| 🛠️ Qt 源码核实 | qtbase/src/plugins/platforms/ohos/{qohosjsmain.cpp, qohosplatformintegration.cpp, accessibility/*, render/qnativenode.cpp} |
-| 🔬 设备验证 | uitest dumpLayout 开参数前后对比 + aa start --pb 实测(HUAWEI MateBook Fold, OHOS 6.0) |
+| Source type | Notes |
+|-------------|-------|
+| 🛠️ Verified in the Qt source | qtbase/src/plugins/platforms/ohos/{qohosjsmain.cpp, qohosplatformintegration.cpp, accessibility/*, render/qnativenode.cpp} |
+| 🔬 Device verification | uitest dumpLayout before/after enabling the parameter + aa start --pb testing (HUAWEI MateBook Fold, OHOS 6.0) |

@@ -8,22 +8,22 @@ updated: 2026-06-08
 status: workaround
 audience: public
 severity: medium
-error_message: "CMake Error: find_package(Qt5 COMPONENTS Widgets UiTools OpenGL QUIET) 失败 (OHOS Qt5 SDK 缺 Qt5UiTools 模块)"
+error_message: "CMake Error: find_package(Qt5 COMPONENTS Widgets UiTools OpenGL QUIET) fails (the OHOS Qt5 SDK lacks the Qt5UiTools module)"
 refs: [semantic-qt-harmonyos-modules]
 summary: >
-  OHOS Qt5 SDK 不含 Qt5UiTools 模块，导致 find_package(Qt5 COMPONENTS UiTools) 失败。
-  需从 find_package 列表中移除 UiTools 或从 Qt 源码编译该模块。
+  The OHOS Qt5 SDK doesn't include the Qt5UiTools module, so find_package(Qt5 COMPONENTS UiTools) fails.
+  You must either remove UiTools from the find_package list or build the module from the Qt source.
 ---
 
-# OHOS Qt5 SDK 缺失 Qt5UiTools 模块
+# The OHOS Qt5 SDK is missing the Qt5UiTools module
 
-## 错误信息
+## Error message
 
 ```
-CMake Error: find_package(Qt5 COMPONENTS Widgets UiTools OpenGL QUIET) 失败
+CMake Error: find_package(Qt5 COMPONENTS Widgets UiTools OpenGL QUIET) failed
 ```
 
-或当 fallback 到 Qt4 时：
+Or, when it falls back to Qt4:
 
 ```
 CMake Error at FindQt4.cmake:1314 (message):
@@ -31,22 +31,22 @@ CMake Error at FindQt4.cmake:1314 (message):
   <LOCAL_PATH>, this code requires Qt 4.x
 ```
 
-## 触发场景
+## When it happens
 
-- 交叉编译依赖 `Qt5::UiTools` 的第三方 Qt 库（如 Coin3D Quarter）
-- OHOS Qt 5.12 和 5.15 的 SDK 均缺少此模块
+- Cross-compiling a third-party Qt library that depends on `Qt5::UiTools` (such as Coin3D Quarter)
+- Both the OHOS Qt 5.12 and 5.15 SDKs lack this module
 
-## 根因
+## Root cause
 
-OHOS Qt SDK（`<LOCAL_PATH>` 和 `<LOCAL_PATH>`）不包含 `Qt5UiTools` cmake 配置目录。
+The OHOS Qt SDKs (`<LOCAL_PATH>` and `<LOCAL_PATH>`) don't contain a `Qt5UiTools` cmake configuration directory.
 
-Qt5UiTools 提供 `QUiLoader`（运行时加载 .ui 文件），在多数项目中仅 examples 使用，核心库通常不依赖。
+Qt5UiTools provides `QUiLoader` (loading .ui files at runtime); in most projects only the examples use it, and the core libraries generally don't depend on it.
 
-> **⚠️ 根因修正（2026-07-08 lzh 确认）**：wiki 标 QtHelp/QtUiTools/QtDesigner **Completed**（已鸿蒙化），但 **qttools 模块的依赖只能在鸿蒙PC上主机编译（host build on HarmonyOS PC），Windows 交叉编译搞不定**。所以从 Windows 交叉编译的 OHOS Qt5 SDK（如 `<QT5_15_OHOS_SDK>`、`<QT5_15_OHOS_SDK_FULL>`）天然不含 Qt5UiTools/Qt5Help——这不是 SDK 打包遗漏，是**构建方式限制**。要补齐需在鸿蒙PC上主机编译 qttools 后部署。
+> **⚠️ Root cause correction (confirmed 2026-07-08 by lzh)**: the wiki marks QtHelp/QtUiTools/QtDesigner as **Completed** (ported to HarmonyOS), but **the qttools module's dependencies can only be built as a host build on a HarmonyOS PC — cross-compiling from Windows doesn't work**. So an OHOS Qt5 SDK cross-compiled from Windows (such as `<QT5_15_OHOS_SDK>` or `<QT5_15_OHOS_SDK_FULL>`) inherently lacks Qt5UiTools/Qt5Help. This isn't an SDK packaging oversight — it's a **build-method limitation**. Filling the gap requires a host build of qttools on a HarmonyOS PC, then deploying the result.
 
-## OHOS SDK 可用的 Qt5 模块
+## Qt5 modules available in the OHOS SDK
 
-通过 `ls lib/cmake/` 确认：
+Confirmed via `ls lib/cmake/`:
 
 | Qt 5.12 | Qt 5.15 |
 |---------|---------|
@@ -71,9 +71,9 @@ Qt5UiTools 提供 `QUiLoader`（运行时加载 .ui 文件），在多数项目�
 | Qt5Xml | Qt5Xml |
 | **Qt5UiTools ❌** | **Qt5UiTools ❌** |
 
-## 解决方案
+## Solution
 
-1. **从 find_package 中移除 UiTools**（推荐）：
+1. **Remove UiTools from find_package** (recommended):
    ```cmake
    # Before:
    find_package(Qt5 COMPONENTS Widgets UiTools OpenGL QUIET)
@@ -81,7 +81,7 @@ Qt5UiTools 提供 `QUiLoader`（运行时加载 .ui 文件），在多数项目�
    find_package(Qt5 COMPONENTS Widgets OpenGL QUIET)
    ```
 
-2. **从 link targets 中移除**：
+2. **Remove it from the link targets**:
    ```cmake
    # Before:
    set(QUARTER_QT_TARGETS Qt5::Widgets Qt5::UiTools Qt5::OpenGL)
@@ -89,14 +89,14 @@ Qt5UiTools 提供 `QUiLoader`（运行时加载 .ui 文件），在多数项目�
    set(QUARTER_QT_TARGETS Qt5::Widgets Qt5::OpenGL)
    ```
 
-3. **如果需要 UiTools 功能**：**只能在鸿蒙PC上主机编译 qttools**（host build on HarmonyOS PC），产物部署到 SDK。**Windows 交叉编译搞不定**（qttools 依赖决定，2026-07-08 lzh 确认）——不要尝试从 Windows 定向 qmake `qttools/src/assistant` 或 `src/designer/src/uitools` 交叉编译。
+3. **If you really need UiTools**: you **can only do a host build of qttools on a HarmonyOS PC** and deploy the output into the SDK. **Cross-compiling from Windows doesn't work** (dictated by qttools' dependencies; confirmed 2026-07-08 by lzh) — don't try to cross-compile `qttools/src/assistant` or `src/designer/src/uitools` by targeting them with qmake from Windows.
 
-## 经验
+## Lessons learned
 
-交叉编译第三方 Qt 库前，先用 `ls <QT_SDK>/lib/cmake/` 扫描可用模块，提前识别缺失依赖。
+Before cross-compiling a third-party Qt library, scan the available modules with `ls <QT_SDK>/lib/cmake/` to spot missing dependencies early.
 
-## 内容来源
+## Content source
 
-| 来源类型 | 说明 |
-|----------|------|
-| 🛠️ 工作经验 | Coin3D Quarter 交叉编译时发现，5.12 和 5.15 SDK 均验证确认 |
+| Source type | Notes |
+|-------------|-------|
+| 🛠️ Hands-on experience | Found while cross-compiling Coin3D Quarter; confirmed on both the 5.12 and 5.15 SDKs |

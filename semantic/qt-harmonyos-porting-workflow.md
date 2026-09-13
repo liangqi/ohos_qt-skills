@@ -9,53 +9,53 @@ status: active
 audience: public
 refs: [semantic-qt-harmonyos-api, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-modules, semantic-qt-ohos-extras]
 summary: >
-  面向 Qt 应用的 HarmonyOS 移植编排：将公共库中的生命周期、窗口模型与平台限制
-  落到 Qt/QPA、QtOhosExtras、构建系统和模块验收的 8 步适配流程。
+  HarmonyOS porting orchestration for Qt applications: an 8-step adaptation process mapping the common library's lifecycle,
+  window model, and platform limitations onto Qt/QPA, QtOhosExtras, the build system, and module acceptance.
 ---
 
-# Qt 鸿蒙移植 8 步决策树工作流
+# The 8-step decision-tree workflow for porting Qt to HarmonyOS
 
-本文是 **Qt 适配层的流程枢纽**，不重复维护 HarmonyOS 平台规范。开始移植前，先以公共知识库中的以下页面作为规范事实来源：
+This page is the **process hub for the Qt adaptation layer**; it doesn't duplicate the HarmonyOS platform specification. Before you start porting, treat these pages in the common knowledge base as the canonical source of facts:
 
-- Stage/UIAbility 生命周期：[[ohos-common-kb/semantic/stage-uiability-lifecycle|公共库：Stage/UIAbility 生命周期]]（[稳定链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)）
-- ArkUI 窗口与 XComponent 模型：[[ohos-common-kb/semantic/arkui-window-xcomponent-model|公共库：ArkUI 窗口与 XComponent 模型]]（[稳定链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/arkui-window-xcomponent-model.md)）
-- HarmonyOS 平台限制：[[ohos-common-kb/semantic/harmonyos-platform-limits|公共库：HarmonyOS 平台限制]]（[稳定链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)）
+- The Stage/UIAbility lifecycle: [[ohos-common-kb/semantic/stage-uiability-lifecycle|common: the Stage/UIAbility lifecycle]] ([stable link](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md))
+- The ArkUI window and XComponent model: [[ohos-common-kb/semantic/arkui-window-xcomponent-model|common: the ArkUI window and XComponent model]] ([stable link](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/arkui-window-xcomponent-model.md))
+- HarmonyOS platform limitations: [[ohos-common-kb/semantic/harmonyos-platform-limits|common: HarmonyOS platform limitations]] ([stable link](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md))
 
-下文只回答这些公共约束如何映射到 Qt 应用、QPA 插件和 QtOhosExtras。
+What follows only answers how those common constraints map onto Qt applications, the QPA plugin, and QtOhosExtras.
 
-## 五条核心原则
+## Five core principles
 
-在动手移植之前，必须建立以下五个关键认知，它们贯穿整个移植流程：
+Before you start porting, internalize these five things — they run through the whole process:
 
-### 原则 1：显式审查 Qt 的 Linux 兼容分支
+### Principle 1: explicitly audit Qt's Linux compatibility branches
 
-`Q_OS_OHOS` 会与部分 Linux 条件重叠，因此 `#ifdef Q_OS_LINUX` 可能在 HarmonyOS 构建中命中。逐项审查这些分支，把平台能力结论交给公共平台限制页维护，在 Qt 侧只记录需要替换的类、调用点与构建条件。
+`Q_OS_OHOS` overlaps with some Linux conditions, so `#ifdef Q_OS_LINUX` may be taken in a HarmonyOS build. Audit each of those branches, leave conclusions about platform capabilities to the common platform limitations page, and record on the Qt side only the classes, call sites, and build conditions that need replacing.
 
-### 原则 2：区分 Qt 事件循环与 ArkUI 运行时
+### Principle 2: distinguish the Qt event loop from the ArkUI runtime
 
-Qt 事件循环、QPA 平台插件与 ArkUI/Ability 运行时各有线程和回调约束。不要把所有跨边界调用笼统等同于 N-API；应优先使用 QtOhosExtras 或 QPA 已封装的接口，并在自定义桥接处明确线程归属和投递方式。
+The Qt event loop, the QPA platform plugin, and the ArkUI/Ability runtime each have their own threading and callback constraints. Don't lump every cross-boundary call together as "N-API"; prefer the interfaces QtOhosExtras or the QPA already wrap, and make thread ownership and dispatch explicit wherever you write a custom bridge.
 
-### 原则 3：把 Stage/UIAbility 事件映射到 Qt 生命周期
+### Principle 3: map Stage/UIAbility events onto the Qt lifecycle
 
-Qt 应用仍从 `main()` 进入，但其创建、前后台切换、Want 投递与销毁由 Stage/UIAbility 承载。先理解公共生命周期，再决定 Qt 信号、`closeEvent()` 和 QtOhosExtras 回调如何响应；不要用单一“进程启动”模型解释所有场景。
+A Qt application still enters through `main()`, but its creation, foreground/background transitions, Want delivery, and destruction are carried by Stage/UIAbility. Understand the common lifecycle first, then decide how Qt signals, `closeEvent()`, and QtOhosExtras callbacks should respond; don't explain every scenario with a single "process startup" model.
 
-### 原则 4：显式维护 QWindow 到系统窗口的映射
+### Principle 4: explicitly maintain the QWindow → system window mapping
 
-公共窗口模型定义系统侧约束；Qt 适配关注首个 `QWindow`、后续顶层窗口、`transientParent` 和子窗口标记如何经 QPA 落到该模型，以及 `show()` / `winId()` 前后的时序。
+The common window model defines the system-side constraints; the Qt adaptation is about how the first `QWindow`, subsequent top-level windows, `transientParent`, and subwindow tagging get mapped onto that model by the QPA, and about the ordering around `show()` / `winId()`.
 
-### 原则 5：让 Qt 文件与插件路径服从沙箱
+### Principle 5: make Qt file and plugin paths obey the sandbox
 
-以公共平台限制页为准审查 `QFile`、`QStandardPaths`、`QPluginLoader` 和第三方库加载路径。Qt 页只维护这些限制对 Qt API 的表现、替代接口和验收方法。
+Audit `QFile`, `QStandardPaths`, `QPluginLoader`, and third-party library load paths against the common platform limitations page. The Qt pages only maintain how those limitations manifest in the Qt APIs, the alternative interfaces, and the acceptance method.
 
 ---
 
-## Step 1：扫描平台相关代码
+## Step 1: scan for platform-specific code
 
-在整个应用代码库中搜索以下模式，建立完整的移植清单。
+Search the whole application codebase for the patterns below to build a complete porting inventory.
 
-### 平台宏
+### Platform macros
 
-搜索所有平台条件编译宏：
+Search for every platform conditional-compilation macro:
 
 ```
 Q_OS_WIN
@@ -64,31 +64,31 @@ Q_OS_ANDROID
 Q_OS_MAC / Q_OS_MACOS / Q_OS_DARWIN
 ```
 
-> 注意：`Q_OS_LINUX` 在鸿蒙上也会命中（因为 `Q_OS_OHOS` 隐含 `Q_OS_LINUX`），需要检查所有 `Q_OS_LINUX` 分支中的代码是否兼容鸿蒙。
+> Note: `Q_OS_LINUX` is also matched on HarmonyOS (because `Q_OS_OHOS` implies `Q_OS_LINUX`), so you need to check whether the code in every `Q_OS_LINUX` branch is HarmonyOS-compatible.
 
-### 平台相关 API
+### Platform-specific APIs
 
-以下 API 在鸿蒙上行为不同或不可用，需逐一排查：
+The APIs below behave differently or are unavailable on HarmonyOS, so check each one:
 
 ```
-QProcess                        — 进程管理（无界面可用，有界面按 Qt/非Qt 改 startAppProcess/startAbility）
-QDesktopServices                — 桌面服务（openUrl 等）
-QFileDialog                     — 原生文件对话框
-QSystemTrayIcon                 — 系统托盘图标
-QClipboard                      — 剪贴板
-setMask()                       — 窗口遮罩（仅子窗口有效）
-showFullScreen()                — 全屏显示（有时序要求）
-showMinimized()                 — 最小化（子窗口不支持）
-chmod() / fchmod()              — 权限修改（不支持）
-symlink()                       — 符号链接（第三方应用不可用）
-dlopen()                        — 动态加载（拒绝可写路径）
-QStandardPaths                  — 标准路径（部分 location 返回空）
+QProcess                        — Process management (fine when headless; with a UI, switch to startAppProcess/startAbility depending on Qt vs non-Qt)
+QDesktopServices                — Desktop services (openUrl and so on)
+QFileDialog                     — The native file dialog
+QSystemTrayIcon                 — The system tray icon
+QClipboard                      — The clipboard
+setMask()                       — Window masks (only effective on subwindows)
+showFullScreen()                — Fullscreen (with ordering requirements)
+showMinimized()                 — Minimizing (unsupported for subwindows)
+chmod() / fchmod()              — Changing permissions (unsupported)
+symlink()                       — Symbolic links (unavailable to third-party applications)
+dlopen()                        — Dynamic loading (rejects writable paths)
+QStandardPaths                  — Standard paths (some locations return empty)
 ```
 
-### 构建配置中的平台分支
+### Platform branches in the build configuration
 
 ```qmake
-# .pro 文件中的平台条件块
+# Platform conditional blocks in a .pro file
 win32 { ... }
 unix { ... }
 android { ... }
@@ -96,141 +96,141 @@ macx { ... }
 ```
 
 ```cmake
-# CMake 中的平台条件
+# Platform conditionals in CMake
 if(WIN32) ...
 if(UNIX AND NOT APPLE) ...
 if(ANDROID) ...
 ```
 
-> **Step 1 输出**：一份列出所有需要替换或适配的代码位置的完整清单。
+> **Step 1 output**: a complete list of every code location that needs replacing or adapting.
 
 ---
 
-## Step 2：API 映射替换
+## Step 2: replace APIs using the mapping
 
-对 Step 1 发现的每个平台模式，按以下映射表进行替换：
+For each platform pattern found in step 1, apply the mappings below:
 
-### 进程管理
+### Process management
 
-> 四场景决策树（无界面保留 QProcess / 有界面 Qt 用 startAppProcess / 有界面非 Qt 用 startAbility / 无界面需托管用 startNoUiChildProcess）详见 [[qt-harmonyos-api-mapping]] §1 进程管理。
+> For the four-scenario decision tree (keep QProcess when headless / use startAppProcess for a Qt UI / use startAbility for a non-Qt UI / use startNoUiChildProcess for supervised headless work), see [[qt-harmonyos-api-mapping]] §1 Process management.
 
-### 服务与交互
+### Services and interaction
 
-| 源模式 | 鸿蒙替代方案 |
-|--------|-------------|
-| `QDesktopServices::openUrl()` | `QtOhosExtras::startAbility()` 配合 Want URI |
-| 独立 `QDialog` / `QPopup`（无 parent） | 使用 `QOhosFunctions::tagWindowOrWidgetAsSubWindowOf()` 标记 |
+| Source pattern | HarmonyOS alternative |
+|----------------|-----------------------|
+| `QDesktopServices::openUrl()` | `QtOhosExtras::startAbility()` with a Want URI |
+| A standalone `QDialog` / `QPopup` (with no parent) | Tag it with `QOhosFunctions::tagWindowOrWidgetAsSubWindowOf()` |
 
-### 窗口相关
+### Windows
 
-| 源模式 | 鸿蒙替代方案 |
-|--------|-------------|
-| `showFullScreen()` 用于首个窗口 | 必须在窗口创建显示**之后**再调用 |
-| `QFile::setPermissions()` | 不支持（对已有文件为 no-op，静默失败） |
-| `QFile::link()` / `symlink()` | 第三方应用不可用 |
+| Source pattern | HarmonyOS alternative |
+|----------------|-----------------------|
+| `showFullScreen()` on the first window | Must be called **after** the window has been created and shown |
+| `QFile::setPermissions()` | Unsupported (a silent no-op for existing files) |
+| `QFile::link()` / `symlink()` | Unavailable to third-party applications |
 
-### 路径与参数
+### Paths and arguments
 
-| 源模式 | 鸿蒙替代方案 |
-|--------|-------------|
-| `QStandardPaths::PublicShareLocation` | 返回空字符串，不支持 |
-| `argv[0]` 作为可执行文件路径 | ❌ OHOS 上 `argv[0]` 是**库路径**（.so 路径），不是可执行文件路径 |
-| `closeEvent()` 假设来自用户点击 | 必须用 `QtOhosExtras::getCloseEventRootCause(event)` 区分关闭来源 |
+| Source pattern | HarmonyOS alternative |
+|----------------|-----------------------|
+| `QStandardPaths::PublicShareLocation` | Returns an empty string; unsupported |
+| Using `argv[0]` as an executable path | ❌ On OHOS, `argv[0]` is the **library path** (a .so path), not an executable path |
+| `closeEvent()` assuming a user click | You must use `QtOhosExtras::getCloseEventRootCause(event)` to distinguish where the close came from |
 
-> 完整 API 差异详情见 [[qt-harmonyos-api]]，QtOhosExtras 用法见 [[qt-ohos-extras]]。
+> For the full API differences, see [[qt-harmonyos-api]]; for QtOhosExtras usage, see [[qt-ohos-extras]].
 
 ---
 
-## Step 3：适配窗口管理
+## Step 3: adapt window management
 
-以公共 ArkUI 窗口模型为基线，逐个确认 QPA 如何把 `QWindow` / `QWidget` 映射为系统主窗口或子窗口；本步骤只记录 Qt 侧绑定与调用时序。
+Using the common ArkUI window model as the baseline, confirm one by one how the QPA maps a `QWindow`/`QWidget` onto a system main window or subwindow; this step only records the Qt-side binding and call ordering.
 
-### 窗口绑定规则
+### Window binding rules
 
-- **首个** `QWindow` / `QWidget`（无 parent 的顶层窗口）自动绑定到系统首个主窗口
-- **后续**创建的顶层窗口默认成为**新的主窗口**，除非被标记为子窗口
-- `QDialog` 如果设置了 `transientParent`，可正常工作，无需手动标记
+- The **first** `QWindow` / `QWidget` (a parentless top-level window) binds automatically to the system's first main window
+- **Subsequent** top-level windows become **new main windows** by default, unless tagged as subwindows
+- A `QDialog` with a `transientParent` set works correctly without manual tagging
 
-### 关键操作：标记子窗口
+### The key operation: tagging a subwindow
 
 ```cpp
 #include <QtPlatformHeaders/QOhosFunctions>
 
-// ⚠️ 必须在 show() 或 winId() 之前调用！
+// ⚠️ Must be called before show() or winId()!
 QOhosFunctions::tagWindowOrWidgetAsSubWindowOf(
     widget,
     mainWindow->windowHandle()
 );
 ```
 
-> **时序是硬性要求**：`tagWindowOrWidgetAsSubWindowOf()` 必须在 `show()` 和 `winId()` 之前调用，否则标记无效。
+> **The ordering is a hard requirement**: `tagWindowOrWidgetAsSubWindowOf()` must be called before `show()` and `winId()`, or the tag has no effect.
 
-### 窗口限制清单
+### Window limitation checklist
 
-| 限制 | 说明 |
-|------|------|
-| `setMask()` 仅子窗口有效 | 主窗口调用 `setMask()` 无效果 |
-| 子窗口不支持最小化 | 子窗口调用 `showMinimized()` 无效 |
-| 首个主窗口不能启动时全屏 | 需先创建显示窗口，之后再调用 `showFullScreen()` |
-| 主窗口 `hide()` 回退为最小化 | 在无系统托盘的情况下，`hide()` 实际执行最小化 |
+| Limitation | Notes |
+|------------|-------|
+| `setMask()` only works on subwindows | Calling `setMask()` on the main window does nothing |
+| Subwindows can't be minimized | Calling `showMinimized()` on a subwindow does nothing |
+| The first main window can't start fullscreen | Create and show the window first, then call `showFullScreen()` |
+| `hide()` on the main window falls back to minimizing | Without a system tray, `hide()` actually minimizes |
 
 ---
 
-## Step 4：适配应用生命周期
+## Step 4: adapt the application lifecycle
 
-先按公共 Stage/UIAbility 生命周期确认系统事件，再把事件映射到 Qt 入口、信号和关闭处理。以下内容是 Qt 适配，不是生命周期规范的副本。
+Confirm the system events against the common Stage/UIAbility lifecycle first, then map them onto Qt's entry point, signals, and close handling. What follows is the Qt adaptation, not a copy of the lifecycle specification.
 
-### 入口与启动
+### Entry point and launch
 
-- `main()` 仍然是应用入口点，但语义不同——应用启动由系统 Ability 框架管理
-- 使用 `QtOhosExtras::startAbility()` 替代传统的进程启动方式
-- 不要依赖 `argv[0]` 获取可执行文件路径（OHOS 上它是库路径）
+- `main()` is still the application's entry point, but the semantics differ — application launch is managed by the system's Ability framework
+- Use `QtOhosExtras::startAbility()` instead of traditional process launching
+- Don't rely on `argv[0]` for the executable path (on OHOS it's the library path)
 
-### 跨应用通信
+### Cross-application communication
 
-处理 `newWantReceived` 回调来实现应用间通信，替代传统的进程间通信方式。
+Handle the `newWantReceived` callback for inter-application communication, replacing traditional IPC.
 
-### 关闭事件处理
+### Close event handling
 
-`closeEvent()` 可能来自多种来源（用户点击、Ability 生命周期终止、WindowStage 关闭），必须检查根因。详见 [[qt-harmonyos-lifecycle]] §3 级关闭拦截（WindowStageClose / AbilityClose / InternalClose 三级区分）。
+`closeEvent()` can come from several sources (a user click, Ability lifecycle termination, a WindowStage close), so you must check the root cause. See [[qt-harmonyos-lifecycle]] §the three levels of close interception (distinguishing WindowStageClose / AbilityClose / InternalClose).
 
-### 可选：跨设备接续
+### Optional: cross-device continuation
 
 ```cpp
-// 获取接续数据
+// Get the continuation data
 auto data = QtOhosExtras::tryGetOnContinueData(want);
 
-// 监听跨设备接续请求
+// Listen for cross-device continuation requests
 connect(abilityContext, &QOhosAbilityContext::continueRequestReceived,
         this, &MyApp::onContinueRequest);
 ```
 
 ---
 
-## Step 5：检查平台限制对 Qt 的影响
+## Step 5: check how platform limitations affect Qt
 
-公共平台限制页维护限制本身及其依据；这里仅保留 Qt API 的影响检查，判断是否需要包装、替代或裁剪功能：
+The common platform limitations page maintains the limitations themselves and their evidence; here we only keep the Qt API impact checks, to decide whether a feature needs wrapping, replacing, or dropping:
 
-| Qt 检查面 | 本阶段动作 | 通过条件 |
-|-----------|-----------|----------|
-| `QFile` / `QFileInfo` | 列出权限变更、链接创建和系统路径探测调用，逐项对照 common 平台限制 | 不依赖未经验证的 POSIX 文件语义 |
-| `QLibrary` / `QPluginLoader` | 记录每个 native artifact 的打包位置和加载入口，对照 common loader/沙箱契约 | 插件只从已验收的交付位置加载 |
-| `QTimeZone` | 在目标设备执行时区枚举与转换回归，后端选择由 common 能力结论驱动 | 所需时区用例在目标设备通过 |
-| `QFontDatabase` | 枚举应用实际需要的字体族；缺失时由 Qt 资源携带应用自有字体 | UI 不依赖未声明的平台字体目录 |
-| native 依赖闭包 | 对最终 HAP 中的 ELF 运行 common artifact 检查，再验证 Qt target 的 `DT_NEEDED` | ABI、依赖和加载验证全部通过 |
+| Qt area to check | What to do at this stage | Pass condition |
+|------------------|--------------------------|----------------|
+| `QFile` / `QFileInfo` | List every permission-change, link-creation, and system-path-probe call, and check each against the common platform limitations | Nothing relies on unverified POSIX file semantics |
+| `QLibrary` / `QPluginLoader` | Record where each native artifact is packaged and how it's loaded, checked against the common loader/sandbox contract | Plugins only load from accepted delivery locations |
+| `QTimeZone` | Run time zone enumeration and conversion regressions on the target device; the backend choice is driven by the common capability conclusions | The time zone cases you need pass on the target device |
+| `QFontDatabase` | Enumerate the font families the application actually needs; where they're missing, ship your own fonts as Qt resources | The UI doesn't depend on undeclared platform font directories |
+| The native dependency closure | Run the common artifact checks on every ELF in the final HAP, then verify the Qt target's `DT_NEEDED` | The ABI, dependency, and load verifications all pass |
 
-> Qt 侧兼容表现与 QTBUG 追踪见 [[qt-harmonyos-platform-limits]]；平台限制的规范事实以本文开头链接的公共页面为准。
+> For the Qt-side compatibility symptoms and QTBUG tracking, see [[qt-harmonyos-platform-limits]]; for the canonical facts about platform limitations, defer to the common pages linked at the top of this page.
 
 ---
 
-## Step 6：适配构建系统
+## Step 6: adapt the build system
 
-### qmake（.pro 文件）
+### qmake (.pro files)
 
 ```qmake
 ohos {
     QT += ohosextras
-    # OHOS 专有源文件和库
+    # OHOS-specific sources and libraries
 }
 ```
 
@@ -243,35 +243,35 @@ if(OHOS)
 endif()
 ```
 
-> ⚠️ **使用任何 OHOS 专有 API 时，必须添加 `QT += ohosextras`（qmake）或 `find_package(Qt5 COMPONENTS OhosExtras)`（CMake）。**
+> ⚠️ **Whenever you use any OHOS-specific API, you must add `QT += ohosextras` (qmake) or `find_package(Qt5 COMPONENTS OhosExtras)` (CMake).**
 
 ---
 
-## Step 7：添加 OHOS 专有功能（可选）
+## Step 7: add OHOS-specific features (optional)
 
-基础移植完成后，可选增强以下鸿蒙特有能力：
+Once the basic port is done, you can optionally enhance it with HarmonyOS-specific capabilities:
 
-| 功能 | API | 调用时机 |
-|------|-----|---------|
-| 浮窗 | `QtOhosExtras::setShowWindowAsFloatWindowHint(widget, true)` | `show()` 之前 |
-| 深色/浅色主题跟随 | `QOhosAppContext::setColorThemeMode(FollowSystemSetting)` | 应用初始化时 |
-| 应用分享 | `QtOhosExtras::ShareKit::shareDataWithShareKit()` | 用户触发分享时 |
-| 跨设备接续 | `QOhosAbilityContext::continueRequestReceived` 信号 | 按需实现 |
-| 全屏（第 2+ 窗口） | `widget->showFullScreen()` | 窗口创建之后 |
-| 进程内嵌入子窗口 | `winId()` 或设置 `Qt::WA_NativeWindow` 属性 | 嵌入场景 |
-| 跨进程嵌入 | `QEmbeddedUiExtensionAbility` | 嵌入场景 |
+| Feature | API | When to call it |
+|---------|-----|-----------------|
+| Floating windows | `QtOhosExtras::setShowWindowAsFloatWindowHint(widget, true)` | Before `show()` |
+| Following the dark/light theme | `QOhosAppContext::setColorThemeMode(FollowSystemSetting)` | At application initialization |
+| Application sharing | `QtOhosExtras::ShareKit::shareDataWithShareKit()` | When the user triggers sharing |
+| Cross-device continuation | The `QOhosAbilityContext::continueRequestReceived` signal | As needed |
+| Fullscreen (for the 2nd+ window) | `widget->showFullScreen()` | After the window is created |
+| Embedding a subwindow in-process | `winId()` or setting the `Qt::WA_NativeWindow` attribute | Embedding scenarios |
+| Cross-process embedding | `QEmbeddedUiExtensionAbility` | Embedding scenarios |
 
-### 主题适配示例
+### Theme adaptation example
 
 ```cpp
 auto *ctx = QtOhosExtras::QOhosAppContext::instance();
 ctx->setColorThemeMode(QtOhosExtras::QOhosAppContext::ColorThemeMode::FollowSystemSetting);
 
-// 查询当前是否深色模式
+// Query whether dark mode is currently active
 bool isDark = ctx->darkThemeActive();
 ```
 
-### 分享示例
+### Sharing example
 
 ```cpp
 auto record = QtOhosExtras::ShareKit::createContentRecord(mimeType, text);
@@ -281,89 +281,89 @@ auto ability = QtOhosExtras::QOhosAbilityContext::getInstanceForMainWindow(
 ability->shareDataWithShareKit({record}, nullptr);
 ```
 
-> 详见 [[qt-ohos-extras]]。
+> See [[qt-ohos-extras]] for details.
 
 ---
 
-## Step 8：验证模块支持
+## Step 8: verify module support
 
-确认应用使用的所有 Qt 模块在 OHOS 平台上受支持。
+Confirm that every Qt module your application uses is supported on OHOS.
 
-### 核心模块 — 全部支持 ✅
+### Core modules — all supported ✅
 
 ```
 QtCore, QtGui, QtWidgets, QtQML, QtQuick, QtQuickControls,
 QtNetwork, QtSQL, QtMultimedia
 ```
 
-### 不支持的模块 — 需找替代方案 ❌
+### Unsupported modules — you need alternatives ❌
 
-| 模块 | 说明 | 替代方案 |
-|------|------|---------|
-| **Qt WebEngine** | 不支持 | 使用系统 WebView 或跳转外部浏览器 |
-| **Qt D-Bus** | 鸿蒙无 D-Bus | 使用鸿蒙 IPC 机制 |
-| **Qt Remote Objects** | 不在支持范围内 | — |
-| **Qt Serial Bus** | Windows/Linux 专属 | — |
-| **Qt Virtual Keyboard** | 不在支持范围内 | 使用系统输入法 |
-| **Active Qt** | Windows 专属 | 不适用 |
-| **Qt Win Extras / X11 Extras / Mac Extras** | 平台专属 | 不适用 |
+| Module | Notes | Alternative |
+|--------|-------|-------------|
+| **Qt WebEngine** | Unsupported | Use the system WebView or open an external browser |
+| **Qt D-Bus** | HarmonyOS has no D-Bus | Use HarmonyOS's IPC mechanisms |
+| **Qt Remote Objects** | Out of scope | — |
+| **Qt Serial Bus** | Windows/Linux-only | — |
+| **Qt Virtual Keyboard** | Out of scope | Use the system input method |
+| **Active Qt** | Windows-only | Not applicable |
+| **Qt Win Extras / X11 Extras / Mac Extras** | Platform-specific | Not applicable |
 
-### 部分支持
+### Partially supported
 
-- **Qt PDF** — 仅 Qt 5.15
-- **Qt Quick Timeline** — 仅 Qt 5.15
+- **Qt PDF** — Qt 5.15 only
+- **Qt Quick Timeline** — Qt 5.15 only
 
-> 完整模块适配状态表见 [[qt-harmonyos-modules]]。
-
----
-
-## 重要提醒清单
-
-以下是移植过程中最容易踩坑的 8 条规则，需反复检查：
-
-1. **`QT += ohosextras` 必须添加** — 使用任何 OHOS 专有 API 时，构建系统中必须包含 ohosextras 模块
-2. **窗口标记函数必须在 `show()` / `winId()` 之前调用** — 之后调用无效，窗口已被错误绑定
-3. **`argv[0]` 是库路径，不是可执行文件路径** — 不要用 `argv[0]` 拼接资源路径或启动子进程
-4. **拖放事件：仅在 `dropEvent` 中获取实际数据** — `dragEnterEvent` 和 `dragMoveEvent` 中只有 MIME 类型信息，实际数据只在 `dropEvent` 中可用
-5. **首个主窗口不能在启动时全屏** — 必须先创建并显示窗口，之后再调用 `showFullScreen()`
-6. **主窗口 `hide()` 回退为最小化** — 在无系统托盘时，`hide()` 不会真正隐藏窗口
-7. **子窗口不支持最小化** — 子窗口调用 `showMinimized()` 无效果
-8. **子进程按场景选**（2026-07-21 修正）— 无界面 `QProcess` 可用；有界面 Qt 用 `startAppProcess()`，有界面非 Qt 用 `startAbility()`；无界面需托管用 `startNoUiChildProcess()`。不要用裸 QProcess 起带界面子进程
+> For the complete module porting status table, see [[qt-harmonyos-modules]].
 
 ---
 
-## 移植完成检查清单
+## Important reminders
 
-完成 8 步后的最终确认：
+These are the 8 rules most often tripped over during porting; check them repeatedly:
 
-- [ ] 所有 `Q_OS_*` 宏分支已添加 `Q_OS_OHOS` 处理
-- [ ] 子进程已按场景处理：无界面 `QProcess` 保留 / 有界面 Qt `startAppProcess` / 有界面非 Qt `startAbility` / 需托管 `startNoUiChildProcess`
-- [ ] 所有无 parent 的顶层窗口已标记为子窗口（使用 `tagWindowOrWidgetAsSubWindowOf`）
-- [ ] 窗口标记函数在 `show()` / `winId()` 之前调用
-- [ ] `closeEvent()` 已通过 `getCloseEventRootCause()` 处理 Ability/WindowStage 级别的关闭
-- [ ] 不依赖 `chmod()`、`symlink()`、可写路径 `dlopen()`
-- [ ] `.pro` / CMake 已添加 `ohos` 条件和 `QT += ohosextras`
-- [ ] 应用使用的所有 Qt 模块在 OHOS 上受支持
-- [ ] `argv[0]` 未作为可执行文件路径使用
-- [ ] 拖放事件的数据获取仅在 `dropEvent` 中进行
-- [ ] 首个主窗口启动时未直接全屏
-- [ ] 主窗口 `hide()` 行为已验证（回退为最小化）
+1. **`QT += ohosextras` is mandatory** — whenever you use any OHOS-specific API, the build system must include the ohosextras module
+2. **The window tagging function must be called before `show()` / `winId()`** — calling it later has no effect and the window is already bound incorrectly
+3. **`argv[0]` is the library path, not an executable path** — don't use `argv[0]` to build resource paths or launch child processes
+4. **Drag-and-drop: only read the actual data in `dropEvent`** — `dragEnterEvent` and `dragMoveEvent` only have MIME type information; the data is only available in `dropEvent`
+5. **The first main window can't start fullscreen** — create and show the window first, then call `showFullScreen()`
+6. **`hide()` on the main window falls back to minimizing** — without a system tray, `hide()` doesn't actually hide the window
+7. **Subwindows can't be minimized** — calling `showMinimized()` on a subwindow does nothing
+8. **Choose your child-process mechanism by scenario** (corrected 2026-07-21) — headless can use `QProcess`; a Qt UI uses `startAppProcess()`, a non-Qt UI uses `startAbility()`; supervised headless work uses `startNoUiChildProcess()`. Don't use a bare QProcess to start a child process with a UI
 
 ---
 
-## 相关
+## Porting completion checklist
 
-- [[ohos-common-kb/semantic/stage-uiability-lifecycle|公共库：Stage/UIAbility 生命周期]]（[稳定链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)）
-- [[ohos-common-kb/semantic/arkui-window-xcomponent-model|公共库：ArkUI 窗口与 XComponent 模型]]（[稳定链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/arkui-window-xcomponent-model.md)）
-- [[ohos-common-kb/semantic/harmonyos-platform-limits|公共库：HarmonyOS 平台限制]]（[稳定链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)）
-- [[qt-harmonyos-api]] — API 兼容性详情
-- [[qt-harmonyos-platform-limits]] — 平台限制与 QTBUG 编号
-- [[qt-harmonyos-modules]] — 模块适配状态表
-- [[qt-ohos-extras]] — QtOhosExtras 模块 API 参考
+The final confirmation after the 8 steps:
 
-## 参考来源
+- [ ] Every `Q_OS_*` macro branch handles `Q_OS_OHOS`
+- [ ] Child processes are handled per scenario: keep `QProcess` when headless / `startAppProcess` for a Qt UI / `startAbility` for a non-Qt UI / `startNoUiChildProcess` when supervision is needed
+- [ ] Every parentless top-level window is tagged as a subwindow (using `tagWindowOrWidgetAsSubWindowOf`)
+- [ ] The window tagging function is called before `show()` / `winId()`
+- [ ] `closeEvent()` handles Ability/WindowStage-level closes via `getCloseEventRootCause()`
+- [ ] Nothing relies on `chmod()`, `symlink()`, or `dlopen()` from a writable path
+- [ ] The `.pro` / CMake files have the `ohos` condition and `QT += ohosextras`
+- [ ] Every Qt module the application uses is supported on OHOS
+- [ ] `argv[0]` isn't used as an executable path
+- [ ] Drag-and-drop data is only read in `dropEvent`
+- [ ] The first main window doesn't start fullscreen
+- [ ] The main window's `hide()` behavior has been verified (it falls back to minimizing)
 
-- Qt Application Porting to HarmonyOS (SKILL.md) — Agent Skill 决策树工作流定义
+---
+
+## Related
+
+- [[ohos-common-kb/semantic/stage-uiability-lifecycle|common: the Stage/UIAbility lifecycle]] ([stable link](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md))
+- [[ohos-common-kb/semantic/arkui-window-xcomponent-model|common: the ArkUI window and XComponent model]] ([stable link](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/arkui-window-xcomponent-model.md))
+- [[ohos-common-kb/semantic/harmonyos-platform-limits|common: HarmonyOS platform limitations]] ([stable link](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md))
+- [[qt-harmonyos-api]] — API compatibility details
+- [[qt-harmonyos-platform-limits]] — Platform limitations and QTBUG numbers
+- [[qt-harmonyos-modules]] — The module porting status table
+- [[qt-ohos-extras]] — The QtOhosExtras module API reference
+
+## References
+
+- Qt Application Porting to HarmonyOS (SKILL.md) — The agent skill's decision-tree workflow definition
 - [Qt for HarmonyOS Wiki](https://wiki.qt.io/Qt_for_HarmonyOS)
 - [API Compatibility Notes](https://wiki.qt.io/Qt_for_HarmonyOS/api_inconsistencies_on_harmonyos)
 - [User Development Guide](https://wiki.qt.io/Qt_for_HarmonyOS/user_development_guide)

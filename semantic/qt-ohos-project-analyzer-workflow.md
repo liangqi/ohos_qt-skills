@@ -9,501 +9,501 @@ status: active
 audience: public
 refs: [semantic-qt-harmonyos-build, semantic-qt-harmonyos-overview, semantic-qt-harmonyos-platform-limits]
 summary: >
-  Qt项目移植OHOS的核心工作流：铁律约束、依赖梳理方法、编译编排流程、双重交验协议
+  The core workflow for porting a Qt project to OHOS: the iron-rule constraints, how to inventory dependencies, the build orchestration process, and the dual cross-check protocol
 ---
 
-# Qt-OHOS 项目分析器工作流
+# The Qt-OHOS project analyzer workflow
 
-## 铁律（Iron Rules）
+## Iron rules
 
-所有移植工作必须遵守以下铁律，违反任何一条即为流程失败。
+All porting work must obey the iron rules below; violating any one of them means the process has failed.
 
-### 元铁律
+### Meta iron rules
 
-**铁律 α — 铁律回顾机制**
-每次执行任务前，必须先完整回顾本章节所有铁律，确认无违规风险。禁止"只记得部分铁律就操作"。
+**Iron rule α — the rule review mechanism**
+Before performing any task, review every iron rule in this section in full and confirm there's no risk of violating one. "Remembering only some of the rules and acting anyway" is forbidden.
 
-**铁律 β — 文件操作纪律**
-对任何文件的写入、修改、删除，必须有流程依据、错误证据、沉淀记录。禁止：
-- 未到对应步骤就提前修改文件
-- 未经流程授权的预防性修改（"我觉得以后可能出问题所以先改了"）
-- 删除或覆盖历史修复记录
+**Iron rule β — file operation discipline**
+Any write, modification, or deletion of a file must have a process justification, error evidence, and a captured record. Forbidden:
+- Modifying files ahead of the step that calls for it
+- Preventive changes not authorized by the process ("I think this might break later, so I changed it now")
+- Deleting or overwriting historical fix records
 
-### 流程顺序铁律
+### Process ordering iron rules
 
-严格按照 skill 流程执行，禁止跳步骤或脱离计划自行执行。`qt_env.md` 必须维护「流程进度」表，每步完成标记 ☑ + 时间戳（YYYY-MM-DD HH:mm）。**进入下一步前，必须验证上一步已 ☑**。
+Follow the skill's process strictly; skipping steps or improvising outside the plan is forbidden. `qt_env.md` must maintain a "process progress" table, marking each completed step with ☑ + a timestamp (YYYY-MM-DD HH:mm). **Before moving to the next step, verify the previous one is ☑.**
 
-| 步骤 | 完成标志 |
-|------|----------|
-| §1 需求沟通 | 用户确认需求 |
-| §2 前置背景确认 | `qt_env.md` 前置检查表全 ☑ |
-| §3 依赖环境 | 依赖全景表已追加且状态明确 |
-| §4.1 知识库准备 | `compile_fix_pro.md` 路径已记录 |
-| §4.2 编译前准备 | `qt_compile_plan.md` 已创建且用户已确认 |
-| §4.3 执行编译 | 编译无错误或所有错误已修复并沉淀 |
-| §4.4 编译完成确认 | 验证清单全部通过 |
-| §4.5 总结文档输出 | `qt_summary_<项目名>.md` 已生成且用户已确认 |
+| Step | Completion marker |
+|------|-------------------|
+| §1 Requirements discussion | The user confirms the requirements |
+| §2 Confirming the prerequisites | Every item in `qt_env.md`'s prerequisite checklist is ☑ |
+| §3 Dependencies and environment | The dependency overview table is appended with clear statuses |
+| §4.1 Knowledge base preparation | The `compile_fix_pro.md` path is recorded |
+| §4.2 Pre-build preparation | `qt_compile_plan.md` is created and confirmed by the user |
+| §4.3 Running the build | The build is error-free, or every error is fixed and captured |
+| §4.4 Build completion confirmation | Every item in the verification checklist passes |
+| §4.5 Summary document output | `qt_summary_<project>.md` is generated and confirmed by the user |
 
-### 禁止推测铁律
+### The no-speculation iron rule
 
-**遇到问题，先读代码、查知识库，禁止无依据推测。**
+**When you hit a problem, read the code and check the knowledge base first; speculating without evidence is forbidden.**
 
-| 违规行为 | 正确做法 |
-|---------|---------|
-| 没读代码就猜测 | 先读源码 |
-| "可能是因为..." | 找到具体代码行 |
-| "我觉得可能是..." | 明确说"证据不足，需要XXX信息" |
+| Violation | The correct approach |
+|-----------|----------------------|
+| Guessing without reading the code | Read the source first |
+| "It might be because..." | Find the specific line of code |
+| "I think it's probably..." | Say explicitly "there isn't enough evidence; I need XXX" |
 
-**警示信号**（出现以下想法时立即停止）：
-- 仅凭文档下结论
-- 假设其他平台行为适用于OHOS
-- "这应该和Windows一样..."
-- "这个错误可能是..."
+**Warning signs** (stop immediately if you catch yourself thinking any of these):
+- Drawing a conclusion from documentation alone
+- Assuming another platform's behavior applies to OHOS
+- "This should work the same as Windows..."
+- "This error is probably..."
 
-→ **捕获到信号 → 停止。回去读代码。**
+→ **Caught a warning sign → stop. Go back and read the code.**
 
-### 知识库优先铁律
+### The knowledge-base-first iron rule
 
-遇到问题时，**第一步**必须在 `compile_fix_pro.md` 中搜索匹配方案：
-- 找到匹配 → 直接按方案执行，不重复分析
-- 未找到 → 正常分析，修复后将新方案追加写入
+When you hit a problem, the **first** step is to search `compile_fix_pro.md` for a matching solution:
+- Found a match → apply it directly without re-analyzing
+- No match → analyze normally, and append the new solution after fixing it
 
-⛔ **跳过知识库直接分析 = 违规**。
+⛔ **Skipping the knowledge base and going straight to analysis is a violation.**
 
-### 平台隔离铁律
+### The platform isolation iron rule
 
-所有OHOS适配必须用条件分支隔离，禁止直接修改通用逻辑：
+Every OHOS adaptation must be isolated with a conditional branch; modifying shared logic directly is forbidden:
 
 ```cpp
-// C++ 代码
+// C++ code
 #if defined(Q_OS_OHOS)
-    // OHOS 专用实现
+    // The OHOS-specific implementation
 #else
-    // 原有逻辑（保持不变）
+    // The original logic (unchanged)
 #endif
 ```
 
 ```cmake
 # CMake
 if(OHOS)
-    # OHOS 配置
+    # OHOS configuration
 else()
-    # 其他平台配置
+    # Other platforms' configuration
 endif()
 ```
 
 ```qmake
 # qmake
 ohos: {
-    # OHOS 配置
+    # OHOS configuration
 } else {
-    # 其他平台配置
+    # Other platforms' configuration
 }
 ```
 
-### 源头优先铁律
+### The source-first iron rule
 
-只改源头（CMakeLists.txt、.pro、源码），不优先改生成物（build目录下的Makefile、中间产物）。所有改动必须追溯到源头文件。
+Change only the source (CMakeLists.txt, .pro files, source code), never generated artifacts (Makefiles and intermediates under build/) as your primary fix. Every change must be traceable to a source file.
 
-### 修复沉淀铁律
+### The fix-capture iron rule
 
-修复成功后**必须**沉淀到 `compile_fix_pro.md`。修复超过3个问题时，必须先把之前的修复追加到知识库，再继续。
+After a successful fix you **must** capture it in `compile_fix_pro.md`. Once you've fixed more than 3 problems, append the earlier fixes to the knowledge base before continuing.
 
-**沉淀格式**：
+**The capture format**:
 ```markdown
-## 问题标题
-- 问题描述：具体错误信息
-- 发生环节：编译 / 链接 / 打包 / 运行
-- 产生原因：根因分析
-- 修复方案：具体步骤与代码改动
-- 改动文件：涉及的文件路径
-- 验证命令：用于确认修复成功的命令
+## Problem title
+- Problem description: the exact error message
+- Where it occurred: build / link / packaging / runtime
+- Cause: the root cause analysis
+- Fix: the specific steps and code changes
+- Files changed: the file paths involved
+- Verification command: the command that confirms the fix worked
 ```
 
-### 门禁失败铁律
+### The gate-failure iron rule
 
-以下情况**禁止标记成功**：
-- 编译产物缺失 / HAP 未生成
-- 安装失败 / 启动失败
-- Qt .so 缺失 / RPATH 不完整 / 依赖断裂
+You **must not** mark success in any of these cases:
+- Missing build artifacts / no HAP produced
+- Installation fails / launch fails
+- A Qt .so is missing / an incomplete RPATH / a broken dependency
 
-只有全部门禁通过，才能标记步骤完成。
+Only when every gate passes may a step be marked complete.
 
-### 依赖盘点铁律
+### The dependency inventory iron rule
 
-禁止假设依赖存在。必须在 `qt_env.md` 中明确记录每项依赖状态：
-- ☑ 已就绪
-- ☐ 缺失
-- ⚠️ 降级方案
+Never assume a dependency exists. You must record each dependency's status explicitly in `qt_env.md`:
+- ☑ Ready
+- ☐ Missing
+- ⚠️ A degraded alternative
 
-跳过盘点直接编译 = 违规。
+Skipping the inventory and building anyway is a violation.
 
-### 平台限制降级铁律
+### The platform-limitation degradation iron rule
 
-确认是平台限制后（syscall/权限/文件系统/动态库加载），记录到 `qt_env.md` 标注「平台限制」，选择替代方案或功能降级。禁止反复重试同一命令。
+Once something is confirmed to be a platform limitation (syscall/permission/filesystem/dynamic library loading), record it in `qt_env.md` marked "platform limitation" and choose an alternative or degrade the feature. Repeatedly retrying the same command is forbidden.
 
-### 用户交互铁律
+### The user interaction iron rule
 
-流程中写明"询问用户"、"向用户提问"的步骤，**必须真正提问并等待回复**。禁止：
-- 未提问就继续执行
-- 用户未回复就自行假设答案
-- 用户回复模糊（"应该没问题"）时不追问
+Any step that says "ask the user" or "put the question to the user" **must actually ask and wait for a reply**. Forbidden:
+- Continuing without asking
+- Assuming an answer before the user replies
+- Not following up when the user's reply is vague ("should be fine")
 
-用户未回复 = 本步骤未完成，禁止进入下一步。
+No reply from the user = the step isn't complete, and you must not move on.
 
 ---
 
-## 依赖梳理方法论
+## Dependency inventory methodology
 
-### 3.0 项目用途梳理
+### 3.0 Understand the project's purpose
 
-**执行步骤**：
-1. 阅读 README.md、官方文档、源码注释
-2. 明确**核心功能**（例：代码编辑器组件、图表库）
-3. 明确**目标产物类型**（动态库 / 静态库 / 可执行文件）
+**Steps**:
+1. Read the README.md, official documentation, and source comments
+2. Establish the **core functionality** (e.g. a code editor component, a charting library)
+3. Establish the **target artifact type** (shared library / static library / executable)
 
-**产出**：2-3句话的项目摘要，追加到 `qt_env.md`。
+**Output**: a 2–3 sentence project summary appended to `qt_env.md`.
 
-### 3.1 Qt 版本依赖评估
+### 3.1 Assess the Qt version dependency
 
-#### Qt5 项目
+#### Qt5 projects
 
-确认最低兼容的小版本号，直接进入 3.2。
+Confirm the minimum compatible minor version and go straight to 3.2.
 
-#### Qt6 项目 → Qt5 兼容性评估
+#### Qt6 projects → assessing Qt5 compatibility
 
-**背景**：当前鸿蒙化 Qt 分支仅支持 Qt5（5.12.12 / 5.15.16），Qt6 项目需评估适配可行性。
+**Background**: the current HarmonyOS Qt branches only support Qt5 (5.12.12 / 5.15.16), so a Qt6 project needs a feasibility assessment.
 
-**Step A：检测 Qt6 独有特性**
+**Step A: detect Qt6-only features**
 
-在源码和构建文件中搜索：
+Search the source and build files for:
 
-| 检测项 | 搜索方式 |
-|--------|---------|
-| Qt6 专属模块 | `Qt6::` / `find_package(Qt6` / `QT += core5compat` |
-| Qt6 CMake API | `qt_add_qml_modules` / `qt_add_executable` |
-| Qt6 独有类 | `#include <QPromise>` / `QFuture::then` |
-| QML 变更 | `import QtQuick`（无版本号 = Qt6 风格） |
-| C++17 + Qt6 | `CMAKE_CXX_STANDARD 17` 与 Qt6 API 同时出现 |
+| What to detect | How to search |
+|----------------|---------------|
+| Qt6-only modules | `Qt6::` / `find_package(Qt6` / `QT += core5compat` |
+| The Qt6 CMake API | `qt_add_qml_modules` / `qt_add_executable` |
+| Qt6-only classes | `#include <QPromise>` / `QFuture::then` |
+| QML changes | `import QtQuick` (with no version number = Qt6 style) |
+| C++17 + Qt6 | `CMAKE_CXX_STANDARD 17` appearing alongside Qt6 APIs |
 
-- 未命中 → 兼容 Qt5，继续
-- 命中 → 进入 Step B
+- No hits → it's Qt5-compatible; continue
+- Hits → go to Step B
 
-**Step B：查找 Qt5 版本**
+**Step B: look for a Qt5 version**
 
 ```bash
-# 1. 名称快速筛选
+# 1. A quick filter by name
 git branch -a | grep -iE 'qt5|5\.[0-9]+'
 git tag -l | grep -iE 'qt5|5\.[0-9]+'
 
-# 2. 列出全部 tag/分支（不可跳过）
+# 2. List every tag/branch (don't skip this)
 git tag -l --sort=-creatordate
 git branch -a
 
-# 3. 检查构建文件内容（免切换分支）
+# 3. Check the build files' contents (without switching branches)
 git show <ref>:CMakeLists.txt 2>/dev/null | grep -iE 'find_package\(Qt5|Qt5::'
-git show <ref>:<项目名>.pro 2>/dev/null | grep -iE 'QT\s*\+='
+git show <ref>:<project>.pro 2>/dev/null | grep -iE 'QT\s*\+='
 ```
 
-**判定**：构建文件含 `find_package(Qt5` / `Qt5::` → Qt5 兼容；仅含 `find_package(Qt6` → 不兼容。
+**The verdict**: build files containing `find_package(Qt5` / `Qt5::` → Qt5-compatible; only `find_package(Qt6` → incompatible.
 
-**选取优先级**（tag 优先于分支）：
-1. tag（如 `v1.2.3`、`qt5-stable`）— 不可变快照
-2. release 分支（如 `release/1.x`）— 通常受保护
-3. 普通分支（如 `qt5`）— 可能仍在变动
+**Selection priority** (tags beat branches):
+1. A tag (such as `v1.2.3` or `qt5-stable`) — an immutable snapshot
+2. A release branch (such as `release/1.x`) — usually protected
+3. An ordinary branch (such as `qt5`) — may still be changing
 
-**Step C：验证正式版本**
+**Step C: verify it's a real release**
 
-| 判定标准 | 正式版本 | 调试/实验性 |
-|---------|:---:|:---:|
-| 命名 | `release-*`、`stable-*`、`v1.2.3` | `test-*`、`wip-*`、`dev-xxx` |
-| 提交历史 | 持续提交记录 | 1-2 次提交后废弃 |
-| README/CHANGELOG | 有发布说明 | 无说明或标注"experimental" |
-| CI/CD | 有构建通过标记 | 无构建记录 |
-| 与主分支关系 | 从主分支分叉或被合并 | 孤立分支 |
+| Criterion | A real release | Debug/experimental |
+|-----------|:--------------:|:------------------:|
+| Naming | `release-*`, `stable-*`, `v1.2.3` | `test-*`, `wip-*`, `dev-xxx` |
+| Commit history | Ongoing commits | Abandoned after 1–2 commits |
+| README/CHANGELOG | Has release notes | No notes, or marked "experimental" |
+| CI/CD | Has a passing build badge | No build record |
+| Relationship to the main branch | Forked from or merged into main | An orphan branch |
 
-满足 ≥3 项"正式版本"标准 → ✅ 采纳；<3 项 → ❌ 不采纳。
+Meeting ≥3 of the "real release" criteria → ✅ adopt it; fewer than 3 → ❌ don't.
 
-**Step D：切换并重新评估**
+**Step D: switch and re-assess**
 
-1. `git checkout <选定的tag或分支>`
-2. 用 `git log --oneline -1` 确认 HEAD
-3. 验证构建文件引用 Qt5（无 `Qt6::`）
-4. **重新执行 §3.0～§3.6**（代码已变，依赖信息失效）
+1. `git checkout <the chosen tag or branch>`
+2. Confirm HEAD with `git log --oneline -1`
+3. Verify the build files reference Qt5 (with no `Qt6::`)
+4. **Re-run §3.0–§3.6** (the code has changed, so the dependency information is stale)
 
-### Qt 版本适配原则
+### Qt version adaptation principles
 
-使用 `QT_VERSION_CHECK` 宏做条件编译，保持 Qt5/Qt6 兼容性：
+Use the `QT_VERSION_CHECK` macro for conditional compilation to keep Qt5/Qt6 compatibility:
 
 ```cpp
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-    // Qt6 代码（保持原样，不修改）
+    // The Qt6 code (leave it exactly as-is)
     QPromise<int> promise;
 #else
-    // Qt5 替代实现（新增，仅鸿蒙编译时使用）
+    // A Qt5 replacement implementation (newly added, used only for the HarmonyOS build)
     QFuture<int> future = QtConcurrent::run([]() { return 42; });
 #endif
 ```
 
-**原则**：
-- 不影响 Qt6 原有代码
-- 只为 Qt5 添加分支
-- 仅测试 Qt5 鸿蒙版
+**Principles**:
+- Don't affect the existing Qt6 code
+- Only add branches for Qt5
+- Only test the Qt5 HarmonyOS build
 
-### 3.2 Qt 模块依赖梳理
+### 3.2 Inventory the Qt module dependencies
 
-**梳理方法**（按优先级）：
-1. 分析 `CMakeLists.txt` 中的 `find_package(Qt...)` / `target_link_libraries(Qt...)`
-2. 分析 `.pro` 文件中的 `QT +=` 行
-3. grep 源码 `#include <QXxx>`，反推模块
-4. 构建文件为准
+**How to inventory them** (in priority order):
+1. Analyze `find_package(Qt...)` / `target_link_libraries(Qt...)` in CMakeLists.txt
+2. Analyze the `QT +=` lines in .pro files
+3. grep the source for `#include <QXxx>` and infer the modules
+4. The build files are authoritative
 
-**输出格式**（追加到 `qt_env.md`）：
+**Output format** (appended to `qt_env.md`):
 
-| Qt 模块 | 引用证据 | 鸿蒙状态 | 备注 |
-|---------|---------|:---:|------|
+| Qt module | Evidence | HarmonyOS status | Notes |
+|-----------|----------|:---------------:|-------|
 | QtCore | `find_package(Qt5 COMPONENTS Core)` | ☑ | — |
 | QtWidgets | `#include <QWidget>` | ☑ | — |
-| QtPrintSupport | `QT += printsupport` | ☐ | 需降级 |
+| QtPrintSupport | `QT += printsupport` | ☐ | Needs degrading |
 
-参考：[[semantic-qt-harmonyos-modules]]
+See: [[semantic-qt-harmonyos-modules]]
 
-### 3.3 系统能力直调
+### 3.3 Direct system capability calls
 
-确认项目是否绕过 Qt 直接调用 OS API。若存在，评估 OHOS 替代方案。
+Determine whether the project bypasses Qt and calls OS APIs directly. If so, assess the OHOS alternatives.
 
-参考：[[semantic-qt-harmonyos-api]]
+See: [[semantic-qt-harmonyos-api]]
 
-### 3.4 三方库依赖
+### 3.4 Third-party library dependencies
 
-记录所有三方库：
-- 库名、功能、版本
-- 引入方式（源码编译 / 预编译包 / 系统安装）
-- 是否支持 OHOS 交叉编译
+Record every third-party library:
+- Name, purpose, version
+- How it's integrated (built from source / a prebuilt package / installed system-wide)
+- Whether it supports OHOS cross-compilation
 
-### 3.5 构建系统与编译配置
+### 3.5 The build system and build configuration
 
-- 构建系统类型（qmake / CMake / 混合）
-- 编译选项、宏定义、条件编译分支
-- 平台相关构建脚本、工具链文件
+- The build system type (qmake / CMake / mixed)
+- Build options, macro definitions, conditional compilation branches
+- Platform-specific build scripts and toolchain files
 
-参考：[[semantic-qt-harmonyos-build]]
+See: [[semantic-qt-harmonyos-build]]
 
-### 3.6 环境就绪比对
+### 3.6 Environment readiness comparison
 
-将已具备的环境与 3.1～3.5 梳理的依赖逐一比对：
-- ☑ 已就绪
-- ☐ 缺失（记录原因）
-- ？不确定（向用户提问确认）
+Compare the environment you have against the dependencies inventoried in 3.1–3.5, item by item:
+- ☑ Ready
+- ☐ Missing (record why)
+- ? Unsure (ask the user)
 
-**追加到 `qt_env.md`**：
+**Append to `qt_env.md`**:
 
-| 类别 | 依赖项 | 状态 | 来源/路径 | 备注 |
-|------|--------|:---:|---------|------|
-| Qt 模块 | QtCore | ☑ | `<路径>/libQt5Core.so` | — |
-| 三方库 | zlib | ☑ | 系统自带 | — |
-| 工具链 | OHOS NDK | ☑ | `<SDK路径>` | — |
+| Category | Dependency | Status | Source/path | Notes |
+|----------|------------|:------:|-------------|-------|
+| Qt module | QtCore | ☑ | `<path>/libQt5Core.so` | — |
+| Third-party library | zlib | ☑ | Ships with the system | — |
+| Toolchain | OHOS NDK | ☑ | `<SDK path>` | — |
 
-**与用户确认**：
-1. 环境已就绪 → 进入编译步骤
-2. 存在不确定项 → 逐项讨论
-3. 缺失且无法自动获取 → 提供求助信息（缺什么、操作步骤、预期结果）
-4. 最终确认不具备条件 → 在 `qt_env.md` 追加结论
-
----
-
-## 编译编排流程
-
-### 4.1 知识库准备
-
-询问用户是否已有 `compile_fix_pro.md`：
-- 已有 → 记录路径
-- 没有 → 创建并写入示例格式
-
-### 4.2 编译前准备
-
-**前置条件**：§3 所有必要依赖状态为 ☑ 或已标注降级方案 ⚠️
-
-**执行步骤**：
-1. 查看 `qt_env.md`，确认依赖状态明确
-2. 调用 `qt-harmonyos-porting` skill 做代码适配：
-   - 扫描平台特定 API（QProcess、QDesktopServices、窗口管理、文件操作）
-   - 按 api-mapping / code-patterns / window-model / lifecycle 完成替换
-   - 检查 platform-limitations.md 和 module-status.md
-3. 调用 `create-qt-app` skill 创建工程结构
-4. 遇到错误时：
-   - 先查 `compile_fix_pro.md`
-   - 识别错误环节（预处理 / 编译 / 链接 / 打包）
-   - 修复成功 → 记入知识库
-   - 修复失败 → 向用户求助
-5. 创建 `qt_compile_plan.md`，整理详细编译步骤
-6. **展示给用户确认后，方可进入 4.3**
-
-### 4.3 执行编译
-
-**错误重试策略**：
-- 同一错误最多尝试 **3 次**
-- 每次必须使用**不同方案**
-- 超过 3 次 → 停止，整理错误上下文和已尝试方案，向用户求助
-
-**每次遇到错误**：
-1. 先查 `compile_fix_pro.md`
-2. 识别错误环节
-3. 分析原因
-4. 修复成功 → 沉淀；修复失败 → 求助
-
-### 4.4 编译完成确认
-
-**验证清单**（全部通过才可标记完成）：
-
-| 验证项 | 验证方式 | 预期结果 |
-|--------|---------|---------|
-| 编译构建无错误 | 双重交验协议 | 两轮均通过 |
-| HAP 安装启动无错误 | 双重交验协议 | 两轮均通过 |
-| 应用库产物存在 | `ls entry/libs/arm64-v8a/lib<AppName>.so` | 文件存在 |
-| Qt 核心库部署 | `ls entry/libs/arm64-v8a/libQt5Core.so` | 文件存在 |
-| 平台插件部署 | `ls entry/libs/arm64-v8a/libqohos.so` | 文件存在 |
-| 样式库部署 | `ls entry/libs/arm64-v8a/styles/libqohosstyle.so` | 文件存在 |
+**Confirm with the user**:
+1. The environment is ready → move on to the build step
+2. There are uncertain items → discuss them one by one
+3. Something is missing and can't be obtained automatically → provide the help request (what's missing, the steps to take, the expected result)
+4. If it's ultimately confirmed that the conditions can't be met → append that conclusion to `qt_env.md`
 
 ---
 
-## 双重交验协议
+## Build orchestration process
 
-适用于「编译构建无错误」与「HAP 安装启动无错误」两项。每个验证项必须完成两轮，任一轮未通过即判定 ❌。
+### 4.1 Knowledge base preparation
 
-### 第一轮：AI 自动审查（日志审查）
+Ask the user whether they already have a `compile_fix_pro.md`:
+- They do → record its path
+- They don't → create one and write in the example format
 
-| 步骤 | 执行动作 | 判定标准 |
-|:---:|---------|---------|
-| 1 | 获取完整构建/安装日志（不截断） | 日志成功获取 |
-| 2 | 搜索失败关键词：`ERROR`、`FAILED`、`fatal`、`undefined reference`、`cannot find`、`No such file`、`BUILD FAILED`、`Install Failed`、`crash`、`SIGSEGV`、`SIGABRT` | 逐一记录命中项 |
-| 3 | 误报排除：是否属于注释/文档、已知警告、依赖库内部日志不影响产物 | 仅保留真实错误 |
-| 4 | 输出审查结论 | "无真实错误" 或 "发现 N 个错误：\<列表\>" |
+### 4.2 Pre-build preparation
 
-⚠️ **关键词必须逐个搜索**，禁止"看了一眼日志没发现问题"就跳过。
+**Prerequisite**: every necessary dependency from §3 is ☑ or has a documented degraded alternative ⚠️
 
-### 第二轮：用户确认（人工交验）
+**Steps**:
+1. Review `qt_env.md` and confirm the dependency statuses are unambiguous
+2. Invoke the `qt-harmonyos-porting` skill for code adaptation:
+   - Scan for platform-specific APIs (QProcess, QDesktopServices, window management, file operations)
+   - Apply the replacements per api-mapping / code-patterns / window-model / lifecycle
+   - Check platform-limitations.md and module-status.md
+3. Invoke the `create-qt-app` skill to create the project structure
+4. When you hit an error:
+   - Check `compile_fix_pro.md` first
+   - Identify which stage the error is in (preprocessing / compilation / linking / packaging)
+   - Fixed it → record it in the knowledge base
+   - Couldn't fix it → ask the user for help
+5. Create `qt_compile_plan.md` with the detailed build steps
+6. **Only after showing it to the user for confirmation may you proceed to 4.3**
 
-**无论第一轮结果如何，必须将审查结论完整展示给用户并明确提问**。
+### 4.3 Run the build
 
-| 第一轮结果 | 展示内容 | 提问 |
-|-----------|---------|------|
-| 无真实错误 | 日志审查摘要 | "请您确认：在您那边的构建/运行过程中，是否也没有看到任何错误？" |
-| 发现错误 | 具体错误列表 | "以上是我发现的错误，请您确认是否完整？您那边是否还有其他报错？" |
+**The error retry policy**:
+- At most **3 attempts** per error
+- Each attempt must use a **different approach**
+- Beyond 3 attempts → stop, assemble the error context and what you've tried, and ask the user for help
 
-**用户回复判定**：
+**Every time you hit an error**:
+1. Check `compile_fix_pro.md` first
+2. Identify which stage it's in
+3. Analyze the cause
+4. Fixed it → capture it; couldn't fix it → ask for help
 
-| 用户回复 | 判定 |
-|---------|------|
-| 明确回复"没有错误" / "确认无误" | ✅ 通过 |
-| 回复新错误信息 | ❌ 未通过 — 纳入修复流程 |
-| 回复模糊（"应该没问题"） | ⚠️ 不算通过 — 追问明确确认 |
-| 用户未回复 | ⏸️ 等待中 — 禁止自行假设通过 |
+### 4.4 Build completion confirmation
 
-### 两轮交叉判定矩阵
+**The verification checklist** (everything must pass before marking it complete):
 
-| 第一轮（AI） | 第二轮（用户） | 最终判定 | 后续动作 |
-|:---:|:---:|:---:|---------|
-| ✅ 无错误 | ✅ 确认无错误 | ☑ 通过 | 标记完成 |
-| ✅ 无错误 | ❌ 报告有错误 | ❌ 未通过 | AI 存在盲区，以用户为准，进入修复 |
-| ❌ 发现错误 | ✅ 确认仅此错误 | ❌ 未通过 | 按错误列表修复后重新交验 |
-| ❌ 发现错误 | ❌ 补充更多错误 | ❌ 未通过 | 合并完整错误列表，修复后重新交验 |
-
-🔑 **核心原则：只有 ✅+✅ 才算通过**。
-
-全部 ☑ 后：
-- 更新 `qt_compile_plan.md` 标记编译状态完成
-- 更新 `qt_env.md` 流程进度表 §4.4 为 ☑
-- 未通过 → 按门禁失败铁律处理
+| Item | How to verify | Expected result |
+|------|---------------|-----------------|
+| The build has no errors | The dual cross-check protocol | Both rounds pass |
+| HAP installation and launch have no errors | The dual cross-check protocol | Both rounds pass |
+| The application library artifact exists | `ls entry/libs/arm64-v8a/lib<AppName>.so` | The file exists |
+| The Qt core libraries are deployed | `ls entry/libs/arm64-v8a/libQt5Core.so` | The file exists |
+| The platform plugin is deployed | `ls entry/libs/arm64-v8a/libqohos.so` | The file exists |
+| The style library is deployed | `ls entry/libs/arm64-v8a/styles/libqohosstyle.so` | The file exists |
 
 ---
 
-## 总结文档输出
+## The dual cross-check protocol
 
-**前置条件**：§4.4 验证清单全部 ☑
+This applies to "the build has no errors" and "HAP installation and launch have no errors". Each item must go through both rounds; failing either round means ❌.
 
-**文件名**：`qt_summary_<项目名>.md`
+### Round one: automated AI review (log review)
 
-**文档结构**：
+| Step | Action | Criterion |
+|:----:|--------|-----------|
+| 1 | Get the complete build/install log (not truncated) | The log was obtained successfully |
+| 2 | Search for failure keywords: `ERROR`, `FAILED`, `fatal`, `undefined reference`, `cannot find`, `No such file`, `BUILD FAILED`, `Install Failed`, `crash`, `SIGSEGV`, `SIGABRT` | Record every hit |
+| 3 | Rule out false positives: is it in a comment/document, a known warning, or an internal dependency-library log that doesn't affect the artifacts? | Keep only the real errors |
+| 4 | Output the review conclusion | "No real errors" or "Found N errors: \<list\>" |
+
+⚠️ **You must search for each keyword individually** — don't skip it with "I glanced at the log and didn't see a problem".
+
+### Round two: user confirmation (a human cross-check)
+
+**Regardless of round one's result, you must show the user the full review conclusion and ask explicitly.**
+
+| Round one's result | What to show | The question |
+|--------------------|--------------|--------------|
+| No real errors | A summary of the log review | "Please confirm: on your side, did the build/run also show no errors at all?" |
+| Errors found | The specific error list | "These are the errors I found — is the list complete? Are you seeing any others on your side?" |
+
+**How to interpret the user's reply**:
+
+| The user's reply | Verdict |
+|------------------|---------|
+| An explicit "no errors" / "confirmed clean" | ✅ Pass |
+| They report new errors | ❌ Fail — fold them into the fix process |
+| A vague reply ("should be fine") | ⚠️ Not a pass — follow up for an explicit confirmation |
+| No reply | ⏸️ Waiting — you must not assume it passed |
+
+### The two-round cross-check matrix
+
+| Round one (AI) | Round two (user) | Final verdict | Next action |
+|:--------------:|:----------------:|:-------------:|-------------|
+| ✅ No errors | ✅ Confirms no errors | ☑ Pass | Mark it complete |
+| ✅ No errors | ❌ Reports errors | ❌ Fail | The AI has a blind spot; the user is authoritative — go fix it |
+| ❌ Errors found | ✅ Confirms those are all | ❌ Fail | Fix the listed errors and re-run the cross-check |
+| ❌ Errors found | ❌ Adds more errors | ❌ Fail | Merge into a complete error list, fix, and re-run the cross-check |
+
+🔑 **The core principle: only ✅ + ✅ counts as a pass.**
+
+Once everything is ☑:
+- Update `qt_compile_plan.md` to mark the build status complete
+- Update §4.4 in `qt_env.md`'s process progress table to ☑
+- Failed → handle it per the gate-failure iron rule
+
+---
+
+## Summary document output
+
+**Prerequisite**: every item in §4.4's verification checklist is ☑
+
+**Filename**: `qt_summary_<project>.md`
+
+**Document structure**:
 
 ```markdown
-# <项目名> 鸿蒙化编译总结
+# <project> HarmonyOS porting build summary
 
-> 生成时间：YYYY-MM-DD HH:mm
+> Generated: YYYY-MM-DD HH:mm
 
-## 1. 项目概况
-| 项目 | 信息 |
-|------|------|
-| 原始项目 | <项目名> <版本> — <功能描述> |
-| 目标平台 | OpenHarmony (OHOS) |
-| Qt 版本 | Qt 5.15.16 (harmonyos 分支) |
-| 胶水模板 | `<QT_SRC>/qtbase/src/harmonyos/templates`（源码内置） |
-| 构建工具 | DevEco MCP + CMake + Hvigor |
-| 目标产物 | `entry-default-signed.hap` |
+## 1. Project overview
+| Item | Details |
+|------|---------|
+| Original project | <project> <version> — <what it does> |
+| Target platform | OpenHarmony (OHOS) |
+| Qt version | Qt 5.15.16 (the harmonyos branch) |
+| Glue template | `<QT_SRC>/qtbase/src/harmonyos/templates` (bundled with the source) |
+| Build tools | DevEco MCP + CMake + Hvigor |
+| Target artifact | `entry-default-signed.hap` |
 
-## 2. 功能裁剪与降级清单
-### 2.1 Qt 模块裁剪
-| 被裁剪模块 | 原始用途 | 裁剪原因 | 降级方案 | 影响范围 |
+## 2. Feature trimming and degradation list
+### 2.1 Qt modules dropped
+| Module dropped | Original purpose | Why it was dropped | Degraded alternative | Scope of impact |
 
-### 2.2 三方库裁剪
-| 被裁剪库 | 原始用途 | 裁剪原因 | 替代方案 | 影响范围 |
+### 2.2 Third-party libraries dropped
+| Library dropped | Original purpose | Why it was dropped | Alternative | Scope of impact |
 
-### 2.3 系统能力降级
-| 原系统调用/能力 | 降级方式 | 功能影响说明 |
+### 2.3 System capabilities degraded
+| Original syscall/capability | How it was degraded | Functional impact |
 
-### 2.4 功能开关与条件编译
-| 关闭的功能/宏 | 涉及文件 | 关闭原因 |
+### 2.4 Feature flags and conditional compilation
+| Feature/macro disabled | Files involved | Why it was disabled |
 
-## 3. 代码改动记录
-| 改动文件 | 改动类型 | 改动摘要 | 改动原因 |
+## 3. Record of code changes
+| File changed | Type of change | Summary | Reason |
 
-## 4. 编译问题修复摘要
-| 问题标题 | 发生环节 | 根因 | 修复方案 |
+## 4. Build problem fix summary
+| Problem title | Where it occurred | Root cause | Fix |
 
-## 5. 遗留问题与已知限制
-| 问题描述 | 影响程度 | 状态 | 备注 |
+## 5. Outstanding problems and known limitations
+| Problem | Severity | Status | Notes |
 
-## 6. 可复现性信息
-| 项 | 值 |
-|----|----|
-| OHOS SDK 版本 | |
-| NDK 版本 | |
-| DevEco Studio 版本 | |
-| Qt 编译产物路径 | |
-| 构建系统 | |
-| 宿主机 OS | |
+## 6. Reproducibility information
+| Item | Value |
+|------|-------|
+| OHOS SDK version | |
+| NDK version | |
+| DevEco Studio version | |
+| Path to the Qt build artifacts | |
+| Build system | |
+| Host OS | |
 ```
 
-**数据来源映射**：
+**Data source mapping**:
 
-| 文档章节 | 主要来源 | 补充来源 |
-|---------|---------|---------|
-| §1 项目概况 | `qt_env.md` §3.0、§2 | §1 需求沟通 |
-| §2.1 Qt 模块裁剪 | `qt_env.md` §3.2 中 ☐ 项 | `qt_compile_plan.md` |
-| §2.2 三方库裁剪 | `qt_env.md` §3.4 中 ☐ 项 | `compile_fix_pro.md` |
-| §2.3 系统能力降级 | `qt_env.md` §3.3 | `qt_compile_plan.md` |
-| §2.4 功能开关 | `qt_compile_plan.md` | 代码改动记录 |
-| §3 代码改动 | `compile_fix_pro.md` | `qt_compile_plan.md` |
-| §4 修复摘要 | `compile_fix_pro.md` | — |
-| §5 遗留问题 | `qt_env.md` 平台限制项 | `qt_compile_plan.md` |
-| §6 可复现性 | `qt_env.md` §3.5、§3.6 | 系统环境检测 |
+| Document section | Primary source | Supplementary source |
+|------------------|----------------|----------------------|
+| §1 Project overview | `qt_env.md` §3.0, §2 | §1 Requirements discussion |
+| §2.1 Qt modules dropped | The ☐ items in `qt_env.md` §3.2 | `qt_compile_plan.md` |
+| §2.2 Third-party libraries dropped | The ☐ items in `qt_env.md` §3.4 | `compile_fix_pro.md` |
+| §2.3 System capabilities degraded | `qt_env.md` §3.3 | `qt_compile_plan.md` |
+| §2.4 Feature flags | `qt_compile_plan.md` | The record of code changes |
+| §3 Code changes | `compile_fix_pro.md` | `qt_compile_plan.md` |
+| §4 Fix summary | `compile_fix_pro.md` | — |
+| §5 Outstanding problems | The platform limitation entries in `qt_env.md` | `qt_compile_plan.md` |
+| §6 Reproducibility | `qt_env.md` §3.5, §3.6 | System environment detection |
 
-**生成流程**：
-1. 确定项目名 → 生成文件名
-2. 读取 `qt_env.md`，按映射表提取数据
-3. 读取 `qt_compile_plan.md`，补充编译计划
-4. 读取 `compile_fix_pro.md`，提取修复记录
-5. 按模板组装，**无数据的章节保留标题并注明"本项目无此类裁剪"**
-6. 展示给用户确认后标记 §4.5 为 ☑
+**The generation process**:
+1. Determine the project name → derive the filename
+2. Read `qt_env.md` and extract data per the mapping table
+3. Read `qt_compile_plan.md` and fill in the build plan
+4. Read `compile_fix_pro.md` and extract the fix records
+5. Assemble it per the template, **keeping the heading for any section with no data and noting "this project had no trimming of this kind"**
+6. Show it to the user for confirmation, then mark §4.5 ☑
 
-⚠️ **禁止凭记忆或推测填写**。每一项数据必须在 `qt_env.md`、`qt_compile_plan.md` 或 `compile_fix_pro.md` 中有原始出处。找不到出处标注"⚠️ 待补充 — 原始记录缺失"。
+⚠️ **Never fill anything in from memory or speculation.** Every data point must have an original source in `qt_env.md`, `qt_compile_plan.md`, or `compile_fix_pro.md`. If you can't find a source, mark it "⚠️ To be filled in — the original record is missing".
 
 ---
 
-## 参考来源
+## References
 
-- [[semantic-qt-harmonyos-build]] — CMake/qmake 配置与构建流程
-- [[semantic-qt-harmonyos-overview]] — OHOS 平台概述与 Qt 鸿蒙化背景
-- [[semantic-qt-harmonyos-platform-limits]] — OHOS 平台限制与降级策略
-- [[semantic-qt-harmonyos-modules]] — Qt 模块在 OHOS 的移植状态
-- [[semantic-qt-harmonyos-api]] — Qt API 到 OHOS 的映射关系
+- [[semantic-qt-harmonyos-build]] — CMake/qmake configuration and the build process
+- [[semantic-qt-harmonyos-overview]] — An overview of the OHOS platform and the background to porting Qt
+- [[semantic-qt-harmonyos-platform-limits]] — OHOS platform limitations and degradation strategies
+- [[semantic-qt-harmonyos-modules]] — Qt module porting status on OHOS
+- [[semantic-qt-harmonyos-api]] — The mapping from Qt APIs to OHOS

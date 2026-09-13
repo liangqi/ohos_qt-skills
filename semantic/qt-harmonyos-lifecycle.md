@@ -9,52 +9,52 @@ status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-ohos-extras, semantic-qt-harmonyos-api]
 summary: >
-  Stage/UIAbility 生命周期的 Qt adapter：平台回调到 Qt main/event loop 的桥接、启动其他应用
-  (显式/隐式Want)、被其他应用启动(module.json5 skills)、多实例管理、
-  3级关闭拦截(WindowStageClose/AbilityClose/InternalClose)、
-  应用接续(跨设备迁移)、分享(ShareKit)、无UI子进程、argv组装规则、主题管理。
+  The Qt adapter for the Stage/UIAbility lifecycle: bridging platform callbacks to Qt's main/event loop, launching other applications
+  (explicit/implicit Wants), being launched by other applications (module.json5 skills), multi-instance management,
+  three levels of close interception (WindowStageClose/AbilityClose/InternalClose),
+  application continuation (cross-device handoff), sharing (ShareKit), UI-less child processes, argv assembly rules, and theme management.
 ---
 
-# Stage/UIAbility 生命周期的 Qt adapter
+# The Qt adapter for the Stage/UIAbility lifecycle
 
-> Stage/UIAbility、WindowStage、Want、skills、launchType 与保存恢复的平台语义，以 common 的 [[ohos-common-kb/semantic/stage-uiability-lifecycle|Stage 模型与 UIAbility 生命周期]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)）为准。本页只维护平台回调如何映射到 Qt `main()`/event loop、`QWindow`/`QDialog`、QtOhosExtras、argv、关闭拦截、接续与分享 adapter。
+> For the platform semantics of Stage/UIAbility, WindowStage, Want, skills, launchType, and save/restore, the authority is the common knowledge base's [[ohos-common-kb/semantic/stage-uiability-lifecycle|The Stage model and the UIAbility lifecycle]] ([standalone link](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)). This page maintains only how platform callbacks map onto Qt's `main()`/event loop, `QWindow`/`QDialog`, QtOhosExtras, argv, close interception, and the continuation and sharing adapters.
 
-## Qt 启动桥接 (Startup Flow)
+## The Qt startup bridge
 
-Qt 适配层将平台生命周期事件桥接到标准 Qt `main()` 入口。平台回调的权威顺序见 common；下方只展示 Qt 胶水层增加的线程、共享库和 event loop seam。
+The Qt adaptation layer bridges platform lifecycle events to a standard Qt `main()` entry point. The authoritative ordering of the platform callbacks is in the common knowledge base; what follows shows only the thread, shared library, and event loop seams the Qt glue layer adds.
 
-### 启动时序
+### The startup sequence
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│ 1. 系统启动 UIAbility（Stage 模型入口）                               │
+│ 1. The system launches the UIAbility (the Stage model entry point)    │
 │    ↓                                                                 │
-│ 2. UIAbility 通过 NAPI 启动 Qt 线程                                  │
+│ 2. The UIAbility starts the Qt thread through NAPI                   │
 │    ↓                                                                 │
-│ 3. 系统加载 Qt 共享库（.so），调用 main()                             │
+│ 3. The system loads the Qt shared library (.so) and calls main()     │
 │    ↓                                                                 │
-│ 4. 主窗口创建并显示在 WindowStage 中                                  │
+│ 4. The main window is created and shown inside the WindowStage       │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-### 各阶段详解
+### Each stage in detail
 
-| 阶段 | 执行方 | 说明 |
-|------|--------|------|
-| 1. 启动 UIAbility | 系统 | 系统根据 `module.json5` 配置创建 UIAbility 实例，调用 `onCreate()`、`onWindowStageCreate()` 等生命周期回调 |
-| 2. NAPI 启动 Qt 线程 | QPA 插件 | Qt 的 ArkTS 侧适配层通过 NAPI（Native API）在独立线程中启动 Qt 运行时 |
-| 3. 加载 .so 调用 main() | Qt 运行时 | 加载应用编译产出的共享库，执行标准 C++ `main(int argc, char *argv[])` |
-| 4. 创建主窗口 | 开发者代码 | `QApplication` / `QGuiApplication` 初始化后创建主窗口，QPA 插件自动将其嵌入 WindowStage |
+| Stage | Who does it | Notes |
+|-------|-------------|-------|
+| 1. Launch the UIAbility | The system | The system creates the UIAbility instance based on `module.json5` and calls its lifecycle callbacks such as `onCreate()` and `onWindowStageCreate()` |
+| 2. NAPI starts the Qt thread | The QPA plugin | Qt's ArkTS-side adaptation layer starts the Qt runtime on a separate thread through NAPI (Native API) |
+| 3. Load the .so and call main() | The Qt runtime | It loads the shared library your application builds and runs the standard C++ `main(int argc, char *argv[])` |
+| 4. Create the main window | Your code | After `QApplication`/`QGuiApplication` initializes, you create the main window and the QPA plugin embeds it in the WindowStage automatically |
 
-> **要点**：开发者只需编写标准 Qt `main()` 函数，Stage 模型的 ArkTS 侧由 QPA 插件自动处理，无需手动编写 Ability 生命周期代码。
+> **The key point**: you only write a standard Qt `main()`; the Stage model's ArkTS side is handled automatically by the QPA plugin, so you don't write Ability lifecycle code by hand.
 
-## 启动其他应用 (Launching Other Apps)
+## Launching other applications
 
-鸿蒙通过 **Want** 对象实现 Ability 间通信，类似 Android 的 Intent。Qt 中通过 `QtOhosExtras::QOhosWant` 封装。
+HarmonyOS uses **Want** objects for inter-Ability communication, similar to Android's Intent. In Qt they're wrapped by `QtOhosExtras::QOhosWant`.
 
-### 显式匹配 (Explicit Matching)
+### Explicit matching
 
-直接指定目标应用的 `bundleName` 和 `abilityName`，精确启动某个特定 Ability。
+Specify the target application's `bundleName` and `abilityName` directly to launch one specific Ability.
 
 ```cpp
 #include <QtOhosExtras/qohoswant.h>
@@ -64,7 +64,7 @@ QtOhosExtras::QOhosWant want;
 want.bundleName = "com.example.targetapp";
 want.abilityName = "MainAbility";
 
-// 可选：附带参数
+// Optional: attach parameters
 QJsonObject params;
 params.insert("key", "value");
 want.parameters = params;
@@ -72,36 +72,36 @@ want.parameters = params;
 QtOhosExtras::startAbility(want);
 ```
 
-**适用场景**：明确知道目标应用的包名和 Ability 名称，如跳转到自家另一款应用。
+**When it applies**: you know the target application's bundle and Ability name exactly, such as jumping to another application of your own.
 
-### 隐式匹配 (Implicit Matching)
+### Implicit matching
 
-通过 `action`、`type`、`uri` 描述意图，由系统自动选择匹配的 Ability。
+Describe your intent with an `action`, `type`, and `uri`, and let the system pick a matching Ability.
 
 ```cpp
 QtOhosExtras::QOhosWant want;
-want.action = "ohos.want.action.viewData";   // 动作：查看数据
-want.type = "text/plain";                     // 数据类型
-want.uri = "content://example/data";          // 数据 URI
+want.action = "ohos.want.action.viewData";   // the action: view data
+want.type = "text/plain";                     // the data type
+want.uri = "content://example/data";          // the data URI
 QtOhosExtras::startAbility(want);
 ```
 
-**适用场景**：不关心具体哪个应用处理，如分享文本、打开网页、查看图片等。
+**When it applies**: you don't care which application handles it — sharing text, opening a web page, viewing an image, and so on.
 
-### 显式 vs 隐式对比
+### Explicit vs. implicit
 
-| 属性 | 显式匹配 | 隐式匹配 |
-|------|---------|---------|
-| 指定方式 | `bundleName` + `abilityName` | `action` + `type` + `uri` |
-| 目标确定性 | 唯一确定 | 系统选择，可能弹出选择框 |
-| 典型用途 | 应用间精确跳转 | 通用意图（分享、打开、查看） |
-| 需要 exported | 是 | 是（且需 skills 匹配） |
+| Property | Explicit matching | Implicit matching |
+|----------|-------------------|-------------------|
+| How you specify it | `bundleName` + `abilityName` | `action` + `type` + `uri` |
+| Target certainty | Uniquely determined | The system chooses; a picker may appear |
+| Typical use | A precise jump between applications | A general intent (share, open, view) |
+| Needs exported | Yes | Yes (plus a matching skills entry) |
 
-## 被其他应用启动 (Being Launched by Other Apps)
+## Being launched by other applications
 
-### 1. module.json5 配置 skills
+### 1. Declare skills in module.json5
 
-在 `module.json5` 中声明 Ability 能响应的意图类型：
+Declare the intents your Ability can respond to in `module.json5`:
 
 ```json
 {
@@ -123,17 +123,17 @@ QtOhosExtras::startAbility(want);
 }
 ```
 
-| 字段 | 说明 |
-|------|------|
-| `entities` | Ability 的类别标识，`entity.system.home` 表示可在桌面启动 |
-| `actions` | 能响应的动作，如 `ohos.want.action.viewData` 表示查看数据 |
-| `uris` | 能处理的数据 URI 格式，`type` 指定 MIME 类型 |
+| Field | Notes |
+|-------|-------|
+| `entities` | The Ability's category identifiers; `entity.system.home` means it can be launched from the home screen |
+| `actions` | The actions it can respond to, such as `ohos.want.action.viewData` for viewing data |
+| `uris` | The data URI formats it can handle, with `type` giving the MIME type |
 
-> `exported: true` 是必须项，否则其他应用无法启动此 Ability。
+> `exported: true` is mandatory, or other applications can't launch this Ability.
 
-### 2. 代码中监听 newWantReceived
+### 2. Listen for newWantReceived in code
 
-当应用已在运行中被其他应用再次启动时，触发 `newWantReceived` 信号：
+When an already-running application is launched again by another application, the `newWantReceived` signal fires:
 
 ```cpp
 QObject::connect(
@@ -144,59 +144,59 @@ QObject::connect(
         qDebug() << "Action:" << want.action;
         qDebug() << "URI:" << want.uri;
 
-        // 处理附带参数
+        // Handle the attached parameters
         if (want.parameters.contains("key")) {
             QString value = want.parameters.value("key").toString();
-            // 根据参数执行相应逻辑
+            // act on the parameter
         }
     }
 );
 ```
 
-### 冷启动 vs 热启动接收 Want
+### Receiving a Want on a cold vs. warm start
 
-| 场景 | 获取方式 |
-|------|---------|
-| 冷启动（应用未运行） | `QOhosAppContext::getAppLaunchWantInfo()->want()` 获取启动 Want |
-| 热启动（应用已在后台） | 连接 `newWantReceived` 信号接收新 Want |
+| Scenario | How to get it |
+|----------|---------------|
+| Cold start (the application isn't running) | `QOhosAppContext::getAppLaunchWantInfo()->want()` gives the launch Want |
+| Warm start (the application is already in the background) | Connect to the `newWantReceived` signal to receive the new Want |
 
-## 多实例管理 (Multiple Instance Management)
+## Multi-instance management
 
-鸿蒙支持三种多实例模式，适用于不同业务场景：
+HarmonyOS supports three multi-instance modes for different scenarios:
 
-### 模式对比
+### Comparing the modes
 
-| 模式 | 进程数 | 窗口数 | 实现方式 | 适用场景 |
-|------|--------|--------|---------|---------|
-| **单例 (Singleton)** | 1 | 1 | 已有实例通过 `newWantReceived` 处理新请求 | 大多数应用，状态共享 |
-| **多实例单进程** | 1 | N | 在 `newWantReceived` 中创建新窗口实例 | 多文档编辑器 |
-| **多实例多进程** | N | N | `startAppProcess()` 启动新进程 | 需要进程隔离的场景 |
+| Mode | Processes | Windows | How it works | When it applies |
+|------|-----------|---------|--------------|-----------------|
+| **Singleton** | 1 | 1 | The existing instance handles new requests through `newWantReceived` | Most applications, where state is shared |
+| **Multi-instance, single process** | 1 | N | Create a new window instance in `newWantReceived` | Multi-document editors |
+| **Multi-instance, multi-process** | N | N | `startAppProcess()` starts a new process | Scenarios needing process isolation |
 
-### 单例模式 (Singleton)
+### Singleton mode
 
-默认行为。新的启动请求会触发已有实例的 `newWantReceived`，在其中更新 UI 或跳转页面：
+The default behavior. A new launch request triggers the existing instance's `newWantReceived`, where you update the UI or navigate:
 
 ```cpp
 QObject::connect(
     QtOhosExtras::QOhosUiAbilityContext::instance(),
     &QtOhosExtras::QOhosUiAbilityContext::newWantReceived,
     [](QtOhosExtras::QOhosWant want) {
-        // 已有实例处理新请求，如打开新文档
+        // The existing instance handles the new request, e.g. opening a new document
         openDocument(want.uri);
     }
 );
 ```
 
-### 多实例单进程
+### Multi-instance, single process
 
-在 `newWantReceived` 中创建新窗口，共享同一进程内存：
+Create a new window in `newWantReceived`, sharing the same process memory:
 
 ```cpp
 QObject::connect(
     QtOhosExtras::QOhosUiAbilityContext::instance(),
     &QtOhosExtras::QOhosUiAbilityContext::newWantReceived,
     [](QtOhosExtras::QOhosWant want) {
-        // 创建新的主窗口实例
+        // Create a new main window instance
         auto *window = new MainWindow();
         window->loadFromWant(want);
         window->show();
@@ -204,16 +204,16 @@ QObject::connect(
 );
 ```
 
-### 多实例多进程
+### Multi-instance, multi-process
 
-调用 `startAppProcess()` 启动独立进程，需要在 `module.json5` 中配置进程隔离：
+Call `startAppProcess()` to start a separate process; you need to configure process isolation in `module.json5`:
 
 ```cpp
-// 启动新进程
+// Start a new process
 QtOhosExtras::startAppProcess("workerProcess", want);
 ```
 
-`module.json5` 配置：
+The `module.json5` configuration:
 
 ```json
 {
@@ -226,36 +226,36 @@ QtOhosExtras::startAppProcess("workerProcess", want);
 }
 ```
 
-> **注意**：多进程模式下各进程内存不共享，需通过 IPC 机制通信。
+> **Note**: in multi-process mode the processes don't share memory, so they must communicate via IPC.
 
-## 应用退出 (Application Exit) — 3 级关闭拦截
+## Application exit — three levels of close interception
 
-这是鸿蒙生命周期中**最容易踩坑**的部分。系统在不同层级给予不同的拦截权限和时间窗口。
+This is the **most error-prone** part of the HarmonyOS lifecycle. The system grants different interception rights and time windows at different levels.
 
-### 3 级关闭拦截总览
+### The three levels at a glance
 
-| 级别 | 名称 | 触发场景 | 拦截能力 | 时间限制 |
-|------|------|---------|---------|---------|
-| **Level 1** | Window (WindowStageClose) | 用户点击窗口关闭按钮 | 完整交互：可弹对话框、显示保存提示、等待用户操作 | **无限制** |
-| **Level 2** | Ability (AbilityClose) | 任务中心/Dock 缩略图关闭 | 快速保存：不可弹 UI，只能做静默自动保存 | **有限**（系统给定超时） |
-| **Level 3** | AbilityStage | 系统关机、Dock 右键菜单 | **尚未支持**，自动降级为 Level 2 | 降级到 Level 2 |
+| Level | Name | Trigger | Interception ability | Time limit |
+|-------|------|---------|----------------------|------------|
+| **Level 1** | Window (WindowStageClose) | The user clicks the window's close button | Full interaction: you can show dialogs, save prompts, and wait for the user | **None** |
+| **Level 2** | Ability (AbilityClose) | Closing from the task center / dock thumbnail | A quick save: no UI allowed, only a silent autosave | **Limited** (a system-imposed timeout) |
+| **Level 3** | AbilityStage | System shutdown, the dock's right-click menu | **Not yet supported**; automatically degrades to level 2 | Degrades to level 2 |
 
-### 关闭方式 → 级别映射表
+### Mapping the close method to a level
 
-| 关闭方式 | 触发级别 | CloseEventRootCause | 可拦截行为 |
-|---------|---------|---------------------|-----------|
-| 主窗口关闭按钮 | Level 1 | `WindowStageClose` | Close / Hide / Minimize |
-| 子窗口关闭按钮 | Level 1 | `WindowStageClose` | Close / Hide |
-| 任务中心/Dock 缩略图 | Level 2 | `AbilityClose` | Close / Hide / Minimize（需快速完成） |
-| Dock 右键菜单 | Level 3 | 降级到 Level 2 | 同 Level 2 |
-| 系统托盘关闭 | Level 3 | 降级到 Level 2 | 同 Level 2 |
-| 系统关机 | Level 3 | 降级到 Level 2 | 同 Level 2 |
-| 任务管理器强杀 | — | — | **不可拦截** |
-| 程序内部 `close()` | — | `InternalClose` | 直接接受 |
+| Close method | Level triggered | CloseEventRootCause | What you can intercept with |
+|--------------|-----------------|---------------------|------------------------------|
+| The main window's close button | Level 1 | `WindowStageClose` | Close / Hide / Minimize |
+| A subwindow's close button | Level 1 | `WindowStageClose` | Close / Hide |
+| The task center / dock thumbnail | Level 2 | `AbilityClose` | Close / Hide / Minimize (must complete quickly) |
+| The dock's right-click menu | Level 3 | Degrades to level 2 | The same as level 2 |
+| Closing from the system tray | Level 3 | Degrades to level 2 | The same as level 2 |
+| System shutdown | Level 3 | Degrades to level 2 | The same as level 2 |
+| A force-kill from the task manager | — | — | **Not interceptable** |
+| The program calling `close()` internally | — | `InternalClose` | Just accept |
 
-### 根据关闭根因分别处理
+### Handling each root cause differently
 
-在 `closeEvent()` 中通过 `QtOhosExtras::getCloseEventRootCause()` 判断关闭来源，执行不同策略：
+In `closeEvent()`, use `QtOhosExtras::getCloseEventRootCause()` to determine where the close came from and act accordingly:
 
 ```cpp
 void MainWindow::closeEvent(QCloseEvent *event) override {
@@ -263,25 +263,25 @@ void MainWindow::closeEvent(QCloseEvent *event) override {
 
     switch (cause) {
     case QtOhosExtras::CloseEventRootCause::InternalClose:
-        // 程序内部调用 close()，直接接受
+        // The program called close() itself; just accept
         event->accept();
         break;
 
     case QtOhosExtras::CloseEventRootCause::WindowStageClose:
-        // Level 1：用户点击窗口关闭按钮
-        // 有充足时间，可以弹保存对话框等交互操作
+        // Level 1: the user clicked the window's close button
+        // There's plenty of time, so a save dialog and other interaction is fine
         if (hasUnsavedChanges()) {
-            showSaveDialog(event);  // 弹对话框让用户选择
+            showSaveDialog(event);  // let the user choose
         } else {
             event->accept();
         }
         break;
 
     case QtOhosExtras::CloseEventRootCause::AbilityClose:
-        // Level 2：任务中心/Dock 关闭
-        // 时间有限，不能弹 UI，只能快速自动保存
+        // Level 2: closed from the task center / dock
+        // Time is limited and no UI is allowed — only a quick autosave
         if (hasUnsavedChanges()) {
-            autoSave();  // 静默快速保存
+            autoSave();  // a silent, fast save
         }
         event->accept();
         break;
@@ -289,43 +289,43 @@ void MainWindow::closeEvent(QCloseEvent *event) override {
 }
 ```
 
-> **⚠️ 关键警告**：Level 2 时**绝对不能弹 UI**。如果在此级别弹出对话框，应用会卡在关闭流程中被系统强杀，用户体验极差。务必区分 Level 1 和 Level 2 的处理逻辑。
+> **⚠️ A critical warning**: at level 2 you **must never show UI**. Popping a dialog at that level makes the application hang in the close flow and get force-killed by the system, which is a terrible user experience. Always distinguish the level 1 and level 2 logic.
 
-## 应用接续 (Application Continuation)
+## Application continuation
 
-鸿蒙的核心特性之一：应用状态从一台设备无缝迁移到另一台设备（如手机 → 平板）。
+One of HarmonyOS's core features: an application's state migrates seamlessly from one device to another (phone → tablet, say).
 
-### 源设备：序列化状态
+### The source device: serialize the state
 
-连接 `continueRequestReceived` 信号，在用户发起接续时序列化当前应用状态：
+Connect to the `continueRequestReceived` signal and serialize the current application state when the user initiates continuation:
 
 ```cpp
 auto ability = QOhosAbilityContext::getInstanceForMainWindow(window.windowHandle());
 
 QObject::connect(ability.get(), &QOhosUiAbilityContext::continueRequestReceived,
     [](auto ctx) {
-        // 版本校验：确保源端和目标端应用版本一致
+        // Version check: make sure the source and target application versions match
         auto appVersion = QOhosAppContext::instance()->getBundleInfo()->versionCode();
 
         if (ctx->sourceApplicationVersionCode() == appVersion) {
-            // 序列化应用状态（payload 限制 < 100KB）
+            // Serialize the application state (the payload must be < 100 KB)
             QByteArray payload = serializeState();
             ctx->setAgreeResponse(payload);
 
-            // 可选：接续完成后是否关闭源端应用
+            // Optional: whether to close the source application after the handoff
             ctx->setExitAppOnSourceDeviceAfterMigration(false);
         } else {
-            // 版本不匹配，拒绝接续
+            // Version mismatch: refuse the continuation
             ctx->setMismatchResponse();
         }
     });
 ```
 
-> **payload 限制 < 100KB**。大型数据（如文件、数据库）应先同步到云端，接续时仅传 key 或引用。
+> **The payload limit is < 100 KB.** Large data (files, databases) should be synced to the cloud first, with only a key or reference carried across.
 
-### 目标设备冷启动 (Cold Start)
+### The target device, cold start
 
-应用未在目标设备运行时，从启动 Want 中获取接续数据：
+When the application isn't running on the target device, get the continuation data from the launch Want:
 
 ```cpp
 if (auto launchInfo = QOhosAppContext::getAppLaunchWantInfo()) {
@@ -336,14 +336,14 @@ if (auto launchInfo = QOhosAppContext::getAppLaunchWantInfo()) {
 }
 ```
 
-### 目标设备热启动 (Warm Start)
+### The target device, warm start
 
-应用已在目标设备后台运行时，通过信号接收接续数据：
+When the application is already running in the background on the target device, receive the continuation data through a signal:
 
 ```cpp
 QObject::connect(ability.get(), &QOhosUiAbilityContext::newWantInfoReceived,
     [](const QSharedPointer<QOhosWantInfo> &info) {
-        // 确认是接续启动
+        // Confirm this is a continuation launch
         if (info->launchReason() == QOhosWantInfo::LaunchReason::Continuation) {
             auto data = QtOhosExtras::tryGetOnContinueData(info->want());
             if (data) {
@@ -353,14 +353,14 @@ QObject::connect(ability.get(), &QOhosUiAbilityContext::newWantInfoReceived,
     });
 ```
 
-### ContinueQuickStart 优化
+### The ContinueQuickStart optimization
 
-在 `module.json5` 的 `continueType` 后追加 `_ContinueQuickStart` 后缀，系统将分两阶段启动目标应用：
+Appending a `_ContinueQuickStart` suffix to `continueType` in `module.json5` makes the system launch the target application in two phases:
 
-| 阶段 | LaunchReason | 用途 |
-|------|-------------|------|
-| 第一阶段 | `PrepareContinuation` | 轻量初始化，显示加载占位界面 |
-| 第二阶段 | `Continuation` | 收到完整数据，执行完整状态恢复 |
+| Phase | LaunchReason | Purpose |
+|-------|--------------|---------|
+| Phase one | `PrepareContinuation` | Lightweight initialization, showing a loading placeholder UI |
+| Phase two | `Continuation` | The full data arrives and you restore the complete state |
 
 ```json
 {
@@ -370,32 +370,32 @@ QObject::connect(ability.get(), &QOhosUiAbilityContext::newWantInfoReceived,
 }
 ```
 
-> 此优化可让用户更快看到目标应用的界面，减少接续等待时间。
+> This optimization lets the user see the target application's UI sooner, reducing the perceived handoff time.
 
-## 应用分享 (Application Sharing)
+## Application sharing
 
-通过鸿蒙 **Share Kit** 实现应用间内容分享。
+Content sharing between applications through HarmonyOS's **Share Kit**.
 
-### 发送端 (Sender)
+### The sender
 
-创建分享记录并通过 `shareDataWithShareKit` 发起分享：
+Create a share record and initiate the share with `shareDataWithShareKit`:
 
 ```cpp
 #include <QtOhosExtras/qohossharekit.h>
 
-// 创建文本内容记录
+// Create a text content record
 auto record = QtOhosExtras::ShareKit::createContentRecord(
     QMimeDatabase().mimeTypeForName("text/plain"),
-    "这是要分享的文本内容");
-record->setTitle("分享标题");
-record->setDescription("分享描述");
+    "The text content to share");
+record->setTitle("The share title");
+record->setDescription("The share description");
 
-// 发起分享（系统弹出分享面板）
+// Initiate the share (the system share sheet appears)
 auto ability = QtOhosExtras::QOhosAbilityContext::getDefaultInstance();
 ability->shareDataWithShareKit({record}, nullptr);
 ```
 
-也可以分享文件：
+You can share files too:
 
 ```cpp
 auto fileRecord = QtOhosExtras::ShareKit::createFileRecord(
@@ -403,9 +403,9 @@ auto fileRecord = QtOhosExtras::ShareKit::createFileRecord(
     "/path/to/image.png");
 ```
 
-### 接收端 (Receiver)
+### The receiver
 
-**冷启动**（从分享面板点击启动应用）：
+**Cold start** (launched by tapping in the share sheet):
 
 ```cpp
 auto launchInfo = QOhosAppContext::getAppLaunchWantInfo();
@@ -416,7 +416,7 @@ for (const auto &record : records) {
 }
 ```
 
-**热启动**（应用已在后台运行）：
+**Warm start** (the application is already running in the background):
 
 ```cpp
 QObject::connect(ability.get(), &QOhosUiAbilityContext::newWantInfoReceived,
@@ -429,36 +429,36 @@ QObject::connect(ability.get(), &QOhosUiAbilityContext::newWantInfoReceived,
     });
 ```
 
-> 接收端同样需要在 `module.json5` 的 `skills` 中声明能处理的分享 action 和 MIME type。
+> The receiver must likewise declare the share actions and MIME types it can handle in `module.json5`'s `skills`.
 
-## 无 UI 子进程 (UI-less Child Process)
+## UI-less child processes
 
-用于执行后台任务（网络同步、数据处理、定时任务等），不创建窗口，节省资源。这是鸿蒙**原生**的 .so 子进程托管方式（Child Process Manager）。
+Used for background tasks (network sync, data processing, scheduled jobs, and so on) that create no window and save resources. This is HarmonyOS's **native** .so child-process supervision mechanism (the Child Process Manager).
 
-> **与 QProcess 的关系**：无界面后台任务既可用本节 `startNoUiChildProcess`，也可直接用 `QProcess`（沙箱内可 fork/exec 无界面二进制）；有界面子进程须经 Ability 框架。决策树见 [[qt-harmonyos-api-mapping]] §1。
+> **The relationship to QProcess**: a headless background task can use either this section's `startNoUiChildProcess` or plain `QProcess` (you can fork/exec a headless binary inside the sandbox); a UI-bearing child process must go through the Ability framework. For the decision tree, see [[qt-harmonyos-api-mapping]] §1.
 
-### 启动子进程
+### Starting a child process
 
 ```cpp
-// 主进程中启动无 UI 子进程
+// Start a UI-less child process from the main process
 QtOhosExtras::QOhosAppContext::startNoUiChildProcess(
-    "libBackgroundTask.so",           // 子进程加载的共享库
-    QStringList{"task1", "param1"}    // 传递给子进程 main() 的参数
+    "libBackgroundTask.so",           // the shared library the child loads
+    QStringList{"task1", "param1"}    // arguments passed to the child's main()
 );
 ```
 
-### 子进程内检测模式
+### Detecting the mode inside the child process
 
 ```cpp
 int main(int argc, char *argv[]) {
     if (QtOhosExtras::QOhosAppContext::isNoUiChildMode()) {
-        // 无 UI 模式：不要创建 QApplication 或任何窗口
-        // 只做后台处理
+        // UI-less mode: don't create a QApplication or any window
+        // Just do the background work
         runBackgroundTask(argc, argv);
         return 0;
     }
 
-    // 正常 UI 模式
+    // The normal UI mode
     QGuiApplication app(argc, argv);
     MainWindow w;
     w.show();
@@ -466,38 +466,38 @@ int main(int argc, char *argv[]) {
 }
 ```
 
-> **要点**：无 UI 子进程中**不要创建 `QApplication` / `QGuiApplication`**，也不要初始化任何 GUI 相关资源。
+> **The key point**: in a UI-less child process, **don't create a `QApplication`/`QGuiApplication`** and don't initialize any GUI resources.
 
-### 获取子进程 PID 与 kill 子进程（待上游补丁）
+### Getting a child process's PID and killing it (an upstream patch is pending)
 
-当前 `startNoUiChildProcess` 是 `static void`，**不返回 PID、无法 kill 子进程**。原因：底层 OHOS `childProcessManager.startChildProcess` 是**异步回调**，PID 在 AsyncCallback 里才得到（原仅用于 setup-data 文件 IPC 的 key 后丢弃）；且 `childProcessManager` **只有 start、没有 stop/abort/kill**（`appManager.killProcessesByBundleName` 只能按 bundle 杀整 app）。
+Today `startNoUiChildProcess` is a `static void` that **returns no PID and offers no way to kill the child**. The reason: the underlying OHOS `childProcessManager.startChildProcess` is an **asynchronous callback**, so the PID is only available inside the AsyncCallback (where it was originally used as a key for the setup-data file IPC and then discarded); and `childProcessManager` **only has start — no stop/abort/kill** (`appManager.killProcessesByBundleName` can only kill an entire app by bundle).
 
-中望3D 诉求（补丁待上游合入）新增：
-- `Q_SIGNAL noUiChildProcessStarted(int pid, const QString &libraryName, const QStringList &args)` — 异步派发 PID（`Qt::QueuedConnection`，需事件循环在跑；PID 先于 setup-data 到达）
-- `Q_SIGNAL noUiChildProcessStartFailed(const QString &libraryName)` — 启动失败（与 started 二选一，避免伙伴永挂）
-- `static killNoUiChildProcess(int pid)` — `::kill(pid, SIGKILL)`（native，OHOS 无 stop API）
-- `static isNoUiChildProcessRunning(int pid)` — `::kill(pid, 0)` 存活探测
+The ZWSOFT request (with an upstream patch pending) adds:
+- `Q_SIGNAL noUiChildProcessStarted(int pid, const QString &libraryName, const QStringList &args)` — delivers the PID asynchronously (`Qt::QueuedConnection`, so an event loop must be running; the PID arrives before the setup data)
+- `Q_SIGNAL noUiChildProcessStartFailed(const QString &libraryName)` — a launch failure (mutually exclusive with `started`, so the partner never hangs forever)
+- `static killNoUiChildProcess(int pid)` — `::kill(pid, SIGKILL)` (native, since OHOS has no stop API)
+- `static isNoUiChildProcessRunning(int pid)` — `::kill(pid, 0)` as a liveness probe
 
-> **kill 可行性**：native `::kill(pid,SIGKILL)` 是本库已验证模式（`killCurrentProcess`、`kill(pid,0)` 存活检查），但 APP_SPAWN_FORK 子进程的 **SELinux/MAC 域 + AMS 注册表 desync**（SIGKILL 绕过 AbilityManagerService，槽残留致下次 `16000062`）为**设备级未决**，须真机验证。`startNoUiChildProcess` 签名不变（向后兼容）。
+> **How feasible is the kill?** Native `::kill(pid,SIGKILL)` is a pattern already proven in this library (`killCurrentProcess`, the `kill(pid,0)` liveness check), but the **SELinux/MAC domain of APP_SPAWN_FORK child processes + AMS registry desync** (SIGKILL bypasses the AbilityManagerService, leaving a stale slot that causes `16000062` next time) is a **device-level open question** that needs on-device verification. The `startNoUiChildProcess` signature is unchanged (backward compatible).
 
-## 参数传递 (Passing Arguments to main)
+## Passing arguments to main
 
-鸿蒙平台的 `argv` 组装规则与桌面平台有显著差异。
+The `argv` assembly rules on HarmonyOS differ significantly from desktop platforms.
 
-### argv 组装规则
+### The argv assembly rules
 
-| 索引 | 内容 | 说明 |
-|------|------|------|
-| `argv[0]` | 应用库路径（`.so`） | **不是**可执行文件路径，而是加载的共享库路径 |
-| `argv[1...]` | 来自 `appArgs` 或 Want 参数 | 按规则从 Want 中提取 |
+| Index | Content | Notes |
+|-------|---------|-------|
+| `argv[0]` | The application library path (`.so`) | **Not** an executable path, but the path of the shared library that was loaded |
+| `argv[1...]` | From `appArgs` or the Want parameters | Extracted from the Want per the rules |
 
-### Want 传参规则
+### The Want parameter rules
 
-| 参数 | 行为 |
-|------|------|
-| `want.uri` | 默认占用 `argv[1]` |
-| `want.parameters["io.qt.useUriAsArg"]` | 设为 `false` 可禁止 URI 占位 |
-| `want.parameters["io.qt.appArgs"]` | 自定义参数列表，填充 `argv[1...]` |
+| Parameter | Behavior |
+|-----------|----------|
+| `want.uri` | Occupies `argv[1]` by default |
+| `want.parameters["io.qt.useUriAsArg"]` | Set it to `false` to stop the URI from taking that slot |
+| `want.parameters["io.qt.appArgs"]` | A custom argument list that fills `argv[1...]` |
 
 ```json
 {
@@ -508,70 +508,70 @@ int main(int argc, char *argv[]) {
 }
 ```
 
-### 通过 hdc 调试传参
+### Passing arguments while debugging with hdc
 
 ```bash
-# 传递自定义参数
+# Pass custom arguments
 hdc shell aa start -a QAbility -b com.example.myapp \
   --pb io.qt.useUriAsArg false \
   --ps io.qt.appArgsJson '["--config","production","--verbose"]'
 ```
 
-### argv 组装优先级
+### The argv assembly priority
 
 ```
-1. 如果 Want 中有 io.qt.appArgs → 使用其值作为 argv[1...]
-2. 如果 want.uri 存在且 useUriAsArg 未禁用 → uri 占 argv[1]
-3. 否则 argv 仅包含 argv[0]（库路径）
+1. If the Want has io.qt.appArgs → use its values as argv[1...]
+2. Else if want.uri exists and useUriAsArg isn't disabled → the uri takes argv[1]
+3. Otherwise argv contains only argv[0] (the library path)
 ```
 
-## 主题管理 (Theme Management)
+## Theme management
 
-鸿蒙支持深色/浅色模式切换，Qt 通过 `QOhosAppContext` 提供查询和监听接口。
+HarmonyOS supports switching between dark and light modes, and Qt exposes query and listening interfaces through `QOhosAppContext`.
 
-### 查询当前主题
+### Querying the current theme
 
 ```cpp
 auto *ctx = QtOhosExtras::QOhosAppContext::instance();
 bool isDark = ctx->darkThemeActive();
 ```
 
-### 设置主题跟随策略
+### Setting the theme-following policy
 
 ```cpp
-// 跟随系统设置（默认）
+// Follow the system setting (the default)
 ctx->setColorThemeMode(
     QtOhosExtras::QOhosAppContext::ColorThemeMode::FollowSystemSetting);
 
-// 强制浅色
+// Force light
 ctx->setColorThemeMode(
     QtOhosExtras::QOhosAppContext::ColorThemeMode::LightTheme);
 
-// 强制深色
+// Force dark
 ctx->setColorThemeMode(
     QtOhosExtras::QOhosAppContext::ColorThemeMode::DarkTheme);
 ```
 
-### 监听主题变化
+### Listening for theme changes
 
 ```cpp
 QObject::connect(ctx, &QtOhosExtras::QOhosAppContext::darkThemeActiveChanged,
     [](bool dark) {
         qDebug() << "Theme changed to:" << (dark ? "Dark" : "Light");
-        // 更新 UI 颜色、图标、样式等
+        // Update UI colors, icons, styles, and so on
         updateColorScheme(dark);
     });
 ```
 
-> **最佳实践**：结合 Qt 的 QPalette 或 QSS 样式表，在主题变化信号中动态切换应用配色方案。
+> **Best practice**: combine this with Qt's QPalette or a QSS stylesheet and switch your color scheme dynamically in the theme-change signal.
 
-## 相关文档
+## Related documents
 
-- [[qt-harmonyos-overview]] — Qt 鸿蒙化总览与架构
-- [[qt-ohos-extras]] — QtOhosExtras 模块 API 详解
-- [[qt-harmonyos-api]] — API 兼容性笔记
+- [[qt-harmonyos-overview]] — An overview of Qt on HarmonyOS and its architecture
+- [[qt-ohos-extras]] — The QtOhosExtras module API in detail
+- [[qt-harmonyos-api]] — API compatibility notes
 
-## 参考来源
+## References
 
 - [Application Lifecycle on HarmonyOS](https://wiki.qt.io/Qt_for_HarmonyOS/user_development_guide/application_lifecycle_guide)
 - [Application Continuation Guide](https://wiki.qt.io/Qt_for_HarmonyOS/user_development_guide/application_continuation_guild)

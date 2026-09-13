@@ -9,269 +9,269 @@ status: active
 audience: public
 refs: [procedural-qt-bug-report-generation, procedural-framework-issue-analysis]
 summary: >
-  样例（形态 A）：Qt5.15 鸿蒙应用触发 onAcceptWant 时 @ohos.deviceInfo 裸 eval 被 ArkTS 运行时拒致崩溃；
-  triage 结论 Qt 框架（陈旧胶水模板未 eager-import 注册模块），已 Qt 侧修复。
+  A worked sample (form A): a Qt 5.15 HarmonyOS app crashes when onAcceptWant fires because a bare eval of @ohos.deviceInfo is rejected by the ArkTS runtime;
+  triage attributes it to the Qt framework (a stale glue template that never eager-imports the module to register it), and it has been fixed on the Qt side.
 ---
 
-# @ohos.deviceInfo 裸 eval 被 ArkTS 运行时拒致 onAcceptWant 崩溃
+# A bare eval of @ohos.deviceInfo is rejected by the ArkTS runtime, crashing onAcceptWant
 
-> 本页是 [[procedural-qt-bug-report-generation]] 的**形态 A 填好的样例**，基于真实 case（[[problem-runtime-crash-ohos-deviceinfo-global-expression]]）填写。照着学如何写一份给华为的完整 bug report：每个 `(A)` / `(A+B)` 段都已用真实细节填满，`(内控)` 段展示提交前自检口径。本样例的 triage 结论为 **Qt 框架归属**（非系统 bug）——同样有价值：它演示了"看似系统问题、triage 后判定非系统"的完整论证链。
+> This page is a **filled-in form-A sample** of [[procedural-qt-bug-report-generation]], based on a real case ([[problem-runtime-crash-ohos-deviceinfo-global-expression]]). Use it to learn how to write a complete bug report for Huawei: every `(A)` / `(A+B)` section is filled with real detail, and the `(internal)` sections show what a pre-submission self-check looks like. The triage verdict here is **the Qt framework** (not a system bug) — which is just as instructive: it demonstrates the full chain of reasoning for something that *looked* like a system problem but turned out not to be after triage.
 >
-> **填表分工**：`必填` 项由报告方填；`接收方补全` 项（调用链 / 系统接口表现 / 文档对比 / 纯鸿蒙 demo）由内部团队填——本样例两部分均已填足以示范。
+> **Who fills in what**: `required` items are filled in by the reporter; `filled in by the recipient` items (the call chain / system API behavior / documentation comparison / pure-HarmonyOS demo) are filled in by the internal team — in this sample both halves are filled in far enough to serve as a model.
 
-## 基本信息 (A)
+## Basic information (A)
 
-| 项目 | 内容 |
-|------|------|
-| 报告编号 | 待分配 |
-| 报告日期 | 2026-07-23 |
-| 报告人 | lzh |
-| 来源 | 内部验证 |
-| 鸿蒙 SDK 版本 | HarmonyOS 6.0.0.29（API Level 见复现环境表） |
-| 设备信息 | HUAWEI MateBook Fold（HPR-W72）/ 系统版本 6.0.0.29 / 真机 |
-| Qt 版本 | 5.15.16（分支 tqtc/harmonyos-5.15.16，OHOS SDK `-full` 全量包） |
-| 严重度 | Critical |
-| 复现率 | 必现（触发 onAcceptWant 时） |
-| 问题归属 | Qt 框架 |
+| Item | Content |
+|------|---------|
+| Report number | To be assigned |
+| Report date | 2026-07-23 |
+| Reporter | lzh |
+| Source | Internal verification |
+| HarmonyOS SDK version | HarmonyOS 6.0.0.29 (for the API level see the reproduction environment table) |
+| Device | HUAWEI MateBook Fold (HPR-W72) / system version 6.0.0.29 / physical device |
+| Qt version | 5.15.16 (branch tqtc/harmonyos-5.15.16, the OHOS SDK `-full` package) |
+| Severity | Critical |
+| Reproduction rate | Always (whenever onAcceptWant fires) |
+| Attribution | The Qt framework |
 
-## 问题概述 (A+B, 必填)
+## Problem summary (A+B, required)
 
-Qt 5.15.16 鸿蒙应用签名安装、`aa start` 后能正常启动（Qt 窗口出现、QtWatchdog 运行），但当系统下发 `onAcceptWant`（多实例拉起 / 窗口 recreate / QApplication 二次构造）时进程崩溃。faultlog `LAST_FATAL_MESSAGE` 为 `global expression doesn't start with known module path: '@ohos.deviceInfo'`，调用栈经 `QAbilityStage::OnAcceptWant → initQtAppContextImpl → qpa.setupQtApplication → libqohos initDeviceInfo → jsState.eval("@ohos.deviceInfo")`，错误由 ArkTS 运行时（libark_jsruntime.so）抛出。初步判定：错误文本出自 ArkTS 运行时而非 libqohos，疑为系统接口 / 运行时行为；待 triage 确认归属。
+A Qt 5.15.16 HarmonyOS app signs, installs and starts normally under `aa start` (the Qt window appears and QtWatchdog runs), but the process crashes as soon as the system delivers `onAcceptWant` (a multi-instance launch / window recreate / a second QApplication construction). The faultlog's `LAST_FATAL_MESSAGE` is `global expression doesn't start with known module path: '@ohos.deviceInfo'`, and the call stack runs `QAbilityStage::OnAcceptWant → initQtAppContextImpl → qpa.setupQtApplication → libqohos initDeviceInfo → jsState.eval("@ohos.deviceInfo")`, with the error thrown by the ArkTS runtime (libark_jsruntime.so). Initial assessment: the error text comes from the ArkTS runtime rather than from libqohos, so it looks like system API / runtime behavior; attribution pending triage.
 
-## 复现环境 (A+B, 必填)
+## Reproduction environment (A+B, required)
 
-> **接收方复现的硬门槛**：以下六项任一缺失即退回补全，不进入复现。
+> **A hard gate for the recipient's reproduction**: if any one of the six items below is missing, the report is sent back for completion and never enters reproduction.
 
-| 项目 | 值 | 怎么找 |
-|------|----|--------|
-| 开发机 OS | Windows 11 | 系统信息 |
-| 鸿蒙 SDK 版本 | HarmonyOS 6.0.0.29（OpenHarmony 6.0 Beta1；API Level 以 hdc 实测为准） | DevEco → 文件 → 设置 → SDK；或 `hdc shell param get const.ohos.apiversion` |
-| Qt 版本 | 5.15.16（分支 tqtc/harmonyos-5.15.16，OHOS SDK `-full` 全量包；libqohos.so 构建于 2026-07-17，515 代际，5.3MB） | `qmake -v` 或 Qt 安装目录；libqohos 代际 `strings libqohos.so \| grep "global expression"` 查无 = 515 代际 |
-| 设备 | HUAWEI MateBook Fold（HPR-W72）/ 系统版本 6.0.0.29 / 真机 | `hdc shell param get const.product.model`；`hdc shell param get const.ohos.releaseversion` |
-| 工具链 | hvigorw（DevEco Studio OHOS 工具链） | 构建工具版本 |
-| 构建模式 | debug | hvigorw 构建参数 |
+| Item | Value | How to find it |
+|------|-------|----------------|
+| Development machine OS | Windows 11 | System information |
+| HarmonyOS SDK version | HarmonyOS 6.0.0.29 (OpenHarmony 6.0 Beta1; the API level as measured with hdc is authoritative) | DevEco → File → Settings → SDK; or `hdc shell param get const.ohos.apiversion` |
+| Qt version | 5.15.16 (branch tqtc/harmonyos-5.15.16, the OHOS SDK `-full` package; libqohos.so built 2026-07-17, the 515 generation, 5.3 MB) | `qmake -v` or the Qt install directory; for the libqohos generation, `strings libqohos.so \| grep "global expression"` finding nothing = the 515 generation |
+| Device | HUAWEI MateBook Fold (HPR-W72) / system version 6.0.0.29 / physical device | `hdc shell param get const.product.model`; `hdc shell param get const.ohos.releaseversion` |
+| Toolchain | hvigorw (the DevEco Studio OHOS toolchain) | The build tool version |
+| Build mode | debug | The hvigorw build arguments |
 
-## 故障现象与症状 (A+B, 必填)
+## Symptoms (A+B, required)
 
-应用启动正常（Qt 窗口出现、QtWatchdog 持续运行），进程可存活数分钟；但当系统下发 `onAcceptWant`（多实例拉起、窗口 recreate 或 QApplication 二次构造触发）时进程崩溃。崩溃类型为 cppcrash（C++ 侧 `Napi::Error` 未捕获 → `SIGABRT`），`LAST_FATAL_MESSAGE` 即上述 `global expression doesn't start with known module path`。非启动即崩，须触发 `onAcceptWant`。必现（触发条件满足时 100%）。
+The app starts normally (the Qt window appears and QtWatchdog keeps running) and the process survives for minutes; but as soon as the system delivers `onAcceptWant` (triggered by a multi-instance launch, a window recreate, or a second QApplication construction), the process crashes. The crash is a cppcrash (an uncaught `Napi::Error` on the C++ side → `SIGABRT`), and `LAST_FATAL_MESSAGE` is the `global expression doesn't start with known module path` message above. It does not crash at startup — `onAcceptWant` has to fire. Always reproducible (100% once the trigger conditions are met).
 
-## 复现步骤 (A+B, 必填)
+## Reproduction steps (A+B, required)
 
-> **目标 3 步以内**。每步写清"在哪个界面做什么操作"，不留"照常用"这类隐含步骤。
+> **Aim for three steps or fewer**. Each step should say what to do on which screen; don't leave implicit steps like "use it normally".
 
-1. 用 Qt 5.15.16 OHOS SDK（`-full` 全量包，`CMAKE_PREFIX_PATH` 指向 `${QT5_15_OHOS_SDK_FULL}`）构建带多实例 / 二次构造的 Qt 鸿蒙应用 HAP（如 qapp-recreate-test，bundleName=`com.example.qapprecreatetest`），debug 签名，`hdc install <hap 路径>` 安装到 HUAWEI MateBook Fold 真机。
-2. `hdc shell aa start -a QAbility -b com.example.qapprecreatetest` 启动应用，确认 Qt 窗口出现、QtWatchdog 运行（应用存活）。
-3. 触发 `onAcceptWant`：再次 `aa start` 拉起同一应用（或触发窗口 recreate / QApplication 二次构造），观察进程在数秒内崩溃；`hdc shell ls -t /data/log/faultlog/temp/cppcrash/` 取最新 `cppcrash-*.json`，`LAST_FATAL_MESSAGE` 含 `global expression doesn't start with known module path: '@ohos.deviceInfo'`。
+1. With the Qt 5.15.16 OHOS SDK (the `-full` package, with `CMAKE_PREFIX_PATH` pointing at `${QT5_15_OHOS_SDK_FULL}`), build a Qt HarmonyOS HAP that does a multi-instance launch or a second construction (e.g. qapp-recreate-test, bundleName=`com.example.qapprecreatetest`), sign it debug, and `hdc install <hap path>` onto a physical HUAWEI MateBook Fold.
+2. Start it with `hdc shell aa start -a QAbility -b com.example.qapprecreatetest` and confirm the Qt window appears and QtWatchdog is running (the app is alive).
+3. Trigger `onAcceptWant`: `aa start` the same app again (or trigger a window recreate / a second QApplication construction) and watch the process crash within seconds; run `hdc shell ls -t /data/log/faultlog/temp/cppcrash/` to get the newest `cppcrash-*.json`, whose `LAST_FATAL_MESSAGE` contains `global expression doesn't start with known module path: '@ohos.deviceInfo'`.
 
-## 最小可复现 Demo (A+B, 必填)
+## Minimal reproducible demo (A+B, required)
 
-> 最有价值的交付物。**报告方**：附上你触发问题的 Qt 工程，裁掉无关代码打包即可，不需要额外造纯鸿蒙 demo——那是接收方团队的活。
+> The most valuable deliverable. **For the reporter**: attach the Qt project that triggers the problem — strip out the irrelevant code and package it. You don't need to build a separate pure-HarmonyOS demo; that's the recipient team's job.
 
-**工程结构**（报告方填）：
+**Project layout** (filled in by the reporter):
 
 ```
 qapp-recreate-test/
 ├── CMakeLists.txt
-├── main.cpp                                            # 触发 QApplication 二次构造的入口
+├── main.cpp                                            # the entry point that triggers a second QApplication construction
 ├── entry/src/main/ets/qabilitystage/QAbilityStage.ets  # onAcceptWant → initQtAppContextImpl
-├── entry/src/main/ets/qability/OhosExportModules.ts    # 陈旧最小版(仅 5 个 @kit.* lazy import, 无任何 @ohos.* import)
-├── entry/src/main/ets/qability/QtUtils.ets             # factories API(getOhosExportModulesFactories)
-└── README.md                                           # 编译运行命令
+├── entry/src/main/ets/qability/OhosExportModules.ts    # the stale minimal version (only 5 @kit.* lazy imports, no @ohos.* imports at all)
+├── entry/src/main/ets/qability/QtUtils.ets             # the factories API (getOhosExportModulesFactories)
+└── README.md                                           # build and run commands
 ```
 
-**触发代码**（报告方填，贴关键片段）：
+**The triggering code** (filled in by the reporter; paste the key fragments):
 
 ```ts
-// ❌ 模板原版 OhosExportModules.ts（来自 qtbase/src/harmonyos/templates，4/21，仅 5 个 @kit.* lazy import，无任何 @ohos.* import）
+// ❌ The stock OhosExportModules.ts template (from qtbase/src/harmonyos/templates, dated 4/21, only 5 @kit.* lazy imports and no @ohos.* imports at all)
 import lazy { textToSpeech as __kit__CoreSpeechKit__textToSpeech } from '@kit.CoreSpeechKit';
-// ... 4 个 @kit.* lazy import ...
+// ... 4 more @kit.* lazy imports ...
 export function getOhosExportModulesFactories(): object {
   return { '@kit.CoreSpeechKit.textToSpeech': () => __kit__CoreSpeechKit__textToSpeech /*, ... */ };
 }
-// → @ohos.deviceInfo 未被 eager import 注册为"已知模块路径"
+// → @ohos.deviceInfo is never eager-imported, so it is never registered as a "known module path"
 ```
 
 ```cpp
-// libqohos.so（515 代际，qohosjsmain.cpp:1677）— Qt 框架侧启动期解析 @ohos.deviceInfo 填 QOhosDeviceInfo 缓存
-auto deviceInfoObj = jsState.eval<QNapi::Object>("@ohos.deviceInfo");  // 裸全局表达式 eval
-// → ArkTS 运行时(libark_jsruntime.so) 拒绝: "global expression doesn't start with known module path: '@ohos.deviceInfo'"
+// libqohos.so (the 515 generation, qohosjsmain.cpp:1677) — the Qt framework resolves @ohos.deviceInfo at startup to populate the QOhosDeviceInfo cache
+auto deviceInfoObj = jsState.eval<QNapi::Object>("@ohos.deviceInfo");  // a bare global-expression eval
+// → the ArkTS runtime (libark_jsruntime.so) rejects it: "global expression doesn't start with known module path: '@ohos.deviceInfo'"
 ```
 
-**编译运行命令**（报告方填）：
+**Build and run commands** (filled in by the reporter):
 
 ```bash
 hvigorw assembleHap --mode debug
-hdc install <hap 路径>
+hdc install <hap path>
 hdc shell aa start -a QAbility -b com.example.qapprecreatetest
-# 触发 onAcceptWant：再次 aa start 同一 bundle，或触发窗口 recreate / QApplication 二次构造
+# Trigger onAcceptWant: aa start the same bundle again, or trigger a window recreate / a second QApplication construction
 hdc shell aa start -a QAbility -b com.example.qapprecreatetest
 ```
 
-**纯鸿蒙复现 demo**（接收方补全，A）：
+**A pure-HarmonyOS reproduction demo** (filled in by the recipient, A):
 
-> 绕过 Qt 直接用 ArkTS 调目标系统接口，证明 eval 拒绝与 Qt 无关。遵循最小化 / 独立化 / 可运行 / 对照化四原则。路径 `<deliverable_dir>/ohos-repro/`。
+> Bypass Qt and call the target system API straight from ArkTS, proving the eval rejection has nothing to do with Qt. Follow the four principles: minimal, self-contained, runnable, and controlled. Path: `<deliverable_dir>/ohos-repro/`.
 >
-> - **对照 A**：EntryAbility 中仅 `eval("@ohos.deviceInfo")`，顶部不做任何 `@ohos.*` eager import → 复现 `global expression doesn't start with known module path: '@ohos.deviceInfo'`（与 Qt 场景同一错误文本）。
-> - **对照 B**：同 demo 顶部加 `import __ohos__deviceInfo from '@ohos.deviceInfo'`（eager default-import）后，`eval("@ohos.deviceInfo")` 成功返回模块对象、`deviceType` 可读 → 证明 eager import 注册为"已知模块路径"后 eval 放行。
+> - **Control A**: an EntryAbility that only does `eval("@ohos.deviceInfo")` with no `@ohos.*` eager import at the top → reproduces `global expression doesn't start with known module path: '@ohos.deviceInfo'` (the exact same error text as the Qt case).
+> - **Control B**: the same demo with `import __ohos__deviceInfo from '@ohos.deviceInfo'` (an eager default import) added at the top → `eval("@ohos.deviceInfo")` returns the module object successfully and `deviceType` is readable, proving that the eval is allowed once an eager import has registered the path as "known".
 
-## 预期行为 (A+B, 必填)
+## Expected behavior (A+B, required)
 
-根据 HarmonyOS 官方文档，`@ohos.deviceInfo` 模块应通过 `import { deviceInfo } from '@kit.BasicServicesKit'`（或 `import deviceInfo from '@ohos.deviceInfo'`）eager import 后使用，提供 `deviceType`（string，只读）等只读常量（见 [js-apis-device-info](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/js-apis-device-info)）。Qt 框架（libqohos）启动时通过 `jsState.eval("@ohos.deviceInfo")` 解析该模块以填充 `QOhosDeviceInfo` 静态缓存——**若胶水模板已为每个 `@ohos.*` 提供 eager default-import 注册为"已知模块路径"**，该 eval 应成功返回模块对象，应用正常初始化，不崩溃。
+According to the official HarmonyOS documentation, the `@ohos.deviceInfo` module should be eager-imported via `import { deviceInfo } from '@kit.BasicServicesKit'` (or `import deviceInfo from '@ohos.deviceInfo'`) and provides read-only constants such as `deviceType` (a read-only string) — see [js-apis-device-info](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/js-apis-device-info). The Qt framework (libqohos) resolves that module at startup via `jsState.eval("@ohos.deviceInfo")` to populate the static `QOhosDeviceInfo` cache — **provided the glue template supplies an eager default import for every `@ohos.*` module so they are registered as "known module paths"**, that eval should return the module object, the app should initialize normally, and nothing should crash.
 
-## 实际行为 (A+B, 必填)
+## Actual behavior (A+B, required)
 
-实际：应用启动正常，但触发 `onAcceptWant` 时进程崩溃。faultlog `LAST_FATAL_MESSAGE` = `global expression doesn't start with known module path: '@ohos.deviceInfo'`，崩溃栈经 `initQtAppContextImpl → setupQtApplication → libqohos initDeviceInfo → jsState.eval("@ohos.deviceInfo")`，错误由 ArkTS 运行时（libark_jsruntime.so）抛出（`strings libqohos.so | grep "global expression"` 查无该错误文本 → 非 libqohos 抛）。证据见"错误信息与日志"。
+In practice the app starts normally but crashes when `onAcceptWant` fires. The faultlog's `LAST_FATAL_MESSAGE` is `global expression doesn't start with known module path: '@ohos.deviceInfo'`, the crash stack runs `initQtAppContextImpl → setupQtApplication → libqohos initDeviceInfo → jsState.eval("@ohos.deviceInfo")`, and the error is thrown by the ArkTS runtime (libark_jsruntime.so) — `strings libqohos.so | grep "global expression"` finds no such text, so it is not libqohos throwing it. For the evidence, see "Error messages and logs".
 
-## 错误信息与日志 (A+B, 必填)
+## Error messages and logs (A+B, required)
 
-**怎么抓**（复制即用）：
+**How to capture them** (copy and paste):
 
 ```bash
-# 0. 确认设备连上了
+# 0. Confirm the device is connected
 hdc list targets
-# 1. 抓 cppcrash 崩溃栈（C++ 侧崩溃才有；MateBook Fold 若 /data/log/faultlog/ 不存在先 mkdir，见调试陷阱）
+# 1. Grab the cppcrash stack (only present for C++-side crashes; on MateBook Fold, mkdir /data/log/faultlog/ first if it doesn't exist — see the debugging pitfalls)
 hdc file recv /data/log/faultlog/temp/cppcrash/ ./cppcrash
-# 2. 抓 jscrash（ArkTS/JS 异常）
+# 2. Grab jscrash (ArkTS/JS exceptions)
 hdc file recv /data/log/faultlog/temp/jscrash/ ./jscrash
-# 3. 实时 hilog（先开抓取再复现，Ctrl+C 停）
+# 3. Live hilog (start capturing before you reproduce; Ctrl+C to stop)
 hdc shell hilog | grep -iE "crash|fatal|qapprecreatetest|deviceInfo"
 ```
 
 ```
-# cppcrash-<PID>-com.example.qapprecreatetest-<timestamp>.json（关键字段节选）
+# cppcrash-<PID>-com.example.qapprecreatetest-<timestamp>.json (key fields, excerpted)
 LAST_FATAL_MESSAGE: terminating due to uncaught exception of type Napi::Error:
   global expression doesn't start with known module path: '@ohos.deviceInfo'
 >>> LAST_FATAL_MESSAGE: global expression doesn't start with known module path: '@ohos.deviceInfo'
 Reason: Signal: SIGABRT(SI_TKILL)
 PNAME: com.example.qapprecreatetest
-# 调用栈
+# Call stack
 >>> MainThread::HandleScheduleAcceptWant → JsAbilityStage::OnAcceptWant
     → initQtAppContextIfNeeded → initQtAppContextImpl (entry/src/main/ets/qabilitystage/QAbilityStage.ets)
     → qpa.setupQtApplication({modules}) → libqohos initAppData → initDeviceInfo
->>> → jsState.eval<QNapi::Object>("@ohos.deviceInfo")  ← ArkTS 运行时此处抛 Napi::Error
-栈底 .so: libqohos.so (515 代际, 5.3MB, 7/17, 无 qohosplugincore.cpp 回退) + libQt5Core.so + libark_jsruntime.so
->>> 先兆: 进程存活数分钟后(或 recreate/二次构造触发 onAcceptWant 时)才崩, 非启动即崩。
+>>> → jsState.eval<QNapi::Object>("@ohos.deviceInfo")  ← the ArkTS runtime throws Napi::Error here
+Bottom-of-stack .so files: libqohos.so (the 515 generation, 5.3MB, 7/17, no qohosplugincore.cpp fallback) + libQt5Core.so + libark_jsruntime.so
+>>> Precursor: the process lives for minutes and only then crashes (when a recreate / second construction fires onAcceptWant) — it does not crash at startup.
 ```
 
-## 场景与触发条件 (A+B)
+## Scenario and trigger conditions (A+B)
 
-业务场景：Qt 鸿蒙化应用验证多实例 / 窗口 recreate / QApplication 二次构造（qapp-recreate-test demo）。应用启动时 libqohos 通过 `jsState.eval("@ohos.deviceInfo")` 解析 `@ohos.deviceInfo` 模块，填充 `QOhosDeviceInfo` 静态缓存（设备类型判断的数据源）。触发时序：模块解析发生在 `onAcceptWant` 首次进入 `initQtAppContextImpl` 时；若 `OhosExportModules.ts` 未对 `@ohos.deviceInfo` 做 eager default-import 注册为"已知模块路径"，ArkTS 运行时在该裸 eval 处直接拒绝并抛 `Napi::Error`，libqohos 未捕获 → `SIGABRT`。数据状态：与运行时数据无关，确定性崩溃（模板缺注册即必崩）。
+The business scenario: a HarmonyOS-ported Qt app verifying multi-instance launching / window recreate / a second QApplication construction (the qapp-recreate-test demo). At startup libqohos resolves the `@ohos.deviceInfo` module through `jsState.eval("@ohos.deviceInfo")` to populate the static `QOhosDeviceInfo` cache (the data source for device-type checks). The timing: module resolution happens the first time `onAcceptWant` enters `initQtAppContextImpl`; if `OhosExportModules.ts` never eager default-imports `@ohos.deviceInfo` to register it as a "known module path", the ArkTS runtime rejects the bare eval outright and throws a `Napi::Error`, which libqohos never catches → `SIGABRT`. Data state: unrelated to runtime data; a deterministic crash (a template missing the registration always crashes).
 
-## 初步分析 (A+B; A 含三子段, B 压缩为一段)
+## Preliminary analysis (A+B; A has three subsections, B compresses it into one paragraph)
 
-> 报告方的初步根因分析。A 形态写满三子段；B 形态只保留"判定"一段话。
+> The reporter's preliminary root-cause analysis. Form A fills in all three subsections; form B keeps only the "Verdict" paragraph.
 
-### 调用链追踪 (A, 接收方补全)
+### Call chain trace (A, filled in by the recipient)
 
 ```
-[ArkTS 层]
+[ArkTS layer]
 QAbilityStage.onAcceptWant(want)                                    # entry/.../qabilitystage/QAbilityStage.ets
   → initQtAppContextIfNeeded(context)
     → initQtAppContextImpl(context)                                  # QAbilityStage.ets
-      → qpa.setupQtApplication({ modules: getModulesMapForQt() })    # 读 "modules" 字段(objects API)
-[进入 libqohos.so, 515 代际, qohosjsmain.cpp]
+      → qpa.setupQtApplication({ modules: getModulesMapForQt() })    # reads the "modules" field (the objects API)
+[into libqohos.so, the 515 generation, qohosjsmain.cpp]
   → initAppData
     → initDeviceInfo                                                 # qohosjsmain.cpp:1677
-      → jsState.eval<QNapi::Object>("@ohos.deviceInfo")              # 裸全局表达式 eval
-[进入系统侧 libark_jsruntime.so]
-  → ArkTS 运行时校验: "@ohos.deviceInfo" 是否为"已知模块路径"(已 eager import 注册)
-    → 未注册(OhosExportModules.ts 缺 @ohos.* eager import)
-      → 抛 Napi::Error: "global expression doesn't start with known module path: '@ohos.deviceInfo'"
-[libqohos 未捕获] → 异常透传/未 catch → terminate → SIGABRT
+      → jsState.eval<QNapi::Object>("@ohos.deviceInfo")              # a bare global-expression eval
+[into the system side, libark_jsruntime.so]
+  → the ArkTS runtime checks whether "@ohos.deviceInfo" is a "known module path" (registered by an eager import)
+    → not registered (OhosExportModules.ts has no @ohos.* eager imports)
+      → throws Napi::Error: "global expression doesn't start with known module path: '@ohos.deviceInfo'"
+[libqohos doesn't catch it] → the exception propagates uncaught → terminate → SIGABRT
 ```
 
-参数转换：`getModulesMapForQt()` 返回 `map<string, Object>`（objects API），libqohos 读 `"modules"` 字段消费；但陈旧模板用 factories API 返回 `() => 值`（箭头函数），`IsObject()` 返回 false → 条目被静默丢弃，`@kit.*` + LocalStorage + QEmbeddedComponentCreator 全部丢失（潜在 UI Extension / LocalStorage 故障）。
+Parameter conversion: `getModulesMapForQt()` returns a `map<string, Object>` (the objects API) and libqohos consumes the `"modules"` field; but the stale template uses the factories API and returns `() => value` (arrow functions), so `IsObject()` returns false, the entries are silently dropped, and `@kit.*` + LocalStorage + QEmbeddedComponentCreator are all lost (a latent UI Extension / LocalStorage failure).
 
-### 系统接口表现 (A, 接收方补全)
+### System API behavior (A, filled in by the recipient)
 
-系统接口：ArkTS 运行时（libark_jsruntime.so）对 `eval()` 全局表达式的解析行为。
+The system API: how the ArkTS runtime (libark_jsruntime.so) resolves a global expression passed to `eval()`.
 
-- 输入：`jsState.eval("@ohos.deviceInfo")`（以 `@ohos.` 开头的裸全局表达式）。
-- 校验规则：仅当目标模块路径已被 eager `import X from '@ohos.X'` 注册为"已知模块路径"时，才允许裸 eval；否则拒绝并抛 `global expression doesn't start with known module path`。
-- 返回 / 抛出：未注册时抛 `Napi::Error`，无返回值；已注册时返回模块命名空间对象。
-- 时序：模块路径注册发生在 bundle 加载时（eager import 执行）；裸 eval 在 `onAcceptWant` / `initQtAppContextImpl` 时才执行 → 此时若未注册即拒。
-- 副作用：抛出后 libqohos 未 catch → 进程 terminate。
-- 与文档预期对比：官方 `js-apis-device-info` 示例为 `import { deviceInfo } from '@kit.BasicServicesKit'`（eager import），未提供裸 `eval("@ohos.deviceInfo")` 用法 → 裸 eval 非文档化用法，ArkTS 运行时拒之符合模块解析安全限制。
+- Input: `jsState.eval("@ohos.deviceInfo")` (a bare global expression starting with `@ohos.`).
+- The validation rule: a bare eval is only allowed if the target module path has already been registered as a "known module path" by an eager `import X from '@ohos.X'`; otherwise it is rejected with `global expression doesn't start with known module path`.
+- Return / throw: when unregistered it throws a `Napi::Error` and returns nothing; when registered it returns the module namespace object.
+- Timing: module-path registration happens at bundle load time (when the eager import runs); the bare eval doesn't run until `onAcceptWant` / `initQtAppContextImpl` → so if nothing registered it by then, it's rejected.
+- Side effects: after the throw, libqohos doesn't catch it → the process terminates.
+- Compared with the documented expectation: the official `js-apis-device-info` example is `import { deviceInfo } from '@kit.BasicServicesKit'` (an eager import), and no bare `eval("@ohos.deviceInfo")` usage is offered → a bare eval is undocumented usage, and the ArkTS runtime rejecting it is consistent with its module-resolution security restrictions.
 
-### 直接调用验证 (A, 可选, 接收方补全)
+### Direct-call verification (A, optional, filled in by the recipient)
 
-绕过 Qt，纯鸿蒙 demo（`<deliverable_dir>/ohos-repro/`）：
+Bypassing Qt with a pure-HarmonyOS demo (`<deliverable_dir>/ohos-repro/`):
 
-- **对照 A**：EntryAbility 中仅 `eval("@ohos.deviceInfo")`，不做任何 eager import → 复现 `global expression doesn't start with known module path: '@ohos.deviceInfo'`（与 Qt 场景同一错误文本）→ 证明 eval 拒绝是 ArkTS 运行时行为，与 Qt 无关。
-- **对照 B**：同 demo 顶部加 `import __ohos__deviceInfo from '@ohos.deviceInfo'`（eager default-import）后，`eval("@ohos.deviceInfo")` 成功返回模块对象，`deviceType` 可读 → 证明 eager import 注册为"已知模块路径"后 eval 放行。
+- **Control A**: an EntryAbility that only does `eval("@ohos.deviceInfo")` with no eager import → reproduces `global expression doesn't start with known module path: '@ohos.deviceInfo'` (the same error text as the Qt case) → proving the eval rejection is ArkTS runtime behavior and has nothing to do with Qt.
+- **Control B**: the same demo with `import __ohos__deviceInfo from '@ohos.deviceInfo'` (an eager default import) added at the top → `eval("@ohos.deviceInfo")` returns the module object successfully and `deviceType` is readable → proving the eval is allowed once an eager import has registered the path as "known".
 
-结论：eval 拒绝是 ArkTS 运行时的确定性安全限制，非 Qt 引入；Qt 侧缺陷在于胶水模板未提供 eager import 注册。
+Conclusion: the eval rejection is a deterministic security restriction of the ArkTS runtime, not something Qt introduced; the defect on the Qt side is that the glue template doesn't provide the eager import that performs the registration.
 
-### 判定 (A+B, 必填)
+### Verdict (A+B, required)
 
-问题归属 = **Qt 框架**（非系统问题）。依据：①错误文本出自 ArkTS 运行时（libark_jsruntime.so），`strings libqohos.so` 查无该文本 → 是运行时抛、libqohos 透传未捕获；②纯鸿蒙 demo 直调同样复现该错误 → 与 Qt 无关的运行时行为；③官方文档示例 `@ohos.deviceInfo` 须 eager import 后使用，裸 eval 非文档化用法 → 运行时拒之符合模块解析安全限制，非系统 bug；④实际缺陷在于 Qt 侧 `qtbase/src/harmonyos/templates` 的 `OhosExportModules.ts` 陈旧（4/21）早于 libqohos（7/17），缺 `@ohos.*` eager default-import 注册 → 模块未注册 → 裸 eval 被拒 → 崩。修复方向：Qt 侧用匹配 libqohos 代际的完整版 `OhosExportModules.ts` / `QtUtils.ets`（eager default-import + objects API）替换。
+Attribution = **the Qt framework** (not a system problem). The reasoning: ① the error text comes from the ArkTS runtime (libark_jsruntime.so) and `strings libqohos.so` doesn't contain it → the runtime throws it and libqohos lets it propagate uncaught; ② a pure-HarmonyOS demo calling it directly reproduces the same error → runtime behavior unrelated to Qt; ③ the official documentation's example requires `@ohos.deviceInfo` to be eager-imported before use, and a bare eval is undocumented → the runtime rejecting it is consistent with its module-resolution security restrictions, not a system bug; ④ the actual defect is that Qt's `OhosExportModules.ts` under `qtbase/src/harmonyos/templates` is stale (dated 4/21, earlier than libqohos's 7/17) and lacks the `@ohos.*` eager default imports → the module isn't registered → the bare eval is rejected → crash. The fix: on the Qt side, replace `OhosExportModules.ts` / `QtUtils.ets` with the complete versions matching the libqohos generation (eager default imports + the objects API).
 
-## 官方文档对比 (A, 接收方补全)
+## Comparison with the official documentation (A, filled in by the recipient)
 
-| 维度 | 文档描述 | 实际表现 | 差异说明 |
-|------|----------|----------|----------|
-| 模块导入方式 | `import { deviceInfo } from '@kit.BasicServicesKit'`（eager named import）— [js-apis-device-info](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/js-apis-device-info) | libqohos 用裸 `jsState.eval("@ohos.deviceInfo")` 解析模块 | Qt 用非文档化的裸 eval；文档要求 eager import |
-| 模块路径注册时序 | eager import 在 bundle 加载时注册为"已知模块路径"，后续方可引用 — [arkts-dynamic-import](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/arkts-dynamic-import)、[module-principle](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/module-principle) | 胶水模板缺 eager import → 未注册 → 裸 eval 被拒 | 实际行为符合文档隐含的注册时序；模板未注册即 eval 触发限制 |
-| deviceType 字段 | `deviceType`: string，只读，设备类型 — [js-apis-device-info] | libqohos 解析模块后取 `deviceType`（515 代际在 eval 阶段即崩，未到取字段） | 同代际另一分支（7/14 新代际）崩在 `napi_get_named_property(obj,"deviceType")`，属另一错误文本，见 [[problem-runtime-crash-libqohos-libqt5core-version-mismatch]] |
+| Aspect | What the docs say | Actual behavior | The difference |
+|--------|-------------------|-----------------|----------------|
+| How the module is imported | `import { deviceInfo } from '@kit.BasicServicesKit'` (an eager named import) — [js-apis-device-info](https://developer.huawei.com/consumer/cn/doc/harmonyos-references/js-apis-device-info) | libqohos resolves the module with a bare `jsState.eval("@ohos.deviceInfo")` | Qt uses an undocumented bare eval; the docs call for an eager import |
+| When the module path is registered | An eager import registers the path as "known" at bundle load time, after which it may be referenced — [arkts-dynamic-import](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/arkts-dynamic-import), [module-principle](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/module-principle) | The glue template has no eager import → nothing is registered → the bare eval is rejected | The actual behavior matches the registration ordering the docs imply; evaluating without registering first hits the restriction |
+| The deviceType field | `deviceType`: a read-only string, the device type — [js-apis-device-info] | libqohos reads `deviceType` after resolving the module (the 515 generation crashes at the eval stage and never reaches the field read) | Another branch of the same generation (the new 7/14 generation) crashes in `napi_get_named_property(obj,"deviceType")` with a different error text — see [[problem-runtime-crash-libqohos-libqt5core-version-mismatch]] |
 
-> 文档来源：developer.huawei.com/consumer/cn/doc/ 的 `harmonyos-references/js-apis-device-info`、`harmonyos-guides/arkts-dynamic-import`、`harmonyos-guides/module-principle`。
+> Documentation sources: `harmonyos-references/js-apis-device-info`, `harmonyos-guides/arkts-dynamic-import` and `harmonyos-guides/module-principle` under developer.huawei.com/consumer/cn/doc/.
 
-## workaround (A+B, 可选)
+## Workaround (A+B, optional)
 
-Qt 侧绕行（已实施并真机验证）：用 qView-ohos 钦定完整版替换 4 个文件——`OhosExportModules.ts`（26 个 `@ohos.*` + 13 个 `@kit.*` eager default-import）、`QtUtils.ets`（`getModulesMapForQt()` 调 `getOhosExportModules()` 取直接对象，objects API）、`QAbilityStage.ets` / `QChildProcess.ets`（`getModulesFactoriesMapForQt()` → `getModulesMapForQt()`，2 处调用点改名；保留 QAbilityStage 的 resourceDir）。重建 `build_project(entry@default, debug)` → 装机 → 触发 onAcceptWant → 不崩、QtWatchdog 持续运行 = 修复生效。
+A Qt-side workaround (already applied and verified on a physical device): replace four files with the canonical complete versions from qView-ohos — `OhosExportModules.ts` (26 `@ohos.*` + 13 `@kit.*` eager default imports), `QtUtils.ets` (`getModulesMapForQt()` calls `getOhosExportModules()` to get the objects directly — the objects API), and `QAbilityStage.ets` / `QChildProcess.ets` (`getModulesFactoriesMapForQt()` → `getModulesMapForQt()`, renaming the two call sites; keep QAbilityStage's resourceDir). Then rebuild `build_project(entry@default, debug)` → install → trigger onAcceptWant → no crash and QtWatchdog keeps running = the fix works.
 
-副作用与风险：`@ohos.*` / `@kit.*` 清单须以 `strings libqohos.so | grep -E "^@ohos\.|^@kit\."` 取本 libqohos 实际 eval 的模块根去重对齐；libqohos 代际变更（重建）后需重新核对清单，否则新增模块 eval 仍会崩。
+Side effects and risks: the `@ohos.*` / `@kit.*` list must be derived from the modules this libqohos actually evals, by deduplicating the roots from `strings libqohos.so | grep -E "^@ohos\.|^@kit\."`; after the libqohos generation changes (a rebuild), the list has to be rechecked, or evaluating a newly added module will crash again.
 
-## 影响评估 (A+B)
+## Impact assessment (A+B)
 
-影响范围：所有用 Qt 5.15 OHOS 且触发 `onAcceptWant`（多实例 / 窗口 recreate / QApplication 二次构造）的 Qt 鸿蒙应用，只要 `OhosExportModules.ts` 早于 libqohos 构建日期、缺 `@ohos.*` eager import 即必崩。受影响模块：`@ohos.deviceInfo` / `display` / `window` / `font` / `resourceManager` / `i18n` / `intl` / `settings` / `abilityAccessCtrl` / ...（libqohos 启动期 eval 的全部 `@ohos.*` 模块），连带 `@kit.*` + LocalStorage + QEmbeddedComponentCreator（factories API 错配被静默丢弃，UI Extension / LocalStorage 潜在坏）。存在 Qt 侧 workaround（eager import 替换）。受影响：内部验证 demo（qapp-recreate-test）及所有从源码树模板生成的 5.15 代际 demo。12.x 单实例 demo 不触发（见 [[problem-runtime-crash-ohos-deviceinfo-global-expression]] 判据）。
+Scope: every Qt HarmonyOS app that uses Qt 5.15 on OHOS and triggers `onAcceptWant` (multi-instance / window recreate / a second QApplication construction) will crash, as long as `OhosExportModules.ts` predates the libqohos build date and lacks the `@ohos.*` eager imports. Affected modules: `@ohos.deviceInfo` / `display` / `window` / `font` / `resourceManager` / `i18n` / `intl` / `settings` / `abilityAccessCtrl` / ... (every `@ohos.*` module libqohos evals at startup), plus the knock-on loss of `@kit.*` + LocalStorage + QEmbeddedComponentCreator (silently dropped by the factories API mismatch, latently breaking UI Extension / LocalStorage). A Qt-side workaround exists (replacing with eager imports). Affected: the internal verification demo (qapp-recreate-test) and every 5.15-generation demo generated from the source tree's templates. 12.x single-instance demos don't trigger it (see the criteria in [[problem-runtime-crash-ohos-deviceinfo-global-expression]]).
 
-## 建议与期望 (A+B)
+## Suggestions and expectations (A+B)
 
-- **对 Qt 上游（tqtc）**：①`qtbase/src/harmonyos/templates` 的 `OhosExportModules.ts` / `QtUtils.ets` 应与 libqohos 构建同批次更新，确保 `@ohos.*` eager default-import 清单覆盖 libqohos 实际 eval 的全部模块根；②建议构建期脚本 `strings libqohos.so | grep -E "^@ohos\.|^@kit\."` 自动生成清单对齐模板，防陈旧；③模板默认 API 形式应与 libqohos 消费字段（`modules`=objects / `modulesFactories`=factories）一致。
-- **对华为**：①ArkTS 运行时对"裸 `@ohos.*` 全局表达式 eval 未注册即拒"的行为，建议在 `js-apis-device-info` / `arkts-dynamic-import` 文档中显式说明该限制与"已知模块路径"注册时序，降低 Qt 等跨语言框架踩坑；②优先级建议：medium（有 Qt 侧 workaround，非阻塞，但影响所有 5.15 代际多实例应用）。
+- **For Qt upstream (tqtc)**: ① `OhosExportModules.ts` / `QtUtils.ets` under `qtbase/src/harmonyos/templates` should be updated in the same batch as the libqohos build, so that the `@ohos.*` eager default import list covers every module root libqohos actually evals; ② a build-time script `strings libqohos.so | grep -E "^@ohos\.|^@kit\."` could generate the list automatically and keep the template aligned, preventing staleness; ③ the template's default API shape should match the field libqohos consumes (`modules`=objects / `modulesFactories`=factories).
+- **For Huawei**: ① the ArkTS runtime's behavior of rejecting a bare `@ohos.*` global-expression eval when unregistered should be stated explicitly in the `js-apis-device-info` / `arkts-dynamic-import` documentation, together with the "known module path" registration ordering, so cross-language frameworks like Qt are less likely to trip over it; ② suggested priority: medium (a Qt-side workaround exists and it isn't a blocker, but it affects every 5.15-generation multi-instance app).
 
-## 交付件清单 (A, 接收方补全)
+## Deliverables checklist (A, filled in by the recipient)
 
-> 交付目录 `${DELIVERABLES_ROOT}/<issue-name>/`（见 `ENV.md`，`<issue-name>` = `ohos-deviceinfo-bare-eval`）。
-> 注：triage 结论为 Qt 框架归属，本 form-A 对华为侧实际降级为**文档增强建议**（非系统 bug 报告），是否随交付目录外发由人工签署决定。
+> The deliverables directory is `${DELIVERABLES_ROOT}/<issue-name>/` (see `ENV.md`; `<issue-name>` = `ohos-deviceinfo-bare-eval`).
+> Note: since triage attributed this to the Qt framework, this form A is effectively downgraded for Huawei to a **documentation-enhancement suggestion** (not a system bug report); whether it goes out with the deliverables directory is a human sign-off decision.
 
-| 交付件 | 路径 | 说明 |
-|--------|------|------|
-| 系统问题报告 | `SYSTEM_ISSUE_REPORT.md` | 本文件（A 形态渲染产出） |
-| 纯鸿蒙复现 demo | `ohos-repro/` | 对照 A/B 证明 eval 拒绝与 Qt 无关 |
-| Qt 复现 demo | `qt-repro/` | qapp-recreate-test 整理（含陈旧 OhosExportModules.ts） |
-| 框架日志 | `logs/qt-framework-log.txt` | 过滤 `[OHOS-BUG-TRIAGE]` 的 hilog |
-| 直接调用日志 | `logs/direct-call-log.txt` | 纯鸿蒙 demo 直调 `eval("@ohos.deviceInfo")` 输出 |
-| 交付概览 | `README.md` | 交付物索引 |
+| Deliverable | Path | Notes |
+|-------------|------|-------|
+| The system issue report | `SYSTEM_ISSUE_REPORT.md` | This file (the rendered form-A output) |
+| The pure-HarmonyOS reproduction demo | `ohos-repro/` | Controls A/B proving the eval rejection is unrelated to Qt |
+| The Qt reproduction demo | `qt-repro/` | A tidied-up qapp-recreate-test (including the stale OhosExportModules.ts) |
+| The framework log | `logs/qt-framework-log.txt` | hilog filtered on `[OHOS-BUG-TRIAGE]` |
+| The direct-call log | `logs/direct-call-log.txt` | Output of the pure-HarmonyOS demo calling `eval("@ohos.deviceInfo")` directly |
+| The deliverables overview | `README.md` | An index of the deliverables |
 
 ---
 
-## 完整性自检 (内控, 不渲染)
+## Completeness self-check (internal, not rendered)
 
-> 填写者在提交前逐项打勾。任一 HARD 项未勾即退回补全——这是"不回头追问"的前闸。
+> The author ticks each item before submitting. Any unticked HARD item sends it back for completion — this is the front gate that keeps us from having to come back with questions.
 
-- [x] **HARD** 复现环境六项齐全（OS / SDK / Qt commit / 设备 / 工具链 / 构建模式）
-- [x] **HARD** 复现步骤 ≤3 步且无隐含操作
-- [x] **HARD** 预期行为已写（有文档 / 对照平台依据）
-- [x] **HARD** 实际行为已写（有日志 / 截图证据）
-- [x] **HARD** 错误信息为完整原文 code block（非转述）
-- [x] **HARD** 最小可复现 demo 已附（Qt 工程打包 + 编译运行命令）
-- [x] 复现状态已填（yes/partial/no）+ 复现率
-- [x] 场景与触发条件已写（为什么走到这一步）
-- [x] 初步分析"判定"段已写归属（或"不清楚"）
-- [x] (A) 官方文档对比表已填
-- [ ] (A) 纯鸿蒙复现 demo 可独立编译运行  ← 样例：对照设计已定，待接收方落地实施后补日志
-- [x] (A) 日志关键行已用 `>>>` 标注
-- [ ] (A) 交付件已放入交付目录且 README 已建  ← 样例：交付目录为占位，待人工签署外发
-- [x] ★ 人工校验：根因判定由人工签署，提交动作由人工执行
+- [x] **HARD** All six reproduction-environment items present (OS / SDK / Qt commit / device / toolchain / build mode)
+- [x] **HARD** Three reproduction steps or fewer, with no implicit operations
+- [x] **HARD** Expected behavior written down (backed by docs / a reference platform)
+- [x] **HARD** Actual behavior written down (backed by logs / screenshots)
+- [x] **HARD** The error message is the complete original text in a code block (not paraphrased)
+- [x] **HARD** A minimal reproducible demo is attached (the packaged Qt project + build and run commands)
+- [x] Reproduction status filled in (yes/partial/no) + the reproduction rate
+- [x] Scenario and trigger conditions written down (why we got here)
+- [x] The "Verdict" subsection of the preliminary analysis states an attribution (or says "unclear")
+- [x] (A) The documentation comparison table is filled in
+- [ ] (A) The pure-HarmonyOS reproduction demo builds and runs standalone  ← sample: the control design is settled; the logs follow once the recipient implements it
+- [x] (A) The key log lines are marked with `>>>`
+- [ ] (A) The deliverables are in the deliverables directory and a README exists  ← sample: the deliverables directory is a placeholder pending human sign-off to send
+- [x] ★ Human review: the root-cause verdict is signed off by a human, and a human performs the submission
 
-## 缺失信息与澄清点 (内控, 不渲染)
+## Missing information and open questions (internal, not rendered)
 
-> 列出本报告尚不清楚、需要向报告方追问的点。空 = 信息完整可直送；非空 = 先补全再提交。
-> 这是"尽量不回头追问"的后闸：把模糊处显式化，在送出前清零。
+> List what this report still doesn't know and needs to go back to the reporter about. Empty = complete and ready to send; non-empty = fill it in before submitting.
+> This is the back gate for "try not to come back with questions": make the fuzzy parts explicit and clear them before sending.
 
-- 纯鸿蒙复现 demo（`ohos-repro/`）尚未实际落地编译运行，对照 A/B 结论为基于源码与文档的推断，待接收方实施后补 `logs/direct-call-log.txt`。
-- 设备 API Level 未用 `hdc shell param get const.ohos.apiversion` 实测 pin（仅记录系统版本 6.0.0.29）。
-- "known module path" 注册时序的官方文档具体页面链接待 pin（现引用 `arkts-dynamic-import` / `module-principle` 主题页，需定位到"已知模块路径"校验的精确段落）。
-- triage 结论为 Qt 框架归属，本 form-A 对华为侧实际降级为文档增强建议（非系统 bug 报告），是否随交付目录外发由人工签署决定。
+- The pure-HarmonyOS reproduction demo (`ohos-repro/`) hasn't actually been built and run; the controls A/B conclusions are inferred from the source and the documentation, and `logs/direct-call-log.txt` follows once the recipient implements it.
+- The device's API level hasn't been pinned by actually running `hdc shell param get const.ohos.apiversion` (only the system version 6.0.0.29 is recorded).
+- The exact official documentation page for the "known module path" registration ordering still needs pinning (we currently cite the `arkts-dynamic-import` / `module-principle` topic pages; we need to locate the precise passage about the "known module path" check).
+- Triage attributed this to the Qt framework, so for Huawei this form A is effectively downgraded to a documentation-enhancement suggestion (not a system bug report); whether it goes out with the deliverables directory is a human sign-off decision.

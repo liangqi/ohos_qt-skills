@@ -1,202 +1,202 @@
 ---
 name: kb-init
 description: |
-  Qt for HarmonyOS 知识库环境初始化。检测用户是否在 ohos_qt-skills 知识库中运行，
-  如果不在则帮助下载知识库。然后完整配置 DevEco Studio、HarmonyOS SDK、Qt SDK/源码、
-  构建工具链，生成 ENV.local.md，验证环境就绪。
-  当用户说"初始化"、"配置环境"、"第一次使用"、"setup"、"install"，
-  或 ENV.local.md 不存在时，必须触发此 skill。
-  即使用户没有明确说"初始化"，只要是第一次与知识库交互，也应主动建议运行。
+  Environment initialization for the Qt for HarmonyOS knowledge base. Detects whether the user is running inside the ohos_qt-skills
+  knowledge base and helps download it if not. Then fully configures DevEco Studio, the HarmonyOS SDK, the Qt SDK/source,
+  and the build toolchain, generates ENV.local.md, and verifies the environment is ready.
+  This skill must be triggered when the user says "initialize", "configure the environment", "first time using this", "setup", or "install",
+  or when ENV.local.md doesn't exist.
+  Even if the user doesn't explicitly say "initialize", you should proactively suggest running it on their first interaction with the knowledge base.
 ---
 
-# kb-init: Qt for HarmonyOS 开发环境一键配置
+# kb-init: one-shot setup of the Qt for HarmonyOS development environment
 
-本 skill 引导你完成 Qt for HarmonyOS 开发所需的全部环境配置。整个过程分两阶段：
+This skill walks you through all the environment configuration Qt for HarmonyOS development requires. The process has two phases:
 
-1. **收集决策**（Phase 1）：Agent 逐一问你问题，你回答完后就不用再管了
-2. **自动执行**（Phase 2）：脚本自动安装、下载、配置，最后验证环境就绪
+1. **Gathering decisions** (Phase 1): the agent asks you questions one at a time; once you've answered, you're done
+2. **Automated execution** (Phase 2): the scripts install, download, and configure everything, then verify the environment is ready
 
-> 设计原则：能用脚本确定性完成的步骤，绝不让 Agent 自由发挥。Agent 只负责问你问题和调用脚本。
+> Design principle: anything a script can do deterministically should never be left to the agent's improvisation. The agent only asks you questions and invokes the scripts.
 
 ---
 
-## Phase 0: 确认知识库位置
+## Phase 0: confirm the knowledge base location
 
-在开始任何配置之前，先确认用户是否在 `ohos_qt-skills` 知识库目录中。
+Before any configuration, confirm whether the user is inside the `ohos_qt-skills` knowledge base directory.
 
-运行检测：
+Run the detection:
 ```bash
 bash skills/kb-init/scripts/detect-env.sh
 ```
 
-检查输出中的 `KB_ROOT` 和 `KB_FOUND` 字段：
+Check the `KB_ROOT` and `KB_FOUND` fields in the output:
 
-- 如果 `KB_FOUND=true`：用户已在知识库中，记录 `KB_ROOT` 值，进入 Phase 1
-- 如果 `KB_FOUND=false`：用户不在知识库中，需要先下载知识库
+- If `KB_FOUND=true`: the user is already in the knowledge base; record the `KB_ROOT` value and move to Phase 1
+- If `KB_FOUND=false`: the user isn't in the knowledge base and it needs downloading first
 
-### 下载知识库
+### Downloading the knowledge base
 
-如果 `KB_FOUND=false`，询问用户：
+If `KB_FOUND=false`, ask the user:
 
-> 你还没有下载 Qt for HarmonyOS 知识库。你希望把它下载到哪个目录？
-> 例如：`D:\dev` 或 `/Users/你的用户名/dev`
+> You haven't downloaded the Qt for HarmonyOS knowledge base yet. Which directory would you like it in?
+> For example: `D:\dev` or `/Users/yourname/dev`
 >
-> 脚本会在该目录下创建 `ohos_qt-skills/` 目录。
+> The script will create an `ohos_qt-skills/` directory inside it.
 
-记录用户指定的目录为 `KB_PARENT_DIR`，然后执行：
+Record the directory the user specifies as `KB_PARENT_DIR`, then run:
 
 ```bash
 bash skills/kb-init/scripts/clone-kb.sh --dest=<KB_PARENT_DIR>
 ```
 
-脚本会 clone `https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills.git` 到 `<KB_PARENT_DIR>/ohos_qt-skills/`。
+The script clones `https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills.git` into `<KB_PARENT_DIR>/ohos_qt-skills/`.
 
-完成后，将工作目录切换到 `<KB_PARENT_DIR>/ohos_qt-skills/`，重新运行 `detect-env.sh` 确认 `KB_FOUND=true`。
+Afterwards, change the working directory to `<KB_PARENT_DIR>/ohos_qt-skills/` and re-run `detect-env.sh` to confirm `KB_FOUND=true`.
 
-> 注意：如果用户是从知识库外部调用此 skill（比如从其他 AI 工具），Agent 需要先帮用户 clone 知识库，然后在知识库目录中继续后续步骤。
+> Note: if the user invokes this skill from outside the knowledge base (from another AI tool, for example), the agent must clone the knowledge base for them first and then continue the remaining steps inside that directory.
 
 ---
 
-## Phase 1: 收集用户决策
+## Phase 1: gather the user's decisions
 
-按以下顺序**逐一**询问用户。每个问题等用户回答后再问下一个。不要一次性列出所有问题。
+Ask the following questions **one at a time**, in order. Wait for an answer before asking the next one. Don't list them all at once.
 
-### Q1: 你的应用需要哪个 Qt 版本？
+### Q1: which Qt version does your application need?
 
-> 你的 Qt 应用需要哪个版本？
-> 1. **Qt 5.15** — 推荐，新项目使用
-> 2. **Qt 5.12** — 旧项目维护
-> 3. **不确定** — 推荐选 Qt 5.15
+> Which version does your Qt application need?
+> 1. **Qt 5.15** — recommended, for new projects
+> 2. **Qt 5.12** — for maintaining older projects
+> 3. **Not sure** — Qt 5.15 is recommended
 
-记录为 `QT_VERSION`（`5.15` / `5.12`）。
+Record this as `QT_VERSION` (`5.15` / `5.12`).
 
-### Q2: Qt 获取方式
+### Q2: how to obtain Qt
 
-根据 Q1 的版本，走不同分支：
+Branch based on the version from Q1:
 
-**如果 Q1 = 5.15**：
+**If Q1 = 5.15**:
 
-> Qt 5.15 鸿蒙版仅有商业 license 版本。你有 Qt 商业 license 吗？
-> 1. **有** — 我帮你从 Qt 官方下载源码并编译 SDK
-> 2. **没有** — Qt 5.15 需要商业 license，请联系 Qt 销售获取。或者你可以选择 Qt 5.12（有开源版本）
+> The HarmonyOS build of Qt 5.15 is only available with a commercial license. Do you have a Qt commercial license?
+> 1. **Yes** — I'll download the source from Qt and build the SDK for you
+> 2. **No** — Qt 5.15 requires a commercial license; please contact Qt sales. Alternatively, you can choose Qt 5.12 (which has an open-source release)
 
-如果用户选"没有"，回到 Q1 让用户重新选择版本。
+If the user chooses "No", go back to Q1 and let them pick a different version.
 
-**如果 Q1 = 5.12**：
+**If Q1 = 5.12**:
 
-> 你有 Qt 商业 license 吗？
-> 1. **有** — 从 Qt 官方下载源码并编译 SDK（可选 5.12 或 5.15）
-> 2. **没有** — 从 GitCode 下载开源版本（当前仅有 qt-harmonyos-src-5.12.12-20260625）
+> Do you have a Qt commercial license?
+> 1. **Yes** — download the source from Qt and build the SDK (5.12 or 5.15)
+> 2. **No** — download the open-source release from GitCode (currently only qt-harmonyos-src-5.12.12-20260625)
 
-记录为 `QT_SOURCE_METHOD`（`commercial` / `opensource`）。
+Record this as `QT_SOURCE_METHOD` (`commercial` / `opensource`).
 
-### Q3: 编译/下载参数
+### Q3: build/download options
 
-**如果 QT_SOURCE_METHOD = commercial**：
+**If QT_SOURCE_METHOD = commercial**:
 
-需要编译 SDK，询问编译参数：
+You'll need to build the SDK, so ask about the build options:
 
-> 编译 Qt SDK 需要选择几个参数：
+> Building the Qt SDK requires a few choices:
 >
-> **渲染后端**：
-> 1. **Desktop GL** — 大多数桌面开发场景，性能好
-> 2. **GLES** — 需要与 HarmonyOS 设备端渲染行为一致（调试渲染问题时使用）
+> **Rendering backend**:
+> 1. **Desktop GL** — most desktop development scenarios; good performance
+> 2. **GLES** — when you need rendering behavior to match HarmonyOS devices (for debugging rendering problems)
 >
-> **构建类型**：
-> 1. **Release** — 优化后的版本，用于正式开发
-> 2. **Debug** — 带调试信息，用于排查 Qt 框架问题
+> **Build type**:
+> 1. **Release** — the optimized build, for normal development
+> 2. **Debug** — with debug information, for investigating Qt framework problems
 
-记录为 `RENDER_BACKEND`（`gl` / `gles`）和 `BUILD_TYPE`（`release` / `debug`）。
+Record these as `RENDER_BACKEND` (`gl` / `gles`) and `BUILD_TYPE` (`release` / `debug`).
 
-**如果 QT_SOURCE_METHOD = opensource**：
+**If QT_SOURCE_METHOD = opensource**:
 
-> 开源版本当前仅有 **qt-harmonyos-src-5.12.12-20260625**。
+> The open-source release currently only has **qt-harmonyos-src-5.12.12-20260625**.
 >
-> 你需要什么？
-> 1. **源码 + 预编译 SDK 都下载** — 可以查看源码，同时直接用 SDK 开发
-> 2. **只下载预编译 SDK** — 最快上手，不需要源码
+> What do you need?
+> 1. **Both the source and the prebuilt SDK** — so you can read the source and develop against the SDK
+> 2. **Only the prebuilt SDK** — the fastest way to get started; no source needed
 
-记录为 `OPENSOURCE_DOWNLOAD`（`both` / `sdk-only`）。
+Record this as `OPENSOURCE_DOWNLOAD` (`both` / `sdk-only`).
 
-### Q4: DevEco Studio 状态
+### Q4: DevEco Studio status
 
-> 你已经安装了 DevEco Studio 吗？
-> 1. **已安装** — 请告诉我安装路径（例如 macOS: `/Applications/DevEco-Studio.app`，Windows: `C:\Program Files\Huawei\DevEco Studio`）
-> 2. **未安装** — 我会引导你安装
+> Have you installed DevEco Studio?
+> 1. **Installed** — please tell me the installation path (for example macOS: `/Applications/DevEco-Studio.app`, Windows: `C:\Program Files\Huawei\DevEco Studio`)
+> 2. **Not installed** — I'll walk you through installing it
 
-记录为 `DEVECO_STATUS`（`installed` / `not-installed`）和 `DEVECO_PATH`（如已安装）。
+Record these as `DEVECO_STATUS` (`installed` / `not-installed`) and `DEVECO_PATH` (if installed).
 
-### Q5: Git 配置
+### Q5: git configuration
 
-> 你的 git 是否已配置好用户名和邮箱？（clone 代码需要）
+> Is your git configured with a user name and email? (Cloning code requires it.)
 
-Agent 运行以下命令检查：
+Have the agent run the following to check:
 ```bash
 git config --global user.name
 git config --global user.email
 ```
 
-如果为空，询问用户的名字和邮箱，然后运行：
+If they're empty, ask for the user's name and email, then run:
 ```bash
-git config --global user.name "用户的名字"
-git config --global user.email "用户的邮箱"
+git config --global user.name "the user's name"
+git config --global user.email "the user's email"
 ```
 
-### Q6: Commercial 场景账号验证
+### Q6: account verification for the commercial scenario
 
-如果 QT_SOURCE_METHOD = commercial：
+If QT_SOURCE_METHOD = commercial:
 
-> 请确认你能访问 https://codereview.qt-project.org 。
-> 1. 在浏览器中打开这个网址
-> 2. 用你的 Qt 账号登录
-> 3. 进入 Settings → HTTP Credentials → GENERATE NEW PASSWORD
-> 4. 记下生成的**用户名**和**密码**（clone 时会用到）
+> Please confirm you can access https://codereview.qt-project.org.
+> 1. Open that URL in your browser
+> 2. Sign in with your Qt account
+> 3. Go to Settings → HTTP Credentials → GENERATE NEW PASSWORD
+> 4. Note down the generated **username** and **password** (you'll need them to clone)
 >
-> 完成后告诉我。
+> Let me know when you're done.
 
-等用户确认完成后再继续。记录用户提供的 `QT_USER` 和 `QT_PASS`。
+Wait for the user to confirm before continuing. Record the `QT_USER` and `QT_PASS` they provide.
 
 ---
 
-## Phase 2: 自动执行
+## Phase 2: automated execution
 
-Phase 1 完成后，Agent 已收集到所有必要信息。以下所有路径均基于知识库根目录（`KB_ROOT`）下的 `workspace/` 子目录。
+Once Phase 1 is complete, the agent has all the information it needs. All the paths below are under the `workspace/` subdirectory of the knowledge base root (`KB_ROOT`).
 
-### Step 1: 环境检测
+### Step 1: environment detection
 
 ```bash
 bash skills/kb-init/scripts/detect-env.sh
 ```
 
-解析输出，向用户简要展示当前环境状态。
+Parse the output and give the user a brief summary of the current environment.
 
-### Step 2: 安装 DevEco Studio（如果未安装）
+### Step 2: install DevEco Studio (if it isn't installed)
 
-如果 Q4 回答未安装，读取 `references/deveco-install.md`，根据用户 OS 引导安装。
+If the answer to Q4 was "not installed", read `references/deveco-install.md` and walk the user through installing it for their OS.
 
-安装完成后，重新运行 `detect-env.sh` 确认 `DEVECO_FOUND=true`。
+Once installed, re-run `detect-env.sh` to confirm `DEVECO_FOUND=true`.
 
-**DevEco CLI（devecocli）**：
-- macOS/Windows：DevEco Studio 安装后自带 `devecocli`，位于 `<DEVECO_PATH>/tools/devecocli`
-- Linux：需要单独下载 Command Line Tools，见 `references/deveco-install.md` Linux 章节
+**DevEco CLI (devecocli)**:
+- macOS/Windows: DevEco Studio ships `devecocli` at `<DEVECO_PATH>/tools/devecocli`
+- Linux: the Command Line Tools must be downloaded separately — see the Linux section of `references/deveco-install.md`
 
-Agent 检查 `devecocli` 是否可用：
+Have the agent check whether `devecocli` is available:
 ```bash
 command -v devecocli || ls <DEVECO_PATH>/tools/devecocli 2>/dev/null
 ```
 
-如果不可用，引导用户将其加入 PATH 或从 DevEco 下载页获取。
+If it isn't, guide the user to add it to PATH or get it from the DevEco download page.
 
-### Step 3: 平台依赖检查
+### Step 3: platform dependency check
 
-根据 OS 运行对应脚本：
+Run the script matching the OS:
 
 **macOS**:
 ```bash
 bash skills/kb-init/scripts/install-deps-macos.sh
 ```
 
-**Windows**（在 Git Bash 中运行）:
+**Windows** (run it in Git Bash):
 ```bash
 bash skills/kb-init/scripts/install-deps-linux.sh
 ```
@@ -206,22 +206,22 @@ bash skills/kb-init/scripts/install-deps-linux.sh
 bash skills/kb-init/scripts/install-deps-linux.sh
 ```
 
-**HarmonyOS**（鸿蒙 PC / 开发板 / 容器）:
+**HarmonyOS** (a HarmonyOS PC / dev board / container):
 ```bash
 bash skills/kb-init/scripts/install-deps-harmonyos.sh
 ```
 
-> **HarmonyOS 平台说明**：鸿蒙平台使用 [HarmonyBrew](https://gitcode.com/Harmonybrew) 作为包管理器（Homebrew 的鸿蒙移植版）。如果未安装 HarmonyBrew，脚本会提示安装命令：`zsh -c "$(curl -fsSL https://harmonybrew.atomgit.com/install.sh)"`。git、cmake 等依赖可通过 `brew install` 安装。
+> **A note on the HarmonyOS platform**: HarmonyOS uses [HarmonyBrew](https://gitcode.com/Harmonybrew) as its package manager (a HarmonyOS port of Homebrew). If HarmonyBrew isn't installed, the script prints the install command: `zsh -c "$(curl -fsSL https://harmonybrew.atomgit.com/install.sh)"`. Dependencies such as git and cmake can then be installed with `brew install`.
 
-脚本会检查 git、curl、cmake、Node.js、JDK、hdc、DevEco CLI 等依赖。如果有 FAIL 项，Agent 引导用户修复后重新运行。
+The scripts check dependencies such as git, curl, cmake, Node.js, the JDK, hdc, and the DevEco CLI. If anything FAILs, the agent should help the user fix it and re-run.
 
-> **cmake 是必须的**：知识库中引用 cmake 189 次，是 Qt 编译和项目构建的核心工具。如果 cmake 检查失败，必须先安装。
+> **cmake is mandatory**: the knowledge base references cmake 189 times; it's the core tool for building Qt and your projects. If the cmake check fails, it must be installed first.
 
-### Step 4: 获取 Qt 源码/SDK
+### Step 4: obtain the Qt source/SDK
 
-所有文件安装到 `KB_ROOT/workspace/` 下。
+Everything is installed under `KB_ROOT/workspace/`.
 
-**场景 A: commercial（需要源码 + 编译 SDK）**
+**Scenario A: commercial (source needed + build the SDK)**
 
 ```bash
 bash skills/kb-init/scripts/clone-qt-src.sh \
@@ -232,7 +232,7 @@ bash skills/kb-init/scripts/clone-qt-src.sh \
   --dest=<KB_ROOT>/workspace/qt-src
 ```
 
-克隆完成后，编译 SDK：
+Once the clone finishes, build the SDK:
 
 ```bash
 bash skills/kb-init/scripts/compile-qt-sdk.sh \
@@ -243,17 +243,17 @@ bash skills/kb-init/scripts/compile-qt-sdk.sh \
   --ohos-sdk-native=<OHOS_SDK_NATIVE_PATH>
 ```
 
-脚本会输出 `QT<VERSION>_OHOS_SDK=<路径>`。
+The script prints `QT<VERSION>_OHOS_SDK=<path>`.
 
-> **安全提示**：commercial 场景 clone 完成后，建议清除 git remote URL 中的凭据：
+> **Security note**: in the commercial scenario, after cloning finishes, it's a good idea to strip the credentials from the git remote URL:
 > ```bash
 > cd <KB_ROOT>/workspace/qt-src/qt<VERSION>
 > git remote set-url origin https://codereview.qt-project.org/qt/tqtc-qt5
 > ```
 
-> **详细编译指南**：如果编译遇到问题，或需要手动编译，请参阅 `references/qt-compile-guide.md`，其中包含完整的编译步骤、参数说明和故障排除指南。
+> **The detailed build guide**: if you hit build problems or need to build manually, see `references/qt-compile-guide.md`, which contains the full build steps, option descriptions, and troubleshooting.
 
-**场景 B: opensource, both（源码 + SDK）**
+**Scenario B: opensource, both (source + SDK)**
 
 ```bash
 bash skills/kb-init/scripts/clone-qt-src.sh \
@@ -262,7 +262,7 @@ bash skills/kb-init/scripts/clone-qt-src.sh \
   --dest=<KB_ROOT>/workspace/qt-src
 ```
 
-然后下载预编译 SDK：
+Then download the prebuilt SDK:
 
 ```bash
 bash skills/kb-init/scripts/download-qt-sdk.sh \
@@ -270,7 +270,7 @@ bash skills/kb-init/scripts/download-qt-sdk.sh \
   --dest=<KB_ROOT>/workspace/qt-sdk
 ```
 
-**场景 C: opensource, sdk-only（仅 SDK）**
+**Scenario C: opensource, sdk-only (the SDK only)**
 
 ```bash
 bash skills/kb-init/scripts/download-qt-sdk.sh \
@@ -278,7 +278,7 @@ bash skills/kb-init/scripts/download-qt-sdk.sh \
   --dest=<KB_ROOT>/workspace/qt-sdk
 ```
 
-### Step 5: 生成 ENV.local.md
+### Step 5: generate ENV.local.md
 
 ```bash
 bash skills/kb-init/scripts/generate-env-local.sh \
@@ -291,47 +291,47 @@ bash skills/kb-init/scripts/generate-env-local.sh \
   --ohos-sdk-native="<OHOS_SDK_NATIVE_PATH>"
 ```
 
-只传用户实际有的路径，缺失的参数不传。
+Only pass the paths the user actually has; omit the rest.
 
-Agent 向用户展示生成结果，请用户确认。
+Show the user the result and ask them to confirm.
 
-### Step 6: 验证环境
+### Step 6: verify the environment
 
 ```bash
 bash skills/kb-init/scripts/verify-env.sh
 ```
 
-- `STATUS=ready`：告知用户环境就绪
-- `STATUS=not-ready`：逐项展示 FAIL 原因，引导修复后重新验证
+- `STATUS=ready`: tell the user the environment is ready
+- `STATUS=not-ready`: show the reason for each FAIL, help them fix it, and re-verify
 
 ---
 
-## 完成标志
+## Signs of completion
 
-- 知识库已下载（如果是新安装）
-- `ENV.local.md` 已生成到 KB 根目录
-- DevEco Studio + OHOS SDK native + DevEco CLI 已就绪
-- Qt OHOS SDK 已配置
-- `verify-env.sh` 输出 `STATUS=ready`
+- The knowledge base is downloaded (for a fresh install)
+- `ENV.local.md` has been generated in the KB root
+- DevEco Studio + the OHOS SDK native toolchain + the DevEco CLI are ready
+- The Qt OHOS SDK is configured
+- `verify-env.sh` prints `STATUS=ready`
 
-## 错误处理
+## Error handling
 
-| 错误 | 处理 |
-|------|------|
-| 知识库 clone 失败 | 检查网络；手动 `git clone https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills.git` |
-| `detect-env.sh` 执行失败 | `chmod +x skills/kb-init/scripts/*.sh` |
-| DevEco 安装后检测不到 | 读取 `references/deveco-install.md` 按平台检查路径 |
-| DevEco CLI 不可用 | 检查 `<DEVECO_PATH>/tools/devecocli` 是否存在；加入 PATH |
-| git clone 失败 (commercial) | 检查 HTTP 凭据；检查网络 |
-| git clone 失败 (opensource) | 检查网络；尝试 `git config --global http.sslVerify false` |
-| SDK 下载失败 | 手动访问 https://gitcode.com/ohos-qt/qt-harmonyos-src/releases |
-| 编译 SDK 失败 (commercial) | 检查 MinGW/Perl/cmake 是否安装；参阅 `references/qt-compile-guide.md` 故障排除章节 |
-| `verify-env.sh` 报告 FAIL | 按 FAIL 项提示修复，重新运行 |
-| Linux 用户无 DevEco Studio GUI | 正常——使用 Command Line Tools |
+| Error | What to do |
+|-------|------------|
+| Cloning the knowledge base fails | Check the network; clone manually with `git clone https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills.git` |
+| `detect-env.sh` fails to run | `chmod +x skills/kb-init/scripts/*.sh` |
+| DevEco isn't detected after installing | Read `references/deveco-install.md` and check the path for your platform |
+| The DevEco CLI isn't available | Check whether `<DEVECO_PATH>/tools/devecocli` exists; add it to PATH |
+| git clone fails (commercial) | Check the HTTP credentials; check the network |
+| git clone fails (opensource) | Check the network; try `git config --global http.sslVerify false` |
+| The SDK download fails | Go to https://gitcode.com/ohos-qt/qt-harmonyos-src/releases manually |
+| Building the SDK fails (commercial) | Check that MinGW/Perl/cmake are installed; see the troubleshooting section of `references/qt-compile-guide.md` |
+| `verify-env.sh` reports FAIL | Fix each FAIL item as instructed and run it again |
+| A Linux user has no DevEco Studio GUI | That's expected — use the Command Line Tools |
 
-## 参考文档
+## Reference documents
 
-- `references/deveco-install.md` — DevEco Studio / CLI 各平台安装详细步骤
-- `references/qt-src-acquisition.md` — Qt 源码获取的两种方式详细说明
-- `references/qt-compile-guide.md` — Qt 源码编译构建完整指南（商业版用户必读，含故障排除）
-- `references/env-variables.md` — ENV.md 中所有变量的含义和用途（含 DevEco 自带工具说明）
+- `references/deveco-install.md` — Detailed per-platform installation steps for DevEco Studio / the CLI
+- `references/qt-src-acquisition.md` — Detailed descriptions of the two ways to obtain the Qt source
+- `references/qt-compile-guide.md` — The complete guide to building Qt from source (required reading for commercial users; includes troubleshooting)
+- `references/env-variables.md` — What every variable in ENV.md means and what it's for (including the tools bundled with DevEco)

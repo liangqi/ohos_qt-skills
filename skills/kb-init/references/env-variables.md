@@ -1,75 +1,75 @@
-# ENV.md 变量参考
+# ENV.md variable reference
 
-本文件说明 `ENV.local.md` 中每个变量的含义和用途。
+This file explains what each variable in `ENV.local.md` means and what it's for.
 
-## IDE 与工具路径
+## IDE and tool paths
 
-| 变量名 | 含义 | 示例值 |
-|--------|------|--------|
-| `DEVECO_PATH` | DevEco Studio 安装路径 | macOS: `/Applications/DevEco-Studio.app`<br>Windows: `C:\Program Files\Huawei\DevEco Studio` |
-| `OHOS_SDK_NATIVE` | OHOS SDK native 工具链路径（含 clang/sysroot） | macOS: `/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native` |
+| Variable | Meaning | Example value |
+|----------|---------|---------------|
+| `DEVECO_PATH` | DevEco Studio installation path | macOS: `/Applications/DevEco-Studio.app`<br>Windows: `C:\Program Files\Huawei\DevEco Studio` |
+| `OHOS_SDK_NATIVE` | OHOS SDK native toolchain path (contains clang/sysroot) | macOS: `/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native` |
 
-## DevEco 自带工具
+## Tools bundled with DevEco
 
-以下工具随 DevEco Studio 安装，无需单独安装。它们位于 `DEVECO_PATH` 下的子目录中。
+The tools below are installed with DevEco Studio; you don't need to install them separately. They live in subdirectories under `DEVECO_PATH`.
 
-> **macOS 注意**：macOS 的 `.app` 包结构中，工具在 `Contents/` 子目录下。
-> 下表路径以 Windows/Linux 为基准，macOS 用户需在 `DEVECO_PATH` 后加 `/Contents`。
+> **macOS note**: in macOS's `.app` bundle structure, the tools are under the `Contents/` subdirectory.
+> The paths in the table below are based on Windows/Linux; macOS users should add `/Contents` after `DEVECO_PATH`.
 
-| 工具 | Windows/Linux 路径 | macOS 路径 | 用途 | 引用次数 |
-|------|-------------------|------------|------|----------|
-| **devecocli** | `<DEVECO>/tools/devecocli.bat` | `<DEVECO>/Contents/tools/devecocli` | DevEco 命令行工具（构建、安装、日志） | 13 次 |
-| **hvigorw** | `<DEVECO>/tools/hvigor/bin/hvigorw.js` | `<DEVECO>/Contents/tools/hvigor/bin/hvigorw.js` | HarmonyOS 项目构建工具（类似 Gradle） | 41 次 |
-| **ohpm** | `<DEVECO>/sdk/default/openharmony/ohpm/bin/ohpm` | `<DEVECO>/Contents/sdk/default/openharmony/ohpm/bin/ohpm` | HarmonyOS 包管理器（安装依赖） | 3 次 |
-| **hdc** | `<DEVECO>/sdk/default/openharmony/toolchains/hdc.exe` | `<DEVECO>/Contents/sdk/default/openharmony/toolchains/hdc` | 设备连接器（安装应用、日志、调试） | 95 次 |
-| **clang/clang++** | `<DEVECO>/sdk/default/openharmony/native/llvm/bin/clang.exe` | `<DEVECO>/Contents/sdk/default/openharmony/native/llvm/bin/clang` | 交叉编译器（编译 C/C++ 代码） | 54+48 次 |
+| Tool | Windows/Linux path | macOS path | Purpose | References |
+|------|--------------------|------------|---------|------------|
+| **devecocli** | `<DEVECO>/tools/devecocli.bat` | `<DEVECO>/Contents/tools/devecocli` | The DevEco command-line tool (build, install, logs) | 13× |
+| **hvigorw** | `<DEVECO>/tools/hvigor/bin/hvigorw.js` | `<DEVECO>/Contents/tools/hvigor/bin/hvigorw.js` | The HarmonyOS project build tool (similar to Gradle) | 41× |
+| **ohpm** | `<DEVECO>/sdk/default/openharmony/ohpm/bin/ohpm` | `<DEVECO>/Contents/sdk/default/openharmony/ohpm/bin/ohpm` | The HarmonyOS package manager (installing dependencies) | 3× |
+| **hdc** | `<DEVECO>/sdk/default/openharmony/toolchains/hdc.exe` | `<DEVECO>/Contents/sdk/default/openharmony/toolchains/hdc` | The device connector (installing apps, logs, debugging) | 95× |
+| **clang/clang++** | `<DEVECO>/sdk/default/openharmony/native/llvm/bin/clang.exe` | `<DEVECO>/Contents/sdk/default/openharmony/native/llvm/bin/clang` | The cross-compiler (compiling C/C++ code) | 54+48× |
 
-> **提示**：建议将工具目录加入系统 PATH，这样可以直接在终端使用 `devecocli`、`hdc` 等命令。
+> **Tip**: consider adding the tool directories to your system PATH so you can use `devecocli`, `hdc`, and friends directly in a terminal.
 > - macOS: `echo 'export PATH="/Applications/DevEco-Studio.app/Contents/tools:$PATH"' >> ~/.zshrc`
-> - Windows: 系统设置 → 环境变量 → Path → 添加 `C:\Program Files\Huawei\DevEco Studio\tools`
+> - Windows: System settings → Environment variables → Path → add `C:\Program Files\Huawei\DevEco Studio\tools`
 
-## Qt 源码路径
+## Qt source paths
 
-仅当你 clone 了 Qt 源码时需要配置。使用预编译 SDK 的用户不需要。
+Only needed if you cloned the Qt source. Users of the prebuilt SDK don't need these.
 
-| 变量名 | 含义 | 示例值 |
-|--------|------|--------|
-| `QT5_12_SRC` | Qt 5.12.12 源码目录 | `/Users/you/dev/qt-src/qt5.12` |
-| `QT5_15_SRC` | Qt 5.15.16 源码目录 | `/Users/you/dev/qt-src/qt5.15` |
-| `QT6_DEV_SRC` | Qt 6 dev 主干源码（鸿蒙化进行中，仅 qtbase） | `/Users/you/dev/qt6-work/qt6-src` |
+| Variable | Meaning | Example value |
+|----------|---------|---------------|
+| `QT5_12_SRC` | Qt 5.12.12 source directory | `/Users/you/dev/qt-src/qt5.12` |
+| `QT5_15_SRC` | Qt 5.15.16 source directory | `/Users/you/dev/qt-src/qt5.15` |
+| `QT6_DEV_SRC` | Qt 6 dev trunk source (HarmonyOS porting in progress, qtbase only) | `/Users/you/dev/qt6-work/qt6-src` |
 
-## 编译产物与 SDK
+## Build artifacts and SDKs
 
-| 变量名 | 含义 | 示例值 |
-|--------|------|--------|
-| `QT_BUILD_ROOT` | Qt 编译输出目录（仅编译 Qt 框架时需要） | `/Users/you/dev/qt-build` |
-| `QT5_12_OHOS_SDK` | Qt 5.12 OHOS SDK 路径（CMake 的 CMAKE_PREFIX_PATH） | `/Users/you/dev/qt-sdk/Qt5.12.12-arm64-v8a` |
-| `QT5_15_OHOS_SDK` | Qt 5.15 OHOS SDK 路径 | `/Users/you/dev/qt-sdk/Qt5.15.16-arm64-v8a` |
+| Variable | Meaning | Example value |
+|----------|---------|---------------|
+| `QT_BUILD_ROOT` | Qt build output directory (only needed when building the Qt framework) | `/Users/you/dev/qt-build` |
+| `QT5_12_OHOS_SDK` | Qt 5.12 OHOS SDK path (CMake's CMAKE_PREFIX_PATH) | `/Users/you/dev/qt-sdk/Qt5.12.12-arm64-v8a` |
+| `QT5_15_OHOS_SDK` | Qt 5.15 OHOS SDK path | `/Users/you/dev/qt-sdk/Qt5.15.16-arm64-v8a` |
 
-## 模板
+## Templates
 
-| 变量名 | 含义 | 示例值 |
-|--------|------|--------|
-| `OHOS_TEMPLATE_SRC` | Qt 鸿蒙胶水模板路径 | 有源码: `/Users/you/dev/qt-src/qt5.12/qtbase/src/harmonyos/templates`<br>无源码: `workspace/templates` |
-| `OHOS_TEMPLATE_STANDALONE` | 独立模板归档路径（无 Qt 源码时使用，文档概念，不写入 ENV.local.md） | `workspace/templates`（从 GitCode releases 下载 `templates-0625.zip`） |
+| Variable | Meaning | Example value |
+|----------|---------|---------------|
+| `OHOS_TEMPLATE_SRC` | Path to the Qt HarmonyOS glue template | With the source: `/Users/you/dev/qt-src/qt5.12/qtbase/src/harmonyos/templates`<br>Without the source: `workspace/templates` |
+| `OHOS_TEMPLATE_STANDALONE` | Path to the standalone template archive (used when there's no Qt source; a documentation concept, not written into ENV.local.md) | `workspace/templates` (download `templates-0625.zip` from the GitCode releases) |
 
-**有 Qt 源码时**：模板内置在源码树中，`generate-env-local.sh` 自动从 `QT5_15_SRC` 或 `QT5_12_SRC` 计算。
+**When you have the Qt source**: the template is bundled in the source tree, and `generate-env-local.sh` derives it automatically from `QT5_15_SRC` or `QT5_12_SRC`.
 
-**无 Qt 源码时（仅预编译 SDK 或鸿蒙 PC）**：从 GitCode releases 页面下载独立模板归档 `templates-0625.zip`，解压到 `workspace/templates/`，手动指定 `OHOS_TEMPLATE_SRC`。
-- 下载地址: https://gitcode.com/ohos-qt/qt-harmonyos-src/releases
-- 自动下载: `bash skills/kb-init/scripts/download-template.sh --dest=workspace/templates`
+**When you don't (prebuilt SDK only, or a HarmonyOS PC)**: download the standalone template archive `templates-0625.zip` from the GitCode releases page, extract it into `workspace/templates/`, and set `OHOS_TEMPLATE_SRC` manually.
+- Download page: https://gitcode.com/ohos-qt/qt-harmonyos-src/releases
+- Automatic download: `bash skills/kb-init/scripts/download-template.sh --dest=workspace/templates`
 
-## 构建工具链（仅 Windows 编译 Qt 框架时需要）
+## Build toolchain (only needed when building the Qt framework on Windows)
 
-| 变量名 | 含义 | 示例值 |
-|--------|------|--------|
-| `MINGW_ROOT` | MinGW 工具链路径 | `C:\mingw64` |
-| `PERL_ROOT` | Strawberry Perl 路径 | `C:\Strawberry` |
+| Variable | Meaning | Example value |
+|----------|---------|---------------|
+| `MINGW_ROOT` | MinGW toolchain path | `C:\mingw64` |
+| `PERL_ROOT` | Strawberry Perl path | `C:\Strawberry` |
 
-> 应用开发者不需要这些变量。
+> Application developers don't need these variables.
 
-## 知识库内嵌内容
+## Content embedded in the knowledge base
 
-| 变量名 | 含义 | 值 |
-|--------|------|-----|
-| `OHOS_COMMON_KB_PUBLIC` | 内嵌的 HarmonyOS 平台通用知识库 | `ohos-common-kb-public/`（相对路径，无需配置） |
+| Variable | Meaning | Value |
+|----------|---------|-------|
+| `OHOS_COMMON_KB_PUBLIC` | The embedded general HarmonyOS platform knowledge base | `ohos-common-kb-public/` (a relative path; no configuration needed) |

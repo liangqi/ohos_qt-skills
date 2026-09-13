@@ -10,13 +10,13 @@ severity: medium
 audience: public
 refs: [semantic-qt-harmonyos-golden-rules]
 summary: >
-  使用 magic_enum 的 C++ 项目在 OHOS clang 下编译失败：fold 表达式嵌套层数超
-  clang 默认 bracket-depth 限制（256）。CMakeLists 添加 -fbracket-depth=1000 解决。
+  A C++ project using magic_enum fails to build under OHOS clang: the fold expression's nesting
+  exceeds clang's default bracket-depth limit (256). Adding -fbracket-depth=1000 in CMakeLists fixes it.
 leader_summary: >
-  沉淀 magic_enum fold 表达式在 OHOS clang 上的 bracket-depth 编译失败解决方案。
-impact: [编译排障, 迁移提效]
-deliverables: [problem记录]
-evidence: [xi-qt 编译日志]
+  Captured the fix for the magic_enum fold-expression bracket-depth build failure on OHOS clang.
+impact: [Build troubleshooting, Migration efficiency]
+deliverables: [problem record]
+evidence: [xi-qt build log]
 
 error_message: >
   fatal error: bracket depth exceeded in evaluation of expression
@@ -24,14 +24,14 @@ error_message: >
   constexpr int num_valid = ((valid[I] ? 1 : 0) + ...);
 error_code: ""
 keywords: [magic_enum, bracket-depth, fold-expression, fbracket-depth, clang]
-symptoms: "编译含 magic_enum 的源文件时报 bracket depth exceeded"
+symptoms: "\"bracket depth exceeded\" when compiling a source file that uses magic_enum"
 
 environment: "macOS / OHOS clang 15 / Qt 5.15.16 OHOS SDK / magic_enum header-only"
 ---
 
-# magic_enum fold 表达式 bracket-depth 超限
+# magic_enum fold expression exceeds the bracket-depth limit
 
-## 错误信息
+## Error message
 
 ```
 magic_enum.hpp:162:51: note: use -fbracket-depth=N to increase maximum nesting level
@@ -40,38 +40,38 @@ magic_enum.hpp:162:51: note: use -fbracket-depth=N to increase maximum nesting l
 1 error generated.
 ```
 
-## 场景
+## Scenario
 
-xi-qt 项目使用 magic_enum（header-only 枚举反射库），其 `line_cache.cpp` 中 `to_enum<xi::Op>` 触发 `magic_enum::enum_cast`，内部展开 257 元素的 fold 表达式，超出 clang 默认 bracket-depth（256）。
+The xi-qt project uses magic_enum (a header-only enum reflection library). In `line_cache.cpp`, `to_enum<xi::Op>` triggers `magic_enum::enum_cast`, which internally expands into a 257-element fold expression — beyond clang's default bracket-depth of 256.
 
-## 原因
+## Cause
 
-magic_enum 对大枚举（如 xi::Op 有 257 个值）使用 C++17 fold 表达式展开所有枚举值。clang 默认 `fbracket-depth=256`，fold 表达式嵌套层数超过此限制。
+For large enums (xi::Op has 257 values), magic_enum uses a C++17 fold expression to expand every enum value. clang defaults to `fbracket-depth=256`, and the fold expression's nesting exceeds that limit.
 
-## 解决方案
+## Solution
 
-CMakeLists.txt 中给目标添加编译选项：
+Add the compile option to the target in CMakeLists.txt:
 
 ```cmake
 target_compile_options(<target> PRIVATE -fbracket-depth=1000)
 ```
 
-## 注意事项
+## Notes
 
-- 仅影响含 magic_enum 且枚举值较多的项目
-- GCC 默认 bracket-depth 更高，桌面平台可能不触发
-- 值设 1000 足够覆盖大多数枚举
+- Only affects projects that use magic_enum and have enums with many values
+- GCC's default bracket-depth is higher, so desktop platforms may not hit this
+- A value of 1000 is enough to cover most enums
 
-## 成果展示
+## Results
 
-| 字段 | 内容 |
-|------|------|
-| 领导摘要 | 沉淀 magic_enum fold 表达式在 OHOS clang 上的 bracket-depth 编译失败解决方案 |
-| 影响面 | 使用 magic_enum 的 Qt 鸿蒙化迁移 |
-| 交付物 | problem 记录 |
-| 证据 | xi-qt 编译日志 |
-| 可复用方式 | 编译报 `bracket depth exceeded` 且用了 magic_enum → 加 `-fbracket-depth=1000` |
+| Field | Content |
+|-------|---------|
+| Leadership summary | Captured the fix for the magic_enum fold-expression bracket-depth build failure on OHOS clang |
+| Scope of impact | Qt-to-HarmonyOS migrations that use magic_enum |
+| Deliverable | problem record |
+| Evidence | xi-qt build log |
+| How to reuse | Build reports `bracket depth exceeded` and you use magic_enum → add `-fbracket-depth=1000` |
 
-## 相关
+## Related
 
-- [[qt-harmonyos-golden-rules]] §一（构建铁律）
+- [[qt-harmonyos-golden-rules]] §1 (Build rules)

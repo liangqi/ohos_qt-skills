@@ -9,140 +9,140 @@ status: active
 audience: public
 refs: [semantic-qt-harmonyos-porting-workflow, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-lifecycle, semantic-qt-harmonyos-api-mapping, semantic-qt-harmonyos-code-patterns, semantic-qt-harmonyos-window-model, semantic-qt-ohos-extras, semantic-qt-harmonyos-build, semantic-qt-harmonyos-third-party-libs]
 summary: >
-  Qt 鸿蒙化铁律速查：35 条黄金规则覆盖构建部署、窗口管理、API/枚举路径、
-  平台限制对 Qt 的影响、生命周期 adapter、跨平台守卫。每条含严重度（🔴🟠🟡🟢）、"为什么"和出处。
-  Agent 执行任何 Qt for HarmonyOS 任务前应先扫描此页。
+  A quick reference of the iron rules for porting Qt to HarmonyOS: 35 golden rules covering build and deployment, window management, API/enum paths,
+  how platform limitations affect Qt, lifecycle adapters, and cross-platform guards. Each rule has a severity (🔴🟠🟡🟢), a "why", and a source.
+  Agents should scan this page before performing any Qt for HarmonyOS task.
 ---
 
-# Qt 鸿蒙化铁律速查（Golden Rules）
+# Golden rules for porting Qt to HarmonyOS
 
-> **Agent 操作指引**：执行任何 Qt for HarmonyOS 相关任务前，先扫描此页。
-> 每条规则标注出处，需要细节时沿链接深入。
-> 本页是 Qt 快速决策 hub，不是平台事实的第二 canonical source。HAP/签名见 [[ohos-common-kb/semantic/hap-native-project-structure|HAP 原生工程结构与签名关系]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/hap-native-project-structure.md)）；平台限制见 [[ohos-common-kb/semantic/harmonyos-platform-limits|HarmonyOS 平台限制]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)）；Stage/UIAbility 见 [[ohos-common-kb/semantic/stage-uiability-lifecycle|Stage 模型与 UIAbility 生命周期]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)）。下表只保留这些事实会怎样影响 Qt，以及 Qt 侧必须做什么。
+> **Agent guidance**: scan this page before performing any Qt for HarmonyOS task.
+> Each rule cites its source; follow the links when you need the details.
+> This page is a quick decision hub for Qt, not a second canonical source for platform facts. For HAP/signing, see [[ohos-common-kb/semantic/hap-native-project-structure|HAP native project structure and its relationship to signing]] ([standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/hap-native-project-structure.md)); for platform limitations, see [[ohos-common-kb/semantic/harmonyos-platform-limits|HarmonyOS platform limitations]] ([standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)); for Stage/UIAbility, see [[ohos-common-kb/semantic/stage-uiability-lifecycle|The Stage model and the UIAbility lifecycle]] ([standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/stage-uiability-lifecycle.md)). The tables below keep only how those facts affect Qt and what Qt must do about them.
 >
-> **⚠️ 版本适用范围**：本规则集基于 **Qt 5.12/5.15**。Qt 6 for OHOS 有以下重大变更：
-> - **QtOhosExtras 模块不再独立存在** — 功能已内联到 QPA 插件中作为私有 API（`_p.h`），规则 B6/A3/A4/A5/A6 在 Qt6 中不适用
-> - **关闭事件 API 私有化** — `CloseEventRootCause` → `CloseRootCause`（私有），枚举值变更（`AbilityClose`→`OnPrepareToTerminate`）
-> - **CMake API 全面变更** — `find_package(Qt6...)`、`qt_add_resources()`、`qt_add_qml_modules()` 等
+> **⚠️ Version applicability**: this rule set is based on **Qt 5.12/5.15**. Qt 6 for OHOS has the following major changes:
+> - **The QtOhosExtras module no longer exists standalone** — its functionality is inlined into the QPA plugin as private API (`_p.h`), so rules B6/A3/A4/A5/A6 don't apply in Qt6
+> - **The close event API is now private** — `CloseEventRootCause` → `CloseRootCause` (private), with renamed enumerators (`AbilityClose` → `OnPrepareToTerminate`)
+> - **The CMake API changed comprehensively** — `find_package(Qt6...)`, `qt_add_resources()`, `qt_add_qml_modules()`, and so on
 >
-> Qt6 详细差异见 [[qt-harmonyos-qt6-status]]。
+> For the Qt6 differences in detail, see [[qt-harmonyos-qt6-status]].
 >
-> **严重度图例**：🔴 编译/部署阻断 | 🟠 静默失败（难调试） | 🟡 行为异常（可恢复） | 🟢 信息/最佳实践
+> **Severity legend**: 🔴 blocks the build/deployment | 🟠 silent failure (hard to debug) | 🟡 misbehavior (recoverable) | 🟢 informational / best practice
 
 ---
 
-## 一、构建与部署（12 条）
+## 1. Build and deployment (12 rules)
 
-| # | 严重度 | 规则 | 为什么 | 出处 |
-|---|:------:|------|--------|------|
-| B1 | 🔴 | CMakeLists.txt 交叉编译时**必须**在 `find_package` 前设置 `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH`（三方库同理） | OHOS 工具链默认 `ONLY`，阻止找到 Qt 和三方库 | [[qt-harmonyos-project-structure]] §4.2, [[qt-harmonyos-third-party-libs]] §2.2 |
-| B2 | 🔴 | **必须**链接 `Qt${QT_VERSION_MAJOR}::QOhosPlatformIntegrationPlugin`（QPA 平台插件） | 不链接则 `dlopen failed: libqohos.so not found` | [[qt-harmonyos-project-structure]] §4.2 |
-| B3 | 🔴 | `APP_LIBRARY_NAME`（QtAppConstants.ets）**必须**与编译产物库名完全一致（含 `lib` 前缀和 `.so` 后缀） | 不一致则 ArkTS 层无法加载 .so | [[qt-harmonyos-project-structure]] §5 |
-| B4 | 🔴 | **禁止**设置 `compileSdkVersion` 和 `targetSdkVersion` | 设置后 Schema validate failed | [[qt-harmonyos-project-structure]] §9 |
-| B5 | 🟡 | `runtimeOS` **必须**设置为 `"HarmonyOS"`（不是 `"OpenHarmony"`） | 影响应用打包和签名 | [[qt-harmonyos-project-structure]] §4.3 |
-| B6 | 🟡 | QtOhosExtras 模块**仅支持 qmake**（`CONFIG -= create_cmake`），CMake 无 find_package 支持。**Qt6**：模块不再独立存在，功能已内联到 QPA 插件 | 源码中禁用了 CMake config 生成 | [[qt-ohos-extras]] §使用方式, [[qt-harmonyos-qt6-status]] |
-| B7 | 🟡 | `libqohosstyle.so` **必须**手动复制到 `libs/${ABI_DIR}/styles/` 子目录 | 无法通过 target_link_libraries 部署到子目录 | [[qt-harmonyos-project-structure]] §6.2 |
-| B8 | 🟡 | 场景二（已有工程鸿蒙化）`build-profile.json5` 的 `path` **必须**用绝对路径 | 相对路径找不到源文件 | [[qt-harmonyos-project-structure]] §9 |
-| B9 | 🔴 | qmake 的 `unix` 分支**必须**追加 `:!ohos`（`unix:!android:!macx:!ohos`） | 否则 ohos 同时命中 unix 分支，编译出错误的 Linux 代码 | [[qt-harmonyos-code-patterns]] §模式7 |
-| B10 | 🔴 | QML 应用**必须**启用 `CMAKE_AUTORCC ON` | 不启用则 qml.qrc 不编译，QML 文件不打包，运行时黑屏 | [[qt-harmonyos-project-structure]] §4.2 |
-| B11 | 🔴 | `bundleName` 必须使用目标 SDK schema 接受的稳定点分标识，并与最终生成工程、签名 profile、安装/启动命令一致 | 身份不一致会导致校验、签名、安装或启动失败；精确字符范围由目标 SDK 判定 | [[qt-harmonyos-project-structure]] §8 |
-| B12 | 🟠 | SQL 驱动插件 `libqsqlite.so`**必须**手动复制到 `libs/${ABI_DIR}/sqldrivers/`（与 B7 `libqohosstyle.so`→`styles/`、`libqsvg.so`→`imageformats/` 同类） | 动态分类插件无法靠 `target_link_libraries` 部署，`QFactoryLoader` 按子目录 dlopen 加载；漏部署则 `addDatabase("QSQLITE")` driver 为 null，`open()` 在碰文件系统前即返回 false（`lastError="Driver not loaded"`）。注意 OHOS SDK 文件名是 `libqsqlite.so`（非桌面 `libqsqlsqlite.so`） | [[qt-harmonyos-project-structure]] §6.2, [runtime-fail-sqlite-open-database](../problems/runtime-fail-sqlite-open-database.md) |
-
----
-
-## 二、窗口管理（6 条）
-
-| # | 严重度 | 规则 | 为什么 | 出处 |
-|---|:------:|------|--------|------|
-| W1 | 🟡 | `tagWindowOrWidgetAsSubWindowOf()` **必须**在 `show()` 和 `winId()` 之前调用 | 之后调用标签不生效，窗口已被绑定为主窗口 | [[qt-harmonyos-window-model]] §Tagging |
-| W2 | 🟢 | 首个 `QWindow`/`QWidget` 自动绑定到系统主窗口，**无需** tagging | First Window Rule | [[qt-harmonyos-window-model]] §First Window Rule |
-| W3 | 🟡 | 无 parent 的 `QDialog` 会被系统视为**新主窗口**，必须 tagging 或传 parent。**关键概念**：Subwindow 的"子"是系统层面的归属关系（Dock/任务栏可见性），**不是** Qt widget 的父子关系——即使 `QWidget` 没有 Qt parent，也可以通过 tagging 成为 subwindow | 否则出现独立 Dock 图标和 Alt+Tab 条目 | [[qt-harmonyos-window-model]] §概念, §Pattern 3 |
-| W4 | 🟡 | 首个窗口**不能**启动时直接全屏，必须先 `show()` 再 `showFullScreen()` | 鸿蒙要求先完成 Ability 初始化 | [[qt-harmonyos-window-model]] §全屏 |
-| W5 | 🟡 | 主窗口 `hide()` 回退为最小化（无系统托盘时） | 与桌面平台行为不同 | [[qt-harmonyos-api]] §hide |
-| W6 | 🟠 | **不要依赖 `WINDOW_HIDDEN`/`WINDOW_SHOWN` 事件作为窗口状态同步的唯一触发源**——这些事件在文件加速/预加载场景下不触发（设备日志实证 0 次匹配）。系统可通过 WMS 直接管理窗口可见性，不走 Qt 窗口事件回调 | WMS 与 Qt 可见性状态机独立，系统推送窗口到前台时 Qt 侧 Hidden 标志可能未清除→白屏 | [[qt-harmonyos-window-model]] §WMS与Qt可见性状态机独立性, 白屏问题复盘 |
+| # | Severity | Rule | Why | Source |
+|---|:--------:|------|-----|--------|
+| B1 | 🔴 | When cross-compiling, CMakeLists.txt **must** set `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH` before `find_package` (the same applies to third-party libraries) | The OHOS toolchain defaults to `ONLY`, preventing Qt and third-party libraries from being found | [[qt-harmonyos-project-structure]] §4.2, [[qt-harmonyos-third-party-libs]] §2.2 |
+| B2 | 🔴 | You **must** link `Qt${QT_VERSION_MAJOR}::QOhosPlatformIntegrationPlugin` (the QPA platform plugin) | Without it you get `dlopen failed: libqohos.so not found` | [[qt-harmonyos-project-structure]] §4.2 |
+| B3 | 🔴 | `APP_LIBRARY_NAME` (in QtAppConstants.ets) **must** match the built library name exactly (including the `lib` prefix and `.so` suffix) | A mismatch means the ArkTS layer can't load the .so | [[qt-harmonyos-project-structure]] §5 |
+| B4 | 🔴 | **Never** set `compileSdkVersion` or `targetSdkVersion` | Setting them causes "Schema validate failed" | [[qt-harmonyos-project-structure]] §9 |
+| B5 | 🟡 | `runtimeOS` **must** be set to `"HarmonyOS"` (not `"OpenHarmony"`) | It affects application packaging and signing | [[qt-harmonyos-project-structure]] §4.3 |
+| B6 | 🟡 | The QtOhosExtras module **only supports qmake** (`CONFIG -= create_cmake`); there's no find_package support in CMake. **In Qt6**: the module no longer exists standalone, its functionality having been inlined into the QPA plugin | CMake config generation is disabled in the source | [[qt-ohos-extras]] §Usage, [[qt-harmonyos-qt6-status]] |
+| B7 | 🟡 | `libqohosstyle.so` **must** be copied manually into the `libs/${ABI_DIR}/styles/` subdirectory | target_link_libraries can't deploy into a subdirectory | [[qt-harmonyos-project-structure]] §6.2 |
+| B8 | 🟡 | In scenario two (porting an existing project), the `path` in `build-profile.json5` **must** be absolute | A relative path won't find the source files | [[qt-harmonyos-project-structure]] §9 |
+| B9 | 🔴 | qmake's `unix` branch **must** append `:!ohos` (`unix:!android:!macx:!ohos`) | Otherwise ohos also matches the unix branch and you compile the wrong (Linux) code | [[qt-harmonyos-code-patterns]] §Pattern 7 |
+| B10 | 🔴 | QML applications **must** enable `CMAKE_AUTORCC ON` | Without it, qml.qrc isn't compiled, the QML files aren't packaged, and you get a black screen at runtime | [[qt-harmonyos-project-structure]] §4.2 |
+| B11 | 🔴 | `bundleName` must be a stable dotted identifier the target SDK schema accepts, and must match the final generated project, the signing profile, and the install/launch commands | An inconsistent identity causes validation, signing, installation, or launch failures; the exact character range is determined by the target SDK | [[qt-harmonyos-project-structure]] §8 |
+| B12 | 🟠 | The SQL driver plugin `libqsqlite.so` **must** be copied manually into `libs/${ABI_DIR}/sqldrivers/` (the same class as B7's `libqohosstyle.so` → `styles/` and `libqsvg.so` → `imageformats/`) | Dynamically categorized plugins can't be deployed via `target_link_libraries`; `QFactoryLoader` dlopens them from the subdirectory. If it's missing, `addDatabase("QSQLITE")` gives a null driver and `open()` returns false before ever touching the filesystem (`lastError="Driver not loaded"`). Note that in the OHOS SDK the filename is `libqsqlite.so` (not desktop's `libqsqlsqlite.so`) | [[qt-harmonyos-project-structure]] §6.2, [runtime-fail-sqlite-open-database](../problems/runtime-fail-sqlite-open-database.md) |
 
 ---
 
-## 三、API 名称与枚举路径（6 条）
+## 2. Window management (6 rules)
 
-| # | 严重度 | 规则 | 为什么 | 出处 |
-|---|:------:|------|--------|------|
-| A1 | 🟠 | 关闭事件枚举**必须**用完整路径：`QtOhosExtras::CloseEventRootCause::AbilityClose`（不是 `QtOhosExtras::AbilityClose`）。**Qt6**：枚举重命名为 `CloseRootCause` 且已私有化 | 是 enum class，短路径编译不过 | [[qt-harmonyos-lifecycle]] §关闭事件, [[qt-harmonyos-qt6-status]] |
-| A2 | 🟠 | 主题枚举**必须**用完整路径：`QtOhosExtras::QOhosAppContext::ColorThemeMode::FollowSystemSetting`（缺 `QOhosAppContext::` 层级编译不过）。**Qt6**：枚举可能已移动或私有化 | 嵌套于 `QOhosAppContext` 的 enum class，短路径编译不过 | [[qt-harmonyos-lifecycle]] §主题, [[qt-harmonyos-qt6-status]] |
-| A3 | 🟠 | UI 信号在 `QOhosUiAbilityContext` 上（不是 `QOhosAbilityContext`）：`newWantReceived`、`continueRequestReceived`、`newWantInfoReceived`。**Qt6**：信号类可能已重构 | 基类 `QOhosAbilityContext` 无这些信号 | [[qt-harmonyos-lifecycle]] §接续/分享, [[qt-harmonyos-qt6-status]] |
-| A4 | 🟢 | 工厂方法在 `QOhosAbilityContext` 上：`getDefaultInstance()`、`getInstanceForMainWindow()`。**Qt6**：类可能已不存在 | 这些是基类的静态方法 | [[qt-harmonyos-lifecycle]] §接续, [[qt-harmonyos-qt6-status]] |
-| A5 | 🟠 | qtohosextras 头文件**只有小写**，`#include` **必须**用小写：`<QtOhosExtras/qohosappcontext.h>`（**不是** CamelCase `<QtOhosExtras/QOhosAppContext>`）。注意：与 QtCore 不同，qtohosextras **不安装 CamelCase 转发头**（实测 2026-07-23：install 后 `include/QtOhosExtras/` 下只有 `qohos*.h`，无 `QOhos*` 转发头 → CamelCase 编译报 `file not found`）。QtCore 等核心模块有 CamelCase 转发头（`QString` 等），qtohosextras 无。**Qt6**：模块不存在，头文件路径无效 | 实测：qtohosextras install 不生成 CamelCase 转发头；旧版 A5 "统一 CamelCase" 对 qtohosextras **不成立**，已修正 | [[qt-harmonyos-lifecycle]], [[qt-harmonyos-qt6-status]] |
-| A6 | 🟠 | `getCloseEventRootCause()` 是**自由函数**（`QtOhosExtras::getCloseEventRootCause(event)`），不是成员方法。**Qt6**：函数已私有化（`_p.h`） | 位于 QOhosWindowUtils 头文件 | [[qt-ohos-extras]] §关闭事件, [[qt-harmonyos-qt6-status]] |
-
----
-
-## 四、平台限制的 Qt 响应（5 条）
-
-| # | 严重度 | 规则 | 为什么 | 出处 |
-|---|:------:|------|--------|------|
-| P1 | 🟠 | 不把 `QFile::setPermissions()` 成功作为流程前提；随包文件权限在打包/安装阶段解决 | Qt wrapper 不能绕过平台权限模型 | [[qt-harmonyos-platform-limits]] §chmod |
-| P2 | 🟠 | `QFile::link()` 或依赖 symlink 的库必须提供复制/直接路径方案 | Qt 文件 API 仍受平台沙箱约束 | [[qt-harmonyos-platform-limits]] §symlink |
-| P3 | 🟠 | `QPluginLoader`/`QLibrary` 的代码产物随 HAP 放入合规 native 目录，不从普通可写数据目录加载 | Qt loader 最终仍调用平台动态加载器 | [[qt-harmonyos-platform-limits]] §dlopen |
-| P4 | 🟢 | 使用 Qt 协作式线程停止/中断，不为 OHOS 路径引入 `pthread_cancel` 假设 | Qt adapter 应保持可移植的停止语义 | [[qt-harmonyos-platform-limits]] §pthread |
-| P5 | 🟢 | Qt 时区功能走已验证的 ICU 后端，不直接扫描系统 tzdata 路径 | 框架后端必须适配平台资源可见性 | [[qt-harmonyos-platform-limits]] §时区 |
+| # | Severity | Rule | Why | Source |
+|---|:--------:|------|-----|--------|
+| W1 | 🟡 | `tagWindowOrWidgetAsSubWindowOf()` **must** be called before `show()` and `winId()` | Calling it later has no effect — the window is already bound as a main window | [[qt-harmonyos-window-model]] §Tagging |
+| W2 | 🟢 | The first `QWindow`/`QWidget` binds to the system main window automatically; **no** tagging is needed | The First Window Rule | [[qt-harmonyos-window-model]] §First Window Rule |
+| W3 | 🟡 | A parentless `QDialog` is treated by the system as a **new main window**, so you must tag it or give it a parent. **A key concept**: a subwindow's "child" relationship is a system-level ownership relation (dock/taskbar visibility), **not** a Qt widget parent-child relationship — a `QWidget` with no Qt parent can still become a subwindow through tagging | Otherwise you get a separate dock icon and Alt+Tab entry | [[qt-harmonyos-window-model]] §Concepts, §Pattern 3 |
+| W4 | 🟡 | The first window **can't** start fullscreen; you must `show()` first and then `showFullScreen()` | HarmonyOS requires Ability initialization to complete first | [[qt-harmonyos-window-model]] §Fullscreen |
+| W5 | 🟡 | `hide()` on the main window falls back to minimizing (when there's no system tray) | This differs from desktop platform behavior | [[qt-harmonyos-api]] §hide |
+| W6 | 🟠 | **Don't rely on the `WINDOW_HIDDEN`/`WINDOW_SHOWN` events as the only trigger for synchronizing window state** — they don't fire in file-acceleration/preload scenarios (device logs show 0 matches). The system can manage window visibility directly through WMS without going through Qt's window event callbacks | The WMS and Qt visibility state machines are independent, so when the system pushes a window to the foreground, Qt's Hidden flag may not be cleared → a white screen | [[qt-harmonyos-window-model]] §The independence of the WMS and Qt visibility state machines, and the white-screen retrospective |
 
 ---
 
-## 五、生命周期与 Ability（4 条）
+## 3. API names and enum paths (6 rules)
 
-| # | 严重度 | 规则 | 为什么 | 出处 |
-|---|:------:|------|--------|------|
-| L1 | 🟠 | `closeEvent()` **必须**检查 `CloseEventRootCause` 区分关闭来源。**⚠️ Level 2（AbilityClose）绝对不能弹 UI**——弹对话框会导致应用卡在关闭流程中被系统强杀。Level 1（WindowStageClose）可弹对话框，Level 2 只能静默 autoSave。**Qt6 注意**：此 API 已私有化，枚举值变更（`AbilityClose`→`OnPrepareToTerminate`），详见 [[qt-harmonyos-qt6-status]] | Level 1（用户关窗口）可弹对话框，Level 2（系统回收）**禁止弹 UI** | [[qt-harmonyos-lifecycle]] §3级关闭 |
-| L2 | 🟢 | `argv[0]` 是**库路径**（.so），不是可执行文件路径 | 鸿蒙以共享库方式加载 Qt 应用 | [[qt-harmonyos-lifecycle]] §参数传递 |
-| L3 | 🟢 | Qt event loop 由 **Stage/UIAbility** adapter 启动，不另建旧 FA 模型入口 | Qt `main()` 是被平台组件桥接的 native 入口 | [[qt-harmonyos-lifecycle]] §启动桥接 |
-| L4 | 🟢 | 子进程**按场景选**，不一刀切：无界面 `QProcess` 可用 / 有界面 Qt 用 `startAppProcess()`、`startNewAbilityInstance()` / 有界面非 Qt 用 `startAbility(want)` / 无界面需托管用 `startNoUiChildProcess()` | 不要用裸 QProcess 起带界面的子进程（GUI 须经 Ability 框架）；无界面计算保留 QProcess 即可（2026-07-21 修正，旧版"QProcess 不可用"不准确） | [[qt-harmonyos-lifecycle]] §子进程、[[qt-harmonyos-api-mapping]] §1 |
-
----
-
-## 六、跨平台守卫（2 条）
-
-| # | 严重度 | 规则 | 为什么 | 出处 |
-|---|:------:|------|--------|------|
-| G1 | 🟢 | `Q_OS_OHOS` **隐含** `Q_OS_LINUX` — `#ifdef Q_OS_LINUX` 在鸿蒙上也会命中 | 必须检查所有 Q_OS_LINUX 分支是否兼容鸿蒙 | [[qt-harmonyos-porting-workflow]] §原则1 |
-| G2 | 🟢 | 拖放事件数据**只能**在 `dropEvent` 中读取，`dragEnterEvent`/`dragMoveEvent` 中只有 MIME 类型 | 鸿蒙拖放协议数据传输是异步的 | [[qt-harmonyos-code-patterns]] §模式9 |
+| # | Severity | Rule | Why | Source |
+|---|:--------:|------|-----|--------|
+| A1 | 🟠 | Close event enumerators **must** use the fully qualified path: `QtOhosExtras::CloseEventRootCause::AbilityClose` (not `QtOhosExtras::AbilityClose`). **In Qt6**: the enum is renamed `CloseRootCause` and is now private | It's an enum class, so the short path doesn't compile | [[qt-harmonyos-lifecycle]] §Close events, [[qt-harmonyos-qt6-status]] |
+| A2 | 🟠 | Theme enumerators **must** use the fully qualified path: `QtOhosExtras::QOhosAppContext::ColorThemeMode::FollowSystemSetting` (omitting the `QOhosAppContext::` level doesn't compile). **In Qt6**: the enum may have moved or become private | It's an enum class nested inside `QOhosAppContext`, so the short path doesn't compile | [[qt-harmonyos-lifecycle]] §Themes, [[qt-harmonyos-qt6-status]] |
+| A3 | 🟠 | The UI signals live on `QOhosUiAbilityContext` (not `QOhosAbilityContext`): `newWantReceived`, `continueRequestReceived`, `newWantInfoReceived`. **In Qt6**: the signal classes may have been restructured | The base class `QOhosAbilityContext` doesn't have these signals | [[qt-harmonyos-lifecycle]] §Continuation/sharing, [[qt-harmonyos-qt6-status]] |
+| A4 | 🟢 | The factory methods live on `QOhosAbilityContext`: `getDefaultInstance()`, `getInstanceForMainWindow()`. **In Qt6**: the class may no longer exist | These are the base class's static methods | [[qt-harmonyos-lifecycle]] §Continuation, [[qt-harmonyos-qt6-status]] |
+| A5 | 🟠 | qtohosextras headers are **lowercase only**, so `#include` **must** use lowercase: `<QtOhosExtras/qohosappcontext.h>` (**not** the CamelCase `<QtOhosExtras/QOhosAppContext>`). Note: unlike QtCore, qtohosextras **doesn't install CamelCase forwarding headers** (measured 2026-07-23: after install, `include/QtOhosExtras/` contains only `qohos*.h` with no `QOhos*` forwarding headers → CamelCase gives `file not found`). Core modules such as QtCore do have CamelCase forwarding headers (`QString` and friends); qtohosextras doesn't. **In Qt6**: the module doesn't exist, so these header paths are invalid | Measured: qtohosextras's install doesn't generate CamelCase forwarding headers; the old A5 rule ("always use CamelCase") does **not** hold for qtohosextras and has been corrected | [[qt-harmonyos-lifecycle]], [[qt-harmonyos-qt6-status]] |
+| A6 | 🟠 | `getCloseEventRootCause()` is a **free function** (`QtOhosExtras::getCloseEventRootCause(event)`), not a member method. **In Qt6**: the function is now private (`_p.h`) | It lives in the QOhosWindowUtils header | [[qt-ohos-extras]] §Close events, [[qt-harmonyos-qt6-status]] |
 
 ---
 
-## 快速决策流
+## 4. Qt's response to platform limitations (5 rules)
 
-> 完整路由详见 [[_task-routing|任务路由表]]。以下为紧凑版：
+| # | Severity | Rule | Why | Source |
+|---|:--------:|------|-----|--------|
+| P1 | 🟠 | Don't make a successful `QFile::setPermissions()` a prerequisite for your flow; resolve permissions for packaged files at packaging/installation time | A Qt wrapper can't bypass the platform's permission model | [[qt-harmonyos-platform-limits]] §chmod |
+| P2 | 🟠 | `QFile::link()` — or any library that depends on symlinks — must offer a copy/direct-path alternative | Qt's file APIs are still bound by the platform sandbox | [[qt-harmonyos-platform-limits]] §symlink |
+| P3 | 🟠 | Code artifacts for `QPluginLoader`/`QLibrary` go into the compliant native directory with the HAP, not loaded from an ordinary writable data directory | Qt's loader ultimately calls the platform's dynamic loader | [[qt-harmonyos-platform-limits]] §dlopen |
+| P4 | 🟢 | Use Qt's cooperative thread stopping/interruption; don't introduce `pthread_cancel` assumptions on the OHOS path | A Qt adapter should keep portable stop semantics | [[qt-harmonyos-platform-limits]] §pthread |
+| P5 | 🟢 | Qt time zone functionality should go through the verified ICU backend rather than scanning system tzdata paths directly | A framework backend must adapt to the platform's resource visibility | [[qt-harmonyos-platform-limits]] §Time zones |
+
+---
+
+## 5. Lifecycle and Ability (4 rules)
+
+| # | Severity | Rule | Why | Source |
+|---|:--------:|------|-----|--------|
+| L1 | 🟠 | `closeEvent()` **must** check `CloseEventRootCause` to distinguish where the close came from. **⚠️ Level 2 (AbilityClose) must never show UI** — popping a dialog makes the application hang in the close flow and get force-killed by the system. Level 1 (WindowStageClose) may show a dialog; Level 2 can only autosave silently. **Qt6 note**: this API is now private and the enumerators changed (`AbilityClose` → `OnPrepareToTerminate`); see [[qt-harmonyos-qt6-status]] | Level 1 (the user closed the window) may show a dialog; Level 2 (the system is reclaiming it) **must not show UI** | [[qt-harmonyos-lifecycle]] §The three close levels |
+| L2 | 🟢 | `argv[0]` is the **library path** (the .so), not an executable path | HarmonyOS loads Qt applications as shared libraries | [[qt-harmonyos-lifecycle]] §Passing arguments |
+| L3 | 🟢 | The Qt event loop is started by the **Stage/UIAbility** adapter; don't build a separate legacy FA-model entry point | Qt's `main()` is a native entry point bridged by platform components | [[qt-harmonyos-lifecycle]] §Launch bridging |
+| L4 | 🟢 | Choose your child-process mechanism **by scenario** rather than uniformly: headless can use `QProcess` / a Qt UI uses `startAppProcess()` or `startNewAbilityInstance()` / a non-Qt UI uses `startAbility(want)` / headless work that needs supervision uses `startNoUiChildProcess()` | Don't use a bare QProcess to start a child process with a UI (GUIs must go through the Ability framework); headless computation can keep using QProcess (corrected 2026-07-21 — the old "QProcess is unavailable" claim was inaccurate) | [[qt-harmonyos-lifecycle]] §Child processes, [[qt-harmonyos-api-mapping]] §1 |
+
+---
+
+## 6. Cross-platform guards (2 rules)
+
+| # | Severity | Rule | Why | Source |
+|---|:--------:|------|-----|--------|
+| G1 | 🟢 | `Q_OS_OHOS` **implies** `Q_OS_LINUX` — `#ifdef Q_OS_LINUX` is also taken on HarmonyOS | You must check every Q_OS_LINUX branch for HarmonyOS compatibility | [[qt-harmonyos-porting-workflow]] §Principle 1 |
+| G2 | 🟢 | Drag-and-drop event data can **only** be read in `dropEvent`; `dragEnterEvent`/`dragMoveEvent` only have the MIME types | HarmonyOS's drag-and-drop protocol transfers data asynchronously | [[qt-harmonyos-code-patterns]] §Pattern 9 |
+
+---
+
+## Quick decision flow
+
+> For the full routing, see [[_task-routing|the task routing table]]. Here's the compact version:
 
 ```
-收到 Qt for HarmonyOS 任务
+A Qt for HarmonyOS task arrives
     │
-    ├─ 移植整个应用？        → porting-workflow（8 步） + 本页全部
-    ├─ API 怎么替换？        → api-mapping（12 类映射）
-    ├─ 模块是否支持？        → modules
-    ├─ 平台限制？            → platform-limits
-    ├─ 构建/部署出问题？     → 本页 B1-B12 + project-structure
-    ├─ 窗口行为异常？        → 本页 W1-W6 + window-model
-    ├─ 编译报 API 不存在？   → 本页 A1-A6 + ohos-extras
-    ├─ 生命周期/closeEvent？ → 本页 L1-L4 + lifecycle
-    ├─ QtOhosExtras 怎么用？ → ohos-extras
-    ├─ Qt 6 相关？           → qt6-status
-    ├─ 三方库/依赖？         → third-party-libs
-    └─ DevEco/MCP/工具链？   → common DevEco CLI/MCP 页面 + qt-harmonyos-build-run-workflow
+    ├─ Port an entire application?     → porting-workflow (8 steps) + all of this page
+    ├─ How do I replace an API?        → api-mapping (12 mapping categories)
+    ├─ Is a module supported?          → modules
+    ├─ Platform limitations?           → platform-limits
+    ├─ A build/deployment problem?     → B1-B12 on this page + project-structure
+    ├─ Odd window behavior?            → W1-W6 on this page + window-model
+    ├─ The build says an API is missing? → A1-A6 on this page + ohos-extras
+    ├─ Lifecycle/closeEvent?           → L1-L4 on this page + lifecycle
+    ├─ How do I use QtOhosExtras?      → ohos-extras
+    ├─ Something about Qt 6?           → qt6-status
+    ├─ Third-party libs/dependencies?  → third-party-libs
+    └─ DevEco/MCP/toolchain?           → the common DevEco CLI/MCP pages + qt-harmonyos-build-run-workflow
 ```
 
 ---
 
-## 参考来源
+## References
 
-本页蒸馏自以下知识页，需要细节时沿链接深入：
+This page is distilled from the knowledge pages below; follow the links for the details:
 
-- [[qt-harmonyos-porting-workflow]] — 8 步决策树
-- [[qt-harmonyos-project-structure]] — 工程结构与铁律清单
-- [[qt-harmonyos-platform-limits]] — 平台限制的 Qt/QML/QPA 影响 + QTBUG 编号
-- [[qt-harmonyos-lifecycle]] — Stage/UIAbility 的 Qt adapter 与 Qt API 参考
-- [[qt-harmonyos-api-mapping]] — API 迁移映射表
-- [[qt-harmonyos-code-patterns]] — 14 组 Before/After 代码模式
-- [[qt-harmonyos-window-model]] — 窗口模型详解
-- [[qt-ohos-extras]] — QtOhosExtras 模块 API
-- [[qt-harmonyos-build]] — 构建指南
-- [[qt-harmonyos-third-party-libs]] — 三方库鸿蒙化指南
-- [[qt-harmonyos-qt6-status]] — Qt 6 鸿蒙化状态
+- [[qt-harmonyos-porting-workflow]] — The 8-step decision tree
+- [[qt-harmonyos-project-structure]] — Project structure and the iron-rule checklist
+- [[qt-harmonyos-platform-limits]] — How platform limitations affect Qt/QML/QPA + the QTBUG numbers
+- [[qt-harmonyos-lifecycle]] — The Qt adapter for Stage/UIAbility and the Qt API reference
+- [[qt-harmonyos-api-mapping]] — The API migration mapping tables
+- [[qt-harmonyos-code-patterns]] — 14 before/after code patterns
+- [[qt-harmonyos-window-model]] — The window model in detail
+- [[qt-ohos-extras]] — The QtOhosExtras module APIs
+- [[qt-harmonyos-build]] — The build guide
+- [[qt-harmonyos-third-party-libs]] — The guide to porting third-party libraries
+- [[qt-harmonyos-qt6-status]] — Qt 6 HarmonyOS porting status

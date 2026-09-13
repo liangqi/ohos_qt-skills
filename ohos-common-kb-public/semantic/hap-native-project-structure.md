@@ -1,11 +1,11 @@
 ---
 id: hap-native-project-structure
-title: HAP 原生工程结构与签名关系
+title: HAP native project structure and its relationship to signing
 status: active
 confidence: 0.7
 sources:
   - type: experience
-    name: "Qt、Tauri 与 AWT/Swing HAP 工程实践"
+    name: "Qt, Tauri, and AWT/Swing HAP project practice"
     date: 2026-08-06
 created: 2026-08-13
 updated: 2026-08-14
@@ -14,45 +14,45 @@ review_by: null
 superseded_by: null
 tags: [hap, appscope, module-json5, build-profile, signing, native-libs]
 refs: [hap-application-identity, ohos-native-third-party-libraries]
-summary: "AppScope、module.json5、build-profile、native libs、product 与 signingConfig 的平台关系。"
+summary: "The platform-level relationships between AppScope, module.json5, build-profile, native libs, products, and signingConfig."
 audience: public
 ---
 
-# HAP 原生工程结构与签名关系
+# HAP native project structure and its relationship to signing
 
-## 配置层次
+## Configuration layers
 
-| 文件/目录 | 平台职责 |
+| File/directory | Platform responsibility |
 |---|---|
-| `AppScope/app.json5` | 应用级身份与展示元数据，例如 bundleName |
-| `build-profile.json5` | products、modules、build mode、SDK 与 signingConfigs |
-| `<module>/src/main/module.json5` | module/Ability、设备类型、权限、skills 与 native/executable 声明 |
-| `<module>/libs/<abi>/` | 随模块打包的目标 ABI native libraries/binaries |
-| `<module>/src/main/ets/` | Ability、页面和 ArkTS glue |
-| `<module>/src/main/cpp/` | Node-API/native module 与 CMake 工程 |
-| resources/rawfile/resfile | 随包资源；运行时是否可写/可执行由沙箱契约决定 |
+| `AppScope/app.json5` | Application-level identity and display metadata, e.g. bundleName |
+| `build-profile.json5` | products, modules, build modes, SDK, and signingConfigs |
+| `<module>/src/main/module.json5` | module/Ability, device types, permissions, skills, and native/executable declarations |
+| `<module>/libs/<abi>/` | Target-ABI native libraries/binaries packaged with the module |
+| `<module>/src/main/ets/` | Abilities, pages, and ArkTS glue |
+| `<module>/src/main/cpp/` | Node-API/native modules and the CMake project |
+| resources/rawfile/resfile | Packaged resources; whether they are writable/executable at runtime is governed by the sandbox contract |
 
-框架模板可以增加自己的常量、生成脚本和 glue，但不能改变这些平台层次的所有权。
+A framework template may add its own constants, generation scripts, and glue, but it cannot change the ownership of these platform layers.
 
-## Native artifact 契约
+## Native artifact contract
 
-- 目录 ABI 必须与构建 target 和设备一致。
-- HAP 中的库名必须与 ArkTS `libraryname`、Node-API module、框架 loader 或 CMake 产物一致。
-- `.so` 依赖闭包必须随包或由目标系统提供；主机构建成功不证明设备 loader 可解析。
-- 需要 `execve` 的 bin 与普通 `.so` 使用不同的声明、权限和签名检查；具体运行时集成由对应框架 adapter 与受控交付流程维护。
+- The directory ABI must match the build target and the device.
+- The library name inside the HAP must match the ArkTS `libraryname`, the Node-API module, the framework loader, or the CMake output.
+- A `.so`'s dependency closure must either be packaged with it or provided by the target system; a successful host build does not prove the device loader can resolve it.
+- Binaries that need `execve` use different declarations, permissions, and signature checks than ordinary `.so` files; the specific runtime integration is maintained by the corresponding framework adapter and a controlled delivery process.
 
-## Product 与签名
+## Products and signing
 
-定义 `signingConfigs` 本身不会让 product 自动采用签名。目标 product 必须引用对应 `signingConfig`，profile 还必须匹配 bundleName、设备与权限授权。
+Defining `signingConfigs` does not by itself make a product use a signature. The target product must reference the corresponding `signingConfig`, and the profile must additionally match the bundleName, device, and permission grants.
 
-签名材料不得提交。共享页只记录字段关系、生成方式和验证步骤，不记录证书路径、密码、设备身份或可复用 profile。
+Signing material must never be committed. Shared pages record only field relationships, how things are generated, and verification steps — never certificate paths, passwords, device identities, or reusable profiles.
 
-## 验证顺序
+## Verification order
 
-1. schema/配置检查；
-2. product/module/SDK/ABI 对齐；
-3. native artifact 与依赖闭包；
-4. signingConfig 引用和应用身份；
-5. build 产物中实际包含目标文件；
-6. 安装、启动与系统日志；
-7. fresh clone/fresh package 重建。
+1. Schema/configuration checks
+2. product/module/SDK/ABI alignment
+3. Native artifacts and dependency closure
+4. signingConfig references and application identity
+5. The target files actually present in the build output
+6. Installation, launch, and system logs
+7. A fresh-clone / fresh-package rebuild

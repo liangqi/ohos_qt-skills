@@ -1,9 +1,9 @@
-# DevEco 开发工具安装指南
+# DevEco development tools installation guide
 
-本文件涵盖三类工具的安装：
-1. **DevEco Studio** — GUI IDE（macOS / Windows）
-2. **Command Line Tools** — 命令行工具集（Linux / HarmonyOS）
-3. **deveco-cli** — 开源 AI 开发工具（全平台）
+This file covers installing three kinds of tools:
+1. **DevEco Studio** — the GUI IDE (macOS / Windows)
+2. **Command Line Tools** — the command-line toolset (Linux / HarmonyOS)
+3. **deveco-cli** — the open-source AI development tool (all platforms)
 
 ---
 
@@ -11,22 +11,22 @@
 
 ### DevEco Studio
 
-#### 下载
+#### Download
 
-1. 访问 https://developer.huawei.com/consumer/cn/deveco-studio/
-2. 选择 **DevEco Studio** macOS 版本（支持 Intel 和 Apple Silicon）
-3. 下载 `.dmg` 安装包
+1. Go to https://developer.huawei.com/consumer/cn/deveco-studio/
+2. Choose the macOS build of **DevEco Studio** (both Intel and Apple Silicon are supported)
+3. Download the `.dmg` installer
 
-> **自动下载**：`bash skills/kb-init/scripts/download-cmdline-tools.sh --dest=<目录>` 可自动下载安装包到指定目录。
+> **Automatic download**: `bash skills/kb-init/scripts/download-cmdline-tools.sh --dest=<directory>` downloads the installer into the directory you specify.
 
-#### 安装
+#### Install
 
-1. 双击 `.dmg` 文件
-2. 将 DevEco Studio 拖入 `/Applications` 目录
-3. 首次启动时，如果系统提示"无法验证开发者"，前往 **系统设置 → 隐私与安全性** 点击"仍要打开"
-4. DevEco Studio 首次启动会自动下载 HarmonyOS SDK
+1. Double-click the `.dmg` file
+2. Drag DevEco Studio into `/Applications`
+3. On first launch, if the system says it "can't verify the developer", go to **System Settings → Privacy & Security** and click "Open Anyway"
+4. On first launch, DevEco Studio downloads the HarmonyOS SDK automatically
 
-#### 验证
+#### Verify
 
 ```bash
 ls /Applications/DevEco-Studio.app
@@ -34,14 +34,14 @@ ls /Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/
 ls /Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc
 ```
 
-### 将工具加入 PATH（推荐）
+### Add the tools to PATH (recommended)
 
 ```bash
 echo 'export PATH="/Applications/DevEco-Studio.app/Contents/tools:$PATH"' >> ~/.zshrc
 echo 'export PATH="/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains:$PATH"' >> ~/.zshrc
 source ~/.zshrc
-devecocli --version  # 验证 DevEco CLI
-hdc version          # 验证 hdc
+devecocli --version  # verify DevEco CLI
+hdc version          # verify hdc
 ```
 
 ---
@@ -50,21 +50,21 @@ hdc version          # 验证 hdc
 
 ### DevEco Studio
 
-#### 下载
+#### Download
 
-1. 访问 https://developer.huawei.com/consumer/cn/deveco-studio/
-2. 选择 **DevEco Studio** Windows 版本
-3. 下载 `.exe` 安装包
+1. Go to https://developer.huawei.com/consumer/cn/deveco-studio/
+2. Choose the Windows build of **DevEco Studio**
+3. Download the `.exe` installer
 
-> **自动下载**：`bash skills/kb-init/scripts/download-cmdline-tools.sh --dest=<目录>` 可自动下载安装包。
+> **Automatic download**: `bash skills/kb-init/scripts/download-cmdline-tools.sh --dest=<directory>` downloads the installer automatically.
 
-#### 安装
+#### Install
 
-1. 双击 `.exe` 安装包
-2. 按向导完成安装（默认安装到 `C:\Program Files\Huawei\DevEco Studio`）
-3. 首次启动会自动下载 HarmonyOS SDK
+1. Double-click the `.exe` installer
+2. Follow the wizard (it installs to `C:\Program Files\Huawei\DevEco Studio` by default)
+3. On first launch, it downloads the HarmonyOS SDK automatically
 
-#### 验证
+#### Verify
 
 ```powershell
 dir "C:\Program Files\Huawei\DevEco Studio"
@@ -72,13 +72,13 @@ dir "C:\Program Files\Huawei\DevEco Studio\sdk\default\openharmony\native\llvm\b
 dir "C:\Program Files\Huawei\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe"
 ```
 
-### 将工具加入 PATH（推荐）
+### Add the tools to PATH (recommended)
 
-1. 打开 **系统设置 → 高级系统设置 → 环境变量**
-2. 在 **Path** 中添加:
+1. Open **System Settings → Advanced system settings → Environment Variables**
+2. Add to **Path**:
    - `C:\Program Files\Huawei\DevEco Studio\tools`
    - `C:\Program Files\Huawei\DevEco Studio\sdk\default\openharmony\toolchains`
-3. 打开新的 PowerShell 窗口验证：`devecocli --version` 和 `hdc version`
+3. Open a new PowerShell window and verify: `devecocli --version` and `hdc version`
 
 ---
 
@@ -86,30 +86,30 @@ dir "C:\Program Files\Huawei\DevEco Studio\sdk\default\openharmony\toolchains\hd
 
 ### Command Line Tools
 
-DevEco Studio **没有 Linux GUI 版本**。Linux 用户使用 **Command Line Tools for HarmonyOS**。
+DevEco Studio **has no Linux GUI build**. Linux users use the **Command Line Tools for HarmonyOS**.
 
-#### 自动安装（推荐）
+#### Automatic installation (recommended)
 
 ```bash
 bash skills/kb-init/scripts/download-cmdline-tools.sh \
   --dest=~/commandline-tools \
-  --url=<从下载页获取的链接>
+  --url=<the link from the download page>
 ```
 
-脚本会自动下载、解压并输出 SDK 路径。
+The script downloads, extracts, and prints the SDK path.
 
-#### 手动安装
+#### Manual installation
 
-1. 访问 https://developer.huawei.com/consumer/cn/download/
-2. 找到 **Command Line Tools for HarmonyOS** Linux 版本
-3. 下载 `.tar.gz` 归档
+1. Go to https://developer.huawei.com/consumer/cn/download/
+2. Find the Linux build of **Command Line Tools for HarmonyOS**
+3. Download the `.tar.gz` archive
 
 ```bash
 mkdir -p ~/commandline-tools
 tar xzf commandline-tools-linux-*.tar.gz -C ~/commandline-tools
 ```
 
-#### 配置 PATH
+#### Configure PATH
 
 ```bash
 echo 'export PATH="$HOME/commandline-tools/tools:$PATH"' >> ~/.bashrc
@@ -118,7 +118,7 @@ echo 'export OHOS_SDK_NATIVE="$HOME/commandline-tools/sdk/default/openharmony/na
 source ~/.bashrc
 ```
 
-#### 验证
+#### Verify
 
 ```bash
 devecocli --version
@@ -130,29 +130,29 @@ ls ~/commandline-tools/sdk/default/openharmony/native/llvm/bin/clang
 
 ## HarmonyOS
 
-### 平台限制
+### Platform limitations
 
-鸿蒙 PC 当前存在以下限制：
+HarmonyOS PC currently has the following limitations:
 
-| 工具 | 状态 | 获取方式 |
-|------|------|----------|
-| DevEco Studio | 不可用 | 无鸿蒙版，未上架应用市场 |
-| Command Line Tools | 需申请 | 在统一工单平台提单申请遥测版本 |
-| deveco-cli | 可尝试 | 仓库未声明支持，但可通过 npm 尝试安装 |
+| Tool | Status | How to obtain |
+|------|--------|---------------|
+| DevEco Studio | Unavailable | No HarmonyOS build; not listed in the app store |
+| Command Line Tools | Requires an application | File a ticket on the unified ticket platform to request the telemetry build |
+| deveco-cli | Worth trying | The repository doesn't declare support, but you can try installing it via npm |
 
-### 申请 Command Line Tools
+### Applying for the Command Line Tools
 
-1. 访问 https://developer.huawei.com/consumer/cn/ 统一工单平台
-2. 提单申请 **Command Line Tools for HarmonyOS 遥测版本**
-3. 获得下载链接后，运行：
+1. Go to the unified ticket platform at https://developer.huawei.com/consumer/cn/
+2. File a ticket requesting the **telemetry build of Command Line Tools for HarmonyOS**
+3. Once you have the download link, run:
 
 ```bash
 bash skills/kb-init/scripts/download-cmdline-tools.sh \
   --dest=~/commandline-tools \
-  --url=<下载链接>
+  --url=<download link>
 ```
 
-4. 配置 PATH：
+4. Configure PATH:
 
 ```bash
 echo 'export PATH="$HOME/commandline-tools/tools:$PATH"' >> ~/.zshrc
@@ -161,63 +161,63 @@ echo 'export OHOS_SDK_NATIVE="$HOME/commandline-tools/sdk/default/openharmony/na
 source ~/.zshrc
 ```
 
-### 在等待 CLT 期间可完成的配置
+### What you can set up while waiting for the CLT
 
-以下工具可通过 HarmonyBrew 安装，不依赖 DevEco/CLT：
+The tools below can be installed via HarmonyBrew and don't depend on DevEco/CLT:
 
 ```bash
-# 安装 HarmonyBrew（如未安装）
+# Install HarmonyBrew (if you haven't already)
 zsh -c "$(curl -fsSL https://harmonybrew.atomgit.com/install.sh)"
 
-# 安装基础工具
+# Install the basic tools
 brew install git cmake node
 ```
 
 ---
 
-## deveco-cli（全平台）
+## deveco-cli (all platforms)
 
-`deveco-cli` 是独立的开源工具，与 DevEco Studio 内置的 `devecocli` 不同。
+`deveco-cli` is a standalone open-source tool, distinct from the `devecocli` bundled with DevEco Studio.
 
-- **仓库**: https://gitcode.com/openharmony-sig/deveco-cli
-- **功能**: 集成 HarmonyOS 应用开发工具集、知识文档和 AI Skills
-- **依赖**: Node.js >= 18
+- **Repository**: https://gitcode.com/openharmony-sig/deveco-cli
+- **Features**: an integrated HarmonyOS application development toolset, knowledge docs, and AI skills
+- **Requires**: Node.js >= 18
 
-### 自动安装（推荐）
+### Automatic installation (recommended)
 
 ```bash
 bash skills/kb-init/scripts/install-deveco-cli.sh --method=npm
 ```
 
-### 手动安装
+### Manual installation
 
-**方式 1: npm**
+**Method 1: npm**
 
 ```bash
 npm install -g deveco-cli
 deveco-cli --version
 ```
 
-**方式 2: git clone**
+**Method 2: git clone**
 
 ```bash
 git clone https://gitcode.com/openharmony-sig/deveco-cli.git ~/dev/deveco-cli
 cd ~/dev/deveco-cli
 npm install
-npm link  # 创建全局命令
+npm link  # create the global command
 ```
 
-### 验证
+### Verify
 
 ```bash
 deveco-cli --version
 ```
 
-### 与 devecocli 的区别
+### How it differs from devecocli
 
-| 工具 | 来源 | 用途 |
-|------|------|------|
-| `devecocli` | DevEco Studio / CLT 内置 | 构建、安装、日志等 IDE 操作 |
-| `deveco-cli` | 开源仓库 (npm) | AI 辅助开发、知识文档、Skills |
+| Tool | Origin | Purpose |
+|------|--------|---------|
+| `devecocli` | Bundled with DevEco Studio / the CLT | IDE operations: building, installing, logs, and so on |
+| `deveco-cli` | Open-source repository (npm) | AI-assisted development, knowledge docs, skills |
 
-两者可同时安装，互不冲突。
+Both can be installed side by side without conflict.

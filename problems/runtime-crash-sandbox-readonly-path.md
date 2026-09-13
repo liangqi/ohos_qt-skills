@@ -10,14 +10,14 @@ severity: critical
 audience: public
 refs: [procedural-qt-ohos-run-test, semantic-qt-harmonyos-platform-limits]
 summary: >
-  OHOS 沙箱环境下 QDir::currentPath()/applicationDirPath() 返回只读路径，
-  应用写配置文件/日志时失败并调用 exit(1) 导致 SIGABRT 崩溃。
-  修复：使用 QStandardPaths::writableLocation(AppDataLocation) 获取可写路径。
+  In the OHOS sandbox, QDir::currentPath()/applicationDirPath() return read-only paths,
+  so writing a configuration file or log fails, the application calls exit(1), and it crashes with SIGABRT.
+  Fix: use QStandardPaths::writableLocation(AppDataLocation) to get a writable path.
 leader_summary: >
-  解决 OHOS 沙箱只读路径导致的配置文件写入崩溃，形成通用路径修复模式。
-impact: [迁移提效]
-deliverables: [problem记录, 源码修复]
-evidence: [FRequest commit 8a8ba95, 崩溃日志, 真机验证截图]
+  Fixed the configuration-file write crash caused by OHOS sandbox read-only paths, producing a general path-fix pattern.
+impact: [Migration efficiency]
+deliverables: [problem record, source fix]
+evidence: [FRequest commit 8a8ba95, crash log, on-device verification screenshot]
 
 error_message: >
   Signal:SIGABRT(SI_TKILL) from exit(1)
@@ -27,15 +27,15 @@ error_message: >
   doc.save_file() fails on read-only path → exit(1) → SIGABRT
 error_code: ""
 keywords: [SIGABRT, exit, sandbox, read-only, writable, QStandardPaths, AppDataLocation, QDir, currentPath, config file, OHOS]
-symptoms: "应用启动后延迟崩溃（SIGABRT），崩溃栈显示配置文件写入失败后调用 exit(1)"
+symptoms: "The application crashes a short while after launch (SIGABRT); the crash stack shows exit(1) being called after a configuration-file write failure"
 environment: "Qt 5.15.16 OHOS / HarmonyOS 6.0 / HUAWEI MateBook 14"
 ---
 
-# OHOS 沙箱只读路径导致配置文件写入崩溃
+# OHOS sandbox read-only path causes a configuration-file write crash
 
-> 平台级“写入只读 bundle 路径”诊断以 common 的 [[ohos-common-kb/problems/runtime-write-to-readonly-bundle-path|运行时写入失败：目标位于只读 bundle 路径]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/problems/runtime-write-to-readonly-bundle-path.md)）为准。本页保留 Qt/FRequest 的原始错误检索、`QDir`/`QStandardPaths` 根因与修复。
+> For the platform-level "writing to a read-only bundle path" diagnosis, the authority is the common knowledge base's [[ohos-common-kb/problems/runtime-write-to-readonly-bundle-path|Runtime write fails: the target is on a read-only bundle path]] ([standalone link](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/problems/runtime-write-to-readonly-bundle-path.md)). This page keeps the Qt/FRequest-specific searchable error text, the `QDir`/`QStandardPaths` root cause, and the fix.
 
-## 错误信息
+## Error message
 
 ```
 Signal:SIGABRT(SI_TKILL)@0x... from exit(1)
@@ -50,34 +50,34 @@ Tid:QtMainThread
 #06 main+180
 ```
 
-## 场景
+## Scenario
 
-Qt 鸿蒙化应用构建成功、安装成功、启动成功，但运行数秒后崩溃。崩溃类型为 SIGABRT（非 SIGSEGV），由应用代码主动调用 `exit(1)` 触发。
+The Qt HarmonyOS port builds, installs, and launches successfully, but crashes a few seconds into running. The crash is a SIGABRT (not a SIGSEGV), triggered by the application code deliberately calling `exit(1)`.
 
-## 原因
+## Cause
 
-**OHOS 沙箱限制**：`QDir::currentPath()` 和 `QCoreApplication::applicationDirPath()` 在 OHOS 沙箱中返回的路径是只读的。应用尝试在该路径下写入配置文件或日志文件时失败。
+**An OHOS sandbox restriction**: the paths returned by `QDir::currentPath()` and `QCoreApplication::applicationDirPath()` in the OHOS sandbox are read-only. Writing a configuration file or log file under those paths fails.
 
-**崩溃链**：
+**The crash chain**:
 ```
-getAppPath() → QDir::currentPath() → 只读路径
-  → ConfigFileFRequest(configPath) → 配置文件不存在 → createNewConfig()
-    → doc.save_file(configPath) → 写入失败（只读）
+getAppPath() → QDir::currentPath() → read-only path
+  → ConfigFileFRequest(configPath) → the config file doesn't exist → createNewConfig()
+    → doc.save_file(configPath) → the write fails (read-only)
       → exit(1) → SIGABRT
 ```
 
-**同类问题**：plog 日志 appender 也使用 `getAppPath()` 写日志文件，同样会失败。
+**A related problem**: the plog log appender also uses `getAppPath()` to write log files and fails in the same way.
 
-## 解决方案
+## Solution
 
-在路径获取函数中添加 `Q_OS_OHOS` 分支，返回沙箱可写路径：
+Add a `Q_OS_OHOS` branch to your path-resolution function that returns a writable sandbox path:
 
 ```cpp
 #include <QStandardPaths>
 
 QString getAppPath(){
 #ifdef Q_OS_MAC
-    // ... macOS 逻辑 ...
+    // ... macOS logic ...
 #elif defined(Q_OS_OHOS)
     // OHOS sandbox: app binary dir is read-only, use writable app data dir
     QString dataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
@@ -89,29 +89,29 @@ QString getAppPath(){
 }
 ```
 
-**OHOS 可写路径**：
+**Writable OHOS paths**:
 - `QStandardPaths::AppDataLocation` → `/data/storage/el2/base/haps/entry/files/`
 - `QStandardPaths::CacheLocation` → `/data/storage/el2/base/haps/entry/cache/`
 - `QStandardPaths::TempLocation` → `/data/storage/el2/base/haps/entry/temp/`
 
-## 注意事项
+## Notes
 
-- 这是 OHOS 沙箱的通用问题，不限于 FRequest。任何使用 `QDir::currentPath()` 或 `applicationDirPath()` 写文件的 Qt 应用都可能受影响
-- 修复时需确保 `QStandardPaths` 头文件已 include
-- `mkpath()` 确保目录存在（首次运行时目录可能不存在）
-- 同时检查 plog 日志路径、QSettings 路径等其他文件写入点
+- This is a general OHOS sandbox problem, not specific to FRequest. Any Qt application that writes files using `QDir::currentPath()` or `applicationDirPath()` may be affected
+- Make sure the `QStandardPaths` header is included when applying the fix
+- `mkpath()` ensures the directory exists (it may not on first run)
+- Check other file-write sites too, such as the plog log path and QSettings paths
 
-## 成果展示
+## Results
 
-| 字段 | 内容 |
-|------|------|
-| 领导摘要 | 解决 OHOS 沙箱只读路径导致的配置文件写入崩溃，形成通用路径修复模式 |
-| 影响面 | 所有在 OHOS 上写文件的 Qt 应用 |
-| 交付物 | problem 记录 + FRequest 源码修复 |
-| 证据 | FRequest commit 8a8ba95, 崩溃日志, 真机验证截图 |
-| 可复用方式 | 遇到 SIGABRT + exit(1) + 文件写入失败栈帧时直接复用 |
+| Field | Content |
+|-------|---------|
+| Leadership summary | Fixed the configuration-file write crash caused by OHOS sandbox read-only paths, producing a general path-fix pattern |
+| Scope of impact | Every Qt application that writes files on OHOS |
+| Deliverables | problem record + the FRequest source fix |
+| Evidence | FRequest commit 8a8ba95, crash log, on-device verification screenshot |
+| How to reuse | Apply directly whenever you see SIGABRT + exit(1) + a file-write failure in the stack |
 
-## 相关
+## Related
 
-- [[qt-harmonyos-platform-limits]] — OHOS 平台限制（沙箱文件系统）
-- [[procedural-qt-ohos-run-test]] — 运行测试工作流
+- [[qt-harmonyos-platform-limits]] — OHOS platform limitations (sandbox filesystem)
+- [[procedural-qt-ohos-run-test]] — The run-test workflow

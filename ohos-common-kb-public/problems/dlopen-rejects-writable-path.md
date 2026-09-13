@@ -1,16 +1,16 @@
 ---
 id: dlopen-rejects-writable-path
-title: "动态库加载失败：代码位于普通可写路径"
+title: "Shared library fails to load: the code lives on an ordinary writable path"
 status: active
 confidence: 0.7
-sources: [{type: experience, name: "Qt plugin 与 runtime embedding 真机排障", date: 2026-08-05}]
+sources: [{type: experience, name: "On-device troubleshooting of Qt plugins and runtime embedding", date: 2026-08-05}]
 created: 2026-08-13
 updated: 2026-08-14
 last_confirmed: 2026-08-05
 superseded_by: null
 tags: [problem, runtime, dlopen, writable-path, sandbox, loader]
 refs: [application-sandbox-paths, ohos-native-third-party-libraries]
-summary: "应用从普通可写 data/cache 路径 dlopen 代码被 loader/安全策略拒绝；随 HAP 合规打包并检查依赖闭包。"
+summary: "The loader/security policy rejects an application's dlopen of code from an ordinary writable data/cache path; package it with the HAP in a compliant way and check the dependency closure."
 audience: public
 error_message: |
   dlopen failed
@@ -18,19 +18,19 @@ error_message: |
   library load rejected
 ---
 
-# 动态库加载失败：代码位于普通可写路径
+# Shared library fails to load: the code lives on an ordinary writable path
 
-## 场景与原因
+## Scenario and cause
 
-应用下载、解压或生成 `.so` 到 data/cache 等普通可写位置，再尝试 `dlopen`。可写数据目录不自动是可信代码来源，平台 loader/安全策略可能拒绝；同一错误也可能来自缺失依赖、ABI 或 ELF 损坏。
+The application downloads, extracts, or generates a `.so` into an ordinary writable location such as data/cache, then tries to `dlopen` it. A writable data directory is not automatically a trusted source of code, so the platform loader/security policy may reject it. The same error can also come from a missing dependency, an ABI mismatch, or a corrupted ELF.
 
-## 解决方案
+## Solution
 
-1. 确认 resolved library path 及其目录类别；
-2. 检查 ELF target、`NEEDED` 和 loader 日志，排除普通依赖问题；
-3. 将固定 native code 在构建时放入 HAP 的 ABI library 目录并由完整签名链分发；
-4. 若业务确需动态代码更新，采用平台明确支持的分发/签名机制，不自行从 data/cache 加载。
+1. Confirm the resolved library path and what category its directory falls into.
+2. Check the ELF target, its `NEEDED` entries, and the loader logs to rule out ordinary dependency problems.
+3. Place fixed native code in the HAP's ABI library directory at build time and distribute it through the full signing chain.
+4. If the product genuinely requires dynamic code updates, use a distribution/signing mechanism the platform explicitly supports — don't load from data/cache yourself.
 
-## 预防措施
+## Prevention
 
-把 data 更新与 executable code 更新分开设计；框架 plugin manager 不得绕过平台代码完整性模型。
+Design data updates and executable-code updates as separate mechanisms; a framework's plugin manager must not bypass the platform's code-integrity model.

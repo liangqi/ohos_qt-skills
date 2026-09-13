@@ -8,179 +8,179 @@ updated: 2026-08-29
 status: active
 refs: [semantic-qt-harmonyos-golden-rules, procedural-demo-generation]
 summary: >
-  开发者任务路由表：按用户请求匹配任务类型，确定必读页与工作流。
-  覆盖移植、API/模块/平台限制查询、构建排障、窗口、生命周期、问题分析、
-  修复验证、Qt6、三方库、工具链、Demo 生成等场景。Agent 接到任务后首先扫描此页。
+  The developer task routing table: match a user request to a task type and determine the required pages and workflow.
+  Covers porting, API/module/platform-limitation lookups, build troubleshooting, windows, lifecycle, problem analysis,
+  fix verification, Qt6, third-party libraries, toolchains, demo generation, and more. Agents should scan this page first when they receive a task.
 ---
 
-# 任务路由表
+# Task routing table
 
-> **使用方式**：收到请求后，先匹配下方路由树，确定任务类型，然后按"必读页"加载上下文、按"工作流"执行。
+> **How to use this**: when you receive a request, match it against the routing tree below to determine the task type, then load context from the "required pages" and execute the "workflow".
 
 ---
 
-## 路由决策树
+## The routing decision tree
 
 ```
-用户请求
+User request
     │
-    ├─ "移植/迁移/鸿蒙化一个应用" ──────────→ [A] 应用移植
-    ├─ "这个 API 在鸿蒙上怎么替换" ───────→ [B] API 替换查询
-    ├─ "某个 Qt 模块是否支持鸿蒙" ──────────→ [C] 模块支持查询
-    ├─ "鸿蒙有什么限制/不能做什么" ──────────→ [D] 平台限制查询
-    ├─ "编译失败/构建报错/部署不了" ─────────→ [E] 构建排障
-    ├─ "窗口显示异常/对话框行为不对" ──────→ [F] 窗口问题
-    ├─ "生命周期/closeEvent/接续/分享" ────→ [G] 生命周期
-    ├─ "QtOhosExtras 怎么用/某个函数" ────→ [H] QtOhosExtras API
-    ├─ "Qt6 相关" ─────────────────────────→ [L] Qt6 状态
-    ├─ "三方库/依赖/交叉编译" ────────────→ [M] 三方库
-    ├─ "DevEco/MCP/工具链" ──────────────→ [N] 工具链
-    ├─ "Qt+CEF demo / WebEngine 迁移 demo" ─→ [Q] Demo 生成（+ qt-cef-ohos-dev-guide + tools/kb-cef-graft.py）
-    └─ "写个demo/生成测试工程/渲染demo" ──→ [Q] Demo 生成
+    ├─ "port/migrate an app to HarmonyOS" ────────→ [A] Application porting
+    ├─ "how do I replace this API on HarmonyOS" ──→ [B] API replacement lookup
+    ├─ "does HarmonyOS support some Qt module" ───→ [C] Module support lookup
+    ├─ "what are HarmonyOS's limits / what can't it do" → [D] Platform limitation lookup
+    ├─ "build failure / build error / can't deploy" ──→ [E] Build troubleshooting
+    ├─ "window display glitch / dialog misbehaves" ──→ [F] Window problems
+    ├─ "lifecycle / closeEvent / continuation / sharing" → [G] Lifecycle
+    ├─ "how do I use QtOhosExtras / some function" ──→ [H] QtOhosExtras APIs
+    ├─ "something about Qt6" ─────────────────────→ [L] Qt6 status
+    ├─ "third-party libs / dependencies / cross-compiling" → [M] Third-party libraries
+    ├─ "DevEco / MCP / toolchain" ────────────────→ [N] Toolchain
+    ├─ "a Qt+CEF demo / a WebEngine migration demo" → [Q] Demo generation (+ qt-cef-ohos-dev-guide + tools/kb-cef-graft.py)
+    └─ "write a demo / generate a test project / rendering demo" → [Q] Demo generation
 ```
 
 ---
 
-## 路由详情
+## Routing details
 
-### [A] 应用移植
+### [A] Application porting
 
-**触发词**：移植、迁移、鸿蒙化、porting、migration
+**Trigger words**: port, migrate, HarmonyOS-ify, porting, migration
 
-| 项目 | 内容 |
-|------|------|
-| **工作流** | `procedural/qt-app-harmonyos-migration.md` |
-| **必读页** | ① `golden-rules.md` ② `porting-workflow.md`（8 步决策树） |
-| **按需加载** | `api-mapping.md`、`code-patterns.md`、`window-model.md`、`lifecycle.md`、`project-structure.md`、`third-party-libs.md` |
-| **预期输出** | 可行性评估 → 工程创建 → 8 步迁移 → 编译验证 |
+| Item | Content |
+|------|---------|
+| **Workflow** | `procedural/qt-app-harmonyos-migration.md` |
+| **Required pages** | ① `golden-rules.md` ② `porting-workflow.md` (the 8-step decision tree) |
+| **Load as needed** | `api-mapping.md`, `code-patterns.md`, `window-model.md`, `lifecycle.md`, `project-structure.md`, `third-party-libs.md` |
+| **Expected output** | Feasibility assessment → project creation → the 8-step migration → build verification |
 
-### [B] API 替换查询
+### [B] API replacement lookup
 
-**触发词**：API、替换、替代、怎么改、QProcess、chmod、symlink
+**Trigger words**: API, replace, alternative, how do I change, QProcess, chmod, symlink
 
-| 项目 | 内容 |
-|------|------|
-| **必读页** | ① `api-mapping.md`（12 类映射表） |
-| **按需加载** | `code-patterns.md`（Before/After 代码）、`platform-limits.md`（如 API 被平台限制） |
-| **预期输出** | 具体的替换方案 + 代码示例 |
+| Item | Content |
+|------|---------|
+| **Required pages** | ① `api-mapping.md` (12 categories of mapping tables) |
+| **Load as needed** | `code-patterns.md` (before/after code), `platform-limits.md` (if the API is restricted by the platform) |
+| **Expected output** | A concrete replacement plan + code examples |
 
-### [C] 模块支持查询
+### [C] Module support lookup
 
-**触发词**：模块、支持、QtWebEngine、QtMultimedia、模块状态
+**Trigger words**: module, support, QtWebEngine, QtMultimedia, module status
 
-| 项目 | 内容 |
-|------|------|
-| **必读页** | ① `modules.md` |
-| **按需加载** | `qt6-status.md`（如问 Qt6 模块）；`qt-cef-ohos-dev-guide.md`（如问 QtWebEngine——Out of scope，CEF for OpenHarmony 是完整 Chromium 平替，含 WebEngine→CEF API 映射 + 迁移方案 + CEF 组件包去版本化/剥离 + `tools/kb-cef-graft.py` 一键嫁接脚本） |
-| **预期输出** | 模块是否支持 + 替代方案（如不支持：QtWebEngine→`qt-cef-ohos-dev-guide.md` CEF 平替 + `tools/kb-cef-graft.py` 嫁接；轻量展示可先用 Qt WebView 原生桥） |
+| Item | Content |
+|------|---------|
+| **Required pages** | ① `modules.md` |
+| **Load as needed** | `qt6-status.md` (for questions about Qt6 modules); `qt-cef-ohos-dev-guide.md` (for QtWebEngine — out of scope; CEF for OpenHarmony is a full Chromium replacement, with a WebEngine→CEF API mapping + migration plan + the de-versioned/stripped CEF component package + the `tools/kb-cef-graft.py` one-shot grafting script) |
+| **Expected output** | Whether the module is supported + alternatives (if not: QtWebEngine → the CEF replacement in `qt-cef-ohos-dev-guide.md` + grafting via `tools/kb-cef-graft.py`; for lightweight display, the native Qt WebView bridge can work as a first step) |
 
-### [D] 平台限制查询
+### [D] Platform limitation lookup
 
-**触发词**：限制、不能、禁止、chmod、symlink、dlopen、沙箱
+**Trigger words**: limitation, can't, forbidden, chmod, symlink, dlopen, sandbox
 
-| 项目 | 内容 |
-|------|------|
-| **必读页** | ① `platform-limits.md` |
-| **按需加载** | `golden-rules.md` §四（P1-P5） |
-| **预期输出** | 限制描述 + QTBUG 编号 + Workaround |
+| Item | Content |
+|------|---------|
+| **Required pages** | ① `platform-limits.md` |
+| **Load as needed** | `golden-rules.md` §4 (P1-P5) |
+| **Expected output** | A description of the limitation + the QTBUG number + a workaround |
 
-### [E] 构建排障
+### [E] Build troubleshooting
 
-**触发词**：编译失败、构建报错、find_package、部署不了、dlopen failed、黑屏
+**Trigger words**: build failure, build error, find_package, can't deploy, dlopen failed, black screen
 
-| 项目 | 内容 |
-|------|------|
-| **工作流** | `build-run-workflow.md` §构建失败排查四步法 |
-| **必读页** | ① `golden-rules.md` §一（B1-B11） ② `project-structure.md` |
-| **按需加载** | `build.md`（Qt 编译）、`third-party-libs.md`（三方库编译）、`problems/_lookup.md`（已知错误） |
-| **预期输出** | 错误分类 → 根因 → 修复步骤 |
+| Item | Content |
+|------|---------|
+| **Workflow** | `build-run-workflow.md` §The four-step build failure triage |
+| **Required pages** | ① `golden-rules.md` §1 (B1-B11) ② `project-structure.md` |
+| **Load as needed** | `build.md` (building Qt), `third-party-libs.md` (building third-party libraries), `problems/_lookup.md` (known errors) |
+| **Expected output** | Error classification → root cause → fix steps |
 
-### [F] 窗口问题
+### [F] Window problems
 
-**触发词**：窗口、对话框、全屏、浮窗、tagging、setMask、hide、最小化
+**Trigger words**: window, dialog, fullscreen, floating window, tagging, setMask, hide, minimize
 
-| 项目 | 内容 |
-|------|------|
-| **必读页** | ① `golden-rules.md` §二（W1-W5） ② `window-model.md` |
-| **按需加载** | `code-patterns.md` §模式 3（对话框） |
-| **预期输出** | 规则说明 + 修复代码 |
+| Item | Content |
+|------|---------|
+| **Required pages** | ① `golden-rules.md` §2 (W1-W5) ② `window-model.md` |
+| **Load as needed** | `code-patterns.md` §Pattern 3 (dialogs) |
+| **Expected output** | An explanation of the rule + the fixed code |
 
-### [G] 生命周期
+### [G] Lifecycle
 
-**触发词**：closeEvent、Ability、生命周期、接续、分享、Want、argv、深色模式
+**Trigger words**: closeEvent, Ability, lifecycle, continuation, sharing, Want, argv, dark mode
 
-| 项目 | 内容 |
-|------|------|
-| **必读页** | ① `lifecycle.md`（金标准） |
-| **按需加载** | `golden-rules.md` §五（L1-L4）、`ohos-extras.md`（相关 API） |
-| **预期输出** | 行为说明 + 代码示例 + 枚举路径 |
+| Item | Content |
+|------|---------|
+| **Required pages** | ① `lifecycle.md` (the gold standard) |
+| **Load as needed** | `golden-rules.md` §5 (L1-L4), `ohos-extras.md` (the relevant APIs) |
+| **Expected output** | A description of the behavior + code examples + enum paths |
 
-### [H] QtOhosExtras API
+### [H] QtOhosExtras APIs
 
-**触发词**：QtOhosExtras、startAbility、QOhosWant、QOhosAppContext、ShareKit
+**Trigger words**: QtOhosExtras, startAbility, QOhosWant, QOhosAppContext, ShareKit
 
-| 项目 | 内容 |
-|------|------|
-| **必读页** | ① `ohos-extras.md`（~36 APIs） |
-| **按需加载** | `lifecycle.md`（使用示例）、`golden-rules.md` §三（A1-A6） |
-| **预期输出** | API 签名 + 用途 + 使用示例 |
+| Item | Content |
+|------|---------|
+| **Required pages** | ① `ohos-extras.md` (~36 APIs) |
+| **Load as needed** | `lifecycle.md` (usage examples), `golden-rules.md` §3 (A1-A6) |
+| **Expected output** | The API signature + its purpose + a usage example |
 
-### [L] Qt6 状态
+### [L] Qt6 status
 
-**触发词**：Qt6、Qt 6、qtbase dev
+**Trigger words**: Qt6, Qt 6, qtbase dev
 
-| 项目 | 内容 |
-|------|------|
-| **必读页** | ① `qt6-status.md` |
-| **按需加载** | `overview.md`、`build.md` §Qt6 |
-| **预期输出** | 当前状态 + 已知差异 + 待验证项 |
+| Item | Content |
+|------|---------|
+| **Required pages** | ① `qt6-status.md` |
+| **Load as needed** | `overview.md`, `build.md` §Qt6 |
+| **Expected output** | The current status + known differences + items still to be verified |
 
-### [M] 三方库
+### [M] Third-party libraries
 
-**触发词**：三方库、依赖、交叉编译、vcpkg、OpenSSL、boost、zlib
+**Trigger words**: third-party library, dependency, cross-compile, vcpkg, OpenSSL, boost, zlib
 
-| 项目 | 内容 |
-|------|------|
-| **必读页** | ① `third-party-libs.md` |
-| **按需加载** | `project-structure.md`（部署目录）、`platform-limits.md`（影响三方库的限制） |
-| **预期输出** | 交叉编译方法 / 部署步骤 / 兼容性评估 |
+| Item | Content |
+|------|---------|
+| **Required pages** | ① `third-party-libs.md` |
+| **Load as needed** | `project-structure.md` (deployment directories), `platform-limits.md` (limitations that affect third-party libraries) |
+| **Expected output** | The cross-compilation method / deployment steps / a compatibility assessment |
 
-### [N] 工具链
+### [N] Toolchain
 
-**触发词**：DevEco、MCP、工具链、hdc、DevEco Studio
+**Trigger words**: DevEco, MCP, toolchain, hdc, DevEco Studio
 
-| 项目 | 内容 |
-|------|------|
-| **必读页** | ① [[ohos-common-kb/procedural/deveco-cli-usage-rules|common：DevEco CLI 使用规则]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/procedural/deveco-cli-usage-rules.md)） ② [[ohos-common-kb/semantic/deveco-mcp-capabilities|common：DevEco MCP 能力边界]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/deveco-mcp-capabilities.md)） |
-| **按需加载** | [[ohos-common-kb/semantic/harmonyos-development-fundamentals|common：HarmonyOS 开发基础]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-development-fundamentals.md)）、[[qt-harmonyos-build-run-workflow]] |
-| **预期输出** | 安装/配置步骤 |
+| Item | Content |
+|------|---------|
+| **Required pages** | ① [[ohos-common-kb/procedural/deveco-cli-usage-rules|common: DevEco CLI usage rules]] ([standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/procedural/deveco-cli-usage-rules.md)) ② [[ohos-common-kb/semantic/deveco-mcp-capabilities|common: DevEco MCP capability boundaries]] ([standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/deveco-mcp-capabilities.md)) |
+| **Load as needed** | [[ohos-common-kb/semantic/harmonyos-development-fundamentals|common: HarmonyOS development fundamentals]] ([standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-development-fundamentals.md)), [[qt-harmonyos-build-run-workflow]] |
+| **Expected output** | Installation/configuration steps |
 
-### [Q] Demo 生成
+### [Q] Demo generation
 
-**触发词**：写个 demo、生成 demo、测试工程、渲染 demo、功能 demo、demo 项目、CEF demo、WebEngine demo
+**Trigger words**: write a demo, generate a demo, test project, rendering demo, feature demo, demo project, CEF demo, WebEngine demo
 
-| 项目 | 内容 |
-|------|------|
-| **工作流** | `procedural/demo-generation.md`（六步闭环） |
-| **必读页** | ① 工作流本身 |
-| **按需加载** | `project-structure.md`（鸿蒙工程）、`build.md`（编译配置）；`qt-cef-ohos-dev-guide.md` + `tools/kb-cef-graft.py` + `tools/kb-cef-graft.config.example.json`（Qt+CEF / WebEngine 迁移 demo——鸿蒙无 WebEngine，用 CEF，`tools/kb-cef-graft.py --config <配置> --run` 一条龙嫁接+签名+装机+启动+崩溃检查） |
-| **预期输出** | 需求理解 → 技术设计 → 工程创建 → 代码编写 → 编译验证 → 文档沉淀；Qt+CEF demo 直接用 `tools/kb-cef-graft.py --run` |
+| Item | Content |
+|------|---------|
+| **Workflow** | `procedural/demo-generation.md` (the six-step loop) |
+| **Required pages** | ① The workflow itself |
+| **Load as needed** | `project-structure.md` (HarmonyOS projects), `build.md` (build configuration); `qt-cef-ohos-dev-guide.md` + `tools/kb-cef-graft.py` + `tools/kb-cef-graft.config.example.json` (Qt+CEF / WebEngine migration demos — HarmonyOS has no WebEngine, so use CEF; `tools/kb-cef-graft.py --config <config> --run` does grafting + signing + installation + launch + crash checking in one shot) |
+| **Expected output** | Understand the requirement → technical design → create the project → write the code → verify the build → capture documentation; for a Qt+CEF demo, just use `tools/kb-cef-graft.py --run` |
 
 ---
 
-## 模糊请求处理
+## Handling ambiguous requests
 
-当请求不明确匹配任何类型时：
+When a request doesn't clearly match any type:
 
-1. **先扫描 `golden-rules.md`** — 33 条铁律覆盖最常见场景
-2. **询问澄清** — 提供 3 个最可能的选项
-3. **如果涉及多个类型** — 按 [A] 应用移植 的流程编排，它会自动调用其他类型
+1. **Scan `golden-rules.md` first** — the 33 iron rules cover the most common scenarios
+2. **Ask for clarification** — offer the 3 most likely options
+3. **If it spans several types** — orchestrate it through the [A] Application porting process, which pulls in the other types automatically
 
-### 常见模糊请求示例
+### Common ambiguous requests
 
-| 用户说 | 实际类型 | 路由 |
-|--------|---------|------|
-| "这个应用在鸿蒙上跑不起来" | [E] 构建排障 或 [A] 移植 | 先问：是新移植还是已有工程？ |
-| "鸿蒙和 Android 有什么区别" | [D] 平台限制 + [G] 生命周期 | 加载 platform-limits + lifecycle |
-| "帮我看看这个代码怎么改" | [B] API 替换 | 加载 api-mapping + code-patterns |
-| "鸿蒙上能用什么数据库" | [C] 模块 + [M] 三方库 | 先查 Qt SQL 模块，再查 SQLite 三方库 |
+| What the user says | The actual type | Routing |
+|--------------------|-----------------|---------|
+| "This app won't run on HarmonyOS" | [E] Build troubleshooting or [A] Porting | Ask first: is this a new port or an existing project? |
+| "What's the difference between HarmonyOS and Android?" | [D] Platform limitations + [G] Lifecycle | Load platform-limits + lifecycle |
+| "Can you look at how to change this code?" | [B] API replacement | Load api-mapping + code-patterns |
+| "What databases can I use on HarmonyOS?" | [C] Modules + [M] Third-party libraries | Check the Qt SQL module first, then SQLite as a third-party library |

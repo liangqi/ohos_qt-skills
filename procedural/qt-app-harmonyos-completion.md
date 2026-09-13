@@ -9,306 +9,309 @@ status: active
 audience: public
 refs: [procedural-qt-ohos-run-test, procedural-qt-app-harmonyos-migration, procedural-framework-fix-verification, procedural-framework-issue-analysis, procedural-demo-generation, semantic-qt-ohos-project-analyzer-workflow, semantic-qt-harmonyos-golden-rules, semantic-qt-harmonyos-api-mapping]
 summary: >
-  应用鸿蒙化完善工作流（功能级测试用例闭环,四阶段）：扫描应用源码识别核心功能点→生成10核心测试用例（AI扫源码+人工review）→
-  人工测试/反馈问题/修复/回归循环→10用例全pass闭合。前置：运行测试(qt-ohos-run-test)通过。
-  含三件套(ASCII循环图/循环退出条件✅10用例全pass/门控检查⚠️)。
+  The application-polish workflow for HarmonyOS porting (a feature-level test case loop, four phases): scan the application source to identify core features → generate 10 core test cases (an AI source scan + human review) →
+  loop through manual testing / reporting problems / fixing / regression → close once all 10 cases pass. Prerequisite: the run test (qt-ohos-run-test) passes.
+  Includes the standard trio (an ASCII loop diagram / the loop exit condition ✅ all 10 cases pass / gate checks ⚠️).
 leader_summary: >
-  把"应用能跑起来"推进到"核心功能全验证通过",通过AI扫源码生成10核心用例+人工测试反馈修复闭环,沉淀功能级测试资产。
-impact: [迁移提效, 框架支撑]
-deliverables: [工作流, 测试用例清单, 问题沉淀]
-evidence: [<APP_NAME>完善测试报告, <WORKLOG>]
+  Advances an application from "it runs" to "every core feature is verified", using an AI source scan to generate 10 core cases plus a manual test-report-fix loop, and capturing feature-level test assets.
+impact: [Migration efficiency, Framework support]
+deliverables: [workflow, test case list, captured problems]
+evidence: [The <APP_NAME> polish test report, <WORKLOG>]
 ---
 
-# 应用鸿蒙化完善工作流
+# The application-polish workflow for HarmonyOS porting
 
-> **适用场景**：Qt 鸿蒙化应用已通过运行测试（[[qt-ohos-run-test]]）跑起来，需对核心功能做端到端验证闭环（非仅"能跑"，而是"核心功能全通过"）。
-> **前置条件**：① 运行测试工作流七阶段已全 pass（进程存活+渲染+生命周期+窗口+输入+平台限制回归） ② 应用源码可读 ③ 真机/模拟器可用。
-> **预期耗时**：2-6 小时（视应用复杂度与缺陷密度）。
-
----
-
-## 触发条件
-
-- 应用已通过 [[qt-ohos-run-test]]（运行测试），需进入功能级验证
-- 客户/业务方要求"核心功能全验证通过"而非仅"能启动"
-- 迁移后需沉淀功能测试资产（10 核心用例清单可复用）
-
-> **与运行测试的边界**：run-test 聚焦"让应用在真机跑起来"（部署/启动/渲染/崩溃），本工作流聚焦"核心功能行为正确"（按用例操作验证预期）。run-test 是本工作流的前置。
+> **When it applies**: a Qt application ported to HarmonyOS already runs thanks to the run test ([[qt-ohos-run-test]]), and now needs an end-to-end verification loop over its core features (not just "it runs", but "every core feature passes").
+> **Prerequisites**: ① all seven phases of the run-test workflow pass (process alive + rendering + lifecycle + windows + input + platform limitation regression) ② the application source is readable ③ a real device/emulator is available.
+> **Expected effort**: 2–6 hours (depending on application complexity and defect density).
 
 ---
 
-## 流程总览
+## When to use this
+
+- The application has passed [[qt-ohos-run-test]] (the run test) and needs feature-level verification
+- The customer/business side wants "every core feature verified", not just "it launches"
+- You want to capture functional test assets after a migration (the list of 10 core cases is reusable)
+
+> **The boundary with the run test**: run-test focuses on "getting the application running on a real device" (deployment/launch/rendering/crashes); this workflow focuses on "the core features behave correctly" (verifying expectations by following test case steps). run-test is a prerequisite for this workflow.
+
+---
+
+## Process overview
 
 ```
-§1 扫描应用源码 → §2 生成10核心用例 → §3 人工测试/反馈/修复循环 → §4 闭合(10全pass)
+§1 Scan the application source → §2 Generate 10 core cases → §3 The manual test/report/fix loop → §4 Close out (all 10 pass)
                                                 │
-                                                └─ 循环退出条件：10用例全✅
+                                                └─ Loop exit condition: all 10 cases ✅
 ```
 
-> **📋 TODO 同步点**：本工作流为多步骤任务，每个阶段转换时更新 `<LOCAL_TODO>` 该任务「进展」列；任务完成时同会话移至「✅ 已完成」并追加 `<WORKLOG>`。
+> **📋 TODO sync point**: this is a multi-step workflow — update the "Progress" column for this task in `<LOCAL_TODO>` at each phase transition; when the task completes, move it to "✅ Completed" in the same session and append to `<WORKLOG>`.
 
 ---
 
-## 阶段一：扫描应用源码
+## Phase 1: scan the application source
 
-> **📋 TODO 同步点**：更新 `<LOCAL_TODO>` → `阶段一进行中：扫描应用源码`
+> **📋 TODO sync point**: update `<LOCAL_TODO>` → `Phase 1 in progress: scanning the application source`
 
-### 1.1 源码定位与入口识别
+### 1.1 Locate the source and identify the entry point
 
-- 定位应用源码根目录（`OhosExampleApp/` + `main.cpp` + 业务源码）
-- 识别入口链：`extern "C" int main()` shim → QApplication → 主窗口构造
-- 参见 [[qt-ohos-project-analyzer-workflow]]（工程分析工作流，双重验证）
+- Locate the application source root (`OhosExampleApp/` + `main.cpp` + the business source)
+- Identify the entry chain: the `extern "C" int main()` shim → QApplication → main window construction
+- See [[qt-ohos-project-analyzer-workflow]] (the project analysis workflow, with dual verification)
 
-### 1.2 核心功能点扫描
+### 1.2 Scan for core features
 
-用 grep/源码阅读识别核心功能，按优先级：
+Use grep and source reading to identify the core features, by priority:
 
-| 优先级 | 功能类型 | grep/识别关键词 |
-|--------|---------|----------------|
-| P0 | 主窗口与菜单 | `QMainWindow`/`QMenuBar`/`QToolBar`/`addAction` |
-| P0 | 核心业务交互 | `QPushButton::clicked`/`QDialog`/`QInputDialog`/`exec()` |
-| P1 | 文件操作 | `QFileDialog`/`QFile`/`save`/`open` |
-| P1 | 数据模型 | `QTableView`/`QListView`/`QSql*Model` |
-| P2 | 设置/配置 | `QSettings`/`QComboBox`/`QCheckBox` |
-| P2 | 平台相关 API | `QProcess`(按场景:无界面保留/有界面改 startAppProcess 或 startAbility)/`chmod`/`symlink`（见 [[qt-harmonyos-api-mapping]]） |
+| Priority | Feature type | grep/identification keywords |
+|----------|--------------|------------------------------|
+| P0 | Main window and menus | `QMainWindow`/`QMenuBar`/`QToolBar`/`addAction` |
+| P0 | Core business interactions | `QPushButton::clicked`/`QDialog`/`QInputDialog`/`exec()` |
+| P1 | File operations | `QFileDialog`/`QFile`/`save`/`open` |
+| P1 | Data models | `QTableView`/`QListView`/`QSql*Model` |
+| P2 | Settings/configuration | `QSettings`/`QComboBox`/`QCheckBox` |
+| P2 | Platform-specific APIs | `QProcess` (depends on the scenario: keep it when headless; switch to startAppProcess or startAbility when there's a UI) / `chmod`/`symlink` (see [[qt-harmonyos-api-mapping]]) |
 
-> **⚠️ 元教训**：扫描时识别平台相关 API（QProcess/chmod/symlink 等），这些在鸿蒙需替换（见 [[qt-harmonyos-golden-rules]] P1-P5 + [[qt-harmonyos-api-mapping]]），纳入测试用例重点验证。
+> **⚠️ Meta-lesson**: while scanning, identify platform-specific APIs (QProcess/chmod/symlink and so on); these need replacing on HarmonyOS (see [[qt-harmonyos-golden-rules]] P1-P5 + [[qt-harmonyos-api-mapping]]), so include them in the test cases as focus areas.
 
-### 循环退出条件（必须全部满足）
+### Loop exit conditions (all must hold)
 
-- ✅ 入口链梳理完成（main→QApp→主窗口）
-- ✅ 15-20 候选核心功能点识别（含平台相关 API 标注）
-- ✅ 平台限制/铁律相关功能点已标注（参见 [[qt-harmonyos-golden-rules]]）
+- ✅ The entry chain is mapped out (main → QApp → main window)
+- ✅ 15–20 candidate core features identified (with platform-specific APIs flagged)
+- ✅ Features relating to platform limitations / iron rules are flagged (see [[qt-harmonyos-golden-rules]])
 
-### 输出物
+### Outputs
 
-- 核心功能点清单（15-20 项，标注优先级 P0/P1/P2 + 平台相关标记）
+- A list of core features (15–20 items, labeled P0/P1/P2 with platform-specific markers)
 
-> **⚠️ 门控检查**：未完成源码扫描前，**禁止生成测试用例**（无源码依据的用例是凭空臆测）。
+> **⚠️ Gate check**: **do not generate test cases** before the source scan is complete (cases with no grounding in the source are pure guesswork).
 
 ---
 
-## 阶段二：生成 10 核心测试用例
+## Phase 2: generate 10 core test cases
 
-> **📋 TODO 同步点**：更新 `<LOCAL_TODO>` → `阶段二进行中：生成10核心测试用例`
+> **📋 TODO sync point**: update `<LOCAL_TODO>` → `Phase 2 in progress: generating the 10 core test cases`
 
-### 2.1 AI 生成用例初稿
+### 2.1 The AI drafts the cases
 
-基于阶段一功能点清单，AI/Agent 生成 10 核心测试用例初稿（选 P0 优先，覆盖主路径）。
+Based on the feature list from phase 1, have the AI/agent draft 10 core test cases (P0 first, covering the main paths).
 
-**用例模板**：
+**Case template**:
 
 ```
-### 用例 TC-NN：<用例名>
-- **功能点**：<对应源码功能>
-- **前置**：<运行测试通过 + 特定初始状态>
-- **操作步骤**：
-  1. <操作1>
-  2. <操作2>
-  3. <操作3>
-- **预期结果**：<可观察的正确行为>
-- **实际结果**：<待人工填写：pass/fail + 现象>
-- **状态**：<待填写：✅pass / ❌fail / 🟡flaky>
+### Case TC-NN: <case name>
+- **Feature**: <the corresponding source feature>
+- **Prerequisites**: <the run test passes + a specific initial state>
+- **Steps**:
+  1. <step 1>
+  2. <step 2>
+  3. <step 3>
+- **Expected result**: <the observable correct behavior>
+- **Actual result**: <to be filled in by a human: pass/fail + what happened>
+- **Status**: <to be filled in: ✅pass / ❌fail / 🟡flaky>
 ```
 
-### 2.2 人工 review 与固化
+### 2.2 Human review and finalization
 
-- 人工 review 10 用例初稿：覆盖主路径？操作可执行？预期可观察？
-- 调整：合并/拆分/补充，确保 10 用例覆盖应用最核心 10 个功能
-- 固化为测试用例清单（表格 + 每用例详情）
+- A human reviews the 10 draft cases: do they cover the main paths? Are the steps executable? Are the expectations observable?
+- Adjust: merge/split/add, so that the 10 cases cover the application's 10 most core features
+- Finalize the test case list (a table + the details of each case)
 
-**10 用例清单表**（示例骨架，按应用实际填充）：
+**The 10-case table** (a skeleton; fill it in for your application):
 
-| TC# | 用例名 | 优先级 | 状态 |
-|-----|--------|:------:|:----:|
-| TC-01 | 主窗口启动显示 | P0 | 🟡待测 |
-| TC-02 | 菜单/工具栏操作 | P0 | 🟡待测 |
-| TC-03 | 核心业务对话框 | P0 | 🟡待测 |
+| TC# | Case name | Priority | Status |
+|-----|-----------|:--------:|:------:|
+| TC-01 | Main window launches and displays | P0 | 🟡 to test |
+| TC-02 | Menu/toolbar operations | P0 | 🟡 to test |
+| TC-03 | The core business dialog | P0 | 🟡 to test |
 | ... | ... | ... | ... |
-| TC-10 | 核心业务闭环 | P0 | 🟡待测 |
+| TC-10 | The core business end-to-end flow | P0 | 🟡 to test |
 
-> 参见 [[framework-fix-verification]] 验证用例编写规范（每问题一用例、复用 Qt Examples、README 模板）。
+> See [[framework-fix-verification]] for the conventions on writing verification cases (one case per problem, reusing Qt examples, the README template).
 
-### 循环退出条件（必须全部满足）
+### Loop exit conditions (all must hold)
 
-- ✅ 10 核心测试用例已生成（含操作步骤+预期）
-- ✅ 人工 review 通过（覆盖主路径、操作可执行、预期可观察）
-- ✅ 用例清单已固化为文档
+- ✅ The 10 core test cases are written (with steps + expectations)
+- ✅ Human review passed (main paths covered, steps executable, expectations observable)
+- ✅ The case list is finalized as a document
 
-### 输出物
+### Outputs
 
-- 10 核心测试用例清单（表格 + 每用例详情模板）
+- The list of 10 core test cases (a table + a details template per case)
 
-> **⚠️ 门控检查**：用例未固化前，**禁止进入人工测试**（无清单的测试是随机操作）。
+> **⚠️ Gate check**: **do not start manual testing** before the cases are finalized (testing without a list is just random poking).
 
 ---
 
-## 阶段三：人工测试 / 反馈 / 修复循环 ★核心
+## Phase 3: the manual test / report / fix loop ★ the core
 
-> **📋 TODO 同步点**：更新 `<LOCAL_TODO>` → `阶段三进行中：人工测试循环（X/10 pass）`
+> **📋 TODO sync point**: update `<LOCAL_TODO>` → `Phase 3 in progress: the manual test loop (X/10 passing)`
 
-> **本阶段为循环过程，必须 10 用例全 pass 后才能进入阶段四。**
+> **This phase is a loop; you can only move to phase 4 once all 10 cases pass.**
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  测试循环开始                                             │
+│  The test loop begins                                     │
 │  ↓                                                       │
-│  3.1 取下一个待测用例（或回归失败的用例）                  │
+│  3.1 Take the next untested case (or re-run a failed one) │
 │  ↓                                                       │
-│  3.2 人工真机操作，按用例步骤执行                          │
+│  3.2 Operate the real device manually, following the steps│
 │  ↓                                                       │
-│  3.3 实际结果 == 预期 ?                                   │
-│  ├─ 是 → 标记 ✅pass → 该用例闭合                        │
-│  └─ 否 ↓                                                 │
-│  3.4 反馈问题（现象+截图+hilog+栈帧）                     │
+│  3.3 Actual result == expected?                           │
+│  ├─ Yes → mark ✅pass → that case is closed              │
+│  └─ No ↓                                                 │
+│  3.4 Report the problem (symptom + screenshot + hilog +   │
+│      stack frames)                                        │
 │  ↓                                                       │
-│  3.5 定位根因（参见 [[qt-ohos-run-test]] §5 崩溃分析 +  │
-│       [[framework-issue-analysis]] 调用链）              │
+│  3.5 Find the root cause (see [[qt-ohos-run-test]] §5     │
+│      crash analysis + [[framework-issue-analysis]] call   │
+│      chains)                                              │
 │  ↓                                                       │
-│  3.6 修复源码（应用层/API 替换/平台限制规避）             │
+│  3.6 Fix the source (application layer / API replacement /│
+│      working around a platform limitation)                │
 │  ↓                                                       │
-│  3.7 回归：重新构建+安装+重测该用例 → 回到 3.3           │
+│  3.7 Regress: rebuild + install + retest that case → 3.3  │
 │  ↓                                                       │
-│  10 用例全 ✅pass ?                                       │
-│  ├─ 否 → 取下一用例 → 回到 3.1                          │
-│  └─ 是 → 退出循环 ✓                                      │
+│  All 10 cases ✅pass?                                     │
+│  ├─ No → take the next case → back to 3.1                │
+│  └─ Yes → exit the loop ✓                                │
 │                                                           │
-│  退出条件：10 核心用例全部 ✅pass                        │
+│  Exit condition: all 10 core cases ✅pass                │
 └──────────────────────────────────────────────────────────┘
 ```
 
-### 3.1-3.2 执行用例
+### 3.1-3.2 Execute the case
 
-- 真机/模拟器按用例步骤操作（`hdc shell aa start` + 手动交互）
-- 截图/hilog 记录实际行为
+- Follow the case's steps on the device/emulator (`hdc shell aa start` + manual interaction)
+- Record the actual behavior with screenshots/hilog
 
-### 3.3-3.4 结果判定与反馈
+### 3.3-3.4 Judging results and reporting
 
-| 实际 vs 预期 | 状态 | 动作 |
-|-------------|------|------|
-| 一致 | ✅pass | 用例闭合，取下一用例 |
-| 不一致 | ❌fail | 反馈问题（现象+截图+hilog+栈帧）进 3.5 |
-| 部分一致/不稳定 | 🟡flaky | 多次复现确认是 fail 还是时序 |
+| Actual vs. expected | Status | Action |
+|---------------------|--------|--------|
+| They match | ✅pass | The case is closed; take the next one |
+| They don't match | ❌fail | Report the problem (symptom + screenshot + hilog + stack frames) and go to 3.5 |
+| Partially matching / unstable | 🟡flaky | Reproduce several times to confirm whether it's a real fail or a timing issue |
 
-### 3.5-3.6 定位与修复
+### 3.5-3.6 Diagnosis and fixing
 
-- 崩溃/异常 → [[qt-ohos-run-test]] §5 崩溃分析循环 + [[framework-issue-analysis]] 调用链
-- 平台限制触发 → [[qt-harmonyos-golden-rules]] P1-P5 + [[qt-harmonyos-api-mapping]] 替换
-- 应用层逻辑 bug → 改源码
-- 修复后回归（3.7）：重新构建+安装+重测该用例
+- Crashes/exceptions → [[qt-ohos-run-test]] §5 the crash analysis loop + [[framework-issue-analysis]] call chains
+- A platform limitation triggered → [[qt-harmonyos-golden-rules]] P1-P5 + the replacements in [[qt-harmonyos-api-mapping]]
+- An application-layer logic bug → fix the source
+- After fixing, regress (3.7): rebuild + install + retest that case
 
-### 循环退出条件（必须全部满足）
+### Loop exit conditions (all must hold)
 
-- ✅ 10 核心用例**全部** ✅pass（非 9/10，必须全 pass）
-- ✅ 每个 fail 用例的修复已经回归验证（非口头修复）
-- ✅ flaky 用例已多次复现确认稳定 pass
+- ✅ **All** 10 core cases ✅pass (not 9/10 — all of them)
+- ✅ Every failing case's fix has been regression-verified (not just claimed fixed)
+- ✅ Flaky cases have been reproduced several times and confirmed to pass consistently
 
-### 输出物
+### Outputs
 
-- 测试报告（10 用例 pass/fail 记录 + 截图对照）
-- 修复清单（每用例修复的源码改动 + 关联 problem）
+- A test report (pass/fail for all 10 cases + screenshot comparisons)
+- A fix list (the source changes per case + the associated problem records)
 
-> **⚠️ 门控检查**：未达 10 用例全 pass 前，**禁止进入阶段四闭合**。有未解决 fail 的工作流视为未完成。
+> **⚠️ Gate check**: **do not proceed to the phase-4 close-out** until all 10 cases pass. A workflow with unresolved failures is incomplete.
 
 ---
 
-## 阶段四：闭合与沉淀
+## Phase 4: close out and capture
 
-> **📋 TODO 同步点**：更新 `<LOCAL_TODO>` — 将此任务从「📌 进行中」移至「✅ 已完成」，填写完成日期和结果摘要
+> **📋 TODO sync point**: update `<LOCAL_TODO>` — move this task from "📌 In progress" to "✅ Completed", filling in the completion date and a summary of the results
 
-### 4.1 测试报告
+### 4.1 The test report
 
-| TC# | 用例名 | 最终状态 | 修复次数 | 关联 problem |
-|-----|--------|:--------:|:--------:|-------------|
+| TC# | Case name | Final status | Fix iterations | Associated problem |
+|-----|-----------|:------------:|:--------------:|--------------------|
 | TC-01..10 | ... | ✅ | N | ... |
 
-### 4.2 问题沉淀
+### 4.2 Capture the problems
 
-- 修复中遇到的新错误 → `problems/`（用 `_templates/qt-problem.md`）+ 运行 `bash _scripts/kb-regen-indexes.sh` 重生 `problems/_lookup.md` 等派生索引
-- 新 API 差异 → [[qt-harmonyos-api-mapping]]
-- 新平台限制 → `qt-harmonyos-platform-limits`（内部沉淀）
+- New errors found while fixing → `problems/` (using `_templates/qt-problem.md`) + run `bash _scripts/kb-regen-indexes.sh` to regenerate `problems/_lookup.md` and the other derived indexes
+- New API differences → [[qt-harmonyos-api-mapping]]
+- New platform limitations → `qt-harmonyos-platform-limits` (captured internally)
 
-### 4.3 工作流闭合确认
+### 4.3 Workflow close-out confirmation
 
-- [ ] 10 核心用例全 ✅pass
-- [ ] 测试报告已输出
-- [ ] 问题已沉淀到 `problems/` + 索引同步
-- [ ] `<LOCAL_TODO>` 移至「✅ 已完成」
-- [ ] `<WORKLOG>` 追加记录
-- [ ] 已提交 git commit
-
----
-
-## 检查清单
-
-- [ ] 前置：运行测试（[[qt-ohos-run-test]]）已通过
-- [ ] 阶段一：源码扫描完成，15-20 功能点清单
-- [ ] 阶段二：10 核心用例生成+人工 review+固化
-- [ ] 阶段三：10 用例全 ✅pass（含 fail 修复回归）
-- [ ] 阶段四：测试报告+问题沉淀+索引同步
+- [ ] All 10 core cases ✅pass
+- [ ] The test report is written
+- [ ] Problems are captured in `problems/` + the indexes are in sync
+- [ ] `<LOCAL_TODO>` moved to "✅ Completed"
+- [ ] A record appended to `<WORKLOG>`
+- [ ] A git commit has been made
 
 ---
 
-## 常见问题模式
+## Checklist
 
-| 模式 | 表现 | 排查方向 | 关联 |
-|------|------|----------|------|
-| 用例 fail-崩溃 | 操作触发 SIGSEGV/SIGABRT | [[qt-ohos-run-test]] §5 崩溃分析 | run-test |
-| 用例 fail-平台限制 | chmod/symlink/dlopen 失败 | [[qt-harmonyos-golden-rules]] P1-P5 | golden-rules |
-| 用例 fail-API 不可用 | QtWebEngine 等鸿蒙缺；QProcess 有界面子进程须改 startAppProcess/startAbility | [[qt-harmonyos-api-mapping]] §1 | api-mapping |
-| 用例 flaky | 时序/竞态致间歇 fail | 多次复现+[[framework-issue-analysis]] 调用链 | framework-issue-analysis |
-| 用例无法执行 | 前置功能未实现/阻塞 | 标记阻塞，回到 [[qt-ohos-run-test]] 补或转入迁移 | run-test |
+- [ ] Prerequisite: the run test ([[qt-ohos-run-test]]) passes
+- [ ] Phase 1: the source scan is complete, with a list of 15–20 features
+- [ ] Phase 2: the 10 core cases are generated, human-reviewed, and finalized
+- [ ] Phase 3: all 10 cases ✅pass (including regression on every fix)
+- [ ] Phase 4: the test report + captured problems + index sync
 
 ---
 
-## 供应链
+## Common problem patterns
 
-> 详见 工作流供应链 §应用移植（本工作流为迁移后续的功能级完善环节）
-
-| 维度 | 详情 |
-|------|------|
-| **上游来源** | 应用移植完成 + qt-ohos-run-test 运行测试通过的应用 |
-| **上游输入** | 能跑起来的鸿蒙应用 + 应用源码 + 真机/模拟器 |
-| **下游接收方** | 商业 Qt 客户 / 内部（核心功能验证通过的可交付应用） |
-| **交付件** | 10 核心用例清单 + 测试报告 + 问题沉淀 |
-| **交付件路径** | 无固定目录（测试资产随应用工程） |
-| **分流规则** | 发现框架 bug → framework-issue-analysis 工作流；已知问题 → 查 `_lookup` |
+| Pattern | What you see | Where to look | Related |
+|---------|--------------|---------------|---------|
+| Case fails with a crash | An action triggers SIGSEGV/SIGABRT | [[qt-ohos-run-test]] §5 crash analysis | run-test |
+| Case fails on a platform limitation | chmod/symlink/dlopen fails | [[qt-harmonyos-golden-rules]] P1-P5 | golden-rules |
+| Case fails on an unavailable API | QtWebEngine and others are absent on HarmonyOS; QProcess for a UI child process must become startAppProcess/startAbility | [[qt-harmonyos-api-mapping]] §1 | api-mapping |
+| A flaky case | Timing/race conditions cause intermittent failures | Reproduce several times + [[framework-issue-analysis]] call chains | framework-issue-analysis |
+| A case can't be executed | A prerequisite feature isn't implemented / is blocked | Mark it blocked and go back to [[qt-ohos-run-test]] to fill the gap, or back to migration | run-test |
 
 ---
 
-## 相关上下文
+## Supply chain
 
-- [[qt-ohos-run-test]] — 运行测试工作流（前置，跑起来才能完善）
-- [[qt-app-harmonyos-migration]] — 应用鸿蒙化迁移（完善的前序）
-- [[framework-fix-verification]] — 验证用例编写规范参考
-- [[framework-issue-analysis]] — 框架问题分析（fail 用例定位调用链）
-- [[qt-ohos-project-analyzer-workflow]] — 工程分析（源码扫描）
-- [[qt-harmonyos-golden-rules]] — 35 条铁律（P1-P5 平台限制验证）
-- [[qt-harmonyos-api-mapping]] — API 替换（源码扫描识别需测 API）
-- [[demo-generation]] — Demo 生成（用例工程可复用 demo 模板）
-- 工作流供应链 — 工作流供应链总览
+> See the workflow supply chain, §Application porting (this workflow is the feature-level polish stage after migration)
+
+| Dimension | Details |
+|-----------|---------|
+| **Upstream source** | An application that completed migration and passed the qt-ohos-run-test run test |
+| **Upstream input** | A HarmonyOS application that runs + the application source + a real device/emulator |
+| **Downstream recipients** | Commercial Qt customers / internal use (a deliverable application with verified core features) |
+| **Deliverables** | The list of 10 core cases + the test report + captured problems |
+| **Deliverable path** | No fixed directory (the test assets live with the application project) |
+| **Routing rules** | If you find a framework bug → the framework-issue-analysis workflow; for a known problem → check `_lookup` |
 
 ---
 
-## 内容来源
+## Related context
 
-| 来源类型 | 说明 |
-|----------|------|
-| 🛠️ 工作经验 | 10 核心用例生成方法论、人工测试反馈修复循环、用例模板 |
-| 🔍 框架源码 | 源码扫描关键词（QMainWindow/QDialog/QProcess 等） |
-| 📖 官方文档 | Qt 测试实践、HarmonyOS 功能验证 |
-| 📦 KB 工作流 | run-test（前置）/framework-fix-verification（用例规范）/framework-issue-analysis（定位） |
+- [[qt-ohos-run-test]] — The run-test workflow (a prerequisite; it must run before you can polish it)
+- [[qt-app-harmonyos-migration]] — HarmonyOS migration (the stage before polishing)
+- [[framework-fix-verification]] — A reference for verification case conventions
+- [[framework-issue-analysis]] — Framework issue analysis (tracing call chains for failing cases)
+- [[qt-ohos-project-analyzer-workflow]] — Project analysis (the source scan)
+- [[qt-harmonyos-golden-rules]] — The 35 iron rules (P1-P5 platform limitation verification)
+- [[qt-harmonyos-api-mapping]] — API replacements (the source scan identifies which APIs to test)
+- [[demo-generation]] — Demo generation (case projects can reuse the demo template)
+- The workflow supply chain — An overview of the workflow supply chain
 
-### Qt 框架版本（校验基准）
+---
 
-| 版本 | 分支 | Commit | 日期 |
-|------|------|--------|------|
+## Content sources
+
+| Source type | Notes |
+|-------------|-------|
+| 🛠️ Hands-on experience | The methodology for generating 10 core cases, the manual test-report-fix loop, and the case template |
+| 🔍 Framework source | The source scan keywords (QMainWindow/QDialog/QProcess and so on) |
+| 📖 Official documentation | Qt testing practice, HarmonyOS functional verification |
+| 📦 KB workflows | run-test (the prerequisite) / framework-fix-verification (case conventions) / framework-issue-analysis (diagnosis) |
+
+### Qt framework versions (validation baseline)
+
+| Version | Branch | Commit | Date |
+|---------|--------|--------|------|
 | Qt 5.15.16 | tqtc/harmonyos-5.15.16 | 962aa625 | 2026-04-19 |
 | Qt 5.12.12 | tqtc/harmonyos-5.12.12 | 613336de | 2026-05-25 |
 
 ---
 
-## 参考来源
+## References
 
-- 基于 Qt 鸿蒙化应用完善工作经验开发的工作流
-- 方法论参考 Qt 内部 QA 流程 + 本库 run-test/framework-fix-verification 工作流
+- A workflow developed from hands-on experience polishing Qt HarmonyOS ports
+- The methodology draws on Qt's internal QA process plus this library's run-test/framework-fix-verification workflows

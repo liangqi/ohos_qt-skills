@@ -10,66 +10,66 @@ severity: medium
 audience: public
 refs: [semantic-qt-harmonyos-third-party-libs]
 summary: >
-  FFmpeg 9.x 移除了 av_stream_get_codec_timebase() 函数，使用旧 API 的代码编译失败。
-  替换为 st->time_base（stream time base），功能等价。
+  FFmpeg 9.x removed the av_stream_get_codec_timebase() function, so code using the old API fails to compile.
+  Replace it with st->time_base (the stream time base), which is functionally equivalent.
 leader_summary: >
-  沉淀 FFmpeg 9.x API 兼容性修复方案。
-impact: [迁移提效, 编译排障]
-deliverables: [problem记录]
-evidence: [QCTools 编译通过]
+  Captured a compatibility fix for the FFmpeg 9.x API.
+impact: [Migration efficiency, Build troubleshooting]
+deliverables: [problem record]
+evidence: [QCTools builds successfully]
 error_message: >
   error: use of undeclared identifier 'av_stream_get_codec_timebase'
 error_code: ""
 keywords: [ffmpeg, av_stream_get_codec_timebase, time_base, api-removal, ffmpeg9]
-symptoms: 编译 FFmpeg 相关代码时报 undeclared identifier
+symptoms: An "undeclared identifier" error when compiling FFmpeg-related code
 environment: FFmpeg 9.0.1 (Harmonybrew arm64_ohos), OHOS clang 15
 ---
 
-# FFmpeg 9.x 移除 av_stream_get_codec_timebase
+# FFmpeg 9.x removed av_stream_get_codec_timebase
 
-## 错误信息
+## Error message
 
 ```
 error: use of undeclared identifier 'av_stream_get_codec_timebase'
 ```
 
-## 场景
+## Scenario
 
-QCTools 使用 `av_stream_get_codec_timebase(stream->stream())` 获取编解码器时基，FFmpeg 9.0.1 中该函数已移除。
+QCTools uses `av_stream_get_codec_timebase(stream->stream())` to get the codec time base, but that function was removed in FFmpeg 9.0.1.
 
-## 原因
+## Cause
 
-FFmpeg 5+ 移除了 `AVStream->codec` 字段，`av_stream_get_codec_timebase()` 返回的 codec time base 也不再可用。函数在 FFmpeg 9.x 中完全移除。
+FFmpeg 5+ removed the `AVStream->codec` field, which also made the codec time base returned by `av_stream_get_codec_timebase()` unavailable. The function was removed entirely in FFmpeg 9.x.
 
-## 解决方案
+## Solution
 
-替换为 `stream->time_base`（stream time base）：
+Replace it with `stream->time_base` (the stream time base):
 
 ```cpp
-// 旧（FFmpeg < 9）
+// Old (FFmpeg < 9)
 rational_to_string(av_stream_get_codec_timebase(stream->stream()), '/')
 
-// 新（FFmpeg 9.x）
+// New (FFmpeg 9.x)
 rational_to_string(stream->stream()->time_base, '/')
 ```
 
-两者在大多数情况下返回相同值。
+The two return the same value in most cases.
 
-## 注意事项
+## Notes
 
-- 其他 FFmpeg API 变化：`av_init_packet` 在 9.x 标记 deprecated（warning 非 error）
-- 建议用 `llvm-readelf --dyn-syms` 检查所有 UND 符号是否在新版 FFmpeg 头文件中存在
+- Other FFmpeg API changes: `av_init_packet` is marked deprecated in 9.x (a warning, not an error)
+- It's worth using `llvm-readelf --dyn-syms` to check that every UND symbol still exists in the new FFmpeg headers
 
-## 成果展示
+## Results
 
-| 字段 | 内容 |
-|------|------|
-| 领导摘要 | FFmpeg 9.x API 兼容性修复 |
-| 影响面 | 使用旧 FFmpeg API 的 Qt OHOS 应用 |
-| 交付物 | problem 记录 |
-| 证据 | QCTools 编译通过 |
-| 可复用方式 | 遇到 av_stream_get_codec_timebase undeclared 时直接替换 |
+| Field | Content |
+|-------|---------|
+| Leadership summary | FFmpeg 9.x API compatibility fix |
+| Scope of impact | Qt OHOS applications using the old FFmpeg API |
+| Deliverable | problem record |
+| Evidence | QCTools builds successfully |
+| How to reuse | When you hit "av_stream_get_codec_timebase undeclared", substitute directly |
 
-## 相关
+## Related
 
-- [[semantic-qt-harmonyos-third-party-libs]] — 三方库鸿蒙化指南
+- [[semantic-qt-harmonyos-third-party-libs]] — Guide to porting third-party libraries to HarmonyOS

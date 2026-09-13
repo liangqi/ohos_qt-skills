@@ -10,13 +10,13 @@ severity: critical
 audience: public
 refs: [semantic-qt-harmonyos-build-run-workflow, procedural-qt-ohos-run-test]
 summary: >
-  OHOS入口shim（main.cpp）跳过原始登录流程直接传nullptr给MainWindow，
-  下游initSet()未做空指针保护导致SIGSEGV崩溃。修复：对业务指针加if-null守卫+安全默认值。
+  The OHOS entry shim (main.cpp) skips the original login flow and passes nullptr straight to MainWindow;
+  downstream, initSet() has no null check, causing a SIGSEGV. Fix: add if-null guards plus safe defaults for business pointers.
 leader_summary: >
-  解决OHOS入口shim跳过初始化流程导致的空指针崩溃，提炼为entry shim设计模式。
-impact: [迁移提效]
-deliverables: [problem记录, 源码修复]
-evidence: [RedisView真机验证commit, 崩溃日志]
+  Fixed the null-pointer crash caused by the OHOS entry shim skipping the initialization flow, and distilled it into an entry-shim design pattern.
+impact: [Migration efficiency]
+deliverables: [problem record, source fix]
+evidence: [RedisView on-device verification commit, crash log]
 error_message: >
   Signal:SIGSEGV(SEGV_MAPERR)@0x0000000000000040  probably caused by NULL pointer dereference
   #00 QString::QString(QString const&)
@@ -29,13 +29,13 @@ error_message: >
   #07 main+224
 error_code: ""
 keywords: [SIGSEGV, NULL pointer, nullptr, entry shim, main.cpp, OHOS, MainWindow, initSet]
-symptoms: "应用启动后约1秒崩溃（C++ SIGSEGV），QtMainThread栈帧显示空指针解引用"
+symptoms: "The application crashes about a second after launch (a C++ SIGSEGV); the QtMainThread stack frames show a null-pointer dereference"
 environment: "Qt 5.15.16 OHOS / HarmonyOS 6.0 / HUAWEI MateBook 14"
 ---
 
-# OHOS 入口 shim 传 nullptr 导致业务代码空指针崩溃
+# The OHOS entry shim passes nullptr, crashing business code on a null pointer
 
-## 错误信息
+## Error message
 
 ```
 Reason:Signal:SIGSEGV(SEGV_MAPERR)@0x0000000000000040  probably caused by NULL pointer dereference
@@ -51,37 +51,37 @@ Tid:57608, Name:QtMainThread
 #07 pc 000000000016eab4 libOhosRedisView.so(main+224)
 ```
 
-## 场景
+## Scenario
 
-Qt 鸿蒙化应用构建成功、安装成功、`libqohos.so` 加载成功，但启动后约 1 秒 C++ 层崩溃。
+The Qt HarmonyOS port builds, installs, and loads `libqohos.so` successfully, but crashes in the C++ layer about a second after launch.
 
-## 原因
+## Cause
 
-**原始应用流程**：`AppMain.cpp` → 弹出 `LoginDialog` → 用户输入 Redis 连接信息 → 创建 `RedisCluster` 对象 → 传给 `MainWindow`。
+**The original application flow**: `AppMain.cpp` → show `LoginDialog` → the user enters Redis connection details → create a `RedisCluster` object → pass it to `MainWindow`.
 
-**OHOS 入口 shim**（`OhosExampleApp/main.cpp`）：为了简化鸿蒙化验证，跳过了登录对话框，直接传 `nullptr`：
+**The OHOS entry shim** (`OhosExampleApp/main.cpp`): to simplify HarmonyOS porting verification, it skips the login dialog and passes `nullptr` directly:
 
 ```cpp
 // OhosExampleApp/main.cpp
-MainWindow w(nullptr);  // ← 传空指针
+MainWindow w(nullptr);  // ← passing a null pointer
 w.show();
 return app.exec();
 ```
 
-**崩溃链**：
+**The crash chain**:
 ```
 main(nullptr)
   → MainWindow::init(nullptr)        // _redisClient = nullptr
     → MainWindow::mainWidget()        // new MainWidget(nullptr)
       → MainWidget::initSet(nullptr)  // _redisClient = nullptr
-        → _redisClient->getConnectName()  // ← 解引用 nullptr → SIGSEGV
+        → _redisClient->getConnectName()  // ← dereferences nullptr → SIGSEGV
 ```
 
-`initSet()` 中第 111 行直接调用 `_redisClient->getConnectName()` 而未检查空指针。偏移 0x40 对应 `RedisCluster` 类中 `_ConnectName`（QString）成员的偏移量。
+Line 111 of `initSet()` calls `_redisClient->getConnectName()` directly with no null check. The offset 0x40 corresponds to the offset of the `_ConnectName` (QString) member in the `RedisCluster` class.
 
-## 解决方案
+## Solution
 
-在 `MainWidget::initSet()` 中对 `_redisClient` 加空指针保护：
+Add a null guard for `_redisClient` in `MainWidget::initSet()`:
 
 ```cpp
 _redisClient = redisClient;
@@ -90,7 +90,7 @@ if(_redisClient) {
     _isClusterMode = _redisClient->getClusterMode();
     _isReplicationMode = _redisClient->getReplicationMode();
     _isCustomMode = _redisClient->getCustomMode();
-    // ... 原有初始化逻辑 ...
+    // ... the existing initialization logic ...
     _vClients = _redisClient->getClients(false);
     _vMasterClients = _redisClient->getClients(true);
 } else {
@@ -102,30 +102,30 @@ if(_redisClient) {
 }
 ```
 
-## 通用排查方法
+## A general troubleshooting method
 
-对于所有使用 OHOS 入口 shim 的迁移项目：
+For every migration project that uses an OHOS entry shim:
 
-1. **检查 main.cpp 传入的参数**：如果原始 `main()` 通过对话框/配置文件创建对象后传给 MainWindow，shim 中传 `nullptr` 时下游必须有保护
-2. **搜索所有解引用点**：`grep "_redisClient->" *.cpp` 确认哪些在启动路径上（构造函数/init 函数）
-3. **区分启动路径 vs 交互路径**：只有启动路径上的解引用需要立即保护，slot 函数中的可以延迟到用户操作时
+1. **Check the arguments main.cpp passes**: if the original `main()` created an object via a dialog/config file before passing it to MainWindow, then everything downstream must be guarded when the shim passes `nullptr`
+2. **Find every dereference site**: `grep "_redisClient->" *.cpp` to see which ones are on the startup path (constructors/init functions)
+3. **Separate the startup path from the interaction path**: only dereferences on the startup path need immediate guards; those in slot functions can wait until the user acts
 
-## 注意事项
+## Notes
 
-- 这是 OHOS 入口 shim 的通用问题模式，不限于 RedisView
-- 任何原始应用依赖「先初始化后创建窗口」流程的项目，shim 中都需要添加空指针守卫
-- 长期方案：在 shim 中实现最小化的初始化流程（如从配置文件读取连接信息）
+- This is a general problem pattern for OHOS entry shims, not specific to RedisView
+- Any project whose original application relies on an "initialize first, then create the window" flow needs null guards in the shim
+- The long-term fix: implement a minimal initialization flow in the shim (for example, reading connection details from a config file)
 
-## 成果展示
+## Results
 
-| 字段 | 内容 |
-|------|------|
-| 领导摘要 | 解决 OHOS 入口 shim 跳过初始化导致的空指针崩溃，提炼为通用设计模式 |
-| 影响面 | 所有使用 entry shim 模式的 Qt 鸿蒙化项目 |
-| 交付物 | problem 记录 + 源码修复 |
-| 证据 | RedisView 真机验证 commit |
-| 可复用方式 | 遇到 entry shim + SIGSEGV + 业务代码栈帧时直接复用 |
+| Field | Content |
+|-------|---------|
+| Leadership summary | Fixed the null-pointer crash caused by the OHOS entry shim skipping initialization, and distilled it into a general design pattern |
+| Scope of impact | Every Qt HarmonyOS porting project that uses the entry-shim pattern |
+| Deliverables | problem record + source fix |
+| Evidence | RedisView on-device verification commit |
+| How to reuse | Apply directly when you see an entry shim + SIGSEGV + business-code stack frames |
 
-## 相关
+## Related
 
-- [[qt-harmonyos-build-run-workflow]] — 构建运行工作流
+- [[qt-harmonyos-build-run-workflow]] — The build-and-run workflow

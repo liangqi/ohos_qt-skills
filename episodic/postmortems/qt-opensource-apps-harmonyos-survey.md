@@ -9,86 +9,86 @@ status: active
 audience: public
 refs: [semantic-qt-harmonyos-golden-rules, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-third-party-libs, semantic-qt-harmonyos-qt6-status, semantic-qt-harmonyos-modules]
 summary: >
-  2026-06-25 多 agent 工作流扫描 GitHub/KDE Apps/Gitee/SourceForge/Wikipedia，筛选 229 个 Qt
-  开源桌面应用并逐个评估鸿蒙化难度。难度分布：低 3 / 中 23 / 高 126 / 阻断 77；D-Bus(107)、
-  QtMultimedia(76)、QtWebEngine(62) 为三大阻断模块。产出清单在 <INTERNAL_OUTPUT>。沉淀"大 schema
-  输出失败→主循环生成"的工作流教训。
+  On 2026-06-25, a multi-agent workflow scanned GitHub/KDE Apps/Gitee/SourceForge/Wikipedia, shortlisted 229 open-source Qt
+  desktop applications, and assessed each one's HarmonyOS porting difficulty. Difficulty distribution: low 3 / medium 23 / high 126 / blocked 77; D-Bus (107),
+  QtMultimedia (76), and QtWebEngine (62) are the three biggest blocking modules. The resulting list is in <INTERNAL_OUTPUT>. Captured the workflow lesson
+  "large schema output fails → generate in the main loop".
 ---
 
-# Qt 开源应用鸿蒙化难度调研 — 经验总结
+# Survey of HarmonyOS porting difficulty for open-source Qt applications — lessons learned
 
-## 项目概览
+## Project overview
 
-| 字段 | 内容 |
-|------|------|
-| 时间 | 2026-06-25 |
-| 角色 | Qt for HarmonyOS 开发者 |
-| 技术栈 | Qt 5.12/5.15 for OHOS（评估基准）、多 agent 工作流、Node.js 报告生成 |
-| 规模 | 扫描 18 类别 → 去重 230 → 确认 229 个 Qt 应用，逐个难度评估 |
-| 状态 | 已完成 |
-| 产出 | `<INTERNAL_OUTPUT>` + `.csv`（不纳入知识页索引） |
+| Field | Content |
+|-------|---------|
+| Date | 2026-06-25 |
+| Role | Qt for HarmonyOS developer |
+| Tech stack | Qt 5.12/5.15 for OHOS (the assessment baseline), a multi-agent workflow, Node.js report generation |
+| Scale | Scanned 18 categories → deduplicated to 230 → confirmed 229 Qt applications, each assessed for difficulty |
+| Status | Complete |
+| Output | `<INTERNAL_OUTPUT>` + `.csv` (not included in the knowledge page index) |
 
-## 背景与目标
+## Background and goals
 
-为体现知识库能力 + 为鸿蒙 PC 生态筛选可适配的开源 Qt 应用，需在知名开源代码网站扫描 150+ 个 Qt 桌面应用，梳理清单并评估每个应用的鸿蒙化难度（依赖鸿蒙化难度为主）。评估字段：应用类别、网站、Qt 版本、Qt 模块、应用价值、鸿蒙化难度+说明。
+To demonstrate the knowledge base's capabilities and to shortlist adaptable open-source Qt applications for the HarmonyOS PC ecosystem, we needed to scan well-known open-source code sites for 150+ Qt desktop applications, compile a list, and assess each one's HarmonyOS porting difficulty (primarily the difficulty of porting its dependencies). Assessment fields: application category, site, Qt version, Qt modules, application value, and porting difficulty + explanation.
 
-## 方法论（关键决策）
+## Methodology (key decisions)
 
-### 决策 1: 多 agent 工作流编排（Discovery → Enrich → 主循环生成）
-- **背景**：150+ 应用逐个 fetch 仓库+评估，单 context 无法承载，需并行编排。
-- **选择**：18 类别 discovery agent 并行搜索（GitHub/KDE/Gitee/SourceForge/Wikipedia 多源）→ 去重 → 逐应用 enrich agent（fetch README+构建文件，提取 Qt 版本/模块/依赖，按 7 维度评分）→ 主循环生成报告。
-- **理由**：pipeline+barrier 编排，难度评估标准从 KB 4 个核心页（golden-rules/platform-limits/third-party-libs/qt6-status/modules）提炼注入每个 enrich agent prompt，确保评估有据可依。
-- **结果**：248 个 agent，319k tokens，产出 229 条结构化评估。质量高——难度判断与 KB 平台限制知识一致（如 JIT 类模拟器因 W^X/dlopen 阻断 = 5）。
+### Decision 1: multi-agent workflow orchestration (Discovery → Enrich → main-loop generation)
+- **Background**: fetching the repository and assessing 150+ applications one by one doesn't fit in a single context, so it needed parallel orchestration.
+- **Choice**: 18 category discovery agents searching in parallel (across GitHub/KDE/Gitee/SourceForge/Wikipedia) → deduplicate → one enrich agent per application (fetch the README + build files, extract the Qt version/modules/dependencies, score across 7 dimensions) → generate the report in the main loop.
+- **Rationale**: a pipeline + barrier orchestration, with the difficulty assessment criteria distilled from 4 core KB pages (golden-rules/platform-limits/third-party-libs/qt6-status/modules) and injected into every enrich agent's prompt, so each assessment is grounded.
+- **Result**: 248 agents, 319k tokens, producing 229 structured assessments. Quality was high — the difficulty judgments matched the KB's platform limitation knowledge (for example, JIT-based emulators are blocked by W^X/dlopen = 5).
 
-### 决策 2: 难度评估 7 维度 + 1-5 分
-- **维度**：qt_version_fit / qt_module_availability / deps_ohos_difficulty / platform_specific_code / build_system / hardware_deps / architecture_fit
-- **标尺**：Qt 模块可用性是第一标尺——WebEngine/DBus/RemoteObjects/SerialBus/NFC/Gamepad 不可用，Multimedia 需自编译，Qt6 仅 qtbase。
+### Decision 2: 7 assessment dimensions scored 1–5
+- **Dimensions**: qt_version_fit / qt_module_availability / deps_ohos_difficulty / platform_specific_code / build_system / hardware_deps / architecture_fit
+- **Primary yardstick**: Qt module availability — WebEngine/DBus/RemoteObjects/SerialBus/NFC/Gamepad are unavailable, Multimedia must be built yourself, and Qt 6 only has qtbase.
 
-## 关键发现（可复用经验）
+## Key findings (reusable lessons)
 
-### Qt 桌面应用鸿蒙化难度普遍偏高
-- **229 个应用难度分布**：🟢低 3 ｜ 🟡中 23 ｜ 🟠高 126 ｜ 🔴阻断 77（**高+阻断占 89%**）
-- **三大阻断模块**（应用数）：Qt D-Bus 107 ｜ QtMultimedia 76 ｜ QtWebEngine 62
-- **其他不可用模块**：X11Extras 15、AndroidExtras 6、WinExtras 6、MacExtras 5、Gamepad 2、RemoteObjects 1、SerialBus 1
-- **根因**：Qt 桌面应用普遍依赖 Linux 桌面生态（D-Bus 通知/媒体键、X11 窗口管理、PulseAudio/ALSA 音频、WebEngine 内嵌网页），这些在鸿蒙均不可用或需替换为 OHOS 原生 API。
+### HarmonyOS porting difficulty for Qt desktop applications is generally high
+- **Difficulty distribution across 229 applications**: 🟢 low 3 | 🟡 medium 23 | 🟠 high 126 | 🔴 blocked 77 (**high + blocked = 89%**)
+- **The three biggest blocking modules** (by application count): Qt D-Bus 107 | QtMultimedia 76 | QtWebEngine 62
+- **Other unavailable modules**: X11Extras 15, AndroidExtras 6, WinExtras 6, MacExtras 5, Gamepad 2, RemoteObjects 1, SerialBus 1
+- **Root cause**: Qt desktop applications generally depend on the Linux desktop ecosystem (D-Bus notifications/media keys, X11 window management, PulseAudio/ALSA audio, WebEngine-embedded web pages), none of which are available on HarmonyOS or which must be replaced with native OHOS APIs.
 
-### 仅 3 个低难度应用（score≤2）
-都是纯 Qt 跨平台 UI + 少依赖 + Qt5 + CMake + 单窗口的应用（如 DB Browser for SQLite，仅需 SQLite chmod patch）。**移植选型应优先从这 3 个 + 23 个中难度中筛选。**
+### Only 3 low-difficulty applications (score ≤ 2)
+All are pure-Qt cross-platform UIs with few dependencies, on Qt5, using CMake, with a single window (such as DB Browser for SQLite, which only needs the SQLite chmod patch). **When choosing what to port, start from those 3 plus the 23 medium-difficulty ones.**
 
-### 高频移植路径模式（enrich agent 反复给出的建议）
-1. **Qt6 → Qt5.15 for OHOS 降级**（多数现代 Qt 应用用 Qt6，而 OHOS 主力是 Qt5）
-2. **QtMultimedia 替换**：用 OHOS NDK 自行交叉编译，或改接 OHOS OHAudio/MediaPlayer
-3. **D-Bus 移除**：通知/媒体键改用鸿蒙输入事件或 AVSession
-4. **FFmpeg 交叉编译**：媒体类应用几乎都依赖，需 OHOS NDK 验证 chmod/symlink/dlopen 兼容性
-5. **X11/Win32/Cocoa 平台后端重写**：合成器/音频输出/窗口管理需为 OHOS 重写
-6. **SQLite chmod patch**：DB 类应用复用 KB 已有方案
+### Frequently recommended porting paths (patterns the enrich agents suggested repeatedly)
+1. **Downgrade Qt 6 → Qt 5.15 for OHOS** (most modern Qt applications use Qt 6, while OHOS's primary target is Qt 5)
+2. **Replace QtMultimedia**: cross-compile it yourself with the OHOS NDK, or switch to OHOS OHAudio/MediaPlayer
+3. **Remove D-Bus**: reimplement notifications/media keys with HarmonyOS input events or AVSession
+4. **Cross-compile FFmpeg**: almost every media application depends on it; verify chmod/symlink/dlopen compatibility with the OHOS NDK
+5. **Rewrite the X11/Win32/Cocoa platform backend**: compositor/audio output/window management need rewriting for OHOS
+6. **The SQLite chmod patch**: database applications reuse the existing KB solution
 
-### JIT 类应用根本阻断
-Dolphin/PCSX2/RPCS3 等模拟器依赖 JIT 动态重编译（需可写+可执行内存），受鸿蒙 W^X 执行保护 + dlopen 拒绝可写路径限制，**架构级阻断**，非替换模块可解。退回解释器性能不可用。
+### JIT-based applications are fundamentally blocked
+Emulators such as Dolphin, PCSX2, and RPCS3 depend on JIT dynamic recompilation (which needs writable + executable memory), and are constrained by HarmonyOS's W^X execution protection plus the rejection of dlopen from writable paths — an **architecture-level blocker**, not something swapping modules can solve. Falling back to an interpreter gives unusable performance.
 
-## 踩过的坑
+## Pitfalls we hit
 
-### 坑 1: synthesis agent 通过 schema 输出巨型 JSON 失败
-- **现象**：让单个 agent 通过 StructuredOutput schema 输出 150+ 行 markdown 表格 + CSV + stats 的巨型 JSON，连续 5 次 schema 验证失败（retry cap exceeded），工作流整体 failed。
-- **根因**：输出过长 + JSON 转义（markdown 换行/引号/反斜杠）导致 schema 反复验证不通过。
-- **解决**：删除 synthesis 阶段，工作流只返回结构化 apps 数组（discovery/enrich 的 agent 调用不变 → resume 时缓存命中，0 token 重跑）；markdown/CSV 改由主循环用 Node.js 脚本从 JSON 生成。
-- **教训**：**永远不要让 agent 通过 schema 输出大段格式化文本（markdown/CSV/代码）**。应让 agent 输出结构化小对象，格式化文本由主循环代码生成。这是 multi-agent 工作流的关键设计原则。
+### Pitfall 1: the synthesis agent failed producing a giant JSON through the schema
+- **Symptom**: asking a single agent to emit, via a StructuredOutput schema, a giant JSON containing a 150+ row markdown table + CSV + stats failed schema validation 5 times in a row (retry cap exceeded), failing the whole workflow.
+- **Root cause**: the output was too long, and JSON escaping (markdown newlines/quotes/backslashes) kept breaking schema validation.
+- **Fix**: drop the synthesis phase entirely so the workflow returns only the structured apps array (the discovery/enrich agent calls are unchanged → on resume they hit the cache and re-run for 0 tokens); the markdown/CSV are generated from the JSON by a Node.js script in the main loop.
+- **Lesson**: **never have an agent emit large formatted text (markdown/CSV/code) through a schema**. Have agents emit small structured objects, and generate the formatted text with main-loop code. This is a key design principle for multi-agent workflows.
 
-### 坑 2: enrich agent 返回的 category 字符串碎片化
-- **现象**：18 类别 discovery 给的是规范大类，但 enrich agent 自由发挥了 category 字段，导致 79 个碎片类别（很多只含 1 个应用）。
-- **解决**：报告生成脚本加类别归一化映射（CAT_MAP 关键词匹配 → 18 大类），注意关键词冲突（"编辑器"被开发工具抢走办公的 Markdown 编辑器、"数据可视化"被数据库抢走科学类）——靠调整 CAT_MAP 顺序和 key 归属解决。
-- **教训**：agent 自由文本字段需在下游做归一化，不能假设 agent 严格遵守枚举。
+### Pitfall 2: the category strings returned by the enrich agents fragmented
+- **Symptom**: the 18 discovery categories were canonical top-level categories, but the enrich agents improvised the category field, producing 79 fragmented categories (many containing a single application).
+- **Fix**: add a category normalization mapping to the report generation script (CAT_MAP keyword matching → the 18 top-level categories), watching for keyword collisions ("editor" pulled office Markdown editors into developer tools; "data visualization" pulled science apps into databases) — resolved by adjusting CAT_MAP ordering and key assignments.
+- **Lesson**: free-text fields from agents need normalization downstream; don't assume agents will strictly honor an enum.
 
-## 可复用的经验
+## Reusable takeaways
 
-- **多 agent 调研工作流模板**：discovery（按领域 fan-out 多源搜索）→ 去重 → enrich（逐项 fetch+评估，难度标准注入 prompt）→ 主循环生成报告。可复用于任何"大规模清单+逐项评估"任务。
-- **难度评估标准应来自 KB**：把 golden-rules/platform-limits/third-party-libs/qt6-status/modules 提炼成评估维度注入 agent prompt，保证评估一致性且可追溯。
-- **resume + 最小改动修复**：工作流失败时，只改失败部分（删除 synthesis），前面 agent 调用不变 → resume 缓存命中，0 token 重跑。这是修复失败工作流的最经济方式。
-- **报告生成脚本**：`<INTERNAL_OUTPUT>` 可作为"JSON → markdown+CSV"生成器的参考模板。
+- **A multi-agent survey workflow template**: discovery (fan out multi-source searches by domain) → deduplicate → enrich (fetch and assess item by item, with the difficulty criteria injected into the prompt) → generate the report in the main loop. Reusable for any "large list + per-item assessment" task.
+- **Difficulty criteria should come from the KB**: distill golden-rules/platform-limits/third-party-libs/qt6-status/modules into assessment dimensions and inject them into the agent prompt for consistent, traceable assessments.
+- **Resume + minimal-change fixes**: when a workflow fails, change only the failing part (drop synthesis) and leave the earlier agent calls unchanged → resume hits the cache and re-runs for 0 tokens. This is the most economical way to fix a failed workflow.
+- **The report generation script**: `<INTERNAL_OUTPUT>` can serve as a reference template for a "JSON → markdown + CSV" generator.
 
-## 相关资源
+## Related resources
 
-- 产出清单：`<INTERNAL_OUTPUT>` + `.csv`（229 应用完整评估）
-- 报告生成脚本：`<INTERNAL_OUTPUT>`
-- 工作流脚本：`.../workflows/scripts/qt-opensource-harmonyos-survey-wf_f8c299ff-12d.js`
-- 评估标准来源：[[qt-harmonyos-golden-rules]]、[[qt-harmonyos-platform-limits]]、[[qt-harmonyos-third-party-libs]]、[[qt-harmonyos-qt6-status]]、[[qt-harmonyos-modules]]
+- Output list: `<INTERNAL_OUTPUT>` + `.csv` (the complete assessment of 229 applications)
+- Report generation script: `<INTERNAL_OUTPUT>`
+- Workflow script: `.../workflows/scripts/qt-opensource-harmonyos-survey-wf_f8c299ff-12d.js`
+- Sources for the assessment criteria: [[qt-harmonyos-golden-rules]], [[qt-harmonyos-platform-limits]], [[qt-harmonyos-third-party-libs]], [[qt-harmonyos-qt6-status]], [[qt-harmonyos-modules]]

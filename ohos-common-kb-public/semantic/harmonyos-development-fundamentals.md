@@ -1,11 +1,11 @@
 ---
 id: harmonyos-development-fundamentals
-title: HarmonyOS 应用开发基础
+title: HarmonyOS application development fundamentals
 status: active
 confidence: 0.7
 sources:
   - type: official
-    name: "HarmonyOS 应用开发指南与 API 文档"
+    name: "HarmonyOS application development guide and API documentation"
     date: 2026-06-02
     uri: "https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/application-dev-guide"
   - type: doc
@@ -19,62 +19,62 @@ review_by: null
 superseded_by: null
 tags: [harmonyos, openharmony, arkts, arkui, node-api, stage, deveco, hdc]
 refs: []
-summary: "HarmonyOS 应用开发的中立入口：区分 HarmonyOS 与 OpenHarmony，说明 Stage、ArkTS、ArkUI、Node-API 和 DevEco/hdc 的职责边界。"
+summary: "A framework-neutral entry point to HarmonyOS application development: HarmonyOS vs. OpenHarmony, and the responsibility boundaries of Stage, ArkTS, ArkUI, Node-API, and DevEco/hdc."
 audience: public
 ---
 
-# HarmonyOS 应用开发基础
+# HarmonyOS application development fundamentals
 
-本页提供不依赖 Qt、Tauri、AWT/Swing 或 Avalonia 的平台概念入口。具体 API、系统行为和工具命令仍应以目标 SDK 对应的官方文档与本库专题页为准。
+This page is an entry point to platform concepts that doesn't depend on Qt, Tauri, AWT/Swing, or Avalonia. For specific APIs, system behavior, and tool commands, defer to the official documentation for your target SDK and to this library's topic-specific pages.
 
-## HarmonyOS 与 OpenHarmony
+## HarmonyOS vs. OpenHarmony
 
-OpenHarmony 是开放原子开源基金会旗下的开源项目；HarmonyOS 是华为面向设备和应用生态交付的商业系统。两者共享部分技术基础，但产品能力、SDK、API 可用性、签名权限和设备策略不能默认完全相同。
+OpenHarmony is an open-source project under the OpenAtom Foundation; HarmonyOS is the commercial system Huawei delivers to its device and application ecosystem. They share some technical foundations, but you cannot assume their product capabilities, SDKs, API availability, signing permissions, and device policies are identical.
 
-迁移或排障时应先确认：
+When migrating or troubleshooting, first establish:
 
-- 目标是 HarmonyOS 还是 OpenHarmony；
-- 设备形态与系统版本；
-- 编译使用的 SDK/API level；
-- 结论来自公开平台文档、目标 SDK，还是某个框架的适配实现。
+- Whether the target is HarmonyOS or OpenHarmony
+- The device form factor and system version
+- The SDK/API level used to compile
+- Whether a conclusion comes from public platform documentation, the target SDK, or one framework's adaptation implementation
 
-## 应用模型与主要技术层
+## The application model and its main technology layers
 
-| 层次 | 主要职责 | 框架适配时的边界 |
+| Layer | Main responsibility | Boundary for framework adaptation |
 |---|---|---|
-| Stage / UIAbility | 应用组件、生命周期、启动与 Want 路由 | 平台定义生命周期；框架负责映射自己的 event loop 和窗口语义 |
-| ArkTS | 应用侧业务与系统 API 调用语言 | 框架胶水常在 ArkTS 层接入平台能力 |
-| ArkUI | 声明式 UI、组件、布局、窗口与交互 | 框架可能只把 ArkUI/XComponent 作为渲染或窗口底座 |
-| Node-API | ArkTS/JS 与 C/C++ 原生模块之间的 ABI | 框架负责线程、对象生命周期和自身类型的适配 |
-| Native C/C++ | NDK、系统接口、三方库与渲染运行时 | 平台工具链和沙箱约束由 common 维护，框架构建接入留在框架仓 |
+| Stage / UIAbility | Application components, lifecycle, launch, and Want routing | The platform defines the lifecycle; the framework maps its own event loop and window semantics onto it |
+| ArkTS | The language for application-side logic and calls into system APIs | Framework glue usually reaches platform capabilities at the ArkTS layer |
+| ArkUI | Declarative UI, components, layout, windows, and interaction | A framework may use ArkUI/XComponent purely as a rendering or window substrate |
+| Node-API | The ABI between ArkTS/JS and native C/C++ modules | The framework handles threading, object lifetimes, and adapting its own types |
+| Native C/C++ | The NDK, system interfaces, third-party libraries, and rendering runtimes | Platform toolchain and sandbox constraints are maintained here; framework build integration stays in the framework repository |
 
-## Stage 与 UIAbility
+## Stage and UIAbility
 
-Stage 模型以应用、模块和 Ability 组织运行单元。`UIAbility` 是带界面的应用组件，常通过 `Want` 接收启动目标和参数，并由 `module.json5` 声明入口、skills、设备类型及权限等元数据。
+The Stage model organizes runtime units around the application, modules, and abilities. A `UIAbility` is a UI-bearing application component that typically receives its launch target and parameters through a `Want`, with `module.json5` declaring metadata such as entry points, skills, device types, and permissions.
 
-不要把框架的窗口对象直接等同于 UIAbility：一个框架可能在单个 Ability 中管理多个内部窗口，也可能通过平台能力创建额外窗口。完整生命周期与 Want 语义由后续 common 专题页维护。
+Don't equate a framework's window object with a UIAbility: a framework may manage several internal windows within a single Ability, or create extra windows through platform capabilities. The full lifecycle and Want semantics are maintained on the dedicated common pages.
 
-## ArkTS、ArkUI 与 Node-API
+## ArkTS, ArkUI, and Node-API
 
-- ArkTS 是 HarmonyOS 应用开发的主要语言，用于页面、Ability 和系统能力调用。
-- ArkUI 提供声明式组件、布局、动画、事件、窗口及原生组件承载能力。
-- Node-API 让 ArkTS/JS 调用 C/C++ 原生模块；跨线程调用、异步回调、对象释放和异常传播必须由接入层明确管理。
+- ArkTS is the primary language for HarmonyOS application development, used for pages, abilities, and calls into system capabilities.
+- ArkUI provides declarative components, layout, animation, events, windows, and the ability to host native components.
+- Node-API lets ArkTS/JS call native C/C++ modules; cross-thread calls, async callbacks, object release, and exception propagation must all be managed explicitly by the integration layer.
 
-学习入口：
+Starting points:
 
-- [ArkTS 概述](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/arkts-overview)
-- [Node-API 开发流程](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/use-napi-process)
-- [窗口管理](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/window-manager)
+- [ArkTS overview](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/arkts-overview)
+- [Node-API development process](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/use-napi-process)
+- [Window management](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/window-manager)
 
-## 开发与调试工具
+## Development and debugging tools
 
-DevEco Studio 提供工程编辑、SDK 管理、构建、签名、调试与分析能力。命令行自动化可由 `devecocli` 统一编排；AI 工具可通过 deveco-mcp 接入静态检查。具体操作规则属于内部工具治理页，不作为理解本基础页的必要依赖。
+DevEco Studio provides project editing, SDK management, building, signing, debugging, and profiling. Command-line automation can be orchestrated uniformly through `devecocli`; AI tools can hook into static checks via deveco-mcp. The specific operating rules live on the internal tool-governance page and aren't required to understand this fundamentals page.
 
-`hdc` 是设备连接器，可用于设备查询、文件传输、安装、shell 和日志等底层操作。生态日常流程由 `devecocli` 编排这些能力；只有诊断封装层本身或仓库明确要求时才直接调用底层工具。
+`hdc` is the device connector, used for low-level operations such as device queries, file transfer, installation, shell access, and logs. Day-to-day ecosystem workflows orchestrate these capabilities through `devecocli`; call the low-level tools directly only when diagnosing the wrapper layer itself or when the repository explicitly requires it.
 
-## 工程元数据提示
+## Project metadata note
 
-应用支持的设备类型在模块配置中声明，例如：
+The device types an application supports are declared in the module configuration, for example:
 
 ```json5
 {
@@ -84,11 +84,11 @@ DevEco Studio 提供工程编辑、SDK 管理、构建、签名、调试与分�
 }
 ```
 
-具体可选值和产品支持范围必须以目标 SDK schema 为准；仅修改声明不会自动让框架适配新的窗口、输入或显示能力。
+The valid values and the range of products supported must come from the target SDK schema; changing the declaration alone will not make a framework adapt to new window, input, or display capabilities.
 
-## 延伸方向
+## Where to go next
 
-- Stage/UIAbility 生命周期与 Want 路由
-- ArkUI 窗口、XComponent 与原生渲染承载
-- Node-API 线程、对象生命周期与异常边界
-- OHOS NDK、交叉编译、HAP 构建签名与平台沙箱
+- Stage/UIAbility lifecycle and Want routing
+- ArkUI windows, XComponent, and native rendering hosts
+- Node-API threading, object lifetimes, and exception boundaries
+- The OHOS NDK, cross-compilation, HAP build signing, and the platform sandbox

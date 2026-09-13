@@ -10,53 +10,53 @@ severity: medium
 audience: public
 refs: [semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-build-run-workflow]
 summary: >
-  hvigor 命令行(--mode module)打包的 HAP 启动崩溃：Cannot read property handleAbilityStageOnCreate of undefined。
-  回退到无 patch 的 libqohos.so 也同样崩溃->非 Qt 代码问题，是 CLI 打包与 DevEco Studio IDE 打包的差异。
-  Workaround：用 DevEco Studio IDE 直接 Run 部署。
+  A HAP packaged from the hvigor command line (--mode module) crashes at startup: Cannot read property handleAbilityStageOnCreate of undefined.
+  Reverting to an unpatched libqohos.so crashes the same way -> this is not a Qt code problem, but a difference between CLI packaging and DevEco Studio IDE packaging.
+  Workaround: deploy by running directly from the DevEco Studio IDE.
 leader_summary: >
-  定位 hvigor CLI 打包 HAP 崩溃为 CLI vs IDE 打包差异，非 Qt 代码问题
-impact: [框架支撑, 运行时排障]
-deliverables: [problem记录]
+  Identified the hvigor CLI HAP packaging crash as a CLI-vs-IDE packaging difference, not a Qt code problem
+impact: [Framework support, Runtime troubleshooting]
+deliverables: [problem record]
 evidence: [ohos-qt-patch-delivery]
 
 error_message: >
   Cannot read property 'handleAbilityStageOnCreate' of undefined
   at QAbilityStage.ets
-  (hvigor --mode module 打包)
+  (packaged with hvigor --mode module)
 error_code: ""
-keywords: [hvigor, CLI, HAP打包, NAPI, DevEco Studio, IDE, 启动崩溃]
-symptoms: "hvigor CLI 打包 HAP 安装后启动崩溃，DevEco Studio IDE Run 正常"
+keywords: [hvigor, CLI, HAP packaging, NAPI, DevEco Studio, IDE, startup crash]
+symptoms: "A HAP packaged by the hvigor CLI crashes at startup after installation, while DevEco Studio IDE Run works fine"
 
 environment: "OHOS + hvigor CLI (--mode module) + Qt 5.15.16"
 ---
 
-# hvigor CLI 打包 HAP 启动崩溃
+# HAP packaged by the hvigor CLI crashes at startup
 
-## 错误信息
+## Error message
 
 ```
 Cannot read property 'handleAbilityStageOnCreate' of undefined
 at QAbilityStage.ets
 ```
 
-## 场景
+## Scenario
 
-用 `hvigor --mode module` 命令行打包 HAP 后安装到设备，启动崩溃。
-回退 libqohos.so 到无 patch 版本也同样崩溃 -> 排除 Qt 代码变更。
+After packaging a HAP with `hvigor --mode module` from the command line and installing it on the device, the application crashes at startup.
+Reverting libqohos.so to an unpatched version crashes identically -> rules out Qt code changes.
 
-## 原因
+## Cause
 
-hvigor CLI 打包流程与 DevEco Studio IDE 打包流程存在差异：
-- CLI 打包时 NAPI 模块注册不完整
-- IDE 打包正确处理 NAPI 模块注册和 .so 依赖链
+The hvigor CLI packaging flow differs from the DevEco Studio IDE packaging flow:
+- CLI packaging registers NAPI modules incompletely
+- IDE packaging handles NAPI module registration and the `.so` dependency chain correctly
 
-具体差异待进一步调查。
+The exact difference is still under investigation.
 
-## 解决方案
+## Solution
 
-**Workaround**：用 DevEco Studio IDE 直接 Run 部署（Build -> Run），IDE 打包流程正确处理所有模块注册。
+**Workaround**: deploy by running directly from the DevEco Studio IDE (Build -> Run); the IDE packaging flow handles all module registration correctly.
 
-## 注意事项
+## Notes
 
-- 命令行打包和 IDE 打包**不等价**，CI/CD 场景需注意
-- 回退 .so 后仍崩溃可排除代码变更因素
+- Command-line packaging and IDE packaging are **not equivalent** — keep this in mind for CI/CD.
+- The fact that it still crashes after reverting the `.so` rules out code changes as a factor.

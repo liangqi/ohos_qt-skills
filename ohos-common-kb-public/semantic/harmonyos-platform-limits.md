@@ -1,9 +1,9 @@
 ---
 id: harmonyos-platform-limits
-title: HarmonyOS 平台限制
+title: HarmonyOS platform limitations
 status: active
 confidence: 0.7
-sources: [{type: experience, name: "Qt、Tauri、AWT/Swing 跨框架真机验证", date: 2026-08-06}]
+sources: [{type: experience, name: "Qt, Tauri, AWT/Swing cross-framework on-device verification", date: 2026-08-06}]
 created: 2026-08-13
 updated: 2026-08-14
 last_confirmed: 2026-08-06
@@ -11,32 +11,32 @@ review_by: null
 superseded_by: null
 tags: [ohos, platform-limits, sandbox, musl, permissions]
 refs: [application-sandbox-paths, ohos-native-third-party-libraries]
-summary: "跨框架验证的平台限制入口：bundle 写入/权限、动态代码加载、MUSL/SDK 与高权限能力边界。"
+summary: "Entry point for cross-framework-verified platform limitations: bundle writes/permissions, dynamic code loading, MUSL/SDK, and the boundary of privileged capabilities."
 audience: public
 ---
 
-# HarmonyOS 平台限制
+# HarmonyOS platform limitations
 
-本页只收录能脱离单一框架成立的平台结论。设备形态、系统版本、SDK/API 和证据日期是结论的一部分；框架错误、API wrapper 和 workaround 留在对应框架仓。
+This page collects only conclusions that hold independently of any single framework. The device form factor, system version, SDK/API, and the date of the evidence are part of each conclusion; framework errors, API wrappers, and workarounds stay in the corresponding framework repository.
 
-## 已确认限制
+## Confirmed limitations
 
-| 领域 | 平台约束 | 严重度 | 证据边界 |
+| Area | Platform constraint | Severity | Evidence boundary |
 |---|---|---|---|
-| Bundle 路径 | 安装内容通常只读，普通应用不能靠 `chmod` 把随包文件变成 executable | 阻断 | 多 runtime/HAP 真机验证；见 [[application-sandbox-paths]] |
-| 代码加载 | 普通可写数据路径不自动成为允许 `dlopen`/`execve` 的代码位置 | 阻断 | Qt plugin/runtime embedding 验证；见 problems |
-| Mount namespace | 应用与 hdc shell 可能以不同前缀观察同一安装内容 | 高 | API24 PC/2in1 runtime embedding 验证 |
-| Writable executable memory | JIT 等动态代码生成需要平台权限且 profile ACL 必须授权 | 阻断 | JVM/V8 跨两仓验证 |
-| MUSL/SDK | glibc 私有符号、Linux 桌面库和完整 POSIX 行为不可假定存在 | 高 | native/Rust/Qt 交叉编译验证 |
-| System privilege | 高权限系统能力不能仅凭 manifest 声明获得，受证书/profile/应用类型约束 | 阻断 | 签名与运行时验证 |
+| Bundle paths | Installed content is generally read-only; an ordinary application cannot turn a packaged file into an executable via `chmod` | Blocking | Verified on device across multiple runtimes/HAPs; see [[application-sandbox-paths]] |
+| Code loading | An ordinary writable data path does not automatically become a location from which `dlopen`/`execve` is permitted | Blocking | Verified with Qt plugin/runtime embedding; see problems |
+| Mount namespace | The application and the hdc shell may observe the same installed content under different prefixes | High | Verified with API24 PC/2-in-1 runtime embedding |
+| Writable executable memory | Dynamic code generation such as JIT requires a platform permission, and the profile ACL must grant it | Blocking | Verified for JVM/V8 across both repositories |
+| MUSL/SDK | You cannot assume glibc private symbols, Linux desktop libraries, or complete POSIX behavior are present | High | Verified with native/Rust/Qt cross-compilation |
+| System privilege | Privileged system capabilities cannot be obtained by manifest declaration alone; they are constrained by certificate/profile/application type | Blocking | Verified via signing and runtime testing |
 
-## 使用方法
+## How to use this page
 
-1. 先判断错误是否来自平台 invariant，而不是框架 adapter；
-2. 记录设备、系统/API、SDK、应用类型和签名 profile；
-3. 用最小原生案例或第二个框架证据确认，再提升为本页结论；
-4. 版本升级后重新确认，不把旧设备行为永久化。
+1. First determine whether the error comes from a platform invariant rather than a framework adapter.
+2. Record the device, system/API, SDK, application type, and signing profile.
+3. Confirm with a minimal native case or evidence from a second framework before promoting it to a conclusion on this page.
+4. Re-confirm after version upgrades; don't enshrine old device behavior permanently.
 
-## 不属于本页
+## Out of scope for this page
 
-Qt/QML platform name、QPA、GStreamer plugin、Rust crate cfg、JVM stack、.NET TFM 等只对框架/运行时成立的行为，不进入平台限制正文；它们可以链接这里解释平台触发条件。
+Behavior that holds only for a framework/runtime — the Qt/QML platform name, QPA, GStreamer plugins, Rust crate cfg, the JVM stack, .NET TFMs, and so on — does not belong in the body of the platform limitations; those pages can link here to explain the platform-level trigger conditions.

@@ -1,11 +1,11 @@
 blank_issues_enabled: false
 contact_links:
-  - name: 知识库说明（README + 能力规格）
+  - name: Knowledge base overview (README + capability spec)
     url: https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/README.md
-    about: 提 issue 前先看 README「能力规格」，确认你的问题在本知识库覆盖范围内。
-  - name: Qt 官方文档
+    about: Before filing an issue, read the "Capability spec" section of the README to confirm your problem falls within this knowledge base's scope.
+  - name: Qt official documentation
     url: https://doc.qt.io
-    about: Qt API 参考、模块状态、已知平台行为（比对 Qt 文档时用）。
-  - name: HarmonyOS 官方文档
+    about: Qt API reference, module status, known platform behavior (use this when cross-checking against the Qt docs).
+  - name: HarmonyOS official documentation
     url: https://developer.huawei.com
-    about: 鸿蒙生命周期、窗口模型、平台限制、ArkTS/ArkUI/NAPI（区分「Qt bug」与「鸿蒙平台限制」时用）。
+    about: HarmonyOS lifecycle, window model, platform limitations, ArkTS/ArkUI/NAPI (use this when distinguishing a "Qt bug" from a "HarmonyOS platform limitation").

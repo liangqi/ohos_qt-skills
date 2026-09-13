@@ -10,33 +10,34 @@ severity: medium
 audience: public
 refs: [procedural-qt-app-harmonyos-migration, problem-build-fail-libuuid-missing-ohos-musl]
 summary: >
-  glibc 暴露一批"内部"符号（__pid_t/__uid_t 等 typedef、in6_addr.s6_addr32 等 glibc-only 成员），
-  OHOS musl 只提供标准名（pid_t/uid_t、s6_addr[16]）。Linux 应用直接用 glibc 内部名在 OHOS 编译报
-  "unknown type name '__pid_t'" / "no member named 's6_addr32'"。首选解：换标准 POSIX 名（pid_t/uid_t，
-  glibc 也支持，不破坏原 Linux 构建）；s6_addr32 改 sscanf 到 4x uint32 + memcpy 到 s6_addr[16]（字节布局一致）。
-leader_summary: 沉淀 Linux→OHOS 移植的 glibc 内部符号（__pid_t/__uid_t/s6_addr32）musl 不兼容复用排障
-impact: [迁移提效, 编译排障]
-deliverables: [problem记录, tcpview HAP]
-evidence: [tcpview-ohos attempt1 build.log (__pid_t/__uid_t 错误), attempt2 BUILD SUCCESSFUL]
+  glibc exposes a set of "internal" symbols (typedefs such as __pid_t/__uid_t, and glibc-only members such as in6_addr.s6_addr32),
+  while OHOS musl provides only the standard names (pid_t/uid_t, s6_addr[16]). A Linux application using glibc's internal names
+  fails to compile on OHOS with "unknown type name '__pid_t'" / "no member named 's6_addr32'". Preferred fix: switch to the
+  standard POSIX names (pid_t/uid_t — glibc supports them too, so the original Linux build still works); replace s6_addr32 with
+  sscanf into 4× uint32 + memcpy into s6_addr[16] (the byte layout is identical).
+leader_summary: Captured the reusable troubleshooting for glibc internal symbols (__pid_t/__uid_t/s6_addr32) being incompatible with musl when porting Linux → OHOS
+impact: [Migration efficiency, Build troubleshooting]
+deliverables: [problem record, tcpview HAP]
+evidence: [tcpview-ohos attempt1 build.log (__pid_t/__uid_t errors), attempt2 BUILD SUCCESSFUL]
 
 error_message: >
   error: unknown type name '__pid_t'; did you mean 'pid_t'?
       CRootModule(__pid_t processId, std::string fifoName);
   error: unknown type name '__uid_t'
       static QString GetUserNameString(__uid_t euid, bool bErrorUser);
-  （另一形态, s6_addr32: error: no member named 's6_addr32' in 'struct in6_addr'）
+  (another form, s6_addr32: error: no member named 's6_addr32' in 'struct in6_addr')
 error_code: ""
 keywords: [__pid_t, __uid_t, pid_t, uid_t, s6_addr32, s6_addr, in6_addr, glibc, musl, unknown type name, no member]
-symptoms: Linux 应用移植 OHOS，编译报 unknown type name '__pid_t'/'__uid_t' 或 in6_addr no member 's6_addr32'
-environment: OHOS musl sysroot (aarch64-linux-ohos) + clang；tcpview（rootmodule.h/cusername.h/datasource.cpp）
+symptoms: Porting a Linux application to OHOS, the build reports unknown type name '__pid_t'/'__uid_t' or in6_addr has no member 's6_addr32'
+environment: OHOS musl sysroot (aarch64-linux-ohos) + clang; tcpview (rootmodule.h/cusername.h/datasource.cpp)
 ---
 
-# glibc 内部符号在 OHOS musl 不存在（__pid_t/__uid_t/s6_addr32）
+# glibc internal symbols don't exist in OHOS musl (__pid_t/__uid_t/s6_addr32)
 
-## 错误信息
+## Error messages
 
 ```
-# 形态 A：__ 前缀 typedef（glibc 内部名，musl 无）
+# Form A: __-prefixed typedefs (glibc internal names; musl has none)
 C:/.../source/rootmodule.h:46:17: error: unknown type name '__pid_t'; did you mean 'pid_t'?
     CRootModule(__pid_t processId, std::string fifoName);
                 ^~~~~~~
@@ -44,34 +45,35 @@ C:/.../source/rootmodule.h:46:17: error: unknown type name '__pid_t'; did you me
 C:/.../source/cusername.h:26:38: error: unknown type name '__uid_t'
     static QString GetUserNameString(__uid_t euid, bool bErrorUser);
 
-# 形态 B：glibc-only 结构成员（musl 无）
+# Form B: glibc-only struct members (musl has none)
 C:/.../source/datasource.cpp:399: error: no member named 's6_addr32' in 'struct in6_addr'
     sscanf(loc_addr, "%08X%08X%08X%08X", &socket_info.loc6.s6_addr32[0], ...);
 ```
 
-## 场景
+## Scenario
 
-Linux 应用直接用了 glibc 的"内部"符号（双下划线前缀 typedef 或 glibc 扩展结构成员）。这些在 glibc
-上可用（glibc 同时暴露 `__pid_t` 和 `pid_t`、`in6_addr.s6_addr32` 和 `s6_addr`），但在 OHOS musl
-上只有标准名 → 编译报 unknown type name / no member。tcpview 三处：rootmodule.h `__pid_t`、
-cusername.h `__uid_t`、datasource.cpp `in6_addr.s6_addr32`。
+A Linux application uses glibc's "internal" symbols directly (double-underscore-prefixed typedefs or glibc extension struct
+members). These are available on glibc (which exposes both `__pid_t` and `pid_t`, and both `in6_addr.s6_addr32` and `s6_addr`),
+but OHOS musl has only the standard names → the build reports unknown type name / no member. tcpview has three instances:
+`__pid_t` in rootmodule.h, `__uid_t` in cusername.h, and `in6_addr.s6_addr32` in datasource.cpp.
 
-## 原因
+## Cause
 
-- glibc 的 `bits/alltypes.h` 既定义 `__pid_t`/`__uid_t`（内部名）又 typedef `pid_t`/`uid_t`（标准名，
-  通常 `typedef __pid_t pid_t`）。musl 只定义标准名 `pid_t`/`uid_t`（`typedef int pid_t;`），
-  不暴露 `__` 前缀内部名。
-- glibc 的 `struct in6_addr` 提供 `s6_addr`、`s6_addr16`、`s6_addr32` 三个 union 视图（后者是 glibc 扩展）。
-  musl 的 `in6_addr` 只有 `s6_addr[16]`（union + `#define s6_addr`），无 `s6_addr32`/`s6_addr16`。
+- glibc's `bits/alltypes.h` defines both `__pid_t`/`__uid_t` (the internal names) and typedefs `pid_t`/`uid_t` (the standard
+  names, usually `typedef __pid_t pid_t`). musl only defines the standard names `pid_t`/`uid_t` (`typedef int pid_t;`) and
+  doesn't expose the `__`-prefixed internal names.
+- glibc's `struct in6_addr` provides three union views — `s6_addr`, `s6_addr16`, and `s6_addr32` (the latter two are glibc
+  extensions). musl's `in6_addr` has only `s6_addr[16]` (a union + `#define s6_addr`), with no `s6_addr32`/`s6_addr16`.
 
-## 解决方案
+## Solution
 
-**形态 A（__pid_t/__uid_t 等）：换标准 POSIX 名。** `__pid_t`→`pid_t`、`__uid_t`→`uid_t`。glibc 也
-支持标准名，故不破坏原 Linux/qmake 构建（可移植修复）。注意头文件自足：用 `uid_t` 的头若只 include
-了 `<QString>` 之类，需补 `#include <sys/types.h>`（tcpview cusername.h 即补了）。
+**Form A (__pid_t/__uid_t and friends): switch to the standard POSIX names.** `__pid_t`→`pid_t`, `__uid_t`→`uid_t`. glibc
+supports the standard names too, so this doesn't break the original Linux/qmake build (a portable fix). Watch out for header
+self-sufficiency: a header that uses `uid_t` but only includes something like `<QString>` needs `#include <sys/types.h>` added
+(as was done in tcpview's cusername.h).
 
-**形态 B（s6_addr32）：改走 s6_addr[16] + memcpy。** sscanf 读 4 个 uint32 进临时数组，再 memcpy
-16 字节进 `s6_addr`——与 glibc 上写 `s6_addr32[]` 字节布局完全一致（一个 uint32 按本机序重解释为 4 字节）：
+**Form B (s6_addr32): go through s6_addr[16] + memcpy.** sscanf 4 uint32s into a temporary array, then memcpy 16 bytes into
+`s6_addr` — byte-for-byte identical to writing `s6_addr32[]` on glibc (a uint32 reinterpreted as 4 bytes in native byte order):
 
 ```cpp
 unsigned int u32[4];
@@ -79,32 +81,34 @@ sscanf(loc_addr, "%08X%08X%08X%08X", &u32[0], &u32[1], &u32[2], &u32[3]);
 memcpy(socket_info.loc6.s6_addr, u32, 16);
 ```
 
-**预检 grep（阶段零）**：移植 Linux 应用前 grep `__[a-z]+_t\b`（抓 __pid_t/__uid_t/__gid_t/... 等
-glibc 内部 typedef）和 `s6_addr32|s6_addr16`（glibc-only 成员），一次定位全部，避免逐次 attempt。
+**Pre-check grep (phase zero)**: before porting a Linux application, grep for `__[a-z]+_t\b` (catching glibc internal typedefs
+such as __pid_t/__uid_t/__gid_t/...) and `s6_addr32|s6_addr16` (glibc-only members) to find them all in one pass rather than
+attempt by attempt.
 
-## 注意事项
+## Notes
 
-- `__` 前缀 typedef 替换为标准名是双向安全的（glibc/musl 都有标准名）——首选，不要用 `typedef __pid_t pid_t`
-  这种反向 shim（musl 没 `__pid_t` 可作源）。
-- s6_addr32 的 memcpy 等价仅保证"字节布局一致"（与原行为同），不修原逻辑的潜在字节序显示问题——
-  移植目标是"行为不变 + 能编译"，不改原算法。
-- musl 里 `pid_t`/`uid_t` 来自 `<sys/types.h>`（被 `<pwd.h>`/`<unistd.h>` 等传递包含，但头文件自足
-  原则下显式 include 最稳）。
-- 别误判：`getpwuid`/`gethostbyaddr`/`mkfifo`/`chmod`/`opendir`/`readlink`/`inet_ntoa`/`execv`/`posix_spawn`
-  在 musl 都**存在**（编译过，运行时沙箱才失败）——不是 glibc-ism，别误改。
+- Replacing `__`-prefixed typedefs with the standard names is safe in both directions (both glibc and musl have the standard
+  names) — this is the preferred fix. Don't use a reverse shim like `typedef __pid_t pid_t` (musl has no `__pid_t` to source from).
+- The memcpy equivalence for s6_addr32 only guarantees "the same byte layout" (matching the original behavior); it doesn't fix
+  any latent byte-order display issue in the original logic — the porting goal is "unchanged behavior + it compiles", not
+  changing the original algorithm.
+- In musl, `pid_t`/`uid_t` come from `<sys/types.h>` (transitively included by `<pwd.h>`/`<unistd.h>` and others, but an
+  explicit include is safest under the header-self-sufficiency principle).
+- Don't misdiagnose: `getpwuid`/`gethostbyaddr`/`mkfifo`/`chmod`/`opendir`/`readlink`/`inet_ntoa`/`execv`/`posix_spawn` all
+  **do exist** in musl (they compile; it's the sandbox that fails them at runtime) — those aren't glibc-isms, so don't change them.
 
-## 成果展示
+## Results
 
-| 字段 | 内容 |
-|------|------|
-| 领导摘要 | 沉淀 Linux→OHOS glibc 内部符号（__pid_t/__uid_t/s6_addr32）musl 不兼容的复用排障 |
-| 影响面 | 所有从 glibc/Linux 移植到 OHOS 的应用（含直接用 __ 前缀或 glibc 扩展成员的）|
-| 交付物 | problem记录 + tcpview HAP |
-| 证据 | attempt1 build.log（__pid_t/__uid_t 错误）→ 修复 → attempt2 全 .cpp 编译过 |
-| 可复用方式 | 以后报 `unknown type name '__*_t'` 换标准名；报 `no member 's6_addr32'` 改 memcpy |
+| Field | Content |
+|-------|---------|
+| Leadership summary | Captured the reusable troubleshooting for glibc internal symbols (__pid_t/__uid_t/s6_addr32) being incompatible with musl when porting Linux → OHOS |
+| Scope of impact | Every application ported from glibc/Linux to OHOS (including those using `__`-prefixed names or glibc extension members) |
+| Deliverables | problem record + tcpview HAP |
+| Evidence | attempt1 build.log (__pid_t/__uid_t errors) → fix → attempt2 compiles every .cpp |
+| How to reuse | When you get `unknown type name '__*_t'`, switch to the standard name; when you get `no member 's6_addr32'`, switch to memcpy |
 
-## 相关
+## Related
 
-- [[procedural-qt-app-harmonyos-migration]] — 阶段零预检（grep 模式）
-- [[build-fail-libuuid-missing-ohos-musl]] — 同批次（tcpview）的另一 musl 系统库缺失
-- [[build-fail-qinitresource-extern-c-main]] — 同批次（tcpview）的链接冲突
+- [[procedural-qt-app-harmonyos-migration]] — Phase-zero pre-check (the grep patterns)
+- [[build-fail-libuuid-missing-ohos-musl]] — Another missing musl system library from the same batch (tcpview)
+- [[build-fail-qinitresource-extern-c-main]] — The linkage conflict from the same batch (tcpview)

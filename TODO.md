@@ -1,30 +1,30 @@
-# 待办事项与工作进展跟踪（模板）
+# To-dos and progress tracking (template)
 
-> **此文件为模板，保留在主干分支。实际任务条目写入 `TODO.local.md`（个人产出，已 gitignore，不上传主干）。**
+> **This file is a template and stays on the trunk branch. Real task entries go in `TODO.local.md` (personal output, gitignored, never pushed to trunk).**
 
 ---
 
-## 📌 进行中
+## 📌 In progress
 
-| # | 任务 | 分类 | 开始日期 | 进展 |
-|---|------|------|---------|------|
+| # | Task | Category | Start date | Progress |
+|---|------|----------|-----------|----------|
 
-## ✅ 已完成
+## ✅ Completed
 
-| # | 任务 | 分类 | 完成日期 | 结果摘要 |
-|---|------|------|---------|---------|
+| # | Task | Category | Completion date | Result summary |
+|---|------|----------|-----------------|----------------|
 
-## 分类
+## Categories
 
-| 分类 | 说明 |
-|------|------|
-| 迁移项目 | Qt 应用鸿蒙化迁移任务 |
-| 框架支撑 | Qt 框架内部问题分析、源码审计 |
-| 框架验证 | 修复验证、回归测试 |
-| 基础设施 | 知识库结构优化、工具链配置 |
+| Category | Description |
+|----------|-------------|
+| Migration project | Tasks for porting a Qt application to HarmonyOS |
+| Framework support | Analysis of issues inside the Qt framework, source audits |
+| Framework verification | Fix verification, regression testing |
+| Infrastructure | Knowledge base structure improvements, toolchain configuration |
 
-## 进展描述规范
+## Progress description convention
 
-格式 `阶段N[完成|进行中]：关键产出`，例如：
-- `阶段一完成：最简 demo 已复现`
-- `阶段二进行中：日志分析`
+Format: `Phase N [done|in progress]: key deliverable`, for example:
+- `Phase 1 done: minimal demo reproduces the issue`
+- `Phase 2 in progress: log analysis`

@@ -10,79 +10,79 @@ severity: critical
 audience: public
 refs: [procedural-qt-ohos-run-test, problem-runtime-crash-libqohos-modules-mismatch, problem-runtime-crash-ohos-deviceinfo-global-expression, semantic-qt-harmonyos-build-run-workflow]
 summary: >
-  Qt5 鸿蒙应用启动崩: libqohos.so 与 libQt5Core.so 的 NEW/OLD 构建版本内部不一致。
-  默认 SDK 的 libqohos(NEW, 7/14, 引用 QtOhos::runInJsThreadAndWait@Qt_5) vs libQt5Core(OLD, 6/10, 只定义 QOhosJsThreadGateway::runAndWait@Qt_5_PRIVATE_API) → libqohos 加载失败(symbol not found)。
-  -full SDK 的 libQt5Core(NEW, 7/14, 有 runInJsThreadAndWait) 但 libqohos 是 stray OLD(170MB debug, 引用 runAndWait) → 同样不匹配。
-  修复: -full NEW libQt5Core + 默认 NEW libqohos 组合; 并修 @ohos.deviceInfo 模块解析(OhosExportModules.ts)。
+  A Qt5 HarmonyOS application crashes at startup: libqohos.so and libQt5Core.so come from internally inconsistent NEW/OLD builds.
+  The default SDK's libqohos (NEW, 7/14, references QtOhos::runInJsThreadAndWait@Qt_5) vs its libQt5Core (OLD, 6/10, only defines QOhosJsThreadGateway::runAndWait@Qt_5_PRIVATE_API) → libqohos fails to load (symbol not found).
+  The -full SDK's libQt5Core (NEW, 7/14, has runInJsThreadAndWait) but its libqohos is a stray OLD build (170 MB debug, references runAndWait) → also mismatched.
+  Fix: combine the -full NEW libQt5Core with the default SDK's NEW libqohos, and fix @ohos.deviceInfo module resolution (OhosExportModules.ts).
 leader_summary: >
-  沉淀 Qt OHOS SDK 内部 NEW/OLD 构建版本不一致导致 libqohos 加载崩溃的排障方案,含符号级诊断+SDK 组合修复+@ohos.* 模块解析
-impact: [迁移提效, 框架支撑]
-deliverables: [problem 记录, veles 真机运行通过]
-evidence: [faultlog jscrash-com.example.sqt, veles_run.png, kb_status.json(veles run_success)]
+  Captured the troubleshooting approach for the libqohos load crash caused by internally inconsistent NEW/OLD builds inside a Qt OHOS SDK, including symbol-level diagnosis, the SDK combination fix, and @ohos.* module resolution
+impact: [Migration efficiency, Framework support]
+deliverables: [problem record, veles running successfully on a device]
+evidence: [faultlog jscrash-com.example.sqt, veles_run.png, kb_status.json (veles run_success)]
 
 error_message: >
   jscrash: TypeError: Cannot read property handleAbilityStageOnCreate of undefined
   at onCreate (QAbilityStage.ets:47:9)
-  先兆: MUSL-LDSO: relocating failed: symbol not found
+  Precursor: MUSL-LDSO: relocating failed: symbol not found
   _ZN6QtOhos20runInJsThreadAndWait...@Qt_5 (or @Qt_5_PRIVATE_API for runAndWait)
   dso=libqohos.so → napi module @app:.../qohos undefined → qpa undefined → TypeError → exit
-  或(修复符号后): object has no property named 'deviceType'
-  at initQtAppContextImpl (QAbilityStage.ets:22) — libqohos 通过 QNapi global-expression 解析 @ohos.deviceInfo 失败
+  Or (after fixing the symbol): object has no property named 'deviceType'
+  at initQtAppContextImpl (QAbilityStage.ets:22) — libqohos fails to resolve @ohos.deviceInfo through the QNapi global-expression mechanism
 error_code: ""
 keywords: [libqohos, libQt5Core, runInJsThreadAndWait, runAndWait, symbol not found, NEW OLD mismatch, deviceType, OhosExportModules, global-expression, @ohos.deviceInfo, ArkTS-engine]
 symptoms: >
-  签名 HAP 安装成功,aa start 后进程 1-9s 内消失。faultlog 显示 jscrash TypeError
-  (handleAbilityStageOnCreate of undefined 或 deviceType property 缺失)。
+  The signed HAP installs successfully, but after aa start the process disappears within 1–9 s. The faultlog shows a jscrash TypeError
+  (handleAbilityStageOnCreate of undefined, or a missing deviceType property).
 
 environment: >
-  Qt5.15.16 OHOS SDK 两套(默认 ${QT5_15_OHOS_SDK} + 全量 ${QT5_15_OHOS_SDK_FULL}), 各自内部 libqohos/libQt5Core 构建版本不一致。
-  OHOS 真机(HUAWEI MateBook Fold, UDID 9BFAF107...)。
+  Two Qt 5.15.16 OHOS SDKs (the default ${QT5_15_OHOS_SDK} + the full ${QT5_15_OHOS_SDK_FULL}), each internally inconsistent between libqohos and libQt5Core build versions.
+  An OHOS device (HUAWEI MateBook Fold, UDID 9BFAF107...).
 ---
 
-## 根因(两层)
+## Root cause (two layers)
 
-### 第一层: libqohos/libQt5Core 符号级 NEW/OLD 不匹配
+### Layer 1: a symbol-level NEW/OLD mismatch between libqohos and libQt5Core
 
-Qt OHOS SDK 内部 libqohos.so 与 libQt5Core.so 的构建日期/API 不一致:
+Inside the Qt OHOS SDK, libqohos.so and libQt5Core.so have inconsistent build dates/APIs:
 
-| SDK | libqohos | libQt5Core | 匹配? |
-|-----|----------|-----------|-------|
-| 默认(${QT5_15_OHOS_SDK}) | NEW(7/14, 5.5MB, 引用 `QtOhos::runInJsThreadAndWait@Qt_5`) | OLD(6/10, 37MB, 只定义 `QOhosJsThreadGateway::runAndWait@Qt_5_PRIVATE_API`) | ✗ 符号名+版本标签都不同 |
-| -full(${QT5_15_OHOS_SDK_FULL}) | stray OLD(170MB debug, 引用 `runAndWait@Qt_5_PRIVATE_API`) | NEW(7/14, 有 `runInJsThreadAndWait@Qt_5`) | ✗ libqohos 是旧 stray |
+| SDK | libqohos | libQt5Core | Match? |
+|-----|----------|-----------|--------|
+| Default (${QT5_15_OHOS_SDK}) | NEW (7/14, 5.5 MB, references `QtOhos::runInJsThreadAndWait@Qt_5`) | OLD (6/10, 37 MB, only defines `QOhosJsThreadGateway::runAndWait@Qt_5_PRIVATE_API`) | ✗ Both the symbol name and the version tag differ |
+| -full (${QT5_15_OHOS_SDK_FULL}) | A stray OLD build (170 MB debug, references `runAndWait@Qt_5_PRIVATE_API`) | NEW (7/14, has `runInJsThreadAndWait@Qt_5`) | ✗ libqohos is the stale stray |
 
-**关键**: `runInJsThreadAndWait`(NEW API, @Qt_5 版本标签) ≠ `runAndWait`(OLD API, @Qt_5_PRIVATE_API 版本标签)。libqohos(NEW) 引用前者, libQt5Core(OLD) 只定义后者 → dynamic linker `symbol not found` → libqohos 加载失败 → NAPI 模块 undefined → jscrash。
+**The key point**: `runInJsThreadAndWait` (the NEW API, with the @Qt_5 version tag) ≠ `runAndWait` (the OLD API, with the @Qt_5_PRIVATE_API version tag). libqohos (NEW) references the former while libQt5Core (OLD) defines only the latter → the dynamic linker reports `symbol not found` → libqohos fails to load → the NAPI module is undefined → jscrash.
 
-### 第二层: @ohos.deviceInfo 模块解析(libqohos-vs-ArkTS-engine)
+### Layer 2: @ohos.deviceInfo module resolution (libqohos vs. the ArkTS engine)
 
-修复第一层后(libqohos 能加载), libqohos(NEW, 7/14) 通过 QNapi "global-expression" 机制解析 @ohos.* 模块(deviceInfo/display/window 等)。这些 @ohos.* 模块的解析**不查阅 modulesFactories map**(只查 @kit.* + TS 模块), 而是直接从 ArkTS engine 获取。若 ArkTS engine 返回的是模块命名空间对象(只有 `default` 导出)而非 default 导出的命名空间 → `napi_get_named_property(obj, "deviceType")` 抛 "object has no property named 'deviceType'"。
+Once layer 1 is fixed (libqohos loads), libqohos (NEW, 7/14) resolves @ohos.* modules (deviceInfo/display/window, and so on) through the QNapi "global-expression" mechanism. Resolution of these @ohos.* modules **doesn't consult the modulesFactories map** (which only covers @kit.* + TS modules) — it goes straight to the ArkTS engine. If the ArkTS engine returns the module namespace object (which only has a `default` export) rather than the namespace of the default export → `napi_get_named_property(obj, "deviceType")` throws "object has no property named 'deviceType'".
 
-7/10 的 OhosExportModules.ts 模板 predates 7/14 libqohos → 缺 @ohos.* 模块的正确映射 → crash。
+The 7/10 OhosExportModules.ts template predates the 7/14 libqohos → it lacks correct mappings for the @ohos.* modules → crash.
 
-## 验证方法
+## How to verify
 
-1. `hdc install + aa start`, faultlog 含 `symbol not found ... runInJsThreadAndWait` 或 `object has no property named 'deviceType'`
-2. `llvm-readelf --dyn-syms libqohos.so | grep runInJsThreadAndWait` → 若 UND(undefined), 查 libQt5Core 是否 DEFINES
-3. `llvm-readelf --dyn-syms libQt5Core.so | grep runInJsThreadAndWait` → 若不定义, SDK 内部不匹配
+1. `hdc install` + `aa start`; the faultlog contains `symbol not found ... runInJsThreadAndWait` or `object has no property named 'deviceType'`
+2. `llvm-readelf --dyn-syms libqohos.so | grep runInJsThreadAndWait` → if it's UND (undefined), check whether libQt5Core DEFINES it
+3. `llvm-readelf --dyn-syms libQt5Core.so | grep runInJsThreadAndWait` → if it doesn't define it, the SDK is internally inconsistent
 
-## 解决方案
+## Solution
 
-### 第一层修复: SDK 组合
+### Layer 1 fix: combine the SDKs
 
-用 **-full 的 NEW libQt5Core/Gui/Network/Widgets**(7/14, 有 runInJsThreadAndWait + SSL) + **默认的 NEW libqohos**(7/14, 5.5MB, 匹配 NEW libQt5Core)。替换 -full/plugins/platforms/libqohos.so(170MB stray OLD) 为默认的(5.5MB NEW)。
+Use the **-full SDK's NEW libQt5Core/Gui/Network/Widgets** (7/14, with runInJsThreadAndWait + SSL) together with the **default SDK's NEW libqohos** (7/14, 5.5 MB, matching the NEW libQt5Core). Replace -full/plugins/platforms/libqohos.so (the 170 MB stray OLD build) with the default SDK's (5.5 MB NEW).
 
-### 第二层修复: @ohos.* 模块解析
+### Layer 2 fix: @ohos.* module resolution
 
-更新 OhosExportModules.ts 为匹配 7/14 libqohos 的版本(为 @ohos.deviceInfo/display/window/font/resourceManager/i18n/intl/settings/abilityAccessCtrl 等添加正确的 eager default-imports + modulesFactories entries)。
+Update OhosExportModules.ts to the version matching the 7/14 libqohos (adding correct eager default-imports + modulesFactories entries for @ohos.deviceInfo/display/window/font/resourceManager/i18n/intl/settings/abilityAccessCtrl and others).
 
-## 关键判据
+## Key diagnostic signals
 
-- `llvm-readelf --dyn-syms` 检查 libqohos 的 UND 符号 + libQt5Core 的 DEFINED 符号: 版本标签(@Qt_5 vs @Qt_5_PRIVATE_API)+ 符号名(runInJsThreadAndWait vs runAndWait)必须一致。
-- libqohos 的构建日期(mtime) 与 libQt5Core 的构建日期应接近(同批次构建)。
-- OhosExportModules.ts 的日期应 ≥ libqohos 的日期(模板需匹配 libqohos 版本)。
+- Use `llvm-readelf --dyn-syms` to check libqohos's UND symbols against libQt5Core's DEFINED symbols: both the version tag (@Qt_5 vs @Qt_5_PRIVATE_API) and the symbol name (runInJsThreadAndWait vs runAndWait) must match.
+- libqohos's build date (mtime) should be close to libQt5Core's (from the same build batch).
+- OhosExportModules.ts's date should be ≥ libqohos's date (the template must match the libqohos version).
 
-## 关联
+## Related
 
-- [[qt-ohos-run-test]] §5 崩溃分析表
-- [[problem-runtime-crash-libqohos-modules-mismatch]] (前序: libqohos/.ets modulesFactories/modules 字段名错配)
-- [[problem-runtime-crash-ohos-deviceinfo-global-expression]] (@ohos.deviceInfo 崩溃谱的另一代际分支: 515 代际裸 eval 抛 "global expression doesn't start with known module path"——本页第二层是 7/14 代际 napi_get_named_property 抛 "object has no property named 'deviceType'";同款 eager import 修复)
-- ENV.local: 默认 SDK(${QT5_15_OHOS_SDK}) + -full SDK(${QT5_15_OHOS_SDK_FULL}) 的 libqohos/libQt5Core 构建版本差异
+- [[qt-ohos-run-test]] §5 — the crash analysis table
+- [[problem-runtime-crash-libqohos-modules-mismatch]] (the predecessor: the modulesFactories/modules field-name mismatch between libqohos and the .ets)
+- [[problem-runtime-crash-ohos-deviceinfo-global-expression]] (another generational branch of the @ohos.deviceInfo crash family: in the 515 generation a bare eval throws "global expression doesn't start with known module path" — layer 2 on this page is the 7/14 generation, where napi_get_named_property throws "object has no property named 'deviceType'"; the same eager-import fix applies)
+- ENV.local: the difference in libqohos/libQt5Core build versions between the default SDK (${QT5_15_OHOS_SDK}) and the -full SDK (${QT5_15_OHOS_SDK_FULL})

@@ -8,154 +8,154 @@ updated: 2026-07-04
 status: open
 audience: public
 severity: high
-error_message: "Q_ASSERT(receiver->d_func()->threadData.loadAcquire()->thread.loadRelaxed() == mainThread()) in QCoreApplicationPrivate::sendThroughApplicationEventFilters (Debug 构建鼠标点击事件触发)"
+error_message: "Q_ASSERT(receiver->d_func()->threadData.loadAcquire()->thread.loadRelaxed() == mainThread()) in QCoreApplicationPrivate::sendThroughApplicationEventFilters (triggered by a mouse click in a debug build)"
 refs: [semantic-qt-harmonyos-overview]
 summary: >
-  OHOS 鼠标点击事件崩溃在 QCoreApplication::sendThroughApplicationEventFilters 的 Q_ASSERT，
-  根因是 theMainThread 与 QCoreApplication::instance()->thread() 指向不同的 QThread 对象。
-  与 OHOS 双线程架构（ArkTS UI 线程 vs QtMainThread）和 QApplication 构造前的 Qt API 调用有关。
+  A mouse click on OHOS crashes on the Q_ASSERT in QCoreApplication::sendThroughApplicationEventFilters,
+  because theMainThread and QCoreApplication::instance()->thread() point at different QThread objects.
+  It's related to OHOS's dual-thread architecture (the ArkTS UI thread vs. QtMainThread) and Qt API calls made before QApplication is constructed.
 ---
 
-# OHOS QCoreApplication::notify 线程断言崩溃（theMainThread 不匹配）
+# OHOS QCoreApplication::notify thread assertion crash (theMainThread mismatch)
 
-> **错误类型**：运行时崩溃（Debug 构建 Q_ASSERT 触发）
-> **影响版本**：Qt 5.15 for OHOS（分支 tqtc/harmonyos-5.15.16）
-> **影响范围**：所有 QWidget 应用（Debug 构建）
+> **Error type**: a runtime crash (a Q_ASSERT in a debug build)
+> **Affected versions**: Qt 5.15 for OHOS (branch tqtc/harmonyos-5.15.16)
+> **Scope**: every QWidget application (debug builds)
 
 ---
 
-## 错误信息
+## Error message
 
 ```
 Q_ASSERT(receiver->d_func()->threadData.loadAcquire()->thread.loadRelaxed() == mainThread());
 ```
 
-崩溃位置：`qtbase/src/corelib/kernel/qcoreapplication.cpp`，函数 `QCoreApplicationPrivate::sendThroughApplicationEventFilters()`。
+Crash location: `qtbase/src/corelib/kernel/qcoreapplication.cpp`, in `QCoreApplicationPrivate::sendThroughApplicationEventFilters()`.
 
-触发场景：鼠标点击事件（或其他输入事件）分发时。
-
----
-
-## 症状
-
-1. 鼠标点击/触摸事件触发崩溃
-2. Debug 构建中 Q_ASSERT 失败，Release 构建不崩溃（Q_ASSERT 被编译掉）
-3. 打印 `QThread::currentThread()`、发送线程、接收线程**看起来都是** Qt 主线程
-4. 但 `mainThread()` **不等于** `QCoreApplication::instance()->thread()`
+Trigger: dispatching a mouse click (or another input event).
 
 ---
 
-## 根因分析
+## Symptoms
 
-### 断言失败机制
+1. A mouse click/touch triggers the crash
+2. The Q_ASSERT fails in debug builds; release builds don't crash (Q_ASSERT is compiled out)
+3. Printing `QThread::currentThread()`, the sending thread, and the receiving thread **all appear** to be the Qt main thread
+4. But `mainThread()` **doesn't equal** `QCoreApplication::instance()->thread()`
 
-`notify_helper()` 中的 guard 检查通过后，`sendThroughApplicationEventFilters()` 的 Q_ASSERT 失败：
+---
+
+## Root cause analysis
+
+### The assertion failure mechanism
+
+After the guard in `notify_helper()` passes, the Q_ASSERT in `sendThroughApplicationEventFilters()` fails:
 
 ```cpp
-// guard (qcoreapplication.cpp:1213) - 通过
+// the guard (qcoreapplication.cpp:1213) - passes
 receiver->d_func()->threadData.loadRelaxed()->thread.loadAcquire() == mainThread()
 
-// assertion (qcoreapplication.cpp:1160) - 失败
+// the assertion (qcoreapplication.cpp:1160) - fails
 receiver->d_func()->threadData.loadAcquire()->thread.loadRelaxed() == mainThread()
 ```
 
-两处检查几乎相同（仅 loadRelaxed/loadAcquire 顺序不同），正常单线程场景下不可能 guard 通过而 assertion 失败。
+The two checks are almost identical (differing only in the loadRelaxed/loadAcquire ordering), and in a normal single-threaded scenario the guard passing while the assertion fails should be impossible.
 
-**关键发现**：`mainThread()` 返回 `QCoreApplicationPrivate::theMainThread`，它与 `QCoreApplication::instance()->thread()` 指向**不同的 QThread 对象**。
+**The key finding**: `mainThread()` returns `QCoreApplicationPrivate::theMainThread`, which points at a **different QThread object** than `QCoreApplication::instance()->thread()`.
 
-### theMainThread 设定机制
+### How theMainThread is set
 
-`theMainThread` 由**第一个**调用 `QThreadData::current()` 的线程设定（qthread_unix.cpp:224-225）：
+`theMainThread` is set by the **first** thread to call `QThreadData::current()` (qthread_unix.cpp:224-225):
 
 ```cpp
 if (!QCoreApplicationPrivate::theMainThread.loadAcquire())
     QCoreApplicationPrivate::theMainThread.storeRelease(data->thread.loadRelaxed());
 ```
 
-### OHOS 双线程架构
+### The OHOS dual-thread architecture
 
-Qt for OHOS 使用**双线程模型**：
+Qt for OHOS uses a **dual-thread model**:
 
-| 线程 | 原生线程名 | 用途 |
-|------|-----------|------|
-| ArkTS UI 线程 | （系统默认） | 运行 ArkTS 生命周期回调、NAPI 回调 |
-| QtMainThread | "QtMainThread" | 运行 Qt 事件循环、用户 main()、QPA 事件分发 |
+| Thread | Native thread name | Purpose |
+|--------|--------------------|---------|
+| The ArkTS UI thread | (the system default) | Runs ArkTS lifecycle callbacks and NAPI callbacks |
+| QtMainThread | "QtMainThread" | Runs the Qt event loop, the user's main(), and QPA event dispatch |
 
-**初始化顺序**（正常流程）：
+**Initialization order** (the normal flow):
 
 ```
-ArkTS UI 线程:
+ArkTS UI thread:
   AbilityStage.onCreate()
     ↓
   Ability.onCreate() → setupQtApplication()
-    ↓ setupQtApplicationImpl() 注册 handleDefaultQAbilityInstanceStartup
+    ↓ setupQtApplicationImpl() registers handleDefaultQAbilityInstanceStartup
   handleAbilityOnCreate()
     ↓ handleDefaultQAbilityInstanceStartup()
     ↓ makeQtThreadWithMainFuncLauncher()
-    ↓ SingleThreadExecutor 创建 "QtMainThread" 原生线程
-    ↓ init lambda 在 "QtMainThread" 上运行:
+    ↓ SingleThreadExecutor creates the native "QtMainThread"
+    ↓ the init lambda runs on "QtMainThread":
     ↓   QThread::currentThread() → theMainThread = QAdoptedThread_A
     ↓   initQtThreadState()
-    ↓ 阻塞等待 init 完成
-    ↓ s_qtAppThreadMainFuncLauncher(args) → 派发 main() 到 QtMainThread
+    ↓ blocks waiting for init to finish
+    ↓ s_qtAppThreadMainFuncLauncher(args) → dispatches main() onto QtMainThread
 
 QtMainThread:
-  用户 main()
+  the user's main()
     ↓ QApplication(argc, argv)
-    ↓ QObject 构造 → QThreadData::current() → thread = QAdoptedThread_A
+    ↓ QObject construction → QThreadData::current() → thread = QAdoptedThread_A
     ↓ instance()->thread() == theMainThread ✓
-    ↓ app.exec() → 事件循环
+    ↓ app.exec() → the event loop
 ```
 
-### 崩溃场景
+### The crash scenario
 
-当 `theMainThread`（QAdoptedThread_A）与 `QCoreApplication::instance()->thread()`（QAdoptedThread_B）不同时，
-说明 QThreadData 的 thread-local `currentThreadData` 在 init lambda 和 QApplication 构造之间被清除并重建。
+When `theMainThread` (QAdoptedThread_A) differs from `QCoreApplication::instance()->thread()` (QAdoptedThread_B),
+it means QThreadData's thread-local `currentThreadData` was cleared and recreated between the init lambda and QApplication's construction.
 
-**可能触发条件**：
-1. 用户在 `main()` 中 `QApplication` 构造**前**调用了某些 Qt API（用户已确认存在此情况）
-2. 某些 Qt 内部初始化路径导致 thread-local data 被意外清除/重建
-3. OHOS/Bionic `thread_local` 实现在特定场景下的行为差异
+**Possible triggers**:
+1. The user called some Qt API in `main()` **before** constructing `QApplication` (the user has confirmed this is the case)
+2. Some Qt internal initialization path unexpectedly clears/recreates the thread-local data
+3. Behavioral differences in the OHOS/Bionic `thread_local` implementation in certain scenarios
 
 ---
 
-## OHOS 胶水代码生命周期参考
+## OHOS glue-code lifecycle reference
 
-基于 Qt 源码内置模板（`<QT_SRC>/qtbase/src/harmonyos/templates`，旧版 `ohostemplateforqtapplication_*.zip` 已退役）：
+Based on the template bundled with the Qt source (`<QT_SRC>/qtbase/src/harmonyos/templates`; the old `ohostemplateforqtapplication_*.zip` is retired):
 
-### ArkTS 生命周期 → C++ 回调映射
+### ArkTS lifecycle → C++ callback mapping
 
-| 阶段 | ArkTS 回调 | C++ NAPI 处理函数 | 运行线程 |
-|------|-----------|------------------|---------|
-| 进程启动 | `QAbilityStage.onCreate()` | `handleAbilityStageOnCreate()` | ArkTS UI |
-| 应用初始化 | `QAbilityStage.onNewProcessRequest()` | `setupQtApplication()` → `setupQtApplicationImpl()` | ArkTS UI |
-| Ability 创建 | `QAbility.onCreate()` | `handleAbilityOnCreate()` → 注册 Ability 实例 → `handleDefaultQAbilityInstanceStartup()` | ArkTS UI |
-| Qt 线程创建 | （上一步内部触发） | `makeQtThreadWithMainFuncLauncher()` → 创建 "QtMainThread" + init lambda | **QtMainThread** |
-| 窗口创建 | `QAbility.onWindowStageCreate()` | `handleAbilityOnWindowStageCreate()` → `loadWindowStageContentPage()` | ArkTS UI |
-| 用户 main() | （Qt 线程调度） | `s_qtAppThreadMainFuncLauncher()` → 派发到 QtMainThread | **QtMainThread** |
+| Stage | ArkTS callback | C++ NAPI handler | Thread it runs on |
+|-------|----------------|------------------|-------------------|
+| Process startup | `QAbilityStage.onCreate()` | `handleAbilityStageOnCreate()` | ArkTS UI |
+| Application initialization | `QAbilityStage.onNewProcessRequest()` | `setupQtApplication()` → `setupQtApplicationImpl()` | ArkTS UI |
+| Ability creation | `QAbility.onCreate()` | `handleAbilityOnCreate()` → registers the Ability instance → `handleDefaultQAbilityInstanceStartup()` | ArkTS UI |
+| Qt thread creation | (triggered internally by the previous step) | `makeQtThreadWithMainFuncLauncher()` → creates "QtMainThread" + the init lambda | **QtMainThread** |
+| Window creation | `QAbility.onWindowStageCreate()` | `handleAbilityOnWindowStageCreate()` → `loadWindowStageContentPage()` | ArkTS UI |
+| The user's main() | (scheduled onto the Qt thread) | `s_qtAppThreadMainFuncLauncher()` → dispatched to QtMainThread | **QtMainThread** |
 
-### 关键文件
+### Key files
 
-| 文件 | 作用 |
+| File | Role |
 |------|------|
-| `entry/src/main/ets/qabilitystage/QAbilityStage.ets` | AbilityStage 入口，调用 `setupQtApplication` |
-| `entry/src/main/ets/qability/QAbility.ets` | Ability 生命周期，调用各 NAPI 回调 |
-| `entry/src/main/ets/pages/MainWindowNativeNode.ets` | 主窗口 XComponent 定义 |
-| `entry/src/main/ets/common/QtAppConstants.ets` | 应用常量（APP_LIBRARY_NAME 等） |
+| `entry/src/main/ets/qabilitystage/QAbilityStage.ets` | The AbilityStage entry point; calls `setupQtApplication` |
+| `entry/src/main/ets/qability/QAbility.ets` | The Ability lifecycle; calls the various NAPI callbacks |
+| `entry/src/main/ets/pages/MainWindowNativeNode.ets` | The main window's XComponent definition |
+| `entry/src/main/ets/common/QtAppConstants.ets` | Application constants (APP_LIBRARY_NAME and so on) |
 
-### 线程安全要点
+### Thread safety essentials
 
-- **ArkTS UI 线程上的 NAPI 回调不应直接使用 Qt API**（创建 QObject、调用 QThread::currentThread() 等）
-- 所有 Qt 操作必须通过 `invokeInQtThread()` 派发到 QtMainThread
-- `setupQtApplication()` 中的 C++ 代码（`setupQtApplicationImpl`）使用的 Qt 类型（QString、QMap、QJsonDocument 等）不会触发 `QThreadData::current()`
+- **NAPI callbacks on the ArkTS UI thread must not use Qt APIs directly** (creating QObjects, calling QThread::currentThread(), and so on)
+- Every Qt operation must be dispatched to QtMainThread through `invokeInQtThread()`
+- The Qt types used by the C++ code in `setupQtApplication()` (`setupQtApplicationImpl`) — QString, QMap, QJsonDocument, and so on — don't trigger `QThreadData::current()`
 
 ---
 
-## 诊断步骤
+## Diagnostic steps
 
-### 步骤 1：确认 theMainThread 与 instance()->thread() 是否不同
+### Step 1: confirm whether theMainThread differs from instance()->thread()
 
-在断言处（`qcoreapplication.cpp` `sendThroughApplicationEventFilters` 开头）添加：
+At the assertion site (the start of `sendThroughApplicationEventFilters` in `qcoreapplication.cpp`), add:
 
 ```cpp
 auto *mt = QCoreApplicationPrivate::theMainThread.loadRelaxed();
@@ -167,9 +167,9 @@ qCritical("[THREAD-DEBUG] theMainThread == appThread? %d", mt == appThread);
 qCritical("[THREAD-DEBUG] pthread_self=%lu", (unsigned long)pthread_self());
 ```
 
-### 步骤 2：在 init lambda 中记录 theMainThread
+### Step 2: log theMainThread in the init lambda
 
-在 `qohosjsmain.cpp` init lambda 中（约 line 737 后）添加：
+In the init lambda in `qohosjsmain.cpp` (around line 737), add:
 
 ```cpp
 auto *currentThread = QThread::currentThread();
@@ -178,9 +178,9 @@ qCritical("[INIT-DEBUG] currentThread=%p theMainThread=%p pthread=%lu",
           currentThread, mainThread, (unsigned long)pthread_self());
 ```
 
-### 步骤 3：在 QApplication 构造后立即检查
+### Step 3: check immediately after QApplication is constructed
 
-在用户 main() 中 QApplication 构造后添加：
+In the user's main(), right after constructing QApplication, add:
 
 ```cpp
 QApplication app(argc, argv);
@@ -191,75 +191,75 @@ qCritical("[APP-DEBUG] theMainThread=%p app.thread()=%p currentThread=%p pthread
           (unsigned long)pthread_self());
 ```
 
-### 步骤 4：排查 main() 中 QApplication 前的 Qt API 调用
+### Step 4: look for Qt API calls before QApplication in main()
 
-检查用户 main() 函数，找出 `QApplication` 构造之前的所有 Qt API 调用：
+Inspect the user's main() function and find every Qt API call made before `QApplication` is constructed:
 
 ```cpp
 int main(int argc, char *argv[])
 {
-    // ❌ 以下任何调用都可能在 QApplication 前触发 QThreadData::current()
-    qDebug() << "starting";           // qDebug → 可能触发
-    QString s = "hello";              // 安全（QString 不触发 thread data）
-    QObject obj;                      // ❌ QObject 构造触发 QThreadData::current()
-    QSettings settings;               // ❌ QSettings 构造可能触发
-    QThread::currentThread();         // ❌ 直接触发
+    // ❌ Any of the following could trigger QThreadData::current() before QApplication
+    qDebug() << "starting";           // qDebug → may trigger it
+    QString s = "hello";              // safe (QString doesn't touch thread data)
+    QObject obj;                      // ❌ constructing a QObject triggers QThreadData::current()
+    QSettings settings;               // ❌ constructing QSettings may trigger it
+    QThread::currentThread();         // ❌ triggers it directly
 
-    QApplication app(argc, argv);     // ← theMainThread 应在此之前设定
+    QApplication app(argc, argv);     // ← theMainThread should be set before this point
     // ...
 }
 ```
 
 ---
 
-## 解决方案
+## Solution
 
-### 短期修复
+### The short-term fix
 
-**确保 `QApplication` 是 main() 中的第一个 Qt API 调用**：
+**Make `QApplication` the first Qt API call in main()**:
 
 ```cpp
 int main(int argc, char *argv[])
 {
-    // ✅ QApplication 必须是第一个 Qt 调用
+    // ✅ QApplication must be the first Qt call
     QApplication app(argc, argv);
 
-    // 之后才能使用其他 Qt API
+    // only then use other Qt APIs
     qDebug() << "starting";
     // ...
     return app.exec();
 }
 ```
 
-### 长期建议
+### Longer-term recommendations
 
-1. **在 QPA 插件中添加防御性检查**：在 `QOhosPlatformIntegration` 构造时验证 `theMainThread == QThread::currentThread()`
-2. **文档化 main() 约束**：明确说明 OHOS 平台下 `QApplication` 必须是 main() 中的第一个 Qt API 调用
-3. **考虑在 Qt 5.15 OHOS 分支中增强** `notify_helper()` 中的 guard 检查，添加更详细的错误日志而非直接 Q_ASSERT
+1. **Add a defensive check in the QPA plugin**: verify `theMainThread == QThread::currentThread()` when `QOhosPlatformIntegration` is constructed
+2. **Document the main() constraint**: state explicitly that on OHOS, `QApplication` must be the first Qt API call in main()
+3. **Consider strengthening** the guard check in `notify_helper()` in the Qt 5.15 OHOS branch, logging more detail instead of a bare Q_ASSERT
 
 ---
 
-## 源码引用
+## Source references
 
-| 文件:行号 | 说明 |
-|------|------|
-| `qtbase/src/corelib/kernel/qcoreapplication.cpp:534-539` | `theMainThread` 定义和 `mainThread()` |
-| `qtbase/src/corelib/kernel/qcoreapplication.cpp:1157-1177` | `sendThroughApplicationEventFilters()` 含 Q_ASSERT |
-| `qtbase/src/corelib/kernel/qcoreapplication.cpp:1202-1217` | `notify_helper()` 含 guard 检查 |
-| `qtbase/src/corelib/kernel/qcoreapplication.cpp:475-477` | `QCoreApplicationPrivate` 构造函数中 `theMainThread` 检查 |
-| `qtbase/src/corelib/thread/qthread_unix.cpp:207-228` | `QThreadData::current()` 设定 `theMainThread` |
-| `qtbase/src/corelib/thread/qthread.cpp:900-914` | `QThreadData::current()` 备选实现 |
+| File:line | Description |
+|-----------|-------------|
+| `qtbase/src/corelib/kernel/qcoreapplication.cpp:534-539` | The definition of `theMainThread` and `mainThread()` |
+| `qtbase/src/corelib/kernel/qcoreapplication.cpp:1157-1177` | `sendThroughApplicationEventFilters()`, containing the Q_ASSERT |
+| `qtbase/src/corelib/kernel/qcoreapplication.cpp:1202-1217` | `notify_helper()`, containing the guard check |
+| `qtbase/src/corelib/kernel/qcoreapplication.cpp:475-477` | The `theMainThread` check in the `QCoreApplicationPrivate` constructor |
+| `qtbase/src/corelib/thread/qthread_unix.cpp:207-228` | `QThreadData::current()` setting `theMainThread` |
+| `qtbase/src/corelib/thread/qthread.cpp:900-914` | The alternative `QThreadData::current()` implementation |
 | `qtbase/src/plugins/platforms/ohos/qohosjsmain.cpp:712-771` | `makeQtThreadWithMainFuncLauncher()` |
 | `qtbase/src/plugins/platforms/ohos/qohosjsmain.cpp:784-851` | `handleDefaultQAbilityInstanceStartup()` |
-| `qtbase/src/plugins/platforms/ohos/qohossinglethreadexecutor.cpp:108-135` | `SingleThreadExecutor` 创建 "QtMainThread" |
+| `qtbase/src/plugins/platforms/ohos/qohossinglethreadexecutor.cpp:108-135` | `SingleThreadExecutor` creating "QtMainThread" |
 | `qtbase/src/plugins/platforms/ohos/qohosplatformintegration.cpp:152` | `m_mainThread = QThread::currentThread()` |
 
 ---
 
-## 内容来源
+## Content sources
 
-| 来源类型 | 说明 |
-|----------|------|
-| 🛠️ 工作经验 | 伙伴反馈的实际崩溃案例，源码级调用链分析 |
-| 🔍 框架源码 | Qt 5.15 OHOS 分支 qcoreapplication.cpp、qthread_unix.cpp、QPA 插件 |
-| 📄 胶水代码模板 | Qt 源码内置模板（`qtbase/src/harmonyos/templates`）ArkTS 生命周期 |
+| Source type | Notes |
+|-------------|-------|
+| 🛠️ Hands-on experience | A real crash reported by a partner, with a source-level call chain analysis |
+| 🔍 Framework source | The Qt 5.15 OHOS branch's qcoreapplication.cpp, qthread_unix.cpp, and QPA plugin |
+| 📄 Glue-code template | The ArkTS lifecycle in the template bundled with the Qt source (`qtbase/src/harmonyos/templates`) |

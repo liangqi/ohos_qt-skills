@@ -1,13 +1,13 @@
 #!/bin/bash
-# download-cmdline-tools.sh — 自动下载并安装 HarmonyOS Command Line Tools
+# download-cmdline-tools.sh — automatically download and install the HarmonyOS Command Line Tools
 #
-# 用法:
-#   bash download-cmdline-tools.sh --dest=<安装目录> [--url=<自定义下载URL>]
+# Usage:
+#   bash download-cmdline-tools.sh --dest=<install directory> [--url=<custom download URL>]
 #
-# 支持平台: macOS, Windows (Git Bash), Linux
-# HarmonyOS: 不支持自动下载，脚本会输出申请指引
+# Supported platforms: macOS, Windows (Git Bash), Linux
+# HarmonyOS: automatic download is not supported; the script prints application instructions
 #
-# 退出码: 0=成功, 1=参数错误, 2=下载失败, 3=平台不支持
+# Exit codes: 0=success, 1=bad arguments, 2=download failed, 3=unsupported platform
 
 set -uo pipefail
 
@@ -18,13 +18,13 @@ for arg in "$@"; do
   case "$arg" in
     --dest=*) DEST="${arg#*=}" ;;
     --url=*)  CUSTOM_URL="${arg#*=}" ;;
-    *) echo "未知参数: $arg"; exit 1 ;;
+    *) echo "Unknown argument: $arg"; exit 1 ;;
   esac
 done
 
 if [ -z "$DEST" ]; then
-  echo "ERROR: 必须指定 --dest=<安装目录>"
-  echo "用法: bash download-cmdline-tools.sh --dest=<安装目录> [--url=<下载URL>]"
+  echo "ERROR: --dest=<install directory> is required"
+  echo "Usage: bash download-cmdline-tools.sh --dest=<install directory> [--url=<download URL>]"
   exit 1
 fi
 
@@ -48,23 +48,23 @@ detect_os() {
 OS=$(detect_os)
 ARCH=$(uname -m)
 
-echo "--- Command Line Tools for HarmonyOS 下载 ---"
-echo "  平台: $OS ($ARCH)"
-echo "  目标: $DEST"
+echo "--- Command Line Tools for HarmonyOS download ---"
+echo "  Platform: $OS ($ARCH)"
+echo "  Target: $DEST"
 echo ""
 
 if [ "$OS" = "harmonyos" ]; then
   echo "STATUS=unsupported"
   echo ""
-  echo "HarmonyOS 平台当前不支持自动下载 Command Line Tools。"
+  echo "Automatic download of the Command Line Tools is not currently supported on HarmonyOS."
   echo ""
-  echo "获取方式："
-  echo "  1. 访问 HarmonyOS 开发者官网统一工单平台: https://developer.huawei.com/consumer/cn/"
-  echo "  2. 提交工单申请 Command Line Tools for HarmonyOS 遥测版本"
-  echo "  3. 获得下载链接后，使用 --url 参数重新运行本脚本："
-  echo "     bash download-cmdline-tools.sh --dest=$DEST --url=<下载链接>"
+  echo "How to obtain them:"
+  echo "  1. Go to the HarmonyOS developer site's unified ticket platform: https://developer.huawei.com/consumer/cn/"
+  echo "  2. File a ticket requesting the telemetry build of Command Line Tools for HarmonyOS"
+  echo "  3. Once you have the download link, re-run this script with the --url argument:"
+  echo "     bash download-cmdline-tools.sh --dest=$DEST --url=<download link>"
   echo ""
-  echo "也可以手动下载后解压到: $DEST"
+  echo "You can also download it manually and extract it into: $DEST"
   exit 3
 fi
 
@@ -90,44 +90,44 @@ else
   esac
   echo "STATUS=need-manual"
   echo ""
-  echo "无法自动获取下载链接。请按以下步骤操作："
-  echo "  1. 访问 $DOWNLOAD_PAGE"
-  echo "  2. 找到 Command Line Tools for HarmonyOS"
-  echo "  3. 下载 $(echo "$ARCHIVE_NAME" | sed 's/-/ /g') 版本"
-  echo "  4. 将下载的文件路径传给本脚本："
+  echo "Could not determine the download link automatically. Please follow these steps:"
+  echo "  1. Go to $DOWNLOAD_PAGE"
+  echo "  2. Find Command Line Tools for HarmonyOS"
+  echo "  3. Download the $(echo "$ARCHIVE_NAME" | sed 's/-/ /g') build"
+  echo "  4. Pass the downloaded file's path to this script:"
   echo "     bash download-cmdline-tools.sh --dest=$DEST --url=file:///path/to/$ARCHIVE_NAME"
   echo ""
-  echo "或者使用 --url 参数直接指定下载链接："
-  echo "  bash download-cmdline-tools.sh --dest=$DEST --url=<下载链接>"
+  echo "Or specify the download link directly with the --url argument:"
+  echo "  bash download-cmdline-tools.sh --dest=$DEST --url=<download link>"
   exit 2
 fi
 
 mkdir -p "$DEST"
 
-echo "下载中: $DOWNLOAD_URL"
+echo "Downloading: $DOWNLOAD_URL"
 TMPFILE=$(mktemp)
 if curl -fSL --progress-bar -o "$TMPFILE" "$DOWNLOAD_URL"; then
-  echo "下载完成"
+  echo "Download complete"
 else
-  echo "ERROR: 下载失败: $DOWNLOAD_URL"
+  echo "ERROR: download failed: $DOWNLOAD_URL"
   rm -f "$TMPFILE"
   exit 2
 fi
 
-echo "解压中..."
+echo "Extracting..."
 case "$ARCHIVE_NAME" in
   *.tar.gz|*.tgz)
     tar xzf "$TMPFILE" -C "$DEST" ;;
   *.zip)
     unzip -q -o "$TMPFILE" -d "$DEST" ;;
   *)
-    echo "ERROR: 未知归档格式: $ARCHIVE_NAME"
+    echo "ERROR: unknown archive format: $ARCHIVE_NAME"
     rm -f "$TMPFILE"
     exit 1 ;;
 esac
 rm -f "$TMPFILE"
 
-echo "解压完成: $DEST"
+echo "Extraction complete: $DEST"
 
 SDK_NATIVE=""
 TOOLCHAINS=""
@@ -147,7 +147,7 @@ echo "CLT_ROOT=$DEST"
 [ -n "$CLI_PATH" ] && echo "DEVECO_CLI_DIR=$CLI_PATH"
 
 echo ""
-echo "建议将以下路径加入 PATH："
+echo "Consider adding the following paths to PATH:"
 [ -n "$TOOLCHAINS" ] && echo "  export PATH=\"$TOOLCHAINS:\$PATH\""
 [ -n "$CLI_PATH" ] && echo "  export PATH=\"$CLI_PATH:\$PATH\""
 [ -n "$SDK_NATIVE" ] && echo "  export OHOS_SDK_NATIVE=\"$SDK_NATIVE\""

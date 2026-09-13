@@ -10,84 +10,84 @@ severity: high
 audience: public
 refs: [semantic-qt-harmonyos-platform-limits]
 summary: >
-  OHOS ZINK(Qt5 OpenGL-over-Vulkan)下 Qt3D Texture2D 用 RGBA8 alpha-PNG + generateMipMaps:true 时，
-  glGenerateMipmap 对 RGBA8 失败/坏 mipchain→纹理 mipmap 不完整→采样器返回黑(0,0,0,1)→实体纯黑；
-  同 effect 下 RGB8 JPG 行星贴图正常。修复：给 alpha-PNG 实体关 mipmap(generateMipMaps:false + minificationFilter:Texture.Linear)，
-  守卫 Qt.platform.pluginName!=="ohos"（注意 Qt.platform.os 在 OHOS 返回 "linux"）。
+  Under OHOS ZINK (Qt5's OpenGL-over-Vulkan), when a Qt3D Texture2D uses an RGBA8 alpha PNG with generateMipMaps:true,
+  glGenerateMipmap fails for RGBA8 / produces a broken mip chain → the texture's mipmaps are incomplete → the sampler returns black (0,0,0,1) → the entity renders pure black;
+  RGB8 JPG planet textures under the same effect are fine. Fix: disable mipmaps for alpha-PNG entities (generateMipMaps:false + minificationFilter:Texture.Linear),
+  guarded by Qt.platform.pluginName!=="ohos" (note that Qt.platform.os returns "linux" on OHOS).
 leader_summary: >
-  沉淀 OHOS ZINK 渲染管线一个静默 bug（RGBA8 alpha 纹理 mipmap 不完整→纯黑）的复用排障方案，
-  Qt3D/QtQuick 3D 应用移植鸿蒙可直接套用。
-impact: [迁移提效, Qt6支撑, 商业答复]
-deliverables: [problem记录, patch]
-evidence: [planets-qml-ohos 工程修复(SolarSystem.qml + PlanetMaterial.qml), hilog 干净无 GL 错(失败是静默的)]
+  Captured reusable troubleshooting for a silent bug in the OHOS ZINK rendering pipeline (incomplete mipmaps for RGBA8 alpha textures → pure black),
+  directly applicable when porting Qt3D/QtQuick 3D applications to HarmonyOS.
+impact: [Migration efficiency, Qt6 support, Commercial response]
+deliverables: [problem record, patch]
+evidence: [The planets-qml-ohos project fix (SolarSystem.qml + PlanetMaterial.qml), a clean hilog with no GL errors (the failure is silent)]
 
-# ====== 检索关键字 ======
+# ====== Search keywords ======
 error_message: >
-  无 GL 错误日志（失败是静默的）。现象：Qt3D 球体/星环/云层贴图纯黑不显示，
-  但 Phong 光照/阴影正常、其他 RGB8 JPG 贴图实体正常。
+  No GL error logs (the failure is silent). Symptom: Qt3D sphere/ring/cloud textures render pure black and invisible,
+  while Phong lighting/shadows work and other entities with RGB8 JPG textures are fine.
 error_code: ""
 keywords: [zink, rgba8, mipmap, glGenerateMipmap, alpha-png, colortrans, texture-incomplete, black, qt3d, planets-qml, blending-off]
 symptoms: >
-  Qt3D 实体贴图纯黑（cloud 球壳 / saturn 星环 / uranus 星环），光照与阴影正常；
-  同 effect 下用 RGB8 JPG 的实体贴图正常；唯一判别变量是贴图格式 RGBA8(alpha) vs RGB8(JPG)。
+  Qt3D entity textures render pure black (the cloud shell / Saturn's rings / Uranus's rings) while lighting and shadows are correct;
+  entities using RGB8 JPGs under the same effect look fine; the only distinguishing variable is the texture format, RGBA8 (alpha) vs RGB8 (JPG).
 
-# ====== 问题详情 ======
+# ====== Problem details ======
 environment: >
-  OHOS Qt5.12.12 OHOS SDK；真机 HUAWEI MateBook Fold；Mesa ZINK（OpenGL-over-Vulkan，NEED_OPENGL=1）；
-  main.cpp QSurfaceFormat 3.2 CoreProfile→Qt3D 选 gl3 shader；Qt3D Texture2D (QOpenGLTexture)。
+  The OHOS Qt 5.12.12 OHOS SDK; a HUAWEI MateBook Fold device; Mesa ZINK (OpenGL-over-Vulkan, NEED_OPENGL=1);
+  main.cpp's QSurfaceFormat 3.2 CoreProfile → Qt3D selects gl3 shaders; Qt3D Texture2D (QOpenGLTexture).
 ---
 
-# Qt3D RGBA8 alpha-PNG 贴图在 OHOS ZINK 下渲染纯黑（mipmap 不完整）
+# Qt3D RGBA8 alpha-PNG textures render pure black under OHOS ZINK (incomplete mipmaps)
 
-## 错误信息
+## Error message
 
 ```
-（无错误日志——失败完全静默）
-hilog 只见：MESA: ZINK: SSBO is readonly in vertex stage!（无关红鲱鱼，来自 PlanetEffect 的 light UBO/SSBO 绑定）
-无 GL_INVALID / 无 texture / 无 mipmap 错误行（OpenGL 规范：不完整纹理采样按设计静默返回 (0,0,0,1)，不报错）
-现象：cloud 球壳 / saturn 星环 / uranus 星环 实体纯黑；同 effect 下 saturn 行星（saturnmap.jpg RGB8）正常
+(no error logs — the failure is completely silent)
+The only hilog line is: MESA: ZINK: SSBO is readonly in vertex stage!  (an unrelated red herring, from PlanetEffect's light UBO/SSBO binding)
+No GL_INVALID / texture / mipmap error lines (per the OpenGL spec, sampling an incomplete texture silently returns (0,0,0,1) by design rather than raising an error)
+Symptom: the cloud shell / Saturn's rings / Uranus's rings render pure black; Saturn the planet (saturnmap.jpg, RGB8) under the same effect is fine
 ```
 
-## 场景
+## Scenario
 
-planets-qml（Qt3D 太阳系 demo）OHOS 移植到真机运行：
+Running the OHOS port of planets-qml (the Qt3D solar system demo) on a real device:
 
-- **黑掉的实体**：earth 云层（`earthcloudmapcolortrans.png`）、saturn 星环（`saturnringcolortrans.png`）、uranus 星环（`uranusringcolortrans.png`）——三者都是 **RGBA8 alpha-PNG**（PNG colortype 6，"colortrans"=color+transparency，带 alpha 通道）。
-- **正常的实体**：mercury/venus/earth/mars/jupiter/saturn/uranus/neptune 行星贴图——都是 **RGB8 JPG**（无 alpha）。
-- 两者走**同一个** `PlanetMaterial.qml` 的 diffuseTexture Texture2D 块（`generateMipMaps:true` + `LinearMipMapLinear` + `maximumAnisotropy:16.0` + `Repeat`）。
+- **The black entities**: Earth's cloud layer (`earthcloudmapcolortrans.png`), Saturn's rings (`saturnringcolortrans.png`), and Uranus's rings (`uranusringcolortrans.png`) — all three are **RGBA8 alpha PNGs** (PNG color type 6, "colortrans" = color + transparency, with an alpha channel).
+- **The working entities**: the Mercury/Venus/Earth/Mars/Jupiter/Saturn/Uranus/Neptune planet textures — all **RGB8 JPGs** (no alpha).
+- Both go through **the same** diffuseTexture Texture2D block in `PlanetMaterial.qml` (`generateMipMaps:true` + `LinearMipMapLinear` + `maximumAnisotropy:16.0` + `Repeat`).
 
-**决定性对照**：saturn 行星（`shadowMapEffect` + `saturnmap.jpg` RGB8）正常 vs saturn 星环（**同一个** `shadowMapEffect` + `saturnringcolortrans.png` RGBA8）纯黑——同 effect/同 shader/同 material 类/同 mipmap 配置，唯一变量是贴图格式 RGBA8 vs RGB8。
+**The decisive comparison**: Saturn the planet (`shadowMapEffect` + `saturnmap.jpg`, RGB8) is fine, while Saturn's rings (**the same** `shadowMapEffect` + `saturnringcolortrans.png`, RGBA8) are pure black — the same effect, shader, material class, and mipmap configuration; the only variable is RGBA8 vs RGB8.
 
-> 用户最初报告"earth 贴图没加载、被黑色覆盖"——根因是 cloud 球壳（RGBA8 alpha-PNG）渲染纯黑、套在 earth 外面盖住了 earth。禁用 cloud 后 earth 贴图立刻显示。
+> The user's initial report was "the earth texture didn't load and is covered in black" — the root cause is that the cloud shell (an RGBA8 alpha PNG) renders pure black and sits over the earth, hiding it. Disabling the cloud makes the earth texture appear immediately.
 
-## 原因
+## Cause
 
-**机制（a）**：OHOS Mesa ZINK（OpenGL-over-Vulkan）实现 `glGenerateMipmap` 走 `vkCmdBlitImage`，对 **GL_RGBA8（alpha 通道）纹理的 mipmap 生成失败/产生坏 mipchain**，纹理 mipmap 不完整。配合 `minificationFilter=LinearMipMapLinear`（要求所有 mip 级定义），OpenGL 规范按设计**静默返回 (0,0,0,1) 黑色**给**所有**采样（base level 也包括）——不报 GL 错（故 hilog 干净）。
+**Mechanism (a)**: OHOS Mesa ZINK (OpenGL-over-Vulkan) implements `glGenerateMipmap` with `vkCmdBlitImage`, and for **GL_RGBA8 (alpha channel) textures, mipmap generation fails / produces a broken mip chain**, leaving the texture's mipmaps incomplete. Combined with `minificationFilter=LinearMipMapLinear` (which requires every mip level to be defined), the OpenGL spec **silently returns black (0,0,0,1)** for **all** samples by design (the base level included) — with no GL error (hence the clean hilog).
 
-- **GL_RGB8（无 alpha，JPG）纹理的 mipmap 在同一 ZINK 正常生成**→纹理完整→正常采样→JPG 行星贴图正常。
-- ZINK 把 GL_RGB8 和 GL_RGBA8 都映射到同一个 VkFormat（`VK_FORMAT_R8G8B8A8_UNORM`），所以 VkImage 创建层面无差异；RGB8/RGBA8 的不对称在 ZINK 的 **GL 级 completeness/mip-blit 层**（正是机制 a 操作处），不在 VkImage 创建。
+- **GL_RGB8 (no alpha, JPG) texture mipmaps generate fine under the same ZINK** → the texture is complete → sampling works → the JPG planet textures are fine.
+- ZINK maps both GL_RGB8 and GL_RGBA8 to the same VkFormat (`VK_FORMAT_R8G8B8A8_UNORM`), so there's no difference at VkImage creation; the RGB8/RGBA8 asymmetry is in ZINK's **GL-level completeness/mip-blit layer** (exactly where mechanism (a) operates), not in VkImage creation.
 
-**排除的其他假设**（像素级证据）：
+**Other hypotheses ruled out** (with pixel-level evidence):
 
-| 假设 | 判别 | 结论 |
-|------|------|------|
-| (b) blending 没开→透明区黑 RGB 盖住 | 星环不透明区是 tan 色（RGB≈87/82/85），blend-off 也会显示 tan 带，不是纯黑 | **排除**（不是黑的成因；但 blending 缺失是独立的次要缺陷，见下） |
-| (c) RGBA8 上传/VkImage 创建失败 | ZINK 把 RGB8/RGBA8 映射到同一 VkFormat，format 级失败无依据 | 低（mipmap-off 实验若仍黑才升级到此） |
-| (d) PNG 解码/ICC/sRGB | cloud 无 iCCP、星环有 iCCP=sRGB，症状一致；libpng 无 iCCP 警告（2D 缩略图才有） | 排除 |
-| NPOT | 星环是 1024×512 POT 也黑；earthmap2k.jpg NPOT 正常 | 排除 |
-| anisotropy 16 | Qt3D 双重守卫（`gltexture.cpp:514` + `qopengltexture.cpp:4288`）缺扩展静默跳过 | 排除（不是元凶） |
+| Hypothesis | How it was tested | Conclusion |
+|------------|-------------------|------------|
+| (b) Blending isn't enabled → black RGB in transparent regions covers things | The opaque region of the rings is tan (RGB≈87/82/85), so with blending off you'd see a tan band, not pure black | **Ruled out** (not the cause of the black; though the missing blending is an independent secondary defect, see below) |
+| (c) RGBA8 upload / VkImage creation fails | ZINK maps RGB8/RGBA8 to the same VkFormat, so there's no basis for a format-level failure | Unlikely (it would only be escalated to this if it were still black with mipmaps off) |
+| (d) PNG decode / ICC / sRGB | The cloud has no iCCP while the rings have iCCP=sRGB, and the symptoms are identical; libpng emits no iCCP warning (only the 2D thumbnails do) | Ruled out |
+| NPOT | The rings are 1024×512 (POT) and still black; earthmap2k.jpg is NPOT and fine | Ruled out |
+| anisotropy 16 | Qt3D has two guards (`gltexture.cpp:514` + `qopengltexture.cpp:4288`) that silently skip it when the extension is missing | Ruled out (not the culprit) |
 
-**纯黑（而非彩色带+透明缺口）是关键判据**：星环不透明区有色，若仅 blending-off 会显示彩色带；纯黑说明贴图采样本身返回 0 = 不完整纹理。
+**Pure black (rather than a colored band with transparent gaps) is the key diagnostic**: the rings' opaque regions have color, so blending being off would show a colored band; pure black means texture sampling itself returns 0 = an incomplete texture.
 
-## 解决方案
+## Solution
 
-给 `PlanetMaterial.qml` 加一个向后兼容的 mipmap 开关属性，**只让 alpha-PNG 实体在 OHOS 关 mipmap**，JPG 行星保留 mipmap 质量：
+Add a backward-compatible mipmap toggle property to `PlanetMaterial.qml` so that **only the alpha-PNG entities disable mipmaps on OHOS**, while the JPG planets keep their mipmap quality:
 
 ```qml
 // PlanetMaterial.qml
-property bool diffuseGenerateMipMaps: true  // 默认 true（保留 upstream mipmap 行为，JPG 行星不动）
+property bool diffuseGenerateMipMaps: true  // defaults to true (preserving upstream mipmap behavior; the JPG planets are untouched)
 
-// diffuseTexture 块（绑到开关，specularTexture/normalTexture 不动——都是 RGB8 JPG，mipmap 正常）
+// The diffuseTexture block (bound to the toggle; specularTexture/normalTexture are untouched — they're all RGB8 JPGs whose mipmaps work)
 Texture2D {
     id: diffuseTexture
     minificationFilter: root.diffuseGenerateMipMaps ? Texture.LinearMipMapLinear : Texture.Linear
@@ -96,33 +96,33 @@ Texture2D {
     // ...
 }
 
-// SolarSystem.qml —— 3 个 alpha-PNG 实体（cloud + 2 星环）OHOS 关 mipmap
+// SolarSystem.qml — the 3 alpha-PNG entities (cloud + 2 ring sets) disable mipmaps on OHOS
 PlanetMaterial {
     id: materialSaturnRing
     // ...
     diffuseMap: "qrc:/images/solarsystemscope/saturnringcolortrans.png"
-    diffuseGenerateMipMaps: Qt.platform.pluginName !== "ohos"  // OHOS 关 mipmap
+    diffuseGenerateMipMaps: Qt.platform.pluginName !== "ohos"  // disable mipmaps on OHOS
 }
 ```
 
-**关键**：`generateMipMaps:false` **必须同时**把 `minificationFilter` 从 `LinearMipMapLinear` 改成 `Texture.Linear`——否则 base-level-only 纹理配 mipmap min filter 仍不完整→仍黑。
+**Key point**: `generateMipMaps:false` **must** be accompanied by changing `minificationFilter` from `LinearMipMapLinear` to `Texture.Linear` — otherwise a base-level-only texture with a mipmap min filter is still incomplete and still black.
 
-**守卫用 `Qt.platform.pluginName !== "ohos"`**（⚠️ 见注意事项）。
+**Guard with `Qt.platform.pluginName !== "ohos"`** (⚠️ see the notes).
 
-## 注意事项
+## Notes
 
-### ⚠️ Qt.platform.os 在 OHOS 返回 "linux"，不是 "ohos"
+### ⚠️ Qt.platform.os returns "linux" on OHOS, not "ohos"
 
-`qsystemdetection.h:115-117` 同时定义 `Q_OS_OHOS` 和 `Q_OS_LINUX`（同 Android 模式）；`qqmlplatform.cpp` 无 `Q_OS_OHOS` 分支→落回 `Q_OS_LINUX`→`Qt.platform.os` 返回 **"linux"**。**用 `Qt.platform.os === "ohos"` 守卫会永不触发（静默 bug）**。QML 里检测 OHOS 用 `Qt.platform.pluginName === "ohos"`（QPA 插件 key 是 "ohos"，经 `Qt.platform.pluginName` 暴露）。
+`qsystemdetection.h:115-117` defines both `Q_OS_OHOS` and `Q_OS_LINUX` (the same pattern as Android); `qqmlplatform.cpp` has no `Q_OS_OHOS` branch → it falls through to `Q_OS_LINUX` → `Qt.platform.os` returns **"linux"**. **A guard using `Qt.platform.os === "ohos"` will never fire (a silent bug)**. In QML, detect OHOS with `Qt.platform.pluginName === "ohos"` (the QPA plugin key is "ohos", exposed through `Qt.platform.pluginName`).
 
-### blending 是独立的次要缺陷（不是黑的成因）
+### Blending is an independent secondary defect (not the cause of the black)
 
-Qt3D 的 `PlanetEffect`/`ShadowEffect`/`SunEffect` 都注释 "no special render state => use default set of states"，**无 BlendEquation/BlendEquationArguments/NoDepthMask**。Qt3D 的 `opacity` 只是 shader uniform，**不会自动开 GL_BLEND**。故 cloud（opacity 0.2）/星环（opacity 0.4）本该半透明，实际按不透明渲染。
+Qt3D's `PlanetEffect`/`ShadowEffect`/`SunEffect` all note "no special render state => use default set of states" and have **no BlendEquation/BlendEquationArguments/NoDepthMask**. Qt3D's `opacity` is just a shader uniform and **doesn't enable GL_BLEND automatically**. So the cloud (opacity 0.2) and rings (opacity 0.4), which should be semi-transparent, actually render opaque.
 
-- 修完黑（mipmap-off）后，cloud/星环会显示贴图但**不透明**（云层会盖住 earth、星环缺口实心）。
-- 要真半透明，给相关 RenderPass 加显式 blend state：
+- Once the black is fixed (mipmaps off), the cloud/rings show their textures but are **opaque** (the cloud layer covers the earth, and the gaps in the rings are solid).
+- For real transparency, add an explicit blend state to the relevant RenderPasses:
   ```qml
-  // PlanetEffect.qml / ShadowEffect.qml 的 gl3 forward RenderPass
+  // The gl3 forward RenderPass in PlanetEffect.qml / ShadowEffect.qml
   renderStates: [
       BlendEquation { blendFunction: BlendEquation.Add },
       BlendEquationArguments {
@@ -134,25 +134,25 @@ Qt3D 的 `PlanetEffect`/`ShadowEffect`/`SunEffect` 都注释 "no special render 
       NoDepthMask {}
   ]
   ```
-  更便宜的 shader-only 替代：`if (texture(diffuseTexture, uv).a < 0.5) discard;`（硬切口，丢失 soft opacity）。
-- cloud 在 blending 修好前应**保持禁用**（components 注释），否则不透明云层盖住 earth。
+  A cheaper shader-only alternative: `if (texture(diffuseTexture, uv).a < 0.5) discard;` (a hard cutout, losing soft opacity).
+- The cloud should **stay disabled** (its components commented out) until blending is fixed, or the opaque cloud layer hides the earth.
 
-### 上游 pristine 修复策略
+### Keeping upstream pristine
 
-`PlanetMaterial.qml` / shader 与上游字节一致（仅 PlanetFrameGraph shadow-sampler 注释 + ×1000 缩放是 OHOS 必需改动）。本修复通过加 property + 实体覆盖，**不改动 upstream 共享 shader/effect 文件**，desktop 保留 mipmap 质量。星环不透明对 demo 可接受；要真半透明再上 blending 修复。
+`PlanetMaterial.qml` and the shaders are byte-identical to upstream (only the PlanetFrameGraph shadow-sampler comment and the ×1000 scaling are OHOS-required changes). This fix adds a property and overrides it per entity, so it **doesn't touch the shared upstream shader/effect files**, and desktop keeps its mipmap quality. Opaque rings are acceptable for the demo; add the blending fix if you need real transparency.
 
-## 成果展示
+## Results
 
-| 字段 | 内容 |
-|------|------|
-| 领导摘要 | 沉淀 OHOS ZINK 渲染管线一个静默 bug（RGBA8 alpha 纹理 mipmap 不完整→纯黑）的复用排障方案，Qt3D/QtQuick 3D 应用移植鸿蒙可直接套用 |
-| 影响面 | Qt3D 应用鸿蒙化迁移、Qt6 鸿蒙化支撑、商业 Qt 3D 应用答复 |
-| 交付物 | problem 记录 + planets-qml-ohos patch（PlanetMaterial.qml + SolarSystem.qml） |
-| 证据 | planets-qml-ohos 工程修复 commit、hilog 干净（失败静默无 GL 错）、真机验证星环出彩色带 |
-| 可复用方式 | Qt3D/QtQuick 3D 应用在 OHOS 真机出现"贴图纯黑但光照正常、JPG 正常、只有 alpha-PNG 黑"时直接套用：alpha-PNG 实体关 mipmap |
+| Field | Content |
+|-------|---------|
+| Leadership summary | Captured reusable troubleshooting for a silent bug in the OHOS ZINK rendering pipeline (incomplete mipmaps for RGBA8 alpha textures → pure black), directly applicable when porting Qt3D/QtQuick 3D applications to HarmonyOS |
+| Scope of impact | Qt3D application ports to HarmonyOS, Qt6 HarmonyOS support, responses on commercial Qt 3D applications |
+| Deliverables | problem record + the planets-qml-ohos patch (PlanetMaterial.qml + SolarSystem.qml) |
+| Evidence | The planets-qml-ohos fix commit, a clean hilog (the failure is silent with no GL errors), and on-device verification showing the colored ring band |
+| How to reuse | When a Qt3D/QtQuick 3D application on an OHOS device shows "textures pure black but lighting fine, JPGs fine, only alpha PNGs black", apply this directly: disable mipmaps for the alpha-PNG entities |
 
-## 相关
+## Related
 
-- 见 _lookup 速查表 — 同为 OHOS ZINK 渲染管线问题（EGL_BAD_CONFIG 12293 setSamples(4)，已用 `#ifndef Q_OS_OHOS` 守卫修）
-- [[semantic-qt-harmonyos-platform-limits]] — ZINK GL 级限制补在此页的"OpenGL/ZINK 渲染"小节
-- [[semantic-qt-harmonyos-project-structure]] — Qt3D 应用的 qrc/Texture2D 部署模型
+- See the _lookup quick-reference table — another OHOS ZINK rendering pipeline problem (EGL_BAD_CONFIG 12293 with setSamples(4), fixed with a `#ifndef Q_OS_OHOS` guard)
+- [[semantic-qt-harmonyos-platform-limits]] — the ZINK GL-level limitations are added to that page's "OpenGL/ZINK rendering" section
+- [[semantic-qt-harmonyos-project-structure]] — The qrc/Texture2D deployment model for Qt3D applications

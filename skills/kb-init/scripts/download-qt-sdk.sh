@@ -1,9 +1,9 @@
 #!/bin/bash
-# download-qt-sdk.sh — 下载 Qt OHOS 预编译 SDK
+# download-qt-sdk.sh — download the prebuilt Qt OHOS SDK
 #
-# 用法: bash skills/kb-init/scripts/download-qt-sdk.sh --platform=<macos|windows|linux> --dest=<目录>
-# 输出: 下载并解压 SDK，输出 QT5_12_OHOS_SDK=<路径>
-# 退出码: 0=成功, 1=失败
+# Usage: bash skills/kb-init/scripts/download-qt-sdk.sh --platform=<macos|windows|linux> --dest=<directory>
+# Output: downloads and extracts the SDK, then prints QT5_12_OHOS_SDK=<path>
+# Exit codes: 0=success, 1=failure
 
 set -uo pipefail
 
@@ -14,38 +14,38 @@ for arg in "$@"; do
   case "$arg" in
     --platform=*) PLATFORM="${arg#*=}";;
     --dest=*) DEST="${arg#*=}";;
-    *) echo "未知选项: $arg" >&2; exit 2;;
+    *) echo "Unknown option: $arg" >&2; exit 2;;
   esac
 done
 
 if [ -z "$PLATFORM" ] || [ -z "$DEST" ]; then
-  echo "用法: bash download-qt-sdk.sh --platform=<macos|windows|linux> --dest=<目录>"
+  echo "Usage: bash download-qt-sdk.sh --platform=<macos|windows|linux> --dest=<directory>"
   exit 2
 fi
 
 RELEASES_URL="https://gitcode.com/ohos-qt/qt-harmonyos-src/releases"
 
-echo "--- Qt OHOS SDK 下载 ---"
-echo "  平台: $PLATFORM"
-echo "  目标: $DEST"
+echo "--- Qt OHOS SDK download ---"
+echo "  Platform: $PLATFORM"
+echo "  Target: $DEST"
 echo ""
 
-# 创建目标目录
+# Create the target directory
 mkdir -p "$DEST"
 
-# GitCode releases 页面 URL
-echo "正在查询可用的 SDK 版本..."
+# GitCode releases page URL
+echo "Querying available SDK versions..."
 echo ""
 
-# 根据平台确定关键词
+# Determine the keyword based on the platform
 case "$PLATFORM" in
   macos)   KEYWORD="macos";;
   windows) KEYWORD="windows";;
   linux)   KEYWORD="linux";;
-  *) echo "不支持的平台: $PLATFORM"; exit 1;;
+  *) echo "Unsupported platform: $PLATFORM"; exit 1;;
 esac
 
-# 尝试通过 GitCode API 获取 release 信息
+# Try to get release information through the GitCode API
 API_URL="https://gitcode.com/api/v5/repos/ohos-qt/qt-harmonyos-src/releases?per_page=10"
 RELEASES_JSON=""
 if command -v curl &>/dev/null; then
@@ -54,22 +54,22 @@ elif command -v wget &>/dev/null; then
   RELEASES_JSON=$(wget -qO- "$API_URL" 2>/dev/null || true)
 fi
 
-# 解析 release assets
+# Parse the release assets
 if [ -n "$RELEASES_JSON" ] && echo "$RELEASES_JSON" | grep -q "browser_download_url"; then
-  echo "找到以下可用的 SDK 包："
+  echo "Found the following available SDK packages:"
   echo ""
 
-  # 提取所有下载 URL 和名称
+  # Extract all download URLs and names
   DOWNLOAD_URLS=$(echo "$RELEASES_JSON" | grep -o '"browser_download_url":"[^"]*"' | sed 's/"browser_download_url":"//;s/"$//')
   ASSET_NAMES=$(echo "$RELEASES_JSON" | grep -o '"name":"[^"]*"' | sed 's/"name":"//;s/"$//')
 
-  # 列出并匹配平台
+  # List them and match the platform
   MATCHED_URL=""
   MATCHED_NAME=""
   INDEX=0
   while IFS= read -r url; do
     name=$(echo "$ASSET_NAMES" | sed -n "$((INDEX + 1))p")
-    # 检查是否匹配平台
+    # Check whether it matches the platform
     if echo "$url" | grep -qi "$KEYWORD"; then
       echo "  [$INDEX] $name"
       echo "      $url"
@@ -83,27 +83,27 @@ if [ -n "$RELEASES_JSON" ] && echo "$RELEASES_JSON" | grep -q "browser_download_
 
   if [ -z "$MATCHED_URL" ]; then
     echo ""
-    echo "未找到匹配 $PLATFORM 平台的 SDK 包。"
-    echo "请手动访问 $RELEASES_URL 下载。"
+    echo "No SDK package matching the $PLATFORM platform was found."
+    echo "Please download it manually from $RELEASES_URL."
     exit 1
   fi
 
   echo ""
-  echo "将下载: $MATCHED_NAME"
-  echo "下载地址: $MATCHED_URL"
+  echo "About to download: $MATCHED_NAME"
+  echo "Download URL: $MATCHED_URL"
   echo ""
 else
-  echo "无法通过 API 获取 release 信息。"
-  echo "请手动访问 $RELEASES_URL 下载对应平台的 SDK。"
+  echo "Could not retrieve release information through the API."
+  echo "Please download the SDK for your platform manually from $RELEASES_URL."
   echo ""
-  echo "下载后，将 SDK 解压到: $DEST"
-  echo "然后重新运行初始化 skill。"
+  echo "After downloading, extract the SDK into: $DEST"
+  echo "Then run the initialization skill again."
   exit 1
 fi
 
-# 下载
+# Download
 DOWNLOAD_FILE="$DEST/$MATCHED_NAME"
-echo "正在下载..."
+echo "Downloading..."
 if command -v curl &>/dev/null; then
   curl -L -o "$DOWNLOAD_FILE" "$MATCHED_URL"
 elif command -v wget &>/dev/null; then
@@ -111,15 +111,15 @@ elif command -v wget &>/dev/null; then
 fi
 
 if [ ! -f "$DOWNLOAD_FILE" ]; then
-  echo "下载失败。请手动下载: $MATCHED_URL"
+  echo "Download failed. Please download it manually: $MATCHED_URL"
   exit 1
 fi
 
-echo "下载完成: $DOWNLOAD_FILE"
+echo "Download complete: $DOWNLOAD_FILE"
 echo ""
 
-# 解压
-echo "正在解压..."
+# Extract
+echo "Extracting..."
 case "$MATCHED_NAME" in
   *.zip)
     unzip -q -o "$DOWNLOAD_FILE" -d "$DEST"
@@ -134,21 +134,21 @@ case "$MATCHED_NAME" in
     if command -v 7z &>/dev/null; then
       7z x "$DOWNLOAD_FILE" -o"$DEST" -y >/dev/null
     else
-      echo "需要 7z 来解压 .7z 文件。请安装 p7zip 或手动解压。"
+      echo "7z is required to extract .7z files. Please install p7zip or extract manually."
       exit 1
     fi
     ;;
   *)
-    echo "未知的压缩格式: $MATCHED_NAME"
-    echo "请手动解压到: $DEST"
+    echo "Unknown archive format: $MATCHED_NAME"
+    echo "Please extract it manually into: $DEST"
     exit 1
     ;;
 esac
 
-echo "解压完成。"
+echo "Extraction complete."
 echo ""
 
-# 查找解压后的 SDK 目录
+# Locate the extracted SDK directory
 SDK_PATH=""
 for d in "$DEST"/Qt5.12* "$DEST"/qt5.12* "$DEST"/Qt5.15* "$DEST"/qt5.15*; do
   if [ -d "$d" ]; then
@@ -157,7 +157,7 @@ for d in "$DEST"/Qt5.12* "$DEST"/qt5.12* "$DEST"/Qt5.15* "$DEST"/qt5.15*; do
   fi
 done
 
-# 如果没有找到标准目录名，取解压后的第一个子目录
+# If no standard directory name was found, take the first extracted subdirectory
 if [ -z "$SDK_PATH" ]; then
   SDK_PATH=$(find "$DEST" -mindepth 1 -maxdepth 1 -type d | head -1)
 fi
@@ -165,8 +165,8 @@ fi
 if [ -n "$SDK_PATH" ]; then
   echo "QT5_12_OHOS_SDK=$SDK_PATH"
   echo ""
-  echo "SDK 已就绪: $SDK_PATH"
+  echo "SDK is ready: $SDK_PATH"
 else
-  echo "无法定位解压后的 SDK 目录。请检查: $DEST"
+  echo "Could not locate the extracted SDK directory. Please check: $DEST"
   exit 1
 fi

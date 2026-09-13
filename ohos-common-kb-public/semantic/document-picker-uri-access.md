@@ -1,9 +1,9 @@
 ---
 id: document-picker-uri-access
-title: DocumentViewPicker URI 与访问授权
+title: DocumentViewPicker URIs and access grants
 status: active
 confidence: 0.7
-sources: [{type: experience, name: "Tauri P2P app DocumentViewPicker 真机验证", date: 2026-08-06}]
+sources: [{type: experience, name: "Tauri P2P app DocumentViewPicker, on-device verification", date: 2026-08-06}]
 created: 2026-08-14
 updated: 2026-08-14
 last_confirmed: 2026-08-06
@@ -11,39 +11,38 @@ review_by: null
 superseded_by: null
 tags: [document-picker, uri, fileuri, permission, fileshare, sandbox]
 refs: [document-picker-uri-access-failure, application-sandbox-paths]
-summary: "Picker 返回的是带授权语义的 URI；URI、转换后的 path、临时/持久读写授权必须分别处理。"
+summary: "A picker returns a URI carrying grant semantics; the URI, the converted path, and the temporary/persistent read-write grant must each be handled separately."
 audience: public
 ---
 
-# DocumentViewPicker URI 与访问授权
+# DocumentViewPicker URIs and access grants
 
-DocumentViewPicker 返回的值首先是 URI/capability，不是可无条件交给 POSIX `open`、Rust `std::fs` 或框架文件 API 的普通绝对路径。
+What DocumentViewPicker returns is first and foremost a URI/capability, not an ordinary absolute path you can hand unconditionally to POSIX `open`, Rust `std::fs`, or a framework file API.
 
-## 三层语义
+## Three layers of semantics
 
-1. **URI identity**：描述用户选中的文档或目录；
-2. **path representation**：某些 API 可把 URI 转成当前进程可用的路径表示；
-3. **access grant**：允许的 read/write 操作、有效期和是否可持久化。
+1. **URI identity**: describes the document or directory the user selected.
+2. **Path representation**: some APIs can convert the URI into a path usable by the current process.
+3. **Access grant**: which read/write operations are allowed, for how long, and whether it can be persisted.
 
-URI 转 path 不会自动扩大权限；选择文件与选择目录的授权模式也不能互相推断。
+Converting a URI to a path does not automatically broaden permissions, and the grant model for picking a file cannot be inferred from the one for picking a directory (or vice versa).
 
-## 使用流程
+## Usage flow
 
-1. 在 ArkTS/platform adapter 中调用 picker；
-2. 保留原始 URI，检查取消/空结果/多选；
-3. 按目标 API 使用 fileuri/fileShare 等平台能力解析和申请所需访问；
-4. 只有当后端明确需要 path 且平台允许时，才把转换后的 path 传给 native/框架层；
-5. 需要跨进程或重启后继续访问时，验证 persistPermission 的 mode、范围和失败行为；
-6. 对 read、create、overwrite、rename、delete 和子目录访问分别测试。
+1. Call the picker from your ArkTS/platform adapter.
+2. Keep the original URI, and handle cancellation, empty results, and multi-selection.
+3. Use platform capabilities such as fileuri/fileShare, per the target API, to resolve it and request the access you need.
+4. Only pass a converted path down to the native/framework layer when the backend genuinely needs a path and the platform allows it.
+5. When you need cross-process access or access that survives a restart, verify persistPermission's mode, scope, and failure behavior.
+6. Test read, create, overwrite, rename, delete, and subdirectory access separately.
 
-## 安全边界
+## Security boundaries
 
-- 不根据 URI 字符串拼接任意路径；
-- 不把一次用户选择视为整个目录树的永久全权限；
-- 权限申请失败时回到用户可理解的重新选择或应用私有目录流程；
-- 日志避免记录完整用户文件名、目录与 URI token。
+- Don't build arbitrary paths by string-concatenating onto the URI.
+- Don't treat a single user selection as permanent full access to an entire directory tree.
+- When a permission request fails, fall back to a user-comprehensible re-selection flow or the application's private directory.
+- Avoid logging complete user file names, directories, and URI tokens.
 
-## Adapter 边界
+## Adapter boundary
 
-common 维护 URI/path/grant invariant。Tauri dialog plugin、Qt file dialog、JVM File 或 .NET stream 如何表达结果，留在框架仓，并保留其原始错误文本。
-
+This common knowledge base maintains the URI/path/grant invariant. How a Tauri dialog plugin, a Qt file dialog, a JVM `File`, or a .NET stream expresses the result stays in the framework repository, along with its original error text.

@@ -1,45 +1,45 @@
 ---
 id: executable-binary-eacces
-title: "HAP 内可执行文件启动失败：execve EACCES"
+title: "Executable inside a HAP fails to start: execve EACCES"
 status: active
 confidence: 0.7
-sources: [{type: experience, name: "Python/Node/Java hap-bin 真机验证", date: 2026-08-05}]
+sources: [{type: experience, name: "Python/Node/Java hap-bin, on-device verification", date: 2026-08-05}]
 created: 2026-08-13
 updated: 2026-08-15
 last_confirmed: 2026-08-05
 superseded_by: null
 tags: [problem, runtime, execve, eacces, executableBinaryPaths, signing]
 refs: [application-sandbox-paths, native-runtime-embedding]
-summary: "HAP 内 ELF bin 因未声明 executableBinaryPaths、签名/permission/profile 不完整或路径视角错误而 execve EACCES。"
+summary: "An ELF binary inside a HAP hits execve EACCES because executableBinaryPaths wasn't declared, the signing/permission/profile is incomplete, or the path is viewed from the wrong namespace."
 audience: public
 error_message: |
   execve(...) = -1 EACCES (Permission denied)
   chmod(...) = -1 EPERM (Operation not permitted)
 ---
 
-# HAP 内可执行文件启动失败：execve EACCES
+# Executable inside a HAP fails to start: execve EACCES
 
-## 错误信息
+## Error message
 
 ```text
 execve(<bundle binary>, ...) -> EACCES / Permission denied
 chmod(<bundle binary>, 0755) -> EPERM / Operation not permitted
 ```
 
-## 场景
+## Scenario
 
-应用把 Python、Node、Java 或其他 ELF bin 放入 HAP 后启动失败。即使文件存在，执行权限、平台声明、签名完整性和 mount namespace 任一项不满足都可能表现为 Permission denied。
+The application puts a Python, Node, Java, or other ELF binary inside the HAP and it fails to start. Even when the file exists, a failure in any one of execute permission, platform declaration, signature integrity, or mount namespace can surface as "Permission denied".
 
-## 原因
+## Cause
 
-按顺序区分：
+Work through these in order:
 
-1. `module.json5` 未通过 `executableBinaryPaths` 声明目标 bin，安装后没有执行属性；
-2. bin 使用自签名或缺少平台要求的 profile/permission 信息，完整性校验拒绝；
-3. 应用使用了只在 hdc shell namespace 可见的路径；
-4. bin ABI、interpreter 或动态依赖不成立，错误被上层简化为启动失败。
+1. `module.json5` doesn't declare the target binary via `executableBinaryPaths`, so it has no execute attribute after installation.
+2. The binary is self-signed or lacks the profile/permission information the platform requires, so integrity verification rejects it.
+3. The application used a path that is only visible in the hdc shell namespace.
+4. The binary's ABI, interpreter, or dynamic dependencies don't resolve, and the error gets flattened into a generic startup failure at a higher level.
 
-## 解决方案
+## Solution
 
 ```json5
 {
@@ -52,8 +52,8 @@ chmod(<bundle binary>, 0755) -> EPERM / Operation not permitted
 }
 ```
 
-然后重新构建、签名、卸载旧应用并 clean install。不要在应用代码中 `chmod` bundle 文件。若 bin 已有执行属性仍被拒，使用目标 SDK 的签名检查工具确认 profile、permission 与证书链，并核对 bundleName/设备授权；不要把证书、密码或 profile 内容写入日志/KB。
+Then rebuild, re-sign, uninstall the old application, and do a clean install. Don't `chmod` bundle files from application code. If the binary already has the execute attribute and is still rejected, use the target SDK's signature inspection tooling to check the profile, permissions, and certificate chain, and cross-check the bundleName/device grant. Don't write certificates, passwords, or profile contents into logs or the knowledge base.
 
-## 预防措施
+## Prevention
 
-把 executable 声明、签名检查、ELF/依赖检查和 fresh-install 启动纳入发布门禁；SO 不需要因 `dlopen` 而加入 executableBinaryPaths。
+Add executable declarations, signature checks, ELF/dependency checks, and a fresh-install launch to your release gate. `.so` files loaded via `dlopen` do not need to be added to executableBinaryPaths.

@@ -9,39 +9,39 @@ status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-build, semantic-qt-harmonyos-modules]
 summary: >
-  Qt 鸿蒙工程结构详解：OHOS 模板（胶水代码）目录布局、CMake 交叉编译配置、
-  库名规则（QtAppConstants.ets ↔ add_library）、两种场景（从零创建 / 已有工程鸿蒙化）。
+  The Qt HarmonyOS project structure in detail: the OHOS template (glue code) directory layout, CMake cross-compilation configuration,
+  the library naming rule (QtAppConstants.ets ↔ add_library), and the two scenarios (creating from scratch / porting an existing project).
 ---
 
-# Qt 鸿蒙工程结构详解
+# The Qt HarmonyOS project structure in detail
 
-> 模板、胶水代码、CMake 配置、库名规则——一站式掌握 Qt for HarmonyOS 工程骨架。
-> AppScope、module、product、native libs 与 signingConfig 的平台层级关系，以 common 的 [[ohos-common-kb/semantic/hap-native-project-structure|HAP 原生工程结构与签名关系]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/hap-native-project-structure.md)）为准。本页只解释 Qt 模板、QAbility 胶水、`QtAppConstants.ets`、Qt CMake 目标与部署规则。
+> Templates, glue code, CMake configuration, and the library naming rule — everything you need for a Qt for HarmonyOS project skeleton in one place.
+> For the platform-level relationships between AppScope, modules, products, native libs, and signingConfig, the authority is the common knowledge base's [[ohos-common-kb/semantic/hap-native-project-structure|HAP native project structure and its relationship to signing]] ([standalone link](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/hap-native-project-structure.md)). This page only explains the Qt template, the QAbility glue, `QtAppConstants.ets`, the Qt CMake targets, and the deployment rules.
 
-## 1. 两种使用场景
+## 1. The two usage scenarios
 
-| 场景 | 说明 | 核心差异 |
-|------|------|----------|
-| **场景一：从零创建** | 生成全新 Qt 鸿蒙应用工程 | Qt 源码放在 `entry/src/main/cpp/` |
-| **场景二：已有工程鸿蒙化** | 将已有 Qt 工程转换为鸿蒙应用 | 胶水代码放入 `HarmonyOS/` 子目录，`build-profile.json5` 用绝对路径指向根目录 CMakeLists.txt |
+| Scenario | Description | The core difference |
+|----------|-------------|---------------------|
+| **Scenario one: creating from scratch** | Generating a brand-new Qt HarmonyOS application project | The Qt source goes in `entry/src/main/cpp/` |
+| **Scenario two: porting an existing project** | Converting an existing Qt project into a HarmonyOS application | The glue code goes in a `HarmonyOS/` subdirectory, and `build-profile.json5` uses an absolute path pointing at the root CMakeLists.txt |
 
-## 2. 胶水代码模板获取
+## 2. Obtaining the glue-code template
 
-### 2.1 新版方式（推荐）：Qt 源码内置模板
+### 2.1 The modern approach (recommended): the template bundled with the Qt source
 
-新版 Qt 鸿蒙分支已将胶水模板**内置于源码树**，路径统一为 `<QT_SRC>/qtbase/src/harmonyos/templates`，无需再从 Gerrit 下载 ZIP。
+Newer Qt HarmonyOS branches **bundle the glue template in the source tree** at the standard path `<QT_SRC>/qtbase/src/harmonyos/templates`, so there's no need to download a ZIP from Gerrit.
 
-| Qt 版本 | 模板路径 |
-|---------|--------|
+| Qt version | Template path |
+|------------|---------------|
 | Qt 5.15.16 (`tqtc/harmonyos-5.15.16`) | `<QT5_15_SRC>/qtbase/src/harmonyos/templates` |
 | Qt 5.12.12 (`tqtc/harmonyos-5.12.12`) | `<QT5_12_SRC>/qtbase/src/harmonyos/templates` |
 
 ```bash
-# 直接从 Qt 源码树复制模板目录到工程目录
-cp -r <QT5_15_SRC>/qtbase/src/harmonyos/templates/. <工程目录>/
+# Copy the template directory straight from the Qt source tree into your project directory
+cp -r <QT5_15_SRC>/qtbase/src/harmonyos/templates/. <project directory>/
 ```
 
-模板目录结构：
+The template directory structure:
 ```
 templates/
 ├── AppScope/
@@ -54,113 +54,113 @@ templates/
 └── README.md
 ```
 
-### 2.2 独立模板归档（无 Qt 源码场景）
+### 2.2 The standalone template archive (when there's no Qt source)
 
-当仅有预编译 SDK 而无完整 Qt 源码树时（如鸿蒙 PC 编译构建场景），需从 GitCode releases 页面单独下载模板归档。
+When you only have the prebuilt SDK without a full Qt source tree (for example when building on a HarmonyOS PC), download the template archive separately from the GitCode releases page.
 
-**下载地址**：https://gitcode.com/ohos-qt/qt-harmonyos-src/releases
-**归档名称**：`templates-0625.zip`
+**Download page**: https://gitcode.com/ohos-qt/qt-harmonyos-src/releases
+**Archive name**: `templates-0625.zip`
 
 ```bash
-# 使用 kb-init 脚本自动下载
+# Download it automatically with the kb-init script
 bash skills/kb-init/scripts/download-template.sh --dest=workspace/templates
 
-# 或手动下载后解压
-curl -fSL -o /tmp/templates-0625.zip "<下载链接>"
+# Or download and extract it manually
+curl -fSL -o /tmp/templates-0625.zip "<download link>"
 unzip /tmp/templates-0625.zip -d workspace/templates/
 ```
 
-解压后目录结构与源码内置模板一致（`AppScope/`、`entry/`、`build-profile.json5` 等）。
-`ENV.local.md` 中 `OHOS_TEMPLATE_SRC` 应指向 `workspace/templates`。
+The extracted directory structure matches the source-bundled template (`AppScope/`, `entry/`, `build-profile.json5`, and so on).
+`OHOS_TEMPLATE_SRC` in `ENV.local.md` should point at `workspace/templates`.
 
-### 2.3 旧方式（已退役）：从 Gerrit 下载 ZIP
+### 2.3 The old approach (retired): downloading a ZIP from Gerrit
 
-> **此方式已退役**：新版 Qt 鸿蒙分支已将胶水模板内置于源码树（见 §2.1），无需再从 Gerrit 下载 ZIP。
-> 旧的外部 ZIP 模板变量在 `ENV.md` 中保留仅为兼容旧 `ENV.md`，不应再使用。
-> 模板统一从 `<QT_SRC>/qtbase/src/harmonyos/templates` 复制（有源码时）或从独立归档下载（无源码时，见 §2.2）。
+> **This approach is retired**: newer Qt HarmonyOS branches bundle the glue template in the source tree (see §2.1), so there's no need to download a ZIP from Gerrit.
+> The old external ZIP template variables are kept in `ENV.md` only for compatibility with older `ENV.md` files and shouldn't be used.
+> Copy the template from `<QT_SRC>/qtbase/src/harmonyos/templates` (when you have the source), or download the standalone archive (when you don't; see §2.2).
 
-## 3. 目录结构
+## 3. Directory structure
 
-### 3.1 场景一：从零创建
+### 3.1 Scenario one: creating from scratch
 
 ```
-<工程目录>/                           # 模板解压后的根目录
+<project directory>/                  # The root after extracting the template
 ├── entry/
 │   ├── src/main/
-│   │   ├── cpp/                      # ★ Qt 应用代码位置
-│   │   │   ├── main.cpp              # QWidget 或 QML 入口
-│   │   │   ├── main.qml              # (QML 应用) QML 界面文件
-│   │   │   ├── qml.qrc               # (QML 应用) 资源映射文件
-│   │   │   └── CMakeLists.txt        # ★ CMake 配置（关键！）
+│   │   ├── cpp/                      # ★ Where the Qt application code goes
+│   │   │   ├── main.cpp              # The QWidget or QML entry point
+│   │   │   ├── main.qml              # (QML applications) The QML UI file
+│   │   │   ├── qml.qrc               # (QML applications) The resource mapping file
+│   │   │   └── CMakeLists.txt        # ★ The CMake configuration (crucial!)
 │   │   └── ets/
 │   │       └── common/
-│   │           └── QtAppConstants.ets # ★ 配置 APP_LIBRARY_NAME
-│   ├── build-profile.json5           # ★ 模块级构建配置
-│   └── libs/arm64-v8a/               # Qt 运行时库
-│       ├── libqohos.so               # OHOS 平台插件（自动部署）
+│   │           └── QtAppConstants.ets # ★ Where you set APP_LIBRARY_NAME
+│   ├── build-profile.json5           # ★ The module-level build configuration
+│   └── libs/arm64-v8a/               # The Qt runtime libraries
+│       ├── libqohos.so               # The OHOS platform plugin (deployed automatically)
 │       ├── styles/
-│       │   └── libqohosstyle.so      # OHOS 样式插件（手动复制）
-│       └── libQtHarmonyApp.so        # 应用库（构建生成）
+│       │   └── libqohosstyle.so      # The OHOS style plugin (copied manually)
+│       └── libQtHarmonyApp.so        # The application library (produced by the build)
 ├── qEmbeddedUiExtensionHost/
-├── build-profile.json5               # 项目级构建配置
-├── AppScope/app.json5                # 应用包名 bundleName
-└── local.properties                  # SDK 路径
+├── build-profile.json5               # The project-level build configuration
+├── AppScope/app.json5                # The application's bundleName
+└── local.properties                  # The SDK path
 ```
 
-### 3.2 场景二：已有工程鸿蒙化
+### 3.2 Scenario two: porting an existing project
 
-> **设计理念**：鸿蒙是众多平台之一，胶水代码独立存放于 `HarmonyOS/` 目录，保持原有工程结构整洁。
+> **The design philosophy**: HarmonyOS is one platform among many, so the glue code lives in its own `HarmonyOS/` directory, keeping the existing project structure clean.
 
 ```
-<已有工程根目录>/
-├── CMakeLists.txt                    # ★ 原有工程 CMake（需添加 OHOS 配置）
-├── src/                              # 原有源码
-└── HarmonyOS/                        # ★ 新增：鸿蒙胶水代码目录
+<existing project root>/
+├── CMakeLists.txt                    # ★ The existing project's CMake (needs OHOS configuration added)
+├── src/                              # The existing source
+└── HarmonyOS/                        # ★ New: the HarmonyOS glue-code directory
     ├── entry/
     │   ├── src/main/
-    │   │   ├── cpp/                  # 空目录（不使用）
+    │   │   ├── cpp/                  # An empty directory (unused)
     │   │   └── ets/common/QtAppConstants.ets
-    │   ├── build-profile.json5       # ★ path 用绝对路径指向根目录 CMakeLists.txt
+    │   ├── build-profile.json5       # ★ path uses an absolute path pointing at the root CMakeLists.txt
     │   └── libs/arm64-v8a/
     ├── qEmbeddedUiExtensionHost/
     ├── build-profile.json5
     └── local.properties
 ```
 
-**关键**：用 DevEco Studio 打开 **`HarmonyOS/` 目录**，而非工程根目录。
+**The key point**: open the **`HarmonyOS/` directory** in DevEco Studio, not the project root.
 
-## 4. CMake 配置（核心）
+## 4. CMake configuration (the core)
 
-### 4.1 模块级 build-profile.json5
+### 4.1 The module-level build-profile.json5
 
-`entry/build-profile.json5`（场景一）或 `HarmonyOS/entry/build-profile.json5`（场景二）：
+`entry/build-profile.json5` (scenario one) or `HarmonyOS/entry/build-profile.json5` (scenario two):
 
 ```json5
 {
   "apiType": 'stageMode',
   "buildOption": {
     "externalNativeOptions": {
-      // 场景一：相对路径
+      // Scenario one: a relative path
       "path": "./src/main/cpp/CMakeLists.txt",
-      // 场景二：绝对路径指向工程根目录 CMakeLists.txt
+      // Scenario two: an absolute path pointing at the project root's CMakeLists.txt
       // "path": "C:\\code\\MyQtApp\\CMakeLists.txt",
-      "arguments": "-DCMAKE_PREFIX_PATH=<Qt SDK路径>",  // ★ 开发者填写
+      "arguments": "-DCMAKE_PREFIX_PATH=<Qt SDK path>",  // ★ filled in by the developer
       "abiFilters": ["arm64-v8a"]
     }
   }
 }
 ```
 
-**关键参数**：
-- `path`：场景一用相对路径；场景二必须用**绝对路径**（反斜杠需转义 `\\`）
-- `arguments`：`-DCMAKE_PREFIX_PATH` 指向 Qt SDK（如 `<LOCAL_PATH>`）
-- `abiFilters`：必须匹配目标设备 ABI（`arm64-v8a`）
+**The key parameters**:
+- `path`: a relative path in scenario one; scenario two must use an **absolute path** (with backslashes escaped as `\\`)
+- `arguments`: `-DCMAKE_PREFIX_PATH` pointing at the Qt SDK (such as `<LOCAL_PATH>`)
+- `abiFilters`: must match the target device's ABI (`arm64-v8a`)
 
-### 4.2 CMakeLists.txt 模板
+### 4.2 The CMakeLists.txt template
 
-#### 交叉编译 find_package 问题（铁律级）
+#### The cross-compilation find_package problem (an iron rule)
 
-OHOS 工具链默认设置 `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY`，阻止 CMake 通过 `CMAKE_PREFIX_PATH` 找到 Qt。**必须在 find_package 前临时改为 BOTH**：
+The OHOS toolchain sets `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY` by default, preventing CMake from finding Qt through `CMAKE_PREFIX_PATH`. **You must temporarily change it to BOTH before find_package**:
 
 ```cmake
 if(CMAKE_CROSSCOMPILING)
@@ -169,7 +169,7 @@ if(CMAKE_CROSSCOMPILING)
 endif()
 
 find_package(QT NAMES Qt5 Qt6 REQUIRED COMPONENTS Core)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Widgets)  # 按需添加模块
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Widgets)  # add modules as needed
 
 if(CMAKE_CROSSCOMPILING)
   set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE "${_saved_root_path_mode_package}")
@@ -177,7 +177,7 @@ if(CMAKE_CROSSCOMPILING)
 endif()
 ```
 
-#### QWidget 应用 CMakeLists.txt
+#### CMakeLists.txt for a QWidget application
 
 ```cmake
 cmake_minimum_required(VERSION 3.5)
@@ -187,14 +187,14 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-# （交叉编译 find_package 修复，见上方代码块）
+# (the cross-compilation find_package fix — see the code block above)
 
 find_package(QT NAMES Qt5 Qt6 REQUIRED COMPONENTS Core)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Widgets)
 
 set(PROJECT_SOURCES main.cpp)
 
-# ★ 库名必须与 QtAppConstants.ets 中的 APP_LIBRARY_NAME 匹配
+# ★ The library name must match APP_LIBRARY_NAME in QtAppConstants.ets
 add_library(QtHarmonyApp SHARED ${PROJECT_SOURCES})
 
 target_link_libraries(QtHarmonyApp PRIVATE
@@ -202,13 +202,13 @@ target_link_libraries(QtHarmonyApp PRIVATE
   Qt${QT_VERSION_MAJOR}::Widgets
 )
 
-# ★ OHOS 平台插件（自动部署 libqohos.so）
+# ★ The OHOS platform plugin (which deploys libqohos.so automatically)
 target_link_libraries(QtHarmonyApp PRIVATE
   Qt${QT_VERSION_MAJOR}::QOhosPlatformIntegrationPlugin
 )
 ```
 
-#### QML 应用 CMakeLists.txt
+#### CMakeLists.txt for a QML application
 
 ```cmake
 cmake_minimum_required(VERSION 3.5)
@@ -216,17 +216,17 @@ project(QtHarmonyApp)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)  # ★ QML 应用必须启用，编译 qml.qrc
+set(CMAKE_AUTORCC ON)  # ★ mandatory for QML applications, to compile qml.qrc
 
-# （交叉编译 find_package 修复，同上）
+# (the cross-compilation find_package fix, as above)
 
 find_package(QT NAMES Qt5 Qt6 REQUIRED COMPONENTS Core)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Qml Quick)
 
 set(PROJECT_SOURCES
   main.cpp
-  main.qml       # QML 界面文件
-  qml.qrc        # 资源映射文件
+  main.qml       # the QML UI file
+  qml.qrc        # the resource mapping file
 )
 
 add_library(QtHarmonyApp SHARED ${PROJECT_SOURCES})
@@ -243,7 +243,7 @@ target_link_libraries(QtHarmonyApp PRIVATE
 )
 ```
 
-### 4.3 项目级 build-profile.json5
+### 4.3 The project-level build-profile.json5
 
 ```json5
 {
@@ -252,7 +252,7 @@ target_link_libraries(QtHarmonyApp PRIVATE
       "name": "default",
       "signingConfig": "default",
       "compatibleSdkVersion": "5.0.0(12)",
-      "runtimeOS": "HarmonyOS"    // ★ 必须是 "HarmonyOS"
+      "runtimeOS": "HarmonyOS"    // ★ must be "HarmonyOS"
     }],
     "buildModeSet": [
       {"name": "debug"},
@@ -266,89 +266,89 @@ target_link_libraries(QtHarmonyApp PRIVATE
 }
 ```
 
-**铁律**：不要设置 `compileSdkVersion` 和 `targetSdkVersion`。
+**The iron rule**: don't set `compileSdkVersion` or `targetSdkVersion`.
 
-## 5. 库名规则（关键！）
+## 5. The library naming rule (crucial!)
 
-### 5.1 三方对应关系
+### 5.1 The three-way correspondence
 
 ```
 CMakeLists.txt:
-  add_library(QtHarmonyApp SHARED ...)  →  目标名: QtHarmonyApp
+  add_library(QtHarmonyApp SHARED ...)  →  the target name: QtHarmonyApp
 
-编译产物（构建后生成）:
-  entry/libs/arm64-v8a/libQtHarmonyApp.so  →  lib + 目标名 + .so
+The build artifact (produced by the build):
+  entry/libs/arm64-v8a/libQtHarmonyApp.so  →  lib + the target name + .so
 
 QtAppConstants.ets:
-  APP_LIBRARY_NAME = 'libQtHarmonyApp.so'  →  ★ 必须与实际文件名完全一致
+  APP_LIBRARY_NAME = 'libQtHarmonyApp.so'  →  ★ must match the actual filename exactly
 ```
 
-### 5.2 QtAppConstants.ets 配置
+### 5.2 Configuring QtAppConstants.ets
 
-路径：`entry/src/main/ets/common/QtAppConstants.ets`
+Path: `entry/src/main/ets/common/QtAppConstants.ets`
 
 ```typescript
 export const APP_LIBRARY_NAME = 'libQtHarmonyApp.so';
 ```
 
-### 5.3 常见错误
+### 5.3 Common mistakes
 
-| 错误示例 | 正确示例 | 问题 |
-|----------|----------|------|
-| `'QtHarmonyApp.so'` | `'libQtHarmonyApp.so'` | 缺少 `lib` 前缀 |
-| `'libQtHarmonyApp'` | `'libQtHarmonyApp.so'` | 缺少 `.so` 后缀 |
-| `'libqtharmonyapp.so'` | `'libQtHarmonyApp.so'` | 大小写不一致 |
-| `'libMyApp.so'` | `'libQtHarmonyApp.so'` | 与实际编译产物不符 |
+| A wrong example | The correct version | The problem |
+|-----------------|---------------------|-------------|
+| `'QtHarmonyApp.so'` | `'libQtHarmonyApp.so'` | Missing the `lib` prefix |
+| `'libQtHarmonyApp'` | `'libQtHarmonyApp.so'` | Missing the `.so` suffix |
+| `'libqtharmonyapp.so'` | `'libQtHarmonyApp.so'` | Inconsistent case |
+| `'libMyApp.so'` | `'libQtHarmonyApp.so'` | Doesn't match the actual build artifact |
 
-**验证方式**：编译后执行 `ls entry/libs/arm64-v8a/*.so` 查看实际库名。
+**How to verify**: after building, run `ls entry/libs/arm64-v8a/*.so` to see the actual library name.
 
-## 6. Qt 运行时库部署
+## 6. Deploying the Qt runtime libraries
 
-### 6.1 自动部署
+### 6.1 Automatic deployment
 
-| 库 | 部署方式 | 目标路径 |
-|----|----------|----------|
-| `libqohos.so` | 链接 `Qt5::QOhosPlatformIntegrationPlugin` | `libs/${ABI_DIR}/libqohos.so` |
-| Qt 核心库 | `find_package` + `target_link_libraries` | `libs/${ABI_DIR}/` |
+| Library | How it's deployed | Target path |
+|---------|-------------------|-------------|
+| `libqohos.so` | By linking `Qt5::QOhosPlatformIntegrationPlugin` | `libs/${ABI_DIR}/libqohos.so` |
+| The Qt core libraries | `find_package` + `target_link_libraries` | `libs/${ABI_DIR}/` |
 
-### 6.2 手动复制
+### 6.2 Manual copying
 
-| 库 | 来源 | 目标路径 |
-|----|------|----------|
+| Library | Source | Target path |
+|---------|--------|-------------|
 | `libqohosstyle.so` | `<Qt_SDK>/plugins/styles/libqohosstyle.so` | `libs/${ABI_DIR}/styles/libqohosstyle.so` |
-| `libqsvg.so`（SVG 图像格式插件） | `<Qt_SDK>/plugins/imageformats/libqsvg.so` | `libs/${ABI_DIR}/imageformats/libqsvg.so` |
-| `libqsqlite.so`（SQL 驱动插件，QSqlDatabase） | `<Qt_SDK>/plugins/sqldrivers/libqsqlite.so` | `libs/${ABI_DIR}/sqldrivers/libqsqlite.so` |
+| `libqsvg.so` (the SVG image format plugin) | `<Qt_SDK>/plugins/imageformats/libqsvg.so` | `libs/${ABI_DIR}/imageformats/libqsvg.so` |
+| `libqsqlite.so` (the SQL driver plugin, for QSqlDatabase) | `<Qt_SDK>/plugins/sqldrivers/libqsqlite.so` | `libs/${ABI_DIR}/sqldrivers/libqsqlite.so` |
 
 ```bash
-TARGET_DIR=<工程目录>/entry/libs/arm64-v8a/styles/
+TARGET_DIR=<project directory>/entry/libs/arm64-v8a/styles/
 mkdir -p "$TARGET_DIR"
-cp <Qt_SDK路径>/plugins/styles/libqohosstyle.so "$TARGET_DIR"
+cp <Qt_SDK path>/plugins/styles/libqohosstyle.so "$TARGET_DIR"
 
-# SVG 图像格式插件：QML Image / QImageReader 加载 .svg 必需
-mkdir -p <工程目录>/entry/libs/arm64-v8a/imageformats/
-cp <Qt_SDK路径>/plugins/imageformats/libqsvg.so <工程目录>/entry/libs/arm64-v8a/imageformats/
+# The SVG image format plugin: required for QML Image / QImageReader to load .svg
+mkdir -p <project directory>/entry/libs/arm64-v8a/imageformats/
+cp <Qt_SDK path>/plugins/imageformats/libqsvg.so <project directory>/entry/libs/arm64-v8a/imageformats/
 ```
 
-> `libqohosstyle.so` 无法通过 `target_link_libraries` 部署，因为它需要放在 `styles/` 子目录下。
+> `libqohosstyle.so` can't be deployed via `target_link_libraries` because it has to go in a `styles/` subdirectory.
 >
-> **⚠️ `libqsvg.so` 同理且更隐蔽**——它是**图像格式插件**（`QSvgPlugin:QImageIOPlugin`），运行时由 `QImageReader` 动态加载，必须放在 `imageformats/` 子目录下，无法通过 `target_link_libraries` 部署。**漏部署后果**：`QML Image { source: "*.svg" }` 与 `QImageReader`/`QPixmap::loadFromData(bytes,"SVG")` **静默失败**（`Image.status=Error`、`sourceSize=0x0`、不抛异常），而直接用 `QSvgRenderer`/`QSvgWidget`（编译进 `libQt5Svg`）却正常——极易误判为 QtSvg 损坏。诊断：`QImageReader::supportedImageFormats()` 不含 `"svg"` 即插件未加载。验证工程可使用 SVG 显示验证 QML OHOS demo。
+> **⚠️ `libqsvg.so` is the same, and sneakier** — it's an **image format plugin** (`QSvgPlugin:QImageIOPlugin`), loaded dynamically at runtime by `QImageReader`, and must go in the `imageformats/` subdirectory; it can't be deployed via `target_link_libraries`. **If you forget it**: `QML Image { source: "*.svg" }`, `QImageReader`, and `QPixmap::loadFromData(bytes,"SVG")` **fail silently** (`Image.status=Error`, `sourceSize=0x0`, no exception), while `QSvgRenderer`/`QSvgWidget` (compiled into `libQt5Svg`) work fine — which very easily gets misdiagnosed as QtSvg being broken. Diagnosis: if `QImageReader::supportedImageFormats()` doesn't contain `"svg"`, the plugin isn't loaded. To verify, use a QML OHOS demo that displays an SVG.
 
-> **⚠️ `libqsqlite.so` 同理且更易误判**——它是 **SQL 驱动插件**（`QSQLiteDriverPlugin`，`MODULE IMPORTED` 动态插件），运行时由 `QFactoryLoader` 按 `sqldrivers/` 子目录 dlopen 加载，**无法通过 `target_link_libraries` 部署**（链接 `Qt5::Sql` 只部署 `libQt5Sql.so` 主库，驱动插件是独立的运行时 dlopen 插件，非 NEEDED 依赖，HVigor 不会自动打包）。**漏部署后果**：`QSqlDatabase::addDatabase("QSQLITE")` 拿到 null driver，`db->open()` 在检查 `d->driver` 为空时**直接返回 false（根本不调用 `sqlite3_open`、不碰文件系统）**，`lastError()` = `"Driver not loaded"`。注意 OHOS SDK 驱动文件名是 **`libqsqlite.so`**（非桌面 `libqsqlsqlite.so`）。诊断：`addDatabase` 后检查 `db->lastError().text()` 含 "Driver not loaded"，或设备 `hdc shell find /data/storage/el1/bundle -name 'libqsqlite*'` 无命中。详见 [runtime-fail-sqlite-open-database](../problems/runtime-fail-sqlite-open-database.md)。
+> **⚠️ `libqsqlite.so` is the same, and even easier to misdiagnose** — it's a **SQL driver plugin** (`QSQLiteDriverPlugin`, a `MODULE IMPORTED` dynamic plugin) that `QFactoryLoader` dlopens at runtime from the `sqldrivers/` subdirectory, and it **can't be deployed via `target_link_libraries`** (linking `Qt5::Sql` only deploys the main `libQt5Sql.so`; the driver plugin is a separate runtime dlopen plugin, not a NEEDED dependency, so HVigor doesn't package it automatically). **If you forget it**: `QSqlDatabase::addDatabase("QSQLITE")` gives a null driver, and `db->open()` **returns false immediately when it finds `d->driver` empty (never calling `sqlite3_open` or touching the filesystem)**, with `lastError()` = `"Driver not loaded"`. Note that in the OHOS SDK the driver file is named **`libqsqlite.so`** (not desktop's `libqsqlsqlite.so`). Diagnosis: after `addDatabase`, check whether `db->lastError().text()` contains "Driver not loaded", or run `hdc shell find /data/storage/el1/bundle -name 'libqsqlite*'` on the device and get no hits. See [runtime-fail-sqlite-open-database](../problems/runtime-fail-sqlite-open-database.md).
 
-## 7. QML 应用特殊配置
+## 7. Special configuration for QML applications
 
-### 7.1 QML 文件位置
+### 7.1 Where the QML files go
 
-QML 文件放在 `cpp/` 目录，通过 `qml.qrc` 编译进应用库：
+The QML files live in the `cpp/` directory and are compiled into the application library through `qml.qrc`:
 
 ```
 entry/src/main/cpp/
-├── main.cpp       # QML 引擎初始化
-├── main.qml       # QML 界面（通过 qrc 编译）
-└── qml.qrc        # 资源映射
+├── main.cpp       # QML engine initialization
+├── main.qml       # The QML UI (compiled in via qrc)
+└── qml.qrc        # The resource mapping
 ```
 
-### 7.2 qml.qrc 配置
+### 7.2 The qml.qrc configuration
 
 ```xml
 <!DOCTYPE RCC>
@@ -359,13 +359,13 @@ entry/src/main/cpp/
 </RCC>
 ```
 
-**路径对应**：`qml.qrc` prefix `/` + file `main.qml` → 资源路径 `:/main.qml` → `main.cpp` 加载 `qrc:/main.qml`
+**The path correspondence**: `qml.qrc`'s prefix `/` + the file `main.qml` → the resource path `:/main.qml` → `main.cpp` loads `qrc:/main.qml`
 
-### 7.3 QML 注意事项
+### 7.3 QML caveats
 
-- Qt SDK for HarmonyOS 是精简版，**不包含 QtQuick.Controls** 模块
-- 使用 `Rectangle` + `MouseArea` 替代 Button 控件
-- `Window` 没有 `focus` 属性，键盘事件需放在内部 `Item` 或 `FocusScope` 中：
+- The Qt SDK for HarmonyOS is a trimmed build and **doesn't include QtQuick.Controls**
+- Use `Rectangle` + `MouseArea` instead of the Button control
+- `Window` has no `focus` property, so keyboard events need to go in an inner `Item` or `FocusScope`:
   ```qml
   Window {
       Item {
@@ -376,89 +376,89 @@ entry/src/main/cpp/
   }
   ```
 
-### 7.4 QML 模块部署到 resfile/qml（运行时 import 模块必需）
+### 7.4 Deploying QML modules to resfile/qml (required for runtime imports)
 
-QML 应用若 `import` 了 Qt SDK 自带 QML 模块（Qt3D / QtQuick.Controls / QtQuick.Layouts / QtDataVisualization / QtQuick.Scene3D 等），编译期 `find_package` + `target_link_libraries` 只部署 Qt C++ 库到 HAP `libs/`，**不部署 QML 类型插件**（`qml/<Module>/` 下的 .so + qmldir）。运行时 QQmlEngine 找不到模块 → hilog 报 `module "Qt3D"/"QtQuick" is not installed` → QML 树加载失败 → 黑屏（进程存活不崩溃）。
+If a QML application `import`s a QML module that ships with the Qt SDK (Qt3D / QtQuick.Controls / QtQuick.Layouts / QtDataVisualization / QtQuick.Scene3D and so on), build-time `find_package` + `target_link_libraries` only deploys the Qt C++ libraries into the HAP's `libs/` — it **doesn't deploy the QML type plugins** (the .so files + qmldir under `qml/<Module>/`). At runtime, QQmlEngine can't find the module → hilog reports `module "Qt3D"/"QtQuick" is not installed` → the QML tree fails to load → a black screen (with the process alive and not crashing).
 
-**机制**（源码 `qtbase/src/plugins/platforms/ohos/qohosjsmain.cpp`）：
-- QPA 启动设环境变量 `QML2_IMPORT_PATH = resourceDir + "/qml"`（:1784）
-- `resourceDir` 默认 = `bundleCodeDir + "/entry/resources/resfile"`（:1731-1733）
+**The mechanism** (source: `qtbase/src/plugins/platforms/ohos/qohosjsmain.cpp`):
+- At startup, the QPA sets the environment variable `QML2_IMPORT_PATH = resourceDir + "/qml"` (:1784)
+- `resourceDir` defaults to `bundleCodeDir + "/entry/resources/resfile"` (:1731-1733)
 
-即 QPA 期望 QML 模块在 HAP 的 `entry/src/main/resources/resfile/qml/`（设备路径 `bundle/entry/resources/resfile/qml/`）。
+So the QPA expects the QML modules at the HAP's `entry/src/main/resources/resfile/qml/` (on device: `bundle/entry/resources/resfile/qml/`).
 
-**部署**：复制 Qt OHOS SDK 的整个 `qml/` 目录到工程 `entry/src/main/resources/resfile/qml/`：
+**Deployment**: copy the Qt OHOS SDK's entire `qml/` directory into the project's `entry/src/main/resources/resfile/qml/`:
 
 ```bash
-mkdir -p "<工程>/entry/src/main/resources/resfile/qml"
-cp -r "<QT_OHOS_SDK>/qml/." "<工程>/entry/src/main/resources/resfile/qml/"
+mkdir -p "<project>/entry/src/main/resources/resfile/qml"
+cp -r "<QT_OHOS_SDK>/qml/." "<project>/entry/src/main/resources/resfile/qml/"
 ```
 
-- hvigor 自动打包 `entry/src/main/resources/resfile/` 下所有文件作为 resfile 资源进 HAP
-- resfile 是 OHOS **只读**资源目录，dlopen 允许（P3 铁律 dlopen 拒可写路径，resfile 只读 OK），QML 插件 .so 能正常 dlopen 加载
-- 全量复制最简（SDK `qml/` ~15MB，866 文件）；裁剪需覆盖应用所有 `import` 模块子目录 + 传递依赖（如 Qt3D/Core|Render|Input|Extras|Logic|Animation、QtQuick、QtQuick.2、QtQml、Qt、builtins.qmltypes）
-- 重新构建 HAP + 安装启动，hilog 不再报 "not installed"，QML 树正常加载渲染
+- hvigor automatically packages everything under `entry/src/main/resources/resfile/` into the HAP as resfile resources
+- resfile is an OHOS **read-only** resource directory where dlopen is allowed (iron rule P3 says dlopen rejects writable paths; resfile is read-only, so it's fine), and the QML plugin `.so` files load correctly
+- Copying everything is simplest (the SDK's `qml/` is ~15 MB across 866 files); trimming it means covering every module subdirectory the application `import`s plus their transitive dependencies (such as Qt3D/Core|Render|Input|Extras|Logic|Animation, QtQuick, QtQuick.2, QtQml, Qt, builtins.qmltypes)
+- Rebuild the HAP, install, and launch: hilog no longer reports "not installed" and the QML tree loads and renders normally
 
-> **注意**：resfile ≠ rawfile。Qt6 OHOS（qtcreator postmortem）曾用 `rawfile/` 部署 + 运行时读 resfile 路径；但 Qt5.12 QPA `resourceDir` 默认直接是 `resfile`，故 Qt5 应放 `resfile/qml/`。若 `appStartupObj.resourceDir` 被显式设置则用设置值。
+> **Note**: resfile ≠ rawfile. Qt6 OHOS (per the qtcreator postmortem) once deployed to `rawfile/` while reading the resfile path at runtime; but in Qt 5.12 the QPA's `resourceDir` defaults directly to `resfile`, so on Qt5 things belong in `resfile/qml/`. If `appStartupObj.resourceDir` is set explicitly, that value is used instead.
 
-详见 problems/_lookup.md 错误速查表。
+See the error quick-reference table in problems/_lookup.md.
 
-## 8. 应用包名配置
+## 8. Configuring the application bundle name
 
-编辑 `AppScope/app.json5`：
+Edit `AppScope/app.json5`:
 
 ```json5
 {
   "app": {
-    "bundleName": "com.example.<AppName>",  // ★ 全局唯一标识
+    "bundleName": "com.example.<AppName>",  // ★ the globally unique identifier
     "vendor": {"name": "YourName", "code": "000"},
     "version": {"code": 1000000, "name": "1.0.0"}
   }
 }
 ```
 
-**bundleName 规范**：格式 `com.<公司>.<应用名>` 或 `org.<组织>.<应用名>`，禁止中文、空格、特殊字符。
+**bundleName conventions**: the format `com.<company>.<app>` or `org.<organization>.<app>`; no non-ASCII characters, spaces, or special characters.
 
-## 9. 铁律约束清单
+## 9. The iron-rule checklist
 
-### 禁止
+### Forbidden
 
-- 修改 DevEco SDK 或 Qt SDK 目录中的任何文件
-- 设置 `compileSdkVersion` 或 `targetSdkVersion`
-- 修改 `OhosExportModules.ts`
-- 将用户提示词直接用作文件名/目录名
+- Modifying any file inside the DevEco SDK or the Qt SDK directories
+- Setting `compileSdkVersion` or `targetSdkVersion`
+- Modifying `OhosExportModules.ts`
+- Using the user's prompt text directly as a file/directory name
 
-### 必须
+### Mandatory
 
-- CMakeLists.txt 交叉编译时设置 `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH`
-- 链接 `Qt${QT_VERSION_MAJOR}::QOhosPlatformIntegrationPlugin`（平台插件）
-- 手动复制 `libqohosstyle.so` 到 `libs/${ABI_DIR}/styles/`
-- `APP_LIBRARY_NAME` 与编译产物库名**完全一致**（含 `lib` 前缀和 `.so` 后缀）
-- `runtimeOS` 设置为 `"HarmonyOS"`
-- 场景二：`build-profile.json5` 的 `path` 使用**绝对路径**
+- Set `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH` when cross-compiling in CMakeLists.txt
+- Link `Qt${QT_VERSION_MAJOR}::QOhosPlatformIntegrationPlugin` (the platform plugin)
+- Copy `libqohosstyle.so` manually into `libs/${ABI_DIR}/styles/`
+- `APP_LIBRARY_NAME` must match the built library name **exactly** (including the `lib` prefix and `.so` suffix)
+- `runtimeOS` must be `"HarmonyOS"`
+- Scenario two: the `path` in `build-profile.json5` must be an **absolute path**
 
-## 10. 常见问题速查
+## 10. Common problems quick reference
 
-| 问题 | 解决方案 |
-|------|----------|
-| `find_package(Qt5)` 失败 | 交叉编译时设置 `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH` |
-| Schema validate failed | 不要设置 `compileSdkVersion` |
-| dlopen failed / cannot locate symbol | 链接 `Qt5::QOhosPlatformIntegrationPlugin` |
-| 平台插件加载失败 | 确认 `libqohos.so` 在 `libs/${ABI_DIR}/` |
-| 样式插件加载失败 | 确认 `libqohosstyle.so` 在 `libs/${ABI_DIR}/styles/` |
-| QML Image / QImageReader 加载 SVG 静默失败（`Image.status=Error`、`sourceSize=0x0`），但 `QSvgRenderer`/`QSvgWidget` 正常 | 部署 `libqsvg.so` 到 `libs/${ABI_DIR}/imageformats/`（见 §6.2） |
-| `QSqlDatabase: QSQLITE driver not loaded` / `db->open()` 返回 false / "无法创建本地数据库" | 部署 `libqsqlite.so` 到 `libs/${ABI_DIR}/sqldrivers/`（见 §6.2，OHOS 文件名 `libqsqlite.so`）；同时 `setDatabaseName` 用 `QStandardPaths::writableLocation(AppLocalDataLocation)` 绝对路径（OHOS CWD 不可写） |
-| 库名不匹配 | 编译后 `ls libs/arm64-v8a/*.so` 检查实际文件名 |
-| QML module not installed | 检查 `CMAKE_PREFIX_PATH` 配置 |
-| QML 应用黑屏 | 检查 Qt 模块链接和 `CMAKE_PREFIX_PATH` |
-| QML Window 无 focus 属性 | 键盘事件放在内部 `Item` 中 |
-| 场景二构建找不到源文件 | `path` 必须用绝对路径指向根目录 CMakeLists.txt |
-| lazy import 语法错误（`OhosExportModules.ts` 报 `does not support using lazy import`） | 项目级 `build-profile.json5` 的 product 加 `"compatibleSdkVersionStage": "beta3"`（**不要**改 `OhosExportModules.ts`——§9 铁律禁止；改 beta3 让 API 12 支持该语法） |
-| `spawn java ENOENT`（PackageHap 阶段） | 命令行构建需 `export PATH="<DevEco>/jbr/bin:$PATH"`（IDE 内置 JBR；详见 `episodic/postmortems/coin3d-quarter-ohos.md` 坑6） |
+| Problem | Solution |
+|---------|----------|
+| `find_package(Qt5)` fails | Set `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH` when cross-compiling |
+| Schema validate failed | Don't set `compileSdkVersion` |
+| dlopen failed / cannot locate symbol | Link `Qt5::QOhosPlatformIntegrationPlugin` |
+| The platform plugin fails to load | Confirm `libqohos.so` is in `libs/${ABI_DIR}/` |
+| The style plugin fails to load | Confirm `libqohosstyle.so` is in `libs/${ABI_DIR}/styles/` |
+| QML Image / QImageReader silently fails to load an SVG (`Image.status=Error`, `sourceSize=0x0`) while `QSvgRenderer`/`QSvgWidget` work | Deploy `libqsvg.so` into `libs/${ABI_DIR}/imageformats/` (see §6.2) |
+| `QSqlDatabase: QSQLITE driver not loaded` / `db->open()` returns false / "cannot create the local database" | Deploy `libqsqlite.so` into `libs/${ABI_DIR}/sqldrivers/` (see §6.2; on OHOS the file is `libqsqlite.so`); also give `setDatabaseName` an absolute path from `QStandardPaths::writableLocation(AppLocalDataLocation)` (the OHOS CWD isn't writable) |
+| A library name mismatch | After building, check the actual filename with `ls libs/arm64-v8a/*.so` |
+| QML module not installed | Check the `CMAKE_PREFIX_PATH` configuration |
+| A QML application shows a black screen | Check the Qt module links and `CMAKE_PREFIX_PATH` |
+| A QML Window has no focus property | Put keyboard events in an inner `Item` |
+| Scenario two's build can't find the source files | `path` must be an absolute path pointing at the root CMakeLists.txt |
+| A lazy import syntax error (`OhosExportModules.ts` reports `does not support using lazy import`) | Add `"compatibleSdkVersionStage": "beta3"` to the product in the project-level `build-profile.json5` (**don't** edit `OhosExportModules.ts` — §9's iron rules forbid it; switching to beta3 makes API 12 support the syntax) |
+| `spawn java ENOENT` (during the PackageHap stage) | A command-line build needs `export PATH="<DevEco>/jbr/bin:$PATH"` (the IDE bundles JBR; see pitfall 6 in `episodic/postmortems/coin3d-quarter-ohos.md`) |
 
-## 参考来源
+## References
 
-- [Qt for HarmonyOS CMake 交叉编译指南](https://wiki.qt.io/Qt_for_HarmonyOS/user_development/deveco_cmake_guide_cross_compile)
-- [QML 应用部署指南](https://wiki.qt.io/Qt_for_HarmonyOS/user_development_guide/how_to_deply_qml_app_zh)
-- [Qt for HarmonyOS 用户开发指南](https://wiki.qt.io/Qt_for_HarmonyOS/user_development_guide)
-- 内部 Skill：`<INTERNAL_SKILL>`
-- 内部文档：`<INTERNAL_DOC>`
+- [The Qt for HarmonyOS CMake cross-compilation guide](https://wiki.qt.io/Qt_for_HarmonyOS/user_development/deveco_cmake_guide_cross_compile)
+- [The QML application deployment guide](https://wiki.qt.io/Qt_for_HarmonyOS/user_development_guide/how_to_deply_qml_app_zh)
+- [The Qt for HarmonyOS user development guide](https://wiki.qt.io/Qt_for_HarmonyOS/user_development_guide)
+- The internal skill: `<INTERNAL_SKILL>`
+- The internal document: `<INTERNAL_DOC>`

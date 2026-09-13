@@ -9,473 +9,473 @@ status: active
 audience: public
 refs: [semantic-qt-harmonyos-api-mapping,semantic-qt-harmonyos-build-run-workflow,semantic-qt-harmonyos-code-patterns,semantic-qt-harmonyos-lifecycle,semantic-qt-harmonyos-porting-workflow,semantic-qt-harmonyos-project-structure,semantic-qt-harmonyos-window-model]
 summary: >
-  Qt应用鸿蒙化迁移工作流：评估可行性→创建工程结构→按8步决策树逐步迁移→编译验证→知识积累。
-  将其他平台的Qt应用迁移到HarmonyOS平台的端到端流程。
+  The Qt application HarmonyOS migration workflow: assess feasibility → create the project structure → migrate step by step through an 8-step decision tree → verify the build → capture the knowledge.
+  An end-to-end process for migrating a Qt application from another platform to HarmonyOS.
 ---
 
-# Qt 应用鸿蒙化迁移
+# Migrating a Qt application to HarmonyOS
 
-> 将其他平台（Windows/Linux/macOS/Android/iOS）的 Qt 应用迁移到 HarmonyOS 平台的端到端流程。
-
----
-
-## 触发条件
-
-- 收到新的 Qt 应用鸿蒙化迁移任务
-- 需要将已有 Qt 项目移植到鸿蒙平台
-- 评估某个 Qt 应用的鸿蒙化可行性
+> The end-to-end process for migrating a Qt application from another platform (Windows/Linux/macOS/Android/iOS) to HarmonyOS.
 
 ---
 
-## 阶段零：预检（Pre-flight）
+## When to use this
 
-> 进入阶段一前，用 grep/源码扫描做 7 项预检。预检的目的是**在写任何 CMake 之前**就把"必然失败的项目"拦下、把"Qt5/Qt6 路径"选对、把"应用/库 Playbook"定下来。
-> 三批次实战（10apps / rows 300-399 / rows 400-499，共 207 应用）证明：缺预检会让 agent 在 Qt6 代码上浪费 3-4 次编译 attempt（canonic、B23Downloader）。
-
-| 预检项 | 方法（grep/扫描） | 判定 |
-|--------|-------------------|------|
-| **Qt 版本（按代码非声明）** | grep Qt6-only C++ API：`QList::emplace_back`/`push_back`、`std::as_const`、`QVariant::toModelIndex`、`QQuickRenderControl::beginFrame`/`endFrame`、`QEvent::isInputEvent`、Qt6 ctor 签名、`std::ranges`/`std::views` | 命中→**Qt6 代码**（即使 `.pro`/`QT +=` 标 Qt5）|
-| **Qt SDK 选型** | Qt5.15.16（现成、无补丁）vs Qt6 6.12 superbuild（MinGW host + API 23，无需源码补丁；部署前仍需 `patch_needed.py` + main 可见性，见 §1.6）| Qt5 优先；Qt6-only 项目走 Qt6（非不可行，见 §1.6）|
-| **模块可用性** | 对照 [[qt-harmonyos-modules]] 矩阵：Qt5 SDK 缺 Multimedia/D-Bus/WebEngine/Charts/SerialBus/QuickControls2/Quick3D/WebSockets/UiTools/SvgWidgets/Core5Compat；Qt6 dev 仅 qtbase + 子模块集 | 命中缺失且不可弃→blocked |
-| **项目类型** | grep `int main(` → application/example（Playbook A）；无 → library/plugin/header-only（B）；**source-only 无构建文件**看 `.cpp`/`.h` 存在（QtCustomControls 教训）| 决定 Playbook（见 §1.0a）|
-| **平台绑定** | grep `X11`/`xcb`/`windows.h`/`HWND`/`WM_`/`QDBus`/`Cocoa` 是否为**核心功能**（非可选分支）| 核心绑定→infeasible（如 QHotkey/Qt-Nice-Frameless-Window）|
-| **foreach 用法** | grep `foreach(`/`Q_FOREACH` | 用了→**OMIT** `QT_NO_FOREACH`（定义会编译失败）|
-| **三方依赖** | bundled（仓内）vs system；交叉编译可行性：header-only=ok、纯 C 小库=maybe、FFmpeg/Skia/Boost/OpenCV/PCL=no | 系统重型库→blocked 或单独交叉编译 |
-
-**输出**：预检报告（Qt 版本 + SDK 选型 + Playbook + 模块缺口 + 平台绑定 + foreach + 三方依赖），决定是否进入阶段一。
-
-### ⚠️ 陷阱：Qt5 声明但实为 Qt6 代码
-
-两批次实战翻车案例：
-- **canonic**（rows 400-499, row 405）：`.pro` 用 Qt5 语法、xlsx 标 Qt5，但 C++ 全用 Qt6-only API（`beginFrame/endFrame`、`QEvent::isInputEvent`、Qt6 `QHoverEvent`/`QQmlListProperty` ctor）→ 3 次编译 attempt 逐层剥开才确认，还缺 Quick3D/QuickControls2/WebSockets 三模块。
-- **B23Downloader**（rows 300-399, row 394）：`.pro` 标 Qt5 但用 `QList::emplace_back`（Qt6 API）→ 4 次重试。
-
-**规则**：Qt 版本按**代码实际 API** 判定，不按 `.pro`/`QT +=`/xlsx 声明。grep 清单见上表第 1 行。`.pro` 标 Qt5 只说明作者**打算**用 Qt5，不保证代码没混入 Qt6 API（常见于"从 Qt5 迁到 Qt6 后又回退声明"或"用 Qt6 头文件但 .pro 写 Qt5"）。
+- A new Qt application HarmonyOS migration task comes in
+- An existing Qt project needs porting to HarmonyOS
+- You need to assess whether some Qt application can be ported to HarmonyOS
 
 ---
 
-## 阶段一：评估与准备
+## Phase zero: pre-flight
 
-> **📋 TODO 同步点**：更新 `<LOCAL_TODO>` 中该任务的「进展」列 → `阶段一完成：可行性评估已通过，项目目录和工程已创建`
+> Before entering phase one, run 7 pre-flight checks with grep/source scanning. The point of the pre-flight is to weed out projects that are **bound to fail**, pick the right Qt5/Qt6 path, and settle on the application/library playbook — all **before you write any CMake**.
+> Three real batches (10apps / rows 300-399 / rows 400-499, 207 applications in total) proved that skipping the pre-flight makes the agent waste 3-4 build attempts on Qt6 code (canonic, B23Downloader).
 
-### 1.1 可行性评估
+| Check | Method (grep/scan) | Decision |
+|-------|--------------------|----------|
+| **Qt version (by the code, not the declaration)** | grep for Qt6-only C++ APIs: `QList::emplace_back`/`push_back`, `std::as_const`, `QVariant::toModelIndex`, `QQuickRenderControl::beginFrame`/`endFrame`, `QEvent::isInputEvent`, Qt6 ctor signatures, `std::ranges`/`std::views` | A hit → **Qt6 code** (even if `.pro`/`QT +=` says Qt5) |
+| **Which Qt SDK** | Qt 5.15.16 (ready to use, no patches) vs. a Qt6 6.12 superbuild (MinGW host + API 23, no source patches needed; you still need `patch_needed.py` + main visibility before deploying — see §1.6) | Prefer Qt5; Qt6-only projects take the Qt6 route (not infeasible — see §1.6) |
+| **Module availability** | Check against the [[qt-harmonyos-modules]] matrix: the Qt5 SDK lacks Multimedia/D-Bus/WebEngine/Charts/SerialBus/QuickControls2/Quick3D/WebSockets/UiTools/SvgWidgets/Core5Compat; Qt6 dev has only qtbase + a subset of submodules | A hit on something missing that can't be dropped → blocked |
+| **Project type** | grep `int main(` → application/example (playbook A); none → library/plugin/header-only (B); for **source-only projects with no build files**, look for the existence of `.cpp`/`.h` (the QtCustomControls lesson) | Determines the playbook (see §1.0a) |
+| **Platform coupling** | grep for `X11`/`xcb`/`windows.h`/`HWND`/`WM_`/`QDBus`/`Cocoa` and check whether it's a **core feature** (not an optional branch) | Core coupling → infeasible (e.g. QHotkey, Qt-Nice-Frameless-Window) |
+| **foreach usage** | grep `foreach(`/`Q_FOREACH` | If used → **OMIT** `QT_NO_FOREACH` (defining it breaks the build) |
+| **Third-party dependencies** | bundled (in-repo) vs. system; cross-compilation feasibility: header-only = ok, small pure-C libraries = maybe, FFmpeg/Skia/Boost/OpenCV/PCL = no | Heavyweight system libraries → blocked, or cross-compile them separately |
 
-| 评估项 | 检查内容 | 参考 |
-|--------|----------|------|
-| Qt 版本 | 应用使用的 Qt 版本（5.12 / 5.15） | [[qt-harmonyos-modules]] |
-| 模块依赖 | 检查使用的 Qt 模块是否在鸿蒙支持 | [[qt-harmonyos-modules]] |
-| 平台 API | 是否有深度平台绑定（如 D-Bus, Win32 API） | [[qt-harmonyos-api-mapping]] |
-| UI 复杂度 | 窗口数量、模态对话框、全屏需求 | [[qt-harmonyos-window-model]] |
-| 子进程 | 是否依赖 QProcess 或 system() | [[qt-harmonyos-api-mapping]] 第1节 |
-| 三方库 | 是否依赖需要交叉编译的 C/C++ 库 | [[qt-harmonyos-third-party-libs]] |
+**Output**: a pre-flight report (Qt version + SDK choice + playbook + module gaps + platform coupling + foreach + third-party dependencies), which decides whether to enter phase one.
 
-**输出**：可行性报告（可迁移 / 有风险项 / 不可迁移）
+### ⚠️ Pitfall: declared Qt5, actually Qt6 code
 
-> **💡 三方库预编译捷径**：若依赖的 C/C++ 三方库在 Harmonybrew 已有 arm64_ohos 预编译 bottle，可一键下载 .so 免交叉编译——见 [[fetch-ohos-third-party-lib]]。无 bottle 时再走下方源码交叉编译路径。
+Two real batches went off the rails:
+- **canonic** (rows 400-499, row 405): the `.pro` uses Qt5 syntax and the spreadsheet says Qt5, but the C++ is all Qt6-only API (`beginFrame/endFrame`, `QEvent::isInputEvent`, the Qt6 `QHoverEvent`/`QQmlListProperty` ctors) → it took 3 build attempts peeling back the layers to confirm, and it was also missing three modules: Quick3D/QuickControls2/WebSockets.
+- **B23Downloader** (rows 300-399, row 394): the `.pro` says Qt5 but the code uses `QList::emplace_back` (a Qt6 API) → 4 retries.
 
-> **🎮 Playbook 选择**（阶段零已定项目类型，此处落实）
+**The rule**: determine the Qt version from **the APIs the code actually uses**, not from `.pro`/`QT +=`/the spreadsheet. The grep list is in row 1 of the table above. A `.pro` saying Qt5 only tells you the author **intended** Qt5; it's no guarantee no Qt6 API has crept in (common when a project "migrated from Qt5 to Qt6 and then reverted the declaration" or "uses Qt6 headers but the .pro still says Qt5").
+
+---
+
+## Phase one: assessment and preparation
+
+> **📋 TODO sync point**: update this task's "progress" column in `<LOCAL_TODO>` → `Phase one complete: feasibility assessment passed, project directory and project created`
+
+### 1.1 Feasibility assessment
+
+| Item | What to check | Reference |
+|------|---------------|-----------|
+| Qt version | Which Qt version the application uses (5.12 / 5.15) | [[qt-harmonyos-modules]] |
+| Module dependencies | Whether the Qt modules used are supported on HarmonyOS | [[qt-harmonyos-modules]] |
+| Platform APIs | Whether there's deep platform coupling (e.g. D-Bus, the Win32 API) | [[qt-harmonyos-api-mapping]] |
+| UI complexity | Number of windows, modal dialogs, fullscreen requirements | [[qt-harmonyos-window-model]] |
+| Child processes | Whether it relies on QProcess or system() | [[qt-harmonyos-api-mapping]] §1 |
+| Third-party libraries | Whether it depends on C/C++ libraries that need cross-compiling | [[qt-harmonyos-third-party-libs]] |
+
+**Output**: a feasibility report (portable / has risk items / not portable)
+
+> **💡 A shortcut for prebuilt third-party libraries**: if a C/C++ third-party dependency already has an arm64_ohos prebuilt bottle in Harmonybrew, you can download the .so in one command and skip cross-compiling — see [[fetch-ohos-third-party-lib]]. Only fall back to the source cross-compilation route below when there's no bottle.
+
+> **🎮 Choosing a playbook** (phase zero determined the project type; here you act on it)
 >
-> | 项目类型 | Playbook | 产物 | 构建方式 |
-> |----------|----------|------|----------|
-> | application / example（有 `int main()`） | **A** | `entry-default-unsigned.hap` | `hvigorw assembleHap` + OhosExampleApp + HarmonyOS 模板 |
-> | library / plugin / header-only（无 main） | **B** | `libOhos<Slug>.a`/`.so` | `cmake + ninja + ohos.toolchain.cmake` + ohos-build |
+> | Project type | Playbook | Artifact | Build method |
+> |--------------|----------|----------|--------------|
+> | application / example (has `int main()`) | **A** | `entry-default-unsigned.hap` | `hvigorw assembleHap` + OhosExampleApp + the HarmonyOS template |
+> | library / plugin / header-only (no main) | **B** | `libOhos<Slug>.a`/`.so` | `cmake + ninja + ohos.toolchain.cmake` + ohos-build |
 >
-> **Qt5/Qt6 是正交轴**：A/B 均可配 Qt5（现成 SDK，无补丁）或 Qt6（6.12 superbuild，无需源码补丁；部署前 NEEDED/main 处理，见 §1.6）。阶段零已选好 SDK，此处只定 A/B。
+> **Qt5/Qt6 is an orthogonal axis**: both A and B work with Qt5 (the ready-made SDK, no patches) or Qt6 (a 6.12 superbuild, no source patches needed; handle NEEDED/main before deploying — see §1.6). Phase zero already picked the SDK; here you only pick A or B.
 
-### 1.2 创建项目目录
+### 1.2 Create the project directory
 
-> **📋 TODO 同步点**：更新 `<LOCAL_TODO>` 中该任务的「进展」列 → `阶段一进行中：项目目录已创建，模板解压中`
+> **📋 TODO sync point**: update this task's "progress" column in `<LOCAL_TODO>` → `Phase one in progress: project directory created, extracting the template`
 
-**每个迁移项目在 `${PROJECTS_ROOT}` 下独立建文件夹**（路径见 `ENV.md`）：
+**Each migration project gets its own folder under `${PROJECTS_ROOT}`** (see `ENV.md` for the path):
 
 ```bash
-# 创建项目目录（以原始应用名 + -ohos 命名）
+# Create the project directory (named after the original application + -ohos)
 mkdir -p "<MIGRATION_PROJECT_ROOT>/<app-name>-ohos"
 ```
 
-**目录命名规范**：
-- 格式：`<原始应用名>-ohos`（如 `calculator-ohos`、`notepad-ohos`）
-- 全部小写，空格替换为短横线
-- 项目文件夹内即为完整的鸿蒙工程结构
+**Directory naming convention**:
+- Format: `<original-app-name>-ohos` (e.g. `calculator-ohos`, `notepad-ohos`)
+- All lowercase, with spaces replaced by hyphens
+- The project folder itself is the complete HarmonyOS project structure
 
-### 1.3 准备工程结构（复制源码内置胶水模板）
+### 1.3 Prepare the project structure (copy the glue template bundled with the source)
 
-> **⚠️ 核心原则：鸿蒙工程必须从 Qt 源码内置的胶水代码模板复制生成，禁止手动创建目录结构。**
-> 模板包含完整的 ArkTS 胶水代码、build-profile 配置、qEmbeddedUiExtensionHost 模块等，
-> 手动创建极易遗漏关键文件或配置错误。
+> **⚠️ Core principle: a HarmonyOS project must be generated by copying the glue code template bundled with the Qt source; never create the directory structure by hand.**
+> The template contains the complete ArkTS glue code, the build-profile configuration, the qEmbeddedUiExtensionHost module and more,
+> and creating it by hand very easily misses a critical file or misconfigures something.
 >
-> 新版 Qt 鸿蒙分支已将胶水模板**内置于源码树** `qtbase/src/harmonyos/templates`，
-> 无需再从 Gerrit 下载 ZIP（旧 ZIP 方式已退役为备用）。
+> Recent Qt HarmonyOS branches **bundle the glue template in the source tree** at `qtbase/src/harmonyos/templates`,
+> so there's no need to download a ZIP from Gerrit any more (the old ZIP route is retired to a fallback).
 
-**获取模板**（模板路径见 `ENV.md` 的 `OHOS_TEMPLATE_SRC`，即 `<QT_SRC>/qtbase/src/harmonyos/templates`），复制到项目目录 `${PROJECTS_ROOT}/<app-name>-ohos/`：
+**Getting the template** (see `OHOS_TEMPLATE_SRC` in `ENV.md` for the path, i.e. `<QT_SRC>/qtbase/src/harmonyos/templates`) and copying it into the project directory `${PROJECTS_ROOT}/<app-name>-ohos/`:
 
 ```bash
-# 从 Qt 源码树复制内置模板到项目目录（推荐，5.15 / 5.12 源码树内均有，内容相同）
+# Copy the bundled template from the Qt source tree into the project directory (recommended; both the 5.15 and 5.12 trees have it, with identical content)
 cp -r <QT5_15_SRC>/qtbase/src/harmonyos/templates/. "${PROJECTS_ROOT}/<app-name>-ohos/"
-# Qt 5.12 对应：<QT5_12_SRC>/qtbase/src/harmonyos/templates
+# The Qt 5.12 equivalent: <QT5_12_SRC>/qtbase/src/harmonyos/templates
 ```
 
-**无 Qt 源码时**（如仅使用预编译 SDK 或鸿蒙 PC）：从 GitCode releases 下载独立模板归档 `templates-0625.zip`，解压到 `workspace/templates/`，然后复制：
+**Without the Qt source** (e.g. when using only a prebuilt SDK, or on a HarmonyOS PC): download the standalone template archive `templates-0625.zip` from the GitCode releases, extract it into `workspace/templates/`, then copy:
 ```bash
 bash skills/kb-init/scripts/download-template.sh --dest=workspace/templates
 cp -r workspace/templates/. "${PROJECTS_ROOT}/<app-name>-ohos/"
 ```
-下载地址：https://gitcode.com/ohos-qt/qt-harmonyos-src/releases
+Download page: https://gitcode.com/ohos-qt/qt-harmonyos-src/releases
 
-**解压后得到的工程结构**（场景一：从零创建）：
+**The project structure you get after extracting** (scenario one: creating from scratch):
 
 ```
-<解压后的工程根目录>/
+<the extracted project root>/
 ├── entry/
 │   ├── src/main/
-│   │   ├── cpp/                      # ★ 在此编写 Qt C++ 代码和 CMakeLists.txt
+│   │   ├── cpp/                      # ★ write your Qt C++ code and CMakeLists.txt here
 │   │   └── ets/
-│   │       ├── entryability/         # ArkTS 胶水代码（模板已生成，勿动）
-│   │       ├── pages/                # ArkTS 页面
+│   │       ├── entryability/         # the ArkTS glue code (generated by the template; don't touch)
+│   │       ├── pages/                # ArkTS pages
 │   │       └── common/
-│   │           └── QtAppConstants.ets # ★ 配置 APP_LIBRARY_NAME
-│   ├── build-profile.json5           # 模块级构建配置
-│   └── libs/arm64-v8a/               # Qt 运行时库（需填充）
-├── qEmbeddedUiExtensionHost/         # 跨进程嵌入模块（模板已生成）
-├── build-profile.json5               # 项目级构建配置
-├── AppScope/app.json5                # 应用包名 bundleName
-└── local.properties                  # SDK 路径
+│   │           └── QtAppConstants.ets # ★ configure APP_LIBRARY_NAME
+│   ├── build-profile.json5           # module-level build configuration
+│   └── libs/arm64-v8a/               # the Qt runtime libraries (you need to populate this)
+├── qEmbeddedUiExtensionHost/         # the cross-process embedding module (generated by the template)
+├── build-profile.json5               # project-level build configuration
+├── AppScope/app.json5                # the application's bundleName
+└── local.properties                  # SDK paths
 ```
 
-**解压后还需要做的事情**：
-1. 在 `entry/src/main/cpp/` 中编写 Qt C++ 源码和 `CMakeLists.txt`
-2. 配置 `QtAppConstants.ets` 的 `APP_LIBRARY_NAME`（必须与编译产物库名一致）
-3. 配置 `entry/build-profile.json5` 的 `CMAKE_PREFIX_PATH`（指向 Qt SDK）
-4. 将 Qt 运行时库（`libqohos.so` 等）填充到 `entry/libs/arm64-v8a/`
-5. 手动复制 `libqohosstyle.so` 到 `libs/arm64-v8a/styles/`
-6. 修改应用显示名称（`app_name` + `QAbility_label`，见 §1.4）
+**What you still have to do after extracting**:
+1. Write the Qt C++ source and `CMakeLists.txt` in `entry/src/main/cpp/`
+2. Set `APP_LIBRARY_NAME` in `QtAppConstants.ets` (it must match the built library's name)
+3. Set `CMAKE_PREFIX_PATH` in `entry/build-profile.json5` (pointing at the Qt SDK)
+4. Populate `entry/libs/arm64-v8a/` with the Qt runtime libraries (`libqohos.so` and friends)
+5. Manually copy `libqohosstyle.so` into `libs/arm64-v8a/styles/`
+6. Change the application's display name (`app_name` + `QAbility_label`, see §1.4)
 
-**场景二（已有工程鸿蒙化）**：将解压后的模板放入 `HarmonyOS/` 子目录，`entry/build-profile.json5` 的 `path` 用**绝对路径**指向根目录 CMakeLists.txt。
+**Scenario two (porting an existing project)**: put the extracted template into a `HarmonyOS/` subdirectory and make `entry/build-profile.json5`'s `path` an **absolute path** pointing at the root CMakeLists.txt.
 
-> 详细目录结构和配置说明见 [[qt-harmonyos-project-structure]]。
+> For the detailed directory structure and configuration, see [[qt-harmonyos-project-structure]].
 
-### 1.4 修改应用显示名称
+### 1.4 Change the application's display name
 
-> **⚠️ 必做**：模板默认显示名是占位值（`app_name`=`ohosQtTemplate`、`QAbility_label`=`label`），不改的话桌面图标和任务管理器会显示 "label" / "ohosQtTemplate" 而非实际应用名。
+> **⚠️ Mandatory**: the template's default display names are placeholders (`app_name`=`ohosQtTemplate`, `QAbility_label`=`label`), so if you don't change them the home screen icon and the task manager will show "label" / "ohosQtTemplate" instead of the real application name.
 
-鸿蒙的显示名通过资源引用配置——`app.json5` / `module.json5` 的 `label` 字段写的是 `$string:<资源名>`，实际显示文本在 `string.json` 的 `value` 里。**改 value，不要改引用**。需改两处资源：
+HarmonyOS configures display names through resource references — the `label` field in `app.json5` / `module.json5` holds `$string:<resource-name>`, and the actual display text is the `value` in `string.json`. **Change the value, not the reference.** Two resources need changing:
 
-| 资源名 | 模板默认 value | 文件 | 作用 |
-|--------|---------------|------|------|
-| `app_name` | `ohosQtTemplate` | `AppScope/resources/base/element/string.json` | 桌面图标下的应用名 |
-| `QAbility_label` | `label` | `entry/src/main/resources/{base,en_US,zh_CN}/element/string.json` | 任务管理器/最近任务里的 Ability 名 |
+| Resource name | Template default value | File | Purpose |
+|---------------|------------------------|------|---------|
+| `app_name` | `ohosQtTemplate` | `AppScope/resources/base/element/string.json` | The application name under the home screen icon |
+| `QAbility_label` | `label` | `entry/src/main/resources/{base,en_US,zh_CN}/element/string.json` | The Ability name in the task manager / recent tasks |
 
-把两个资源的 `value` 改为实际应用名（如 `Calculator`）。三个语言目录（`base` / `en_US` / `zh_CN`）的 `QAbility_label` 都要改保持一致；`zh_CN` 可填中文应用名。
+Change both resources' `value` to the real application name (e.g. `Calculator`). `QAbility_label` must be changed consistently in all three locale directories (`base` / `en_US` / `zh_CN`); `zh_CN` can hold the Chinese application name.
 
 ```json5
 // AppScope/resources/base/element/string.json
-{ "string": [ { "name": "app_name", "value": "<应用名>" } ] }
+{ "string": [ { "name": "app_name", "value": "<application name>" } ] }
 
-// entry/src/main/resources/base/element/string.json（en_US 同结构，zh_CN 可用中文）
+// entry/src/main/resources/base/element/string.json (en_US has the same structure; zh_CN can use Chinese)
 {
   "string": [
     { "name": "module_desc", "value": "module description" },
     { "name": "QAbility_desc", "value": "description" },
-    { "name": "QAbility_label", "value": "<应用名>" }
+    { "name": "QAbility_label", "value": "<application name>" }
   ]
 }
 ```
 
-> **不要**直接改 `app.json5` / `module.json5` 里 `"label": "$string:..."` 的引用——鸿蒙规范要求 label 通过资源引用，只改 `string.json` 的 `value` 即可。
+> **Don't** edit the `"label": "$string:..."` references in `app.json5` / `module.json5` directly — the HarmonyOS spec requires labels to go through resource references, so changing `string.json`'s `value` is enough.
 
-### 1.5 关键 CMake 配置
+### 1.5 Key CMake configuration
 
 ```cmake
-# 1. 交叉编译搜索路径
+# 1. Cross-compilation search paths
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
 
-# 2. 链接 Qt 模块
+# 2. Link the Qt modules
 find_package(Qt5 REQUIRED COMPONENTS Core Gui Widgets)
 
-# 3. 生成共享库（鸿蒙要求）
+# 3. Produce a shared library (required by HarmonyOS)
 add_library(myapp SHARED ${SOURCES})
 
-# 4. 链接 QPA 插件
+# 4. Link the QPA plugin
 target_link_libraries(myapp PRIVATE Qt5::QOhosPlatformIntegrationPlugin)
 ```
 
 ---
 
-### 1.6 Qt6 OHOS 特有注意事项
+### 1.6 Qt6-specific OHOS considerations
 
-> 仅当阶段零选了 **Qt6 SDK** 时适用。Qt5.15.16 SDK 现成无补丁，跳过本节。
-> 2026-07-13 验证 Qt 6.12.0 superbuild 在 Windows + MinGW host + OHOS Clang target + API 23 可编译、gallery 真机通过，无需源码补丁；Qt6 SDK 使用有 8 个已知坑。详见 [[qt-harmonyos-qt6-status]]。
+> Only applies if phase zero chose the **Qt6 SDK**. The Qt 5.15.16 SDK is ready to use with no patches, so skip this section.
+> Verified on 2026-07-13: a Qt 6.12.0 superbuild builds on a Windows + MinGW host with an OHOS Clang target and API 23, and gallery passed on a physical device, with no source patches needed; using the Qt6 SDK has 8 known pitfalls. For details see [[qt-harmonyos-qt6-status]].
 
-**Qt6 SDK 构建前提**（Qt 6.12.0 superbuild）：
+**Prerequisites for building the Qt6 SDK** (the Qt 6.12.0 superbuild):
 
-| 项 | 要求 |
-|----|------|
-| 版本/路径 | Qt **6.12.0**（`c7581743`）superbuild（`qt5/configure.bat -submodules qtbase,qtsvg,qtimageformats,qtshadertools,qtlanguageserver,qtdeclarative`），无需源码补丁。 |
-| Host 编译器 | MinGW g++ 13.1.0（Qt SDK 自带）。**不用 llvm-mingw clang 22**（NTSYSCALLAPI 重声明、D3D12MemAlloc `-Werror` 等兼容问题） |
-| Windows 额外配置 | wiki 仅 macOS 指令；Windows 需手补 7 个 CMake 变量（`NodeAddonApi_INCLUDE_DIR` + `EGL`/`GLESv2`/`Fontconfig` 的 `_INCLUDE_DIR` + `_LIBRARY`）+ `DEVECO_SDK_HOME` + `JAVA_HOME` 环境变量 |
-| 运行时必做 | 部署设备前：DT_NEEDED 改裸名 + `main` 加 `visibility("default")`（见下方「运行时两道必须检查」） |
+| Item | Requirement |
+|------|-------------|
+| Version/path | Qt **6.12.0** (`c7581743`) superbuild (`qt5/configure.bat -submodules qtbase,qtsvg,qtimageformats,qtshadertools,qtlanguageserver,qtdeclarative`), no source patches needed. |
+| Host compiler | MinGW g++ 13.1.0 (bundled with the Qt SDK). **Don't use llvm-mingw clang 22** (NTSYSCALLAPI redeclaration, D3D12MemAlloc `-Werror` and other compatibility problems) |
+| Extra Windows configuration | The wiki only gives macOS instructions; on Windows you must supply 7 CMake variables by hand (`NodeAddonApi_INCLUDE_DIR` + `_INCLUDE_DIR` and `_LIBRARY` for `EGL`/`GLESv2`/`Fontconfig`) plus the `DEVECO_SDK_HOME` and `JAVA_HOME` environment variables |
+| Mandatory runtime steps | Before deploying to a device: rewrite DT_NEEDED to bare names + add `visibility("default")` to `main` (see "Two mandatory runtime checks" below) |
 
-> 原 dev 分支 + 6 补丁 + 6.12 BLOCKER 路径已弃用（BLOCKER 在 superbuild + MinGW g++ + API 23 下已绕过，三变量未逐一隔离，见 [build-fail-qt6-libcpp-musl-isystem]）。
+> The old dev branch + 6 patches + 6.12 BLOCKER route is abandoned (the BLOCKER is worked around by the superbuild + MinGW g++ + API 23; the three variables weren't isolated individually — see [build-fail-qt6-libcpp-musl-isystem]).
 
-**Qt6 OHOS 运行时两道必须检查**（不检则设备崩溃）：
+**Two mandatory Qt6 OHOS runtime checks** (skip them and the device crashes):
 
-1. **DT_NEEDED 绝对 Windows 路径** → 设备 `dlopen` 失败。Qt6 `.so` 无 SONAME + Windows 交叉编译 imported target 以绝对路径参与链接 → `DT_NEEDED` 记录绝对 Windows 路径（如 `<Qt6-build-dir>/libQt6Widgets.so`）。**必须用 `patch_needed.py` 把所有 `.so`（业务库 + Qt 库自身）的 NEEDED 改裸名**。打包后用 `llvm-readelf -d` 检查 HAP 内全部 native `.so` 无绝对路径。
-2. **`main` 必须 `GLOBAL DEFAULT`** → 否则 `dlsym("main")` 失败。Qt6 OHOS 胶水通过 `dlsym("main")` 找入口，只查动态符号表。若 target 用 `CXX_VISIBILITY_PRESET hidden`，源码里的 `main` 是 local 不可见。**解决**：给 `main` 加 `__attribute__((visibility("default")))`（仅 OHOS 下，不改整个 target 的隐藏策略）。用 `llvm-readelf --dyn-syms` 验证 `main` 为 `GLOBAL DEFAULT`。
+1. **Absolute Windows paths in DT_NEEDED** → `dlopen` fails on the device. Qt6 `.so` files have no SONAME, and Windows cross-compilation links imported targets by absolute path → `DT_NEEDED` records absolute Windows paths (e.g. `<Qt6-build-dir>/libQt6Widgets.so`). **You must use `patch_needed.py` to rewrite the NEEDED entries of every `.so` (your own libraries plus the Qt libraries themselves) to bare names.** After packaging, use `llvm-readelf -d` to check that no native `.so` inside the HAP contains an absolute path.
+2. **`main` must be `GLOBAL DEFAULT`** → otherwise `dlsym("main")` fails. The Qt6 OHOS glue finds the entry point through `dlsym("main")`, which only searches the dynamic symbol table. If the target uses `CXX_VISIBILITY_PRESET hidden`, the `main` in your source is local and invisible. **Fix**: add `__attribute__((visibility("default")))` to `main` (under OHOS only — don't change the whole target's hiding policy). Verify with `llvm-readelf --dyn-syms` that `main` is `GLOBAL DEFAULT`.
 
-**其他 Qt6 OHOS 坑**：
+**Other Qt6 OHOS pitfalls**:
 
-| 坑 | 表现 | 解决 |
-|----|------|------|
-| C++20 ranges/libc++ 缺口 | `std::ranges::find`/`std::views::reverse`/`std::views::cache_latest`/`std::string_view <=>` 编译失败 | 局部替换为 `std::find_if`/反向迭代器/手写 `std::strong_ordering`；`Utils::views::cache_latest` 降级 no-op |
-| CMake 不识 OHOS 平台 | `CMAKE_LINK_LIBRARY_USING_WHOLE_ARCHIVE` 未初始化（静态插件导入报链接特性不支持）| 显式定义 `CMAKE_LINK_LIBRARY_USING_WHOLE_ARCHIVE` + C/CXX supported 标志 |
-| 资源部署 | `share/xxx` 运行时数据（如 Qt Creator 的 themes/fonts）放 `entry/libs/` 被 Hvigor 过滤；放 `rawfile/` 设备找不到 | 放 `entry/src/main/resources/resfile/share/xxx`；应用经 `QOhosAppContext::resourceDir()+"/share/xxx"` 定位 |
-| hvigor env | `Invalid DEVECO_SDK_HOME` / `spawn java ENOENT` | `DEVECO_SDK_HOME` + `JAVA_HOME` + JBR `bin` PATH 经 `cmake -E env` 注入；用 `--no-daemon` wrapper 避 daemon 缓存旧 env |
-| 平台探测误判 | 三方库（如 libarchive）走 Unix 配置后用 OHOS 不支持的接口 | 新增 `config_ohos.h`（基于 `config_unix.h` undef `HAVE_CLOSEFROM`/`HAVE_CLOSE_RANGE`/`HAVE_LCHMOD`）|
-| 模块缺口 | D-Bus / OpenSSL / WebEngine / MCP / QML Designer 在 Qt6 OHOS 当前不可用 | 剪枝（`FEATURE_dbus=OFF`、`INPUT_openssl=no`、跳过相关子目录）|
+| Pitfall | Symptom | Fix |
+|---------|---------|-----|
+| C++20 ranges/libc++ gaps | `std::ranges::find`/`std::views::reverse`/`std::views::cache_latest`/`std::string_view <=>` fail to compile | Locally replace with `std::find_if`/reverse iterators/a hand-written `std::strong_ordering`; degrade `Utils::views::cache_latest` to a no-op |
+| CMake doesn't know the OHOS platform | `CMAKE_LINK_LIBRARY_USING_WHOLE_ARCHIVE` is uninitialized (importing static plugins reports an unsupported link feature) | Define `CMAKE_LINK_LIBRARY_USING_WHOLE_ARCHIVE` explicitly + the C/CXX supported flags |
+| Resource deployment | Runtime data under `share/xxx` (such as Qt Creator's themes/fonts) is filtered out by Hvigor if placed in `entry/libs/`, and can't be found on the device if placed in `rawfile/` | Put it in `entry/src/main/resources/resfile/share/xxx`; the application locates it via `QOhosAppContext::resourceDir()+"/share/xxx"` |
+| hvigor env | `Invalid DEVECO_SDK_HOME` / `spawn java ENOENT` | Inject `DEVECO_SDK_HOME` + `JAVA_HOME` + the JBR `bin` PATH through `cmake -E env`; use the `--no-daemon` wrapper to avoid the daemon caching a stale env |
+| Platform detection misfires | A third-party library (e.g. libarchive) takes the Unix configuration and then uses interfaces OHOS doesn't support | Add a `config_ohos.h` (based on `config_unix.h` with `HAVE_CLOSEFROM`/`HAVE_CLOSE_RANGE`/`HAVE_LCHMOD` undef'd) |
+| Module gaps | D-Bus / OpenSSL / WebEngine / MCP / QML Designer are currently unavailable on Qt6 OHOS | Prune them (`FEATURE_dbus=OFF`, `INPUT_openssl=no`, skip the relevant subdirectories) |
 
-> **Qt5→Qt6 API 差异**（关闭事件 API 私有化、QStandardPaths 映射变更、CMake API `qt_add_executable` 等）详见 [[qt-harmonyos-qt6-status]]。
+> For the **Qt5→Qt6 API differences** (close-event APIs made private, changed QStandardPaths mappings, the `qt_add_executable` CMake API, etc.) see [[qt-harmonyos-qt6-status]].
 
 ---
 
-## 阶段二：逐步迁移（8 步决策树）
+## Phase two: step-by-step migration (the 8-step decision tree)
 
-> **📋 TODO 同步点**：更新 `<LOCAL_TODO>` 中该任务的「进展」列 → `阶段二进行中：8步迁移第N步`（每完成一步更新一次）
+> **📋 TODO sync point**: update this task's "progress" column in `<LOCAL_TODO>` → `Phase two in progress: step N of the 8-step migration` (update it after each step)
 
-按 [[qt-harmonyos-porting-workflow]] 的 8 步决策树逐项处理：
+Work through the 8-step decision tree from [[qt-harmonyos-porting-workflow]]:
 
-### Step 1：平台 API 扫描
+### Step 1: scan for platform APIs
 
 ```bash
-# 扫描源码中的平台绑定 API
+# Scan the source for platform-coupled APIs
 grep -rn "QProcess\|QDesktopServices\|system(\|exec(" src/
 grep -rn "chmod\|symlink\|dlopen" src/
 grep -rn "winId\|setMask\|showFullScreen" src/
 ```
 
-对扫描结果进行分类，确定每个 API 的替换方案。
+Classify the results and decide on a replacement for each API.
 
-### Step 2：API 映射替换
+### Step 2: replace APIs using the mapping
 
-按 [[qt-harmonyos-api-mapping]] 的 12 大类逐一替换：
+Work through the 12 categories in [[qt-harmonyos-api-mapping]] one by one:
 
-1. **进程管理**：`QProcess` 按场景选 — 无界面保留不改；有界面 Qt 用 `startAppProcess`，有界面非 Qt 用 `startAbility`；需原生托管用 `startNoUiChildProcess`（见 [[qt-harmonyos-api-mapping]] §1 决策树）
-2. **应用间通信**：`QDesktopServices::openUrl` → `startAbility(want)`
-3. **窗口管理**：独立 QDialog → 设置 parent 或 tagSubWindow
-4. **文件系统**：移除 `setPermissions`、`symlink` 调用
-5. ... 逐项处理
+1. **Process management**: choose a `QProcess` approach per scenario — headless stays as is; a Qt UI uses `startAppProcess`, a non-Qt UI uses `startAbility`; native hosting uses `startNoUiChildProcess` (see the decision tree in [[qt-harmonyos-api-mapping]] §1)
+2. **Inter-application communication**: `QDesktopServices::openUrl` → `startAbility(want)`
+3. **Window management**: a standalone QDialog → set a parent or tagSubWindow
+4. **Filesystem**: remove `setPermissions` and `symlink` calls
+5. ... and so on through the list
 
-### Step 3：窗口适配
+### Step 3: window adaptation
 
-- 所有独立 QDialog 设置 transientParent
-- 检查模态对话框使用方式
-- 处理全屏/浮窗/最小化等特殊需求
-- 参考 [[qt-harmonyos-window-model]]
+- Set a transientParent on every standalone QDialog
+- Review how modal dialogs are used
+- Handle special needs like fullscreen/floating windows/minimizing
+- See [[qt-harmonyos-window-model]]
 
-### Step 4：生命周期适配
+### Step 4: lifecycle adaptation
 
-- 实现 `closeEvent()` 的 3 级关闭拦截
-- 处理 Ability 前后台切换
-- 实现状态保存/恢复（如需要接续）
-- 参考 [[qt-harmonyos-lifecycle]]
+- Implement the three levels of close interception in `closeEvent()`
+- Handle the Ability moving between foreground and background
+- Implement state save/restore (if you need continuation)
+- See [[qt-harmonyos-lifecycle]]
 
-### Step 5：平台限制处理
+### Step 5: handle platform limitations
 
-检查 [[qt-harmonyos-platform-limits]]，确保代码不触碰：
-- chmod / fchmod（用 `#ifndef Q_OS_OHOS` 守卫）
-- symlink（用文件拷贝替代）
-- pthread_cancel（改用协作式终止）
-- 系统路径访问（沙箱限制）
+Check [[qt-harmonyos-platform-limits]] and make sure the code doesn't touch:
+- chmod / fchmod (guard with `#ifndef Q_OS_OHOS`)
+- symlink (copy the file instead)
+- pthread_cancel (switch to cooperative termination)
+- System path access (sandbox restrictions)
 
-### Step 6：构建系统适配（配置已解压模板）
+### Step 6: build system adaptation (configuring the extracted template)
 
-> 工程模板已在阶段 1.2 解压生成，本步骤聚焦于**配置**而非创建。
+> The project template was extracted in phase 1.2, so this step is about **configuring** rather than creating.
 
-- 编写 `entry/src/main/cpp/CMakeLists.txt`（交叉编译配置、Qt 模块链接、QPA 插件）
-- 配置 `entry/build-profile.json5` 的 `CMAKE_PREFIX_PATH`（指向 Qt SDK）
-- 配置 `QtAppConstants.ets` 的 `APP_LIBRARY_NAME`（与 CMake `add_library` 目标名对应）
-- 填充 Qt 运行时库到 `entry/libs/arm64-v8a/`（`libqohos.so` + `libqohosstyle.so`）
-- 配置 `AppScope/app.json5` 的 `bundleName`
-- 参考 [[qt-harmonyos-project-structure]]
+- Write `entry/src/main/cpp/CMakeLists.txt` (cross-compilation configuration, Qt module links, the QPA plugin)
+- Set `CMAKE_PREFIX_PATH` in `entry/build-profile.json5` (pointing at the Qt SDK)
+- Set `APP_LIBRARY_NAME` in `QtAppConstants.ets` (matching the CMake `add_library` target name)
+- Populate `entry/libs/arm64-v8a/` with the Qt runtime libraries (`libqohos.so` + `libqohosstyle.so`)
+- Set `bundleName` in `AppScope/app.json5`
+- See [[qt-harmonyos-project-structure]]
 
-### Step 7：鸿蒙增强功能（可选）
+### Step 7: HarmonyOS enhancements (optional)
 
-- 深色模式适配：`setColorThemeMode(FollowSystemSetting)`
-- 分享功能：`ShareKit::shareDataWithShareKit()`
-- 应用接续：`continueRequestReceived` 信号
-- Want 交互：处理外部传入的 URI/参数
+- Dark mode: `setColorThemeMode(FollowSystemSetting)`
+- Sharing: `ShareKit::shareDataWithShareKit()`
+- Application continuation: the `continueRequestReceived` signal
+- Want interaction: handling URIs/parameters passed in from outside
 
-### Step 8：模块级验证
+### Step 8: module-level verification
 
-- 逐模块编译验证
-- 逐功能运行验证
-- 参考 [[qt-ohos-project-analyzer-workflow]]
-
----
-
-## 阶段三：编译验证
-
-> **📋 TODO 同步点**：更新 `<LOCAL_TODO>` 中该任务的「进展」列 → `阶段三完成：编译验证通过`
-
-### 3.1 构建
-
-> **🎯 编译验证目标 = 未签名 HAP**：`bundleName` 用应用自身名（`com.example.<appslug>`），`build-profile.json5` 不配签名。**完成标志 = `entry-default-unsigned.hap` 存在 + `BUILD SUCCESSFUL`**。签名是独立的后续步骤（真机安装时才需独立配置签名，不在本编译工作流范围），不阻塞编译验证。
-
-参考 [[qt-harmonyos-build-run-workflow]]：
-
-1. 通过 DevEco MCP 工具链构建（或 hvigorw CLI 法，见该页 §hvigorw CLI 替代法）
-2. 解决编译错误（参考构建失败排查四步法）
-3. 生成 .hap 包（未签名即可）
-
-### 3.2 部署运行
-
-1. 部署到模拟器或真机
-2. 功能逐项验证
-3. 性能基本测试
-
-### 3.3 常见问题
-
-| 问题 | 排查方向 |
-|------|----------|
-| 编译找不到头文件 | CMAKE_FIND_ROOT_PATH_MODE_PACKAGE |
-| 链接未定义符号 | 缺少 Qt 模块依赖 |
-| 运行时黑屏 | XComponent 初始化 / 窗口 tagging |
-| 崩溃 | 生命周期时序 / 空指针 |
-| `no member named 'SslConnection'` / QSslSocket 不可用 | OHOS Qt Network 无 OpenSSL，SSL 分支需 `#ifndef QT_NO_SSL` 守卫 |
-| `Could NOT find Qt5QuickControls2Config.cmake` | OHOS Qt5 SDK 缺 QuickControls2/Quick3D/WebSockets，QML Controls 应用 defer 或走 Qt6 |
-| `no viable conversion from 'const char[]' to 'QPixmap'` | clang 严拒 MSVC 允许的双重隐式转换，改显式构造 |
-| `expected '(' after "this"` / deducing-this | OHOS clang 15 不支持 C++23 P0847，改 CRTP 或 defer |
-| `no member named 'emplace_back' in QList` | Qt5 QList 无 emplace_back（Qt6 API），改 `append({...})` brace-init；**Qt5 声明但代码 Qt6 的标志**（见阶段零陷阱）|
-| Qt6 设备 `dlopen` 失败（NEEDED 含绝对路径）| DT_NEEDED 含 Windows 绝对路径，用 `patch_needed.py` 改裸名（§1.6）|
-| Qt6 设备 `dlsym() failed to find 'main'` | `main` 被 hidden visibility 隐藏，加 `__attribute__((visibility("default")))`（§1.6）|
-| Qt6 `no member named 'nullptr_t'` / `__promote` | [build-fail-qt6-libcpp-musl-isystem] — 6.12 `-isystem` 注入致 musl 遮蔽 clang builtin；**已绕过（2026-07-13）**：superbuild + MinGW g++ + API 23 下未复现（§1.6）|
+- Verify the build module by module
+- Verify at runtime feature by feature
+- See [[qt-ohos-project-analyzer-workflow]]
 
 ---
 
-## 阶段四：知识积累
+## Phase three: build verification
 
-> **📋 TODO 同步点**：更新 `<LOCAL_TODO>` — 将此任务从「📌 进行中」移至「✅ 已完成」，填写完成日期和迁移结果摘要
+> **📋 TODO sync point**: update this task's "progress" column in `<LOCAL_TODO>` → `Phase three complete: build verification passed`
 
-### 4.1 记录迁移经验
+### 3.1 Building
 
-**每次迁移后**，总结以下内容：
+> **🎯 The build verification target = an unsigned HAP**: use the application's own name for `bundleName` (`com.example.<appslug>`) and don't configure signing in `build-profile.json5`. **Done means `entry-default-unsigned.hap` exists + `BUILD SUCCESSFUL`.** Signing is a separate follow-up step (you only need to configure it when installing on a physical device, which is outside this build workflow) and does not block build verification.
 
-1. **遇到的新问题**：知识库中没有覆盖的场景
-2. **有效的解决方案**：验证有效的代码模式
-3. **踩过的坑**：浪费时间的错误方向
-4. **更新的映射关系**：新发现的 API 替换
+See [[qt-harmonyos-build-run-workflow]]:
 
-### 4.2 更新知识库
+1. Build through the DevEco MCP toolchain (or the hvigorw CLI approach — see that page's §"The hvigorw CLI alternative")
+2. Fix the build errors (see the four-step build failure troubleshooting method)
+3. Produce the .hap (unsigned is fine)
 
-- 新的 API 映射 → 更新 [[qt-harmonyos-api-mapping]]
-- 新的代码模式 → 更新 [[qt-harmonyos-code-patterns]]
-- 新的平台限制 → 更新 [[qt-harmonyos-platform-limits]]
-- 执行错误 → 创建 `problems/` 条目
-- 项目经验 → 创建 `episodic/` 条目
+### 3.2 Deploy and run
 
----
+1. Deploy to the emulator or a physical device
+2. Verify the features one by one
+3. Do basic performance testing
 
-## 阶段五：批量迁移（可选）
+### 3.3 Common problems
 
-> 当需一次性迁移一批（N≥10）Qt 应用时，在单应用工作流（阶段零~四）之上加这层批量编排。
-> 经验蒸馏自三批次实战（共 207 应用、117 编译成功，见 `episodic/` 域 `qt-opensource-apps-batch-port-*` 复盘）。
-
-### 5.1 批量前：采样定路径
-
-读 xlsx `qt_modules` 列采样前 20 行，判 app/lib 比例：
-- **绝大多数 GUI 应用**（core+gui+widgets）→ 单 HAP 路径（只 Playbook A），如 rows 300-399。
-- **混合 app+lib** → 双路径 A/B，如 rows 400-499（17 HAP + 53 库）。
-- **绝大多数库** → 单 .a 路径（只 Playbook B）。
-
-### 5.2 Triage → Port 用 pipeline 非 barrier
-
-`pipeline(items, triageStage, portStage)`：triage（clone+扫描，快）完成一个即刻进 port（写文件+编译，慢），不等全部 triage 结束。triage 慢尾与 port 快头重叠，wall-clock 比串行两阶段省 ~30%。Port 阶段对 feasible 子集用 `parallel`（~16 并发）。
-
-### 5.3 模块矩阵预筛（阻断模块不进编译批次）
-
-triage agent 读 [[qt-harmonyos-modules]] 模块矩阵，命中阻断模块（multimedia/dbus/webengine/charts/serialbus/core5compat/quickcontrols2/svgwidgets 等）且无法直接弃用的，标 `feasibility=blocked`，不进 Port 阶段。rows 300-399 批次由此省掉 55 次必然失败的编译。**模块矩阵零误判**已经验证。
-
-### 5.4 克隆失败 fallback（CGNAT 网络）
-
-本机家宽 CGNAT（无公网 IP），github.com `git clone` 频繁 TCP reset。fallback 顺序：
-1. `git clone --depth 1 <url>` 失败 → 重试一次不带 `--depth`。
-2. 仍失败 → `https://codeload.github.com/<owner>/<repo>/zip/refs/heads/<default-branch>` tarball（unzip 即用，无 .git）。
-3. triage-only（不需本地源码）→ GitHub REST API `api.github.com/repos/<owner>/<repo>/contents/<path>` 读构建文件列表 + 模块声明。
-
-### 5.5 安全分类器故障期
-
-glm-5.2 安全分类器间歇不可用时，主循环的 Bash/Write/Agent 调用被阻塞，但 Workflow 工具的内部 spawn 不走主循环分类器。**所有批量 spawn 经 Workflow 工具承载**（clone-retry、triage、port 均用 Workflow 启动），可绕过故障。
-
-### 5.6 agent prompt 规范
-
-- **禁建共享 TaskList 子任务**：agent 在自己的上下文跟踪进度，不要调用 `TaskCreate` 建 per-app 子任务（会污染主任务表，两批次均被污染过 60+ 条）。
-- **评估读代码非构建文件**：triage 必须按阶段零预检表 grep Qt6-only API，不能只看 `.pro`/`QT +=`（canonic/B23Downloader 翻车案例）。
-- **每项目最多 3 次编译 attempt**：读 error tail → 修最可能原因 → 重建。3 次未过则标 failed，附错误，不强转 success。
-
-### 5.7 批量交付件
-
-- `${PROJECTS_ROOT}/<batch>/_BATCH_REPORT.md` — 全量结果表（row × 状态 × 产物 × 错误）。
-- `${PROJECTS_ROOT}/<batch>/_results/<row>.json` — 每项目迁移+编译报告。
-- `${PROJECTS_ROOT}/<batch>/_assessments/<row>.json` — 每项目 triage 评估。
-- `${PROJECTS_ROOT}/<batch>/_RUNBOOK.md` / `_playbook.md` — 批次用的迁移配方（供所有 port agent 遵循）。
+| Problem | Where to look |
+|---------|---------------|
+| The build can't find headers | CMAKE_FIND_ROOT_PATH_MODE_PACKAGE |
+| Undefined symbols at link time | A missing Qt module dependency |
+| A black screen at runtime | XComponent initialization / window tagging |
+| A crash | Lifecycle ordering / null pointers |
+| `no member named 'SslConnection'` / QSslSocket unavailable | OHOS Qt Network has no OpenSSL, so SSL branches need a `#ifndef QT_NO_SSL` guard |
+| `Could NOT find Qt5QuickControls2Config.cmake` | The OHOS Qt5 SDK lacks QuickControls2/Quick3D/WebSockets, so QML Controls applications should be deferred or go the Qt6 route |
+| `no viable conversion from 'const char[]' to 'QPixmap'` | clang strictly rejects the double implicit conversion MSVC allows — construct explicitly |
+| `expected '(' after "this"` / deducing-this | OHOS clang 15 doesn't support C++23 P0847 — switch to CRTP or defer |
+| `no member named 'emplace_back' in QList` | Qt5's QList has no emplace_back (that's a Qt6 API) — use `append({...})` brace-init; **also a sign of Qt6 code declared as Qt5** (see the phase zero pitfall) |
+| Qt6 `dlopen` fails on the device (NEEDED contains absolute paths) | DT_NEEDED contains absolute Windows paths — rewrite them to bare names with `patch_needed.py` (§1.6) |
+| Qt6 `dlsym() failed to find 'main'` on the device | `main` is hidden by hidden visibility — add `__attribute__((visibility("default")))` (§1.6) |
+| Qt6 `no member named 'nullptr_t'` / `__promote` | [build-fail-qt6-libcpp-musl-isystem] — 6.12's `-isystem` injection lets musl shadow a clang builtin; **worked around (2026-07-13)**: doesn't reproduce with the superbuild + MinGW g++ + API 23 (§1.6) |
 
 ---
 
-## 检查清单
+## Phase four: capturing the knowledge
 
-- [ ] **阶段零预检完成**（Qt 版本按代码非声明、SDK 选型 Qt5/Qt6、模块可用性、项目类型→Playbook A/B、平台绑定、foreach、三方依赖）
-- [ ] 可行性评估完成（模块依赖、平台 API、UI 复杂度）
-- [ ] 项目目录已创建于 `${PROJECTS_ROOT}/<app-name>-ohos/`
-- [ ] 胶水代码模板已从源码内置路径（`<QT_SRC>/qtbase/src/harmonyos/templates`）复制至项目目录
-- [ ] 应用显示名称已修改（`app_name` + `QAbility_label` 改为应用名）
-- [ ] 8 步决策树逐项处理
-- [ ] 编译通过
-- [ ] **若用 Qt6**：DT_NEEDED 改裸名（`patch_needed.py`）+ `main` 为 `GLOBAL DEFAULT` 已验证（§1.6）
-- [ ] 部署运行验证通过
-- [ ] 迁移经验已记录到知识库
+> **📋 TODO sync point**: update `<LOCAL_TODO>` — move this task from "📌 In progress" to "✅ Done" and fill in the completion date and a summary of the migration result
 
----
+### 4.1 Record the migration experience
 
-## 供应链
+**After every migration**, summarize:
 
-> 详见 工作流供应链「应用移植」一节
+1. **New problems you hit**: scenarios the knowledge base doesn't cover
+2. **Solutions that worked**: code patterns verified to work
+3. **Traps you fell into**: wrong directions that wasted time
+4. **Updated mappings**: newly discovered API replacements
 
-| 维度 | 详情 |
-|------|------|
-| **上游来源** | ① 商业 Qt 客户的鸿蒙化迁移需求 ② 内部宣传 demo 需求 ③ 自驱动（评估新场景可行性） |
-| **上游输入** | 原始 Qt 工程/源码、目标功能需求、Qt 版本信息 |
-| **下游接收方** | **商业 Qt 客户** / 内部（宣传 demo） |
-| **交付件** | 可行性评估报告 → 迁移后的鸿蒙工程 → 编译产物 (.hap) |
-| **交付件路径** | `${PROJECTS_ROOT}/<app-name>-ohos/`（见 `ENV.md`） |
-| **分流规则** | 无；**知识积累**：每次迁移后更新 KB（API 映射 → `api-mapping.md`、代码模式 → `code-patterns.md`、问题经验 → `problems/`） |
+### 4.2 Update the knowledge base
+
+- New API mappings → update [[qt-harmonyos-api-mapping]]
+- New code patterns → update [[qt-harmonyos-code-patterns]]
+- New platform limitations → update [[qt-harmonyos-platform-limits]]
+- Execution errors → create a `problems/` entry
+- Project experience → create an `episodic/` entry
 
 ---
 
-## 相关上下文
+## Phase five: batch migration (optional)
 
-- [[qt-harmonyos-porting-workflow]] — 8 步决策树详细版
-- [[qt-harmonyos-api-mapping]] — 12 大类 API 映射表
-- [[qt-harmonyos-code-patterns]] — Before/After 代码模式
-- [[qt-harmonyos-lifecycle]] — 生命周期处理
-- [[qt-harmonyos-window-model]] — 窗口模型
-- [[qt-harmonyos-project-structure]] — 工程结构
-- [[qt-harmonyos-build-run-workflow]] — 构建运行
-- [[qt-harmonyos-platform-limits]] — 平台限制
-- 工作流供应链 — 工作流供应链总览（上下游关系和对接人清单）
+> When you need to migrate a whole batch (N≥10) of Qt applications at once, add this orchestration layer on top of the single-application workflow (phases zero through four).
+> The lessons here are distilled from three real batches (207 applications, 117 successful builds — see the `qt-opensource-apps-batch-port-*` retrospectives in the `episodic/` domain).
 
-## 内容来源
+### 5.1 Before the batch: sample to pick a route
 
-| 来源类型 | 说明 |
-|----------|------|
-| 🛠️ 工作经验 | Workflow design, checklists, grep patterns, debugging table, knowledge accumulation process — all from practical Qt-for-HarmonyOS migration experience |
+Read the first 20 rows of the spreadsheet's `qt_modules` column and judge the app/lib ratio:
+- **Mostly GUI applications** (core+gui+widgets) → a single HAP route (playbook A only), as in rows 300-399.
+- **Mixed apps + libraries** → both routes A/B, as in rows 400-499 (17 HAPs + 53 libraries).
+- **Mostly libraries** → a single .a route (playbook B only).
+
+### 5.2 Triage → port as a pipeline, not a barrier
+
+`pipeline(items, triageStage, portStage)`: as soon as one item finishes triage (clone + scan, fast) it goes straight into porting (writing files + building, slow) rather than waiting for all triage to finish. The slow tail of triage overlaps with the fast head of porting, saving ~30% wall-clock over running the two phases serially. The port phase runs `parallel` (~16 concurrent) over the feasible subset.
+
+### 5.3 Pre-filter with the module matrix (blocking modules never enter the build batch)
+
+The triage agent reads the module matrix in [[qt-harmonyos-modules]]; anything that hits a blocking module (multimedia/dbus/webengine/charts/serialbus/core5compat/quickcontrols2/svgwidgets and so on) and can't simply drop it is marked `feasibility=blocked` and never enters the port phase. That saved the rows 300-399 batch 55 builds that were bound to fail. **The module matrix has been verified to produce zero false positives.**
+
+### 5.4 Clone failure fallbacks (a CGNAT network)
+
+This machine's home broadband is behind CGNAT (no public IP), so `git clone` from github.com hits frequent TCP resets. The fallback order:
+1. `git clone --depth 1 <url>` fails → retry once without `--depth`.
+2. Still failing → the `https://codeload.github.com/<owner>/<repo>/zip/refs/heads/<default-branch>` tarball (unzip and go, no .git).
+3. Triage only (no local source needed) → the GitHub REST API `api.github.com/repos/<owner>/<repo>/contents/<path>` to read the build file list + module declarations.
+
+### 5.5 During a safety classifier outage
+
+When the glm-5.2 safety classifier is intermittently unavailable, the main loop's Bash/Write/Agent calls are blocked, but the Workflow tool's internal spawns don't go through the main loop's classifier. **Carry every batch spawn through the Workflow tool** (clone-retry, triage and port all launched via Workflow) to route around the outage.
+
+### 5.6 Agent prompt conventions
+
+- **No shared TaskList subtasks**: agents track progress in their own context and must not call `TaskCreate` to make per-application subtasks (it pollutes the main task list — two batches were polluted with 60+ entries).
+- **Assess the code, not the build files**: triage must grep for Qt6-only APIs per the phase zero pre-flight table, not just read `.pro`/`QT +=` (the canonic/B23Downloader failures).
+- **At most 3 build attempts per project**: read the error tail → fix the most likely cause → rebuild. If it doesn't pass in 3 attempts, mark it failed with the error attached; don't force it into a success.
+
+### 5.7 Batch deliverables
+
+- `${PROJECTS_ROOT}/<batch>/_BATCH_REPORT.md` — the full result table (row × status × artifact × error).
+- `${PROJECTS_ROOT}/<batch>/_results/<row>.json` — the migration + build report for each project.
+- `${PROJECTS_ROOT}/<batch>/_assessments/<row>.json` — the triage assessment for each project.
+- `${PROJECTS_ROOT}/<batch>/_RUNBOOK.md` / `_playbook.md` — the migration recipe for the batch (which every port agent follows).
+
+---
+
+## Checklist
+
+- [ ] **Phase zero pre-flight done** (Qt version from the code not the declaration, Qt5/Qt6 SDK choice, module availability, project type → playbook A/B, platform coupling, foreach, third-party dependencies)
+- [ ] Feasibility assessment done (module dependencies, platform APIs, UI complexity)
+- [ ] Project directory created under `${PROJECTS_ROOT}/<app-name>-ohos/`
+- [ ] The glue code template has been copied from the bundled source path (`<QT_SRC>/qtbase/src/harmonyos/templates`) into the project directory
+- [ ] The application display name has been changed (`app_name` + `QAbility_label` set to the application name)
+- [ ] All 8 steps of the decision tree worked through
+- [ ] The build passes
+- [ ] **If using Qt6**: DT_NEEDED rewritten to bare names (`patch_needed.py`) + `main` verified as `GLOBAL DEFAULT` (§1.6)
+- [ ] Deployed and verified at runtime
+- [ ] The migration experience has been recorded in the knowledge base
+
+---
+
+## Supply chain
+
+> For details see the "application porting" section of the workflow supply chain
+
+| Aspect | Details |
+|--------|---------|
+| **Upstream sources** | ① HarmonyOS migration requests from commercial Qt customers ② internal marketing demo requests ③ self-driven (assessing the feasibility of a new scenario) |
+| **Upstream inputs** | The original Qt project/source, the target feature requirements, the Qt version information |
+| **Downstream recipients** | **Commercial Qt customers** / internal (marketing demos) |
+| **Deliverables** | A feasibility assessment report → the migrated HarmonyOS project → the build artifact (.hap) |
+| **Deliverables path** | `${PROJECTS_ROOT}/<app-name>-ohos/` (see `ENV.md`) |
+| **Routing rules** | None; **knowledge capture**: update the KB after every migration (API mappings → `api-mapping.md`, code patterns → `code-patterns.md`, problem experience → `problems/`) |
+
+---
+
+## Related context
+
+- [[qt-harmonyos-porting-workflow]] — The 8-step decision tree in detail
+- [[qt-harmonyos-api-mapping]] — The 12-category API mapping table
+- [[qt-harmonyos-code-patterns]] — Before/after code patterns
+- [[qt-harmonyos-lifecycle]] — Lifecycle handling
+- [[qt-harmonyos-window-model]] — The window model
+- [[qt-harmonyos-project-structure]] — Project structure
+- [[qt-harmonyos-build-run-workflow]] — Building and running
+- [[qt-harmonyos-platform-limits]] — Platform limitations
+- The workflow supply chain — An overview of the workflow supply chain (upstream/downstream relationships and the contact list)
+
+## Content sources
+
+| Source type | Notes |
+|-------------|-------|
+| 🛠️ Working experience | Workflow design, checklists, grep patterns, debugging table, knowledge accumulation process — all from practical Qt-for-HarmonyOS migration experience |
 | 📖 Wiki | Qt Wiki pages (wiki.qt.io/Qt_for_HarmonyOS/*): module support lists, CMake cross-compile guide, user development guide, API compatibility notes — accessed indirectly through referenced semantic pages |
-| 🔍 框架源码 | Qt framework internals: QOhosPlatformIntegrationPlugin CMake target, QPA plugin architecture, closeEvent root cause mechanism, QOhosAbilityContext signal names |
-| 📦 导出接口 | QtOhosExtras public API surface: startNoUiChildProcess, startAbility, setColorThemeMode, ShareKit::shareDataWithShareKit, continueRequestReceived, tagWindowOrWidgetAsSubWindowOf |
-| 📄 华为官方文档 | HarmonyOS platform concepts: Ability/Want model, sandbox constraints, ShareKit framework, application continuation — underlying platform context |
+| 🔍 Framework source | Qt framework internals: QOhosPlatformIntegrationPlugin CMake target, QPA plugin architecture, closeEvent root cause mechanism, QOhosAbilityContext signal names |
+| 📦 Exported interfaces | QtOhosExtras public API surface: startNoUiChildProcess, startAbility, setColorThemeMode, ShareKit::shareDataWithShareKit, continueRequestReceived, tagWindowOrWidgetAsSubWindowOf |
+| 📄 Huawei official documentation | HarmonyOS platform concepts: Ability/Want model, sandbox constraints, ShareKit framework, application continuation — underlying platform context |
 
-### Qt 框架版本（校验基准）
+### Qt framework versions (the verification baseline)
 
-| 版本 | 分支 | Commit | 日期 |
-|------|------|--------|------|
+| Version | Branch | Commit | Date |
+|---------|--------|--------|------|
 | Qt 5.15.16 | tqtc/harmonyos-5.15.16 | 962aa625 | 2026-04-19 |
 | Qt 5.12.12 | tqtc/harmonyos-5.12.12 | 613336de | 2026-05-25 |
 | QtOhosExtras 5.15 | tqtc/harmonyos-5.15.16 | b60937d5 | 2026-04-19 |
@@ -483,9 +483,9 @@ glm-5.2 安全分类器间歇不可用时，主循环的 Bash/Write/Agent 调用
 
 ---
 
-## 参考来源
+## References
 
-- [Qt for HarmonyOS (Qt Wiki)](https://wiki.qt.io/Qt_for_HarmonyOS) — 整体架构和模块状态
-- [API Compatibility Notes (Qt Wiki)](https://wiki.qt.io/Qt_for_HarmonyOS/api_inconsistencies_on_harmonyos) — API 差异详情
-- [User Development Guide (Qt Wiki)](https://wiki.qt.io/Qt_for_HarmonyOS/user_development_guide) — 开发指南系列
-- [Building Qt for HarmonyOS (Qt Wiki)](https://wiki.qt.io/Building_Qt_for_HarmonyOS) — 构建配置
+- [Qt for HarmonyOS (Qt Wiki)](https://wiki.qt.io/Qt_for_HarmonyOS) — The overall architecture and module status
+- [API Compatibility Notes (Qt Wiki)](https://wiki.qt.io/Qt_for_HarmonyOS/api_inconsistencies_on_harmonyos) — API differences in detail
+- [User Development Guide (Qt Wiki)](https://wiki.qt.io/Qt_for_HarmonyOS/user_development_guide) — The development guide series
+- [Building Qt for HarmonyOS (Qt Wiki)](https://wiki.qt.io/Building_Qt_for_HarmonyOS) — Build configuration

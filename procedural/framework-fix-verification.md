@@ -9,216 +9,216 @@ status: active
 audience: public
 refs: [procedural-framework-issue-analysis,semantic-qt-harmonyos-build,semantic-qt-harmonyos-build-run-workflow,semantic-qt-harmonyos-modules]
 summary: >
-  框架问题修复验证工作流：获取验证清单→编写验证工程→人工手动验证→记录验证结果。
-  用于系统性地验证Qt框架bug修复的有效性。
+  The framework fix verification workflow: obtain the verification checklist → write the verification project → verify manually → record the results.
+  Used to systematically verify that Qt framework bug fixes work.
 ---
 
-# 框架问题修复验证
+# Framework fix verification
 
-> 当 Qt for HarmonyOS 的 bug 被修复后，按此流程系统性验证修复是否生效且未引入新问题。
-
----
-
-## 触发条件
-
-- 收到问题修复验证清单（通常来自团队或华为）
-- 需要验证某个 Qt 模块/功能的修复
-- 版本发布前的回归验证
+> Once a Qt for HarmonyOS bug has been fixed, follow this process to systematically verify that the fix works and hasn't introduced new problems.
 
 ---
 
-## 阶段一：获取验证清单
+## When to use this
 
-> **📋 TODO 同步点**：更新 `<LOCAL_TODO>` 中该任务的「进展」列 → `阶段一完成：验证清单已获取`
-
-### 1.1 确认验证范围
-
-| 确认项 | 说明 |
-|--------|------|
-| 修复的问题列表 | 每个问题的 QTBUG 编号 / 内部编号 |
-| 涉及的 Qt 模块 | QtCore / QtGui / QtWidgets / QtQuick 等 |
-| 目标版本 | Qt 5.12 / Qt 5.15 |
-| 目标设备 | 模拟器 / 真机（型号） |
-| 优先级 | 哪些必须先验证 |
-
-### 1.2 准备验证环境
-
-1. 确认已拉取最新修复代码
-2. 重新编译 Qt for HarmonyOS（参考 [[qt-harmonyos-build]]）
-3. 确认目标设备/模拟器可用
-4. 确认 hdc 连接正常：`hdc list targets`
+- You received a fix verification checklist (usually from the team or from Huawei)
+- You need to verify a fix in some Qt module/feature
+- Regression verification before a release
 
 ---
 
-## 阶段二：编写验证工程
+## Phase 1: obtain the verification checklist
 
-> **📋 TODO 同步点**：更新 `<LOCAL_TODO>` 中该任务的「进展」列 → `阶段二完成：验证工程已编写`
+> **📋 TODO sync point**: update the "Progress" column for this task in `<LOCAL_TODO>` → `Phase 1 done: verification checklist obtained`
 
-### 2.1 按清单逐项准备
+### 1.1 Confirm the scope
 
-**原则**：每个问题对应一个独立的验证用例，尽量复用现有 Qt Examples。
+| Item to confirm | Description |
+|-----------------|-------------|
+| List of fixed problems | The QTBUG number / internal number for each |
+| Qt modules involved | QtCore / QtGui / QtWidgets / QtQuick, etc. |
+| Target version | Qt 5.12 / Qt 5.15 |
+| Target device | Emulator / real device (model) |
+| Priority | Which ones must be verified first |
 
-**工程结构建议**：
+### 1.2 Prepare the verification environment
+
+1. Confirm you've pulled the latest fixed code
+2. Rebuild Qt for HarmonyOS (see [[qt-harmonyos-build]])
+3. Confirm the target device/emulator is available
+4. Confirm hdc connects: `hdc list targets`
+
+---
+
+## Phase 2: write the verification project
+
+> **📋 TODO sync point**: update the "Progress" column for this task in `<LOCAL_TODO>` → `Phase 2 done: verification project written`
+
+### 2.1 Prepare item by item from the checklist
+
+**Principle**: one independent verification case per problem, reusing existing Qt examples where possible.
+
+**Suggested project structure**:
 ```
 verification/
-├── CMakeLists.txt          # 顶层
-├── issue-001-window/       # 问题1验证
+├── CMakeLists.txt          # top level
+├── issue-001-window/       # verification for problem 1
 │   ├── CMakeLists.txt
 │   ├── main.cpp
-│   └── README.md           # 验证步骤和预期结果
-├── issue-002-input/        # 问题2验证
+│   └── README.md           # verification steps and expected results
+├── issue-002-input/        # verification for problem 2
 │   └── ...
 └── ...
 ```
 
-### 2.2 验证用例编写规范
+### 2.2 Conventions for writing verification cases
 
-**每个验证用例包含**：
+**Each verification case includes**:
 
-1. **问题复现代码**：能触发原始问题的最小代码
-2. **验证步骤文档**（README.md）：
-   - 编译命令
-   - 运行方式
-   - 操作步骤（1, 2, 3...）
-   - 预期结果（修复后应该看到什么）
-   - 失败表现（如果修复无效会看到什么）
+1. **Reproduction code**: the minimal code that triggers the original problem
+2. **Verification steps document** (README.md):
+   - Build commands
+   - How to run it
+   - Steps to perform (1, 2, 3, ...)
+   - Expected result (what you should see once fixed)
+   - Failure signature (what you'd see if the fix doesn't work)
 
-3. **自动化检查**（如适用）：
-   - 在代码中加 assert 检查关键状态
-   - 输出日志用于事后确认
+3. **Automated checks** (where applicable):
+   - Add asserts in the code to check key state
+   - Emit logs for post-hoc confirmation
 
-**验证用例模板**：
+**Verification case template**:
 ```markdown
-# 验证：[问题标题]
+# Verification: [problem title]
 
-## 问题编号
-QTBUG-XXXXX / 内部编号
+## Problem number
+QTBUG-XXXXX / internal number
 
-## 编译运行
+## Build and run
 \```bash
-# 编译步骤
+# build steps
 \```
 
-## 验证步骤
-1. 启动应用
-2. 执行操作 X
-3. 观察 Y
+## Verification steps
+1. Launch the application
+2. Perform action X
+3. Observe Y
 
-## 预期结果
-- [ ] 窗口正常显示
-- [ ] 点击按钮有响应
-- [ ] 无崩溃/异常
+## Expected result
+- [ ] The window displays normally
+- [ ] Clicking the button responds
+- [ ] No crashes/exceptions
 
-## 失败表现
-- 窗口黑屏
-- 点击无响应
-- 崩溃日志：...
+## Failure signature
+- Black window
+- Clicks do nothing
+- Crash log: ...
 ```
 
 ---
 
-## 阶段三：人工手动验证
+## Phase 3: manual verification
 
-> **📋 TODO 同步点**：更新 `<LOCAL_TODO>` 中该任务的「进展」列 → `阶段三完成：手动验证已执行`
+> **📋 TODO sync point**: update the "Progress" column for this task in `<LOCAL_TODO>` → `Phase 3 done: manual verification performed`
 
-### 3.1 执行验证
+### 3.1 Run the verification
 
-**逐项验证**：
+**Item by item**:
 
-1. 部署到目标设备：
+1. Deploy to the target device:
    ```bash
    hdc file send <hap-file> /data/local/tmp/
    hdc shell bm install -p /data/local/tmp/<hap-file>
    ```
-   或通过 DevEco Studio 一键运行。
+   Or run it straight from DevEco Studio.
 
-2. 按验证步骤操作
+2. Follow the verification steps
 
-3. 记录结果：
-   - ✅ 通过：行为符合预期
-   - ❌ 失败：问题仍然存在
-   - ⚠️ 部分通过：部分场景修复，部分未修复
-   - 🆕 新问题：修复引入了新的异常
+3. Record the result:
+   - ✅ Pass: behavior matches expectations
+   - ❌ Fail: the problem is still present
+   - ⚠️ Partial pass: fixed in some scenarios but not others
+   - 🆕 New problem: the fix introduced a new anomaly
 
-### 3.2 结果记录
+### 3.2 Recording results
 
-**验证报告模板**：
+**Verification report template**:
 
-| # | 问题 | 验证步骤 | 结果 | 备注 |
-|---|------|----------|------|------|
-| 1 | 窗口黑屏 | 启动应用 | ✅ 通过 | — |
-| 2 | 输入无响应 | 点击按钮 | ❌ 失败 | 仍然无响应 |
-| 3 | 切换主题崩溃 | 点击切换 | ⚠️ 部分 | 暗色OK，亮色仍崩 |
-
----
-
-## 阶段四：结果汇报
-
-> **📋 TODO 同步点**：更新 `<LOCAL_TODO>` — 将此任务从「📌 进行中」移至「✅ 已完成」，填写完成日期和验证结果摘要
-
-### 4.1 汇总验证结果
-
-- 通过：X / 总数
-- 失败列表及失败原因分析
-- 新发现的问题
-- 建议（是否需要打回修复）
-
-### 4.2 归档
-
-- 验证工程代码保留（备后续回归）
-- 验证报告存档
-- 更新问题跟踪系统
+| # | Problem | Verification steps | Result | Notes |
+|---|---------|--------------------|--------|-------|
+| 1 | Black window | Launch the application | ✅ Pass | — |
+| 2 | Input doesn't respond | Click the button | ❌ Fail | Still unresponsive |
+| 3 | Crash on theme switch | Click to switch | ⚠️ Partial | Dark is OK, light still crashes |
 
 ---
 
-## 检查清单
+## Phase 4: report the results
 
-- [ ] 验证清单已获取，范围已确认
-- [ ] 验证环境已准备（编译、设备、hdc）
-- [ ] 每个问题都有对应的验证用例
-- [ ] 所有用例已逐项手动验证
-- [ ] 结果已记录（✅/❌/⚠️/🆕）
-- [ ] 验证报告已汇总
+> **📋 TODO sync point**: update `<LOCAL_TODO>` — move this task from "📌 In progress" to "✅ Completed", filling in the completion date and a summary of the verification results
 
----
+### 4.1 Summarize the verification results
 
-## 供应链
+- Passed: X / total
+- The list of failures and an analysis of why they failed
+- Newly discovered problems
+- Recommendation (does it need to go back for another fix?)
 
-| 维度 | 详情 |
-|------|------|
-| **上游来源** | ① The Qt Company 修复后的验证通知 ② 华为系统修复后的验证需求 ③ 自测修复后的回归验证 |
-| **上游输入** | 验证清单（QTBUG 编号 + 涉及模块 + 目标版本）、修复后的 Qt 源码/SDK |
-| **下游接收方** | **The Qt Company (Tqtc)** / 华为鸿蒙系统团队 / 内部问题跟踪 |
-| **交付件** | 验证报告（通过数/失败列表/新发现问题）、验证工程代码（备后续回归） |
-| **交付件路径** | `${DELIVERABLES_ROOT}/verify`（见 `ENV.md`） |
-| **分流规则** | 无（验证结果直接反馈给上游修复方） |
+### 4.2 Archive
+
+- Keep the verification project code (for future regressions)
+- Archive the verification report
+- Update the issue tracking system
 
 ---
 
-## 内容来源
+## Checklist
 
-| 来源类型 | 说明 |
-|----------|------|
-| 📄 华为官方文档 | HarmonyOS hdc CLI 命令（hdc file send、hdc shell bm install、hdc list targets）及 DevEco Studio 部署方式 |
-| 🛠️ 工作经验 | 核心工作流设计：触发条件、验证工程结构、用例模板、报告格式、检查清单及各阶段流程，均源自个人/团队工作实践 |
+- [ ] The verification checklist is obtained and the scope confirmed
+- [ ] The verification environment is ready (build, device, hdc)
+- [ ] Every problem has a corresponding verification case
+- [ ] Every case has been manually verified
+- [ ] Results are recorded (✅/❌/⚠️/🆕)
+- [ ] The verification report is summarized
 
-### Qt 框架版本（校验基准）
+---
 
-| 版本 | 分支 | Commit | 日期 |
-|------|------|--------|------|
+## Supply chain
+
+| Dimension | Details |
+|-----------|---------|
+| **Upstream source** | ① A verification notice from The Qt Company after a fix ② A verification request from Huawei after a system fix ③ Regression verification after an in-house fix |
+| **Upstream input** | The verification checklist (QTBUG numbers + modules involved + target version), and the fixed Qt source/SDK |
+| **Downstream recipients** | **The Qt Company (Tqtc)** / the Huawei HarmonyOS system team / internal issue tracking |
+| **Deliverables** | The verification report (pass count / failure list / newly discovered problems), and the verification project code (for future regressions) |
+| **Deliverable path** | `${DELIVERABLES_ROOT}/verify` (see `ENV.md`) |
+| **Routing rules** | None (results go straight back to the upstream party that made the fix) |
+
+---
+
+## Content sources
+
+| Source type | Notes |
+|-------------|-------|
+| 📄 Huawei official documentation | HarmonyOS hdc CLI commands (hdc file send, hdc shell bm install, hdc list targets) and DevEco Studio deployment |
+| 🛠️ Hands-on experience | The core workflow design — trigger conditions, verification project structure, case templates, report format, checklist, and the per-phase process — all come from personal/team practice |
+
+### Qt framework versions (validation baseline)
+
+| Version | Branch | Commit | Date |
+|---------|--------|--------|------|
 | Qt 5.15.16 | tqtc/harmonyos-5.15.16 | 962aa625 | 2026-04-19 |
 | Qt 5.12.12 | tqtc/harmonyos-5.12.12 | 613336de | 2026-05-25 |
 
 ---
 
-## 相关上下文
+## Related context
 
-- [[framework-issue-analysis]] — 问题定位流程（验证失败时需回溯）
-- [[qt-harmonyos-build]] — 编译构建
-- [[qt-harmonyos-modules]] — 模块状态（了解哪些模块有改动）
-- [[qt-harmonyos-build-run-workflow]] — 构建运行全流程
+- [[framework-issue-analysis]] — The problem localization process (go back to it when verification fails)
+- [[qt-harmonyos-build]] — Building
+- [[qt-harmonyos-modules]] — Module status (to know which modules changed)
+- [[qt-harmonyos-build-run-workflow]] — The full build-and-run process
 
-## 参考来源
+## References
 
-- 基于个人 Qt 框架验证工作经验开发的工作流，无外部文档来源
-- 验证清单方法论参考 Qt 内部 QA 流程
+- A workflow developed from personal Qt framework verification experience; no external documentation source
+- The verification checklist methodology draws on Qt's internal QA process

@@ -1,11 +1,11 @@
 ---
 domain: preference
 description: >
-  偏好知识域索引。
+  Preference knowledge domain index.
 ---
 
 # preference
 
-## 本域知识页
+## Knowledge pages in this domain
 
-_（本域无活跃页）_
+_(No active pages in this domain)_

@@ -1,11 +1,11 @@
 ---
 id: system-information-access-limits
-title: 应用获取系统信息的访问边界
+title: Access boundaries for application access to system information
 status: active
 confidence: 0.7
 sources:
   - type: experience
-    name: "系统监控 app OHOS 真机验证"
+    name: "System monitor app, OHOS on-device verification"
     date: 2026-08-03
   - type: code
     name: "sysinfo 0.35.2 Linux backend"
@@ -17,27 +17,26 @@ review_by: null
 superseded_by: null
 tags: [system-info, procfs, sandbox, cpu, disk, process]
 refs: [procfs-system-information-unavailable, application-sandbox-paths]
-summary: "普通应用不能假定 Linux procfs 全量可读；按指标使用平台 API，并区分不支持、权限拒绝与真实零值。"
+summary: "An ordinary application cannot assume all of Linux procfs is readable; use platform APIs per metric, and distinguish unsupported, permission-denied, and genuine zero values."
 audience: public
 ---
 
-# 应用获取系统信息的访问边界
+# Access boundaries for application access to system information
 
-OHOS target 或兼容层可能让三方库选择 Linux backend，但不代表普通应用拥有桌面 Linux 的 procfs、mount table 和设备统计访问范围。
+An OHOS target or compatibility layer may cause a third-party library to select the Linux backend, but that does not mean an ordinary application has desktop Linux's level of access to procfs, the mount table, and device statistics.
 
-## 已验证边界
+## Verified boundaries
 
-在特定真机/普通应用验证中，`/proc/meminfo` 与部分 `/proc/<pid>` 数据可读，而 `/proc/stat`、`/proc/mounts`、`/proc/diskstats` 等受限，导致 CPU、disk/storage 指标为空或零。该结果受设备、系统版本、应用类型与权限影响，不应推广为所有产品的永久静态表。
+In verification on a specific device with an ordinary application, `/proc/meminfo` and some `/proc/<pid>` data were readable, while `/proc/stat`, `/proc/mounts`, and `/proc/diskstats` were restricted — leaving CPU and disk/storage metrics empty or zero. This result depends on the device, system version, application type, and permissions, and should not be generalized into a permanent static table covering every product.
 
-## 设计规则
+## Design rules
 
-- 每个指标记录真实数据源，不以“库支持 Linux”代替平台支持证明；
-- 优先使用目标系统公开的 system ability/API；
-- 将 unavailable/permission-denied/not-implemented 与数值 0 分开建模；
-- 对进程、CPU、内存、磁盘、网络逐项验证，不因一个维度成功推断全部成功；
-- system/basic/特权应用的能力不自动适用于普通第三方应用。
+- Record the real data source for each metric; "the library supports Linux" is not proof of platform support.
+- Prefer the system abilities/APIs that the target system exposes publicly.
+- Model unavailable / permission-denied / not-implemented separately from a numeric 0.
+- Verify processes, CPU, memory, disk, and network individually — don't infer that everything works because one dimension did.
+- Capabilities available to system/basic/privileged applications do not automatically apply to ordinary third-party applications.
 
-## Adapter 边界
+## Adapter boundary
 
-Rust sysinfo、Qt system API、JVM MXBean 或 .NET diagnostics 如何 fallback/展示留在框架仓。common 维护“数据源和权限必须逐指标验证”的平台 seam。
-
+How Rust sysinfo, the Qt system APIs, JVM MXBeans, or .NET diagnostics fall back and present results stays in the framework repository. This common knowledge base maintains the platform seam: data sources and permissions must be verified metric by metric.

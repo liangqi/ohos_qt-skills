@@ -10,53 +10,53 @@ severity: high
 audience: public
 refs: [episodic-ohostemplate-blockedbymodal-patch, semantic-qt-harmonyos-window-model]
 summary: >
-  无 parent 的 QDialog() 在 OHOS 上被 blockedByModalWindow=1 拦截 close() 和滚轮事件。
-  根因：OHOS QPA syntheticParent fallback 分类窗口为 SubWindow，但不调 setTransientParent() 反写 Qt 层，
-  导致 isWindowBlocked() 的 isAncestorOf() 检查失败。修复：QPA showImmediate() 在 fallback 后反写 transientParent。
+  A parentless QDialog() on OHOS has its close() and wheel events blocked by blockedByModalWindow=1.
+  Root cause: the OHOS QPA's syntheticParent fallback classifies the window as a SubWindow but never calls setTransientParent() to write that back to the Qt layer,
+  so the isAncestorOf() check in isWindowBlocked() fails. Fix: have the QPA's showImmediate() write the transientParent back after the fallback.
 leader_summary: >
-  定位并修复 Qt 源码层 blockedByModalWindow 根因，patch 设备验证通过，影响所有无 parent QDialog 场景
-impact: [框架支撑, 商业答复, 运行时排障]
-deliverables: [problem记录, patch, 源码分析报告]
-evidence: [ohos-qt-patch-delivery, hilog 验证日志]
+  Identified and fixed the blockedByModalWindow root cause in the Qt source; the patch passed on-device verification and affects every parentless QDialog scenario
+impact: [Framework support, Commercial response, Runtime troubleshooting]
+deliverables: [problem record, patch, source analysis report]
+evidence: [ohos-qt-patch-delivery, hilog verification logs]
 
 error_message: >
-  processCloseEvent: blockedByModal=1 -> close 不执行
-  QDialog close() 后窗口仍可见
-  滚轮事件被 processWheelEvent 拦截（同一 blocked 标记）
+  processCloseEvent: blockedByModal=1 -> close is not executed
+  The window is still visible after QDialog close()
+  Wheel events are blocked by processWheelEvent (the same blocked flag)
 error_code: ""
-keywords: [blockedByModalWindow, QDialog, transientParent, syntheticParent, 关不掉, 滚不动, 三级窗口, isWindowBlocked]
-symptoms: "QDialog 关不掉 + 不能滚动（同时出现），尤其在 matplotlib 三级窗口场景"
+keywords: [blockedByModalWindow, QDialog, transientParent, syntheticParent, won't close, won't scroll, three-level window, isWindowBlocked]
+symptoms: "A QDialog won't close and won't scroll (both at once), especially in the matplotlib three-level window scenario"
 
 environment: "OHOS + Qt 5.15.16 + ohostemplateforqtapplication"
 ---
 
-# 无 parent QDialog 被 blockedByModalWindow 拦截
+# A parentless QDialog is blocked by blockedByModalWindow
 
-## 错误信息
+## Error message
 
 ```
-processCloseEvent: blockedByModal=1  (patch 前)
--> close() 不执行，窗口无法关闭
--> processWheelEvent if(blocked) return，滚轮不响应
+processCloseEvent: blockedByModal=1  (before the patch)
+-> close() isn't executed, so the window can't be closed
+-> processWheelEvent does if(blocked) return, so the wheel doesn't respond
 ```
 
-## 场景
+## Scenario
 
-matplotlib NavigationToolbar -> Configure subplots -> SubplotToolQt -> Export values 创建的三级 QDialog。
-`_export_values()` 中 `QDialog()` 无 parent。所有"无 parent 的 QDialog + 有模态兄弟窗口"的场景都可能触发。
+The third-level QDialog created by matplotlib's NavigationToolbar -> Configure subplots -> SubplotToolQt -> Export values.
+In `_export_values()`, the `QDialog()` has no parent. Any scenario with "a parentless QDialog plus a modal sibling window" can trigger this.
 
-## 原因
+## Cause
 
-OHOS QPA `determineViewTypeAndLogicalParent()` 对无 parent 的 Dialog 用 syntheticParent fallback 分类为 SubWindow，
-**但从不调 `QWindow::setTransientParent()` 反写 Qt 层**。Qt 层 `isWindowBlocked()` 通过 `isAncestorOf()` 检查 parent 链时，
-发现 transientParent 为 null，判定为"被模态兄弟阻塞" -> blockedByModalWindow=1。
+The OHOS QPA's `determineViewTypeAndLogicalParent()` classifies a parentless Dialog as a SubWindow via the syntheticParent fallback,
+**but never calls `QWindow::setTransientParent()` to write that back to the Qt layer**. When the Qt layer's `isWindowBlocked()` walks the parent chain via `isAncestorOf()`,
+it finds transientParent is null and decides the window is "blocked by a modal sibling" -> blockedByModalWindow=1.
 
-与 `ghost-window-dialog-close` 属同一根因族（syntheticParent 不反写 transientParent）。
+This shares a root-cause family with `ghost-window-dialog-close` (syntheticParent not written back to transientParent).
 
-## 解决方案
+## Solution
 
-Qt 源码 patch：`qohosview.cpp` 的 `showImmediate()` 在 syntheticParent fallback 后反写 `setTransientParent()`。
-详见 `episodic-ohostemplate-blockedbymodal-patch.md`。
+A Qt source patch: have `showImmediate()` in `qohosview.cpp` write back `setTransientParent()` after the syntheticParent fallback.
+See `episodic-ohostemplate-blockedbymodal-patch.md` for details.
 
 ```cpp
 if (currentViewTypeInfo.viewType == SubWindow
@@ -68,20 +68,20 @@ if (currentViewTypeInfo.viewType == SubWindow
 }
 ```
 
-应用层临时 workaround：`QDialog()` 改为 `QDialog(self)` + `WA_DeleteOnClose`。
+Temporary application-level workaround: change `QDialog()` to `QDialog(self)` + `WA_DeleteOnClose`.
 
-## 注意事项
+## Notes
 
-- 此问题在 Win32 上也存在（逻辑链一致），但 Win32 窗口管理器的 `GetActiveWindow()` owner 机制在系统层面兜底
-- patch 仅对 syntheticParent fallback 场景生效，有 parent 的 QDialog 不受影响
-- 同一 blocked 标记同时影响 close 和 scroll，修复后两个问题同时解决
+- The same problem exists on Win32 (the logic chain is identical), but the Win32 window manager's `GetActiveWindow()` owner mechanism covers for it at the system level
+- The patch only takes effect in the syntheticParent fallback scenario; a QDialog with a parent is unaffected
+- The same blocked flag affects both close and scroll, so fixing it resolves both problems at once
 
-## 成果展示
+## Results
 
-| 字段 | 内容 |
-|------|------|
-| 领导摘要 | 定位 Qt 源码层 blockedByModalWindow 根因，patch 设备验证通过 |
-| 影响面 | 所有无 parent QDialog 场景（matplotlib、多窗口应用等） |
-| 交付物 | problem 记录、patch、源码分析报告 |
-| 证据 | hilog 日志验证链 |
-| 可复用方式 | 遇到 QDialog 关不掉+滚不动时直接复用此 patch |
+| Field | Content |
+|-------|---------|
+| Leadership summary | Identified the blockedByModalWindow root cause in the Qt source; the patch passed on-device verification |
+| Scope of impact | Every parentless QDialog scenario (matplotlib, multi-window applications, and so on) |
+| Deliverables | problem record, patch, source analysis report |
+| Evidence | The hilog verification chain |
+| How to reuse | When a QDialog won't close and won't scroll, apply this patch directly |

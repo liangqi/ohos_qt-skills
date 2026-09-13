@@ -7,27 +7,27 @@ created: 2026-06-03
 updated: 2026-06-03
 status: solved
 audience: public
-summary: "应用启动即崩溃，报 dlopen libqohos.so not found / QPA plugin qohos 加载失败"
+summary: "The application crashes immediately at startup with dlopen libqohos.so not found / failure to load the qohos QPA plugin"
 severity: critical
 
-# ====== 检索关键字（Agent 快速匹配用）======
+# ====== Search keywords (for fast agent matching) ======
 error_message: >
   dlopen failed: library "libqohos.so" not found
   Cannot load Qt platform plugin "qohos"
   This application failed to start because it could not find or load the Qt platform plugin "qohos"
 error_code: ""
 keywords: [libqohos, QPA, platform plugin, dlopen, QOhosPlatformIntegrationPlugin]
-symptoms: "应用启动后立即崩溃，日志报 dlopen failed 或 platform plugin not found"
+symptoms: "The application crashes immediately after launch, with logs reporting dlopen failed or platform plugin not found"
 
-# ====== 问题详情 ======
-environment: "Qt 5.12/5.15 for HarmonyOS, 真机或模拟器"
+# ====== Problem details ======
+environment: "Qt 5.12/5.15 for HarmonyOS, real device or emulator"
 refs: [semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-build, semantic-qt-harmonyos-golden-rules]
 related_problems: [problem-cmake-findpackage-ohosextras-fail, problem-runtime-dlopen-writable-path]
 ---
 
-# QPA 平台插件未部署导致启动崩溃
+# Startup crash because the QPA platform plugin wasn't deployed
 
-## 错误信息
+## Error message
 
 ```
 E Qt      : dlopen failed: library "libqohos.so" not found
@@ -35,69 +35,69 @@ F Qt      : Cannot load Qt platform plugin "qohos"
 F Qt      : This application failed to start because it could not find or load the Qt platform plugin "qohos"
 ```
 
-或通过 hdc 日志查看：
+Or, viewed through the hdc logs:
 
 ```
 $ hdc shell hilog | grep -i "qohos\|platform"
 E Qt: dlopen failed: library "libqohos.so" not found
 ```
 
-## 场景
+## Scenario
 
-应用编译成功，HAP 安装到设备/模拟器后启动，立即崩溃（黑屏后闪退）。日志显示找不到 `libqohos.so`。
+The application builds successfully, but after the HAP is installed on a device/emulator it crashes immediately on launch (a black screen, then it disappears). The logs show that `libqohos.so` can't be found.
 
-## 原因
+## Cause
 
-`libqohos.so` 是 Qt for HarmonyOS 的 QPA（Qt Platform Abstraction）平台插件，负责将 Qt 窗口系统桥接到鸿蒙的 ArkUI 框架。如果 CMakeLists.txt 中没有链接 `QOhosPlatformIntegrationPlugin`，构建系统不会将 `libqohos.so` 复制到应用的 `entry/libs/arm64-v8a/` 目录。
+`libqohos.so` is Qt for HarmonyOS's QPA (Qt Platform Abstraction) platform plugin, responsible for bridging the Qt window system to HarmonyOS's ArkUI framework. If CMakeLists.txt doesn't link `QOhosPlatformIntegrationPlugin`, the build system won't copy `libqohos.so` into the application's `entry/libs/arm64-v8a/` directory.
 
-运行时 Qt 核心库尝试 `dlopen("libqohos.so")` 加载平台插件，在应用 lib 目录中找不到，导致崩溃。
+At runtime, the Qt core libraries try to `dlopen("libqohos.so")` to load the platform plugin, can't find it in the application's lib directory, and crash.
 
-## 解决方案
+## Solution
 
-### 1. CMakeLists.txt 中添加 QPA 插件链接
+### 1. Link the QPA plugin in CMakeLists.txt
 
 ```cmake
 target_link_libraries(QtHarmonyApp PRIVATE
     Qt${QT_VERSION_MAJOR}::Core
     Qt${QT_VERSION_MAJOR}::Widgets
-    # ★ 必须链接 QPA 平台插件
+    # ★ You must link the QPA platform plugin
     Qt${QT_VERSION_MAJOR}::QOhosPlatformIntegrationPlugin
 )
 ```
 
-### 2. 验证 .so 已部署
+### 2. Verify the .so was deployed
 
 ```bash
 ls entry/libs/arm64-v8a/libqohos.so
-# 应该输出文件路径
+# should print the file path
 ```
 
-### 3. 同时检查样式插件
+### 3. Check the style plugin too
 
-`libqohosstyle.so` 需要手动复制到子目录：
+`libqohosstyle.so` must be copied into a subdirectory manually:
 
 ```bash
 mkdir -p entry/libs/arm64-v8a/styles/
 cp <Qt_SDK>/lib/styles/libqohosstyle.so entry/libs/arm64-v8a/styles/
 ```
 
-## 注意事项
+## Notes
 
-- 这是黄金法则 B2：**必须链接 QOhosPlatformIntegrationPlugin**
-- `libqohos.so` 的部署是**自动的**（通过 CMake target_link_libraries），但 `libqohosstyle.so` 需要**手动**复制到 `styles/` 子目录
-- 如果还看到 `dlopen failed: library "libQt5Core.so" not found`，说明 Qt 核心库也没有正确部署——检查 `find_package` 和 `target_link_libraries` 配置
-- `dlopen()` 只能从应用 lib 目录（只读）加载 .so，不能从可写路径加载（平台限制 P3）
+- This is golden rule B2: **you must link QOhosPlatformIntegrationPlugin**
+- Deploying `libqohos.so` is **automatic** (via CMake's target_link_libraries), but `libqohosstyle.so` must be copied **manually** into the `styles/` subdirectory
+- If you also see `dlopen failed: library "libQt5Core.so" not found`, the Qt core libraries weren't deployed correctly either — check your `find_package` and `target_link_libraries` configuration
+- `dlopen()` can only load a `.so` from the application's (read-only) lib directory, not from a writable path (platform limitation P3)
 
-## 相关
+## Related
 
-- [[qt-harmonyos-project-structure]] — §6 Qt 运行时库部署
-- [[qt-harmonyos-build]] — 构建配置
-- [[qt-harmonyos-golden-rules]] — 规则 B2/B7
-- [[qt-harmonyos-platform-limits]] — dlopen 限制
+- [[qt-harmonyos-project-structure]] — §6 Deploying the Qt runtime libraries
+- [[qt-harmonyos-build]] — Build configuration
+- [[qt-harmonyos-golden-rules]] — Rules B2/B7
+- [[qt-harmonyos-platform-limits]] — The dlopen limitation
 
-### 相关问题
+### Related problems
 
-- [build-fail-cmake-ohosextras](build-fail-cmake-ohosextras.md) — 上游原因：CMake 配置错误可能导致 QPA 插件未链接
-- [runtime-fail-dlopen-writable-path](runtime-fail-dlopen-writable-path.md) — 同类 dlopen 失败，但原因是可写路径而非缺失文件
+- [build-fail-cmake-ohosextras](build-fail-cmake-ohosextras.md) — an upstream cause: a CMake misconfiguration can leave the QPA plugin unlinked
+- [runtime-fail-dlopen-writable-path](runtime-fail-dlopen-writable-path.md) — the same kind of dlopen failure, but caused by a writable path rather than a missing file
 
-> 📋 返回 [错误速查表](_lookup.md)
+> 📋 Back to the [error quick-reference table](_lookup.md)

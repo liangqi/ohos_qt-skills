@@ -7,27 +7,27 @@ created: 2026-06-04
 updated: 2026-06-04
 status: solved
 audience: public
-summary: "hvigor ProcessLibs 阶段报 Duplicated files found（同 .so 在 obj/ 与 libs/ 重复）"
+summary: "The hvigor ProcessLibs stage reports \"Duplicated files found\" (the same .so exists in both obj/ and libs/)"
 severity: medium
 
-# ====== 检索关键字 ======
+# ====== Search keywords ======
 error_message: >
   Duplicated files found in module entry. This may cause unexpected errors at runtime.
   entry/build/default/intermediates/cmake/default/obj/arm64-v8a/libXxx.so
   entry/libs/arm64-v8a/libXxx.so
 error_code: "00306049"
 keywords: [Duplicated files, ProcessLibs, pickFirsts, duplicate so]
-symptoms: "hvigor 构建在 ProcessLibs 阶段失败，报 Duplicated files found"
+symptoms: "The hvigor build fails at the ProcessLibs stage with \"Duplicated files found\""
 
-# ====== 问题详情 ======
+# ====== Problem details ======
 environment: "DevEco Studio 5.x / hvigor CLI / Qt 5.12.12 OHOS SDK"
 refs: [semantic-qt-harmonyos-project-structure]
 related_problems: [problem-cmake-findpackage-ohosextras-fail]
 ---
 
-# hvigor 构建 ProcessLibs 阶段报 Duplicated .so files
+# hvigor build reports duplicated .so files at the ProcessLibs stage
 
-## 错误信息
+## Error message
 
 ```
 ERROR: Failed :entry:default@ProcessLibs...
@@ -37,63 +37,63 @@ Error Message: Duplicated files found in module entry. This may cause unexpected
  - entry/libs/arm64-v8a/libNativeWinLeaveEvt.so
 ```
 
-## 场景
+## Scenario
 
-当 CMakeLists.txt 通过 hvigor 的 `externalNativeOptions.path` 集成构建时，
-如果同时在 `entry/libs/arm64-v8a/` 目录手动放置了同名的 .so 文件，
-hvigor 会发现两份同名库并报错。
+When CMakeLists.txt is integrated into the build through hvigor's `externalNativeOptions.path`,
+manually placing a `.so` of the same name in `entry/libs/arm64-v8a/` as well
+makes hvigor find two libraries with the same name and error out.
 
-## 原因
+## Cause
 
-hvigor 的 CMake 集成会自动编译 C++ 代码并将产物放入 `entry/build/` 目录，
-同时 `entry/libs/` 中的 .so 也会被打包。两者同名导致冲突。
+hvigor's CMake integration automatically compiles the C++ code and puts the output in `entry/build/`,
+while the `.so` files in `entry/libs/` are also packaged. Two files with the same name collide.
 
-## 解决方案
+## Solution
 
-1. **不要手动放置应用库 .so 到 `entry/libs/`**。hvigor CMake 集成会自动编译并打包。
-2. **仅手动放置 Qt 运行时库**（libQt5Core.so、libQt5Gui.so 等），这些不是项目编译产物。
-3. 如果已经手动放了，删除即可：
+1. **Don't manually place application libraries (.so) in `entry/libs/`.** hvigor's CMake integration builds and packages them automatically.
+2. **Only place the Qt runtime libraries manually** (libQt5Core.so, libQt5Gui.so, and so on) — those are not build outputs of your project.
+3. If you already placed one there, just delete it:
 
 ```bash
 rm entry/libs/arm64-v8a/libYourApp.so
 ```
 
-## 附加问题：abiFilters 包含 x86_64 导致链接失败
+## Additional problem: abiFilters including x86_64 causes a link failure
 
-### 错误信息
+### Error message
 
 ```
 ld.lld: error: <LOCAL_PATH> is incompatible with elf_x86_64
 ```
 
-### 原因
+### Cause
 
-源码内置模板默认 `abiFilters` 包含 `["x86_64", "arm64-v8a"]`，
-但 Qt SDK 只提供 arm64-v8a 预编译库。
+The template bundled with the source defaults `abiFilters` to `["x86_64", "arm64-v8a"]`,
+but the Qt SDK only ships prebuilt arm64-v8a libraries.
 
-### 解决方案
+### Solution
 
-修改 `entry/build-profile.json5`：
+Edit `entry/build-profile.json5`:
 
 ```json5
 "abiFilters": [
-  "arm64-v8a"    // 只保留 arm64-v8a
+  "arm64-v8a"    // keep only arm64-v8a
 ]
 ```
 
-## 注意事项
+## Notes
 
-- Qt 运行时库（libQt5Core.so 等）仍需手动放到 `entry/libs/arm64-v8a/`
-- libqohosstyle.so 需放到 `entry/libs/arm64-v8a/styles/` 子目录
-- 应用自身的 .so 由 hvigor CMake 自动构建，不需要手动放置
+- The Qt runtime libraries (libQt5Core.so and friends) still need to be placed manually in `entry/libs/arm64-v8a/`
+- libqohosstyle.so goes in the `entry/libs/arm64-v8a/styles/` subdirectory
+- Your application's own `.so` is built automatically by hvigor's CMake integration and does not need to be placed manually
 
-## 相关
+## Related
 
-- [[qt-harmonyos-project-structure]] — §6 Qt 运行时库部署
-- [[qt-harmonyos-golden-rules]] — B1 库名规则
+- [[qt-harmonyos-project-structure]] — §6 Deploying the Qt runtime libraries
+- [[qt-harmonyos-golden-rules]] — B1 library naming rule
 
-### 相关问题
+### Related problems
 
-- [build-fail-cmake-ohosextras](build-fail-cmake-ohosextras.md) — 同为 CMake 构建配置问题
+- [build-fail-cmake-ohosextras](build-fail-cmake-ohosextras.md) — also a CMake build configuration problem
 
-> 📋 返回 [错误速查表](_lookup.md)
+> 📋 Back to the [error quick-reference table](_lookup.md)

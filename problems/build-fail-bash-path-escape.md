@@ -12,54 +12,54 @@ refs: []
 error_message: "C:PROGRA~1HuaweiDEVECO~1sdkdefaultOPENHA~1native/llvm/bin/clang++: No such file or directory"
 error_code: N/A
 summary: >
-  bash/git-bash 环境下 mingw32-make 路径转义失败：反斜杠被 bash 解释为转义字符，
-  导致 Windows 短路径 C:\PROGRA~1\... 被解析为 C:PROGRA~1...。必须使用 PowerShell 执行编译。
+  mingw32-make path escaping fails under bash/git-bash: bash interprets the backslashes as escape characters,
+  so the Windows short path C:\PROGRA~1\... is parsed as C:PROGRA~1... . You must run the build from PowerShell.
 ---
 
-# bash 环境下 mingw32-make 路径转义失败
+# mingw32-make path escaping fails under bash
 
-## 症状
+## Symptoms
 
-在 bash/git-bash 环境中执行 `mingw32-make -j64 install` 时，编译器路径被错误解析：
+Running `mingw32-make -j64 install` in a bash/git-bash environment resolves the compiler path incorrectly:
 
 ```
 /usr/bin/sh: line 1: C:PROGRA~1HuaweiDEVECO~1sdkdefaultOPENHA~1native/llvm/bin/clang++: No such file or directory
 ```
 
-期望路径：`C:\PROGRA~1\Huawei\DEVECO~1\sdk\default\OPENHA~1\native/llvm/bin/clang++`  
-实际路径：`C:PROGRA~1HuaweiDEVECO~1sdkdefaultOPENHA~1native/llvm/bin/clang++`
+Expected path: `C:\PROGRA~1\Huawei\DEVECO~1\sdk\default\OPENHA~1\native/llvm/bin/clang++`  
+Actual path: `C:PROGRA~1HuaweiDEVECO~1sdkdefaultOPENHA~1native/llvm/bin/clang++`
 
-反斜杠 `\` 被 bash 解释为转义字符并吞掉。
+The backslashes `\` are interpreted by bash as escape characters and swallowed.
 
-## 原因
+## Cause
 
-`mingw32-make` 在 Windows 环境下通过 `/usr/bin/sh`（bash）执行编译命令，而 Makefile 中的 Windows 短路径（如 `C:\PROGRA~1\...`）包含反斜杠。bash 将反斜杠解释为转义字符，导致路径分隔符丢失。
+On Windows, `mingw32-make` runs build commands through `/usr/bin/sh` (bash), while the Windows short paths in the Makefile (such as `C:\PROGRA~1\...`) contain backslashes. bash interprets those backslashes as escape characters, so the path separators are lost.
 
-## 解决方案
+## Solution
 
-**必须使用 PowerShell 执行编译命令**，而非 bash/git-bash：
+**You must run the build commands from PowerShell**, not bash/git-bash:
 
 ```powershell
 cd <LOCAL_PATH>
 mingw32-make.exe -j64 install
 ```
 
-PowerShell 正确处理 Windows 路径，不会吞掉反斜杠。
+PowerShell handles Windows paths correctly and does not swallow backslashes.
 
-## 尝试过的错误方案
+## Failed approaches that were tried
 
-1. ❌ 在 bash 中设置 `PATH` 包含 clang：`PATH="...:$PATH" mingw32-make`  
-   → 失败，mingw32-make 内部仍通过 `/usr/bin/sh` 调用
+1. ❌ Setting `PATH` to include clang within bash: `PATH="...:$PATH" mingw32-make`  
+   → Failed; internally mingw32-make still invokes `/usr/bin/sh`
 
-2. ❌ 修改 Makefile 中的 `CC`/`CXX` 为纯命令名：`CC = clang`  
-   → 失败，源文件路径中的反斜杠仍被吞掉
+2. ❌ Changing `CC`/`CXX` in the Makefile to bare command names: `CC = clang`  
+   → Failed; backslashes in the source file paths are still swallowed
 
-3. ❌ 使用 `tr '\\' '/'` 替换 Makefile 中的所有反斜杠  
-   → 失败，行续行符 `\` 也被替换，Makefile 语法错误
+3. ❌ Using `tr '\\' '/'` to replace every backslash in the Makefile  
+   → Failed; the line-continuation `\` characters got replaced too, producing Makefile syntax errors
 
-4. ❌ 手动编译单个 .cpp 文件后链接  
-   → 可行但效率低，不适合完整构建
+4. ❌ Manually compiling individual .cpp files and then linking  
+   → Works but is slow; not practical for a full build
 
-## 相关
+## Related
 
-- 技术栈 §编译环境
+- Technology stack §Build environment

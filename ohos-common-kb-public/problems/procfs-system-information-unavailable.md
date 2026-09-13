@@ -1,16 +1,16 @@
 ---
 id: procfs-system-information-unavailable
-title: "系统信息为空或为 0：Linux procfs 数据源受限"
+title: "System information empty or zero: Linux procfs data sources are restricted"
 status: active
 confidence: 0.7
-sources: [{type: experience, name: "系统监控 app 真机验证", date: 2026-08-03}]
+sources: [{type: experience, name: "System monitor app, on-device verification", date: 2026-08-03}]
 created: 2026-08-14
 updated: 2026-08-14
 last_confirmed: 2026-08-03
 superseded_by: null
 tags: [problem, procfs, system-info, cpu, disk, sandbox]
 refs: [system-information-access-limits]
-summary: "库选择 Linux backend 后读取 /proc/stat、mounts 或 diskstats 被拒，CPU/disk 等返回空或 0。"
+summary: "After a library selects the Linux backend, reads of /proc/stat, mounts, or diskstats are denied, so CPU/disk metrics come back empty or zero."
 audience: public
 error_message: |
   /proc/stat: Permission denied
@@ -19,20 +19,19 @@ error_message: |
   disk list: empty
 ---
 
-# 系统信息为空或为 0：Linux procfs 数据源受限
+# System information empty or zero: Linux procfs data sources are restricted
 
-## 诊断
+## Diagnosis
 
-1. 确认具体指标的数据源；
-2. 在应用进程权限下检查访问结果，不用 hdc/root 视角代替；
-3. 区分 open/read permission error、parser error、空列表和真实零值；
-4. 核对库是否因 target cfg 错误选择 Linux desktop backend。
+1. Identify the data source behind each specific metric.
+2. Check the access result under the application process's own permissions — don't substitute an hdc/root view.
+3. Distinguish open/read permission errors, parser errors, empty lists, and genuine zero values.
+4. Verify whether the library picked the Linux desktop backend because of an incorrect target cfg.
 
-## 解决方案
+## Solution
 
-对受限指标使用平台公开 API 或专门的 OHOS backend；若平台未向普通应用开放，则明确降级为 unavailable，隐藏/禁用功能或解释权限限制，不伪造 0。
+For restricted metrics, use the platform's public APIs or a dedicated OHOS backend. If the platform doesn't expose the capability to ordinary applications, degrade explicitly to "unavailable" — hide/disable the feature or explain the permission restriction. Don't fabricate a zero.
 
-## 预防措施
+## Prevention
 
-系统监控类应用在选型阶段建立“指标→数据源→权限→设备/API→fallback”矩阵，并做真机回归。
-
+For system-monitor-style applications, build a "metric → data source → permission → device/API → fallback" matrix during the technology-selection phase, and run regression tests on real devices.

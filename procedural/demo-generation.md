@@ -9,287 +9,287 @@ status: active
 audience: public
 refs: [procedural-qt-app-harmonyos-migration,semantic-qt-harmonyos-build,semantic-qt-harmonyos-project-structure,problem-runtime-crash-ohos-deviceinfo-global-expression]
 summary: >
-  独立 Demo 生成工作流（六步闭环）：需求理解→技术设计→工程创建→代码编写→编译验证→文档沉淀。
-  适用于用户直接要求"写一个 demo"/"生成测试工程"等独立 demo 创建场景。
-  区别于框架问题分析中嵌入的复现 demo 生成。
+  The standalone demo generation workflow (a six-step loop): understand the requirement → technical design → create the project → write the code → verify the build → capture documentation.
+  Applies when the user directly asks to "write a demo" / "generate a test project" and similar standalone demo scenarios.
+  Distinct from the reproduction demos generated within framework issue analysis.
 ---
 
-# Demo 生成工作流
+# The demo generation workflow
 
-> 当用户要求创建一个独立的 Qt demo / 测试工程时（非 bug 复现场景），按此流程执行。
-
----
-
-## 触发条件
-
-- 用户要求"写一个 demo"、"生成 demo"、"创建一个测试工程"
-- 需要验证某个 Qt 功能/渲染效果/API 用法
-- 需要展示某个技术特性的示例代码
-- 宣传/演示用途的 Qt 工程
-
-**不触发的场景**（属于其他工作流）：
-
-- 作为 bug 分析的一部分创建复现 demo → 使用 `framework-issue-analysis.md`
-- 迁移整个应用到鸿蒙 → 使用 `qt-app-harmonyos-migration.md`
+> When the user asks you to create a standalone Qt demo / test project (not a bug reproduction), follow this process.
 
 ---
 
-## 阶段一：需求理解
+## When to use this
 
-> **📋 TODO 同步点**：`<LOCAL_TODO>` 添加「📌 进行中」条目 → `刚启动`
+- The user asks you to "write a demo", "generate a demo", or "create a test project"
+- You need to verify a Qt feature / rendering effect / API usage
+- You need example code demonstrating a technical feature
+- A Qt project for promotional/demonstration purposes
 
-明确以下信息：
+**When this does *not* apply** (other workflows cover it):
 
-| 确认项 | 说明 |
-|--------|------|
-| Demo 目标 | 功能验证 / 渲染效果 / API 用法展示 / 性能测试 |
-| 核心功能 | 需要展示/测试的具体功能点或 API |
-| 目标平台 | 桌面（Windows/macOS/Linux）还是鸿蒙（OHOS） |
-| Qt 版本 | 5.12 / 5.15 / 6.x / 跨版本兼容 |
-| 特殊要求 | 性能指标、视觉效果、多层嵌套、原生窗口等 |
-
-**如果用户已给出明确需求**（如"写一个渲染 demo"），无需逐项确认，直接根据需求推断。
+- Creating a reproduction demo as part of bug analysis → use `framework-issue-analysis.md`
+- Porting a whole application to HarmonyOS → use `qt-app-harmonyos-migration.md`
 
 ---
 
-## 阶段二：技术设计
+## Phase 1: understand the requirement
 
-> **📋 TODO 同步点**：更新 `<LOCAL_TODO>` → `阶段一完成：需求已明确`
+> **📋 TODO sync point**: add a "📌 In progress" entry to `<LOCAL_TODO>` → `just started`
 
-梳理关键技术决策：
+Clarify the following:
 
-1. **Qt 模块选择**：确定需要哪些 Qt 模块（Widgets / Quick / OpenGL / Multimedia / ...）
-2. **构建系统**：qmake（.pro）还是 CMake（CMakeLists.txt）
-3. **工程结构**：单文件 vs 多文件、目录组织方式
-4. **技术方案**：核心功能的实现方式（如 OpenGL 用 immediate mode 还是 shader pipeline）
+| Item to confirm | Description |
+|-----------------|-------------|
+| The demo's goal | Feature verification / rendering effect / API usage demonstration / performance testing |
+| Core functionality | The specific features or APIs to demonstrate/test |
+| Target platform | Desktop (Windows/macOS/Linux) or HarmonyOS (OHOS) |
+| Qt version | 5.12 / 5.15 / 6.x / cross-version compatible |
+| Special requirements | Performance targets, visual effects, deep nesting, native windows, and so on |
 
-### 构建系统选择
-
-| 目标平台 | 构建系统 | 理由 |
-|----------|----------|------|
-| 桌面（Windows/macOS/Linux） | qmake (.pro) | 简单快速，适合独立 demo |
-| 鸿蒙（OHOS） | CMake | OHOS 工程标准，与胶水代码模板一致 |
-| 跨平台 | CMake | 统一构建，便于后续鸿蒙化 |
+**If the user already gave a clear requirement** (such as "write a rendering demo"), there's no need to confirm each item — just infer from what they said.
 
 ---
 
-## 阶段三：工程创建
+## Phase 2: technical design
 
-> **📋 TODO 同步点**：更新 `<LOCAL_TODO>` → `阶段二完成：技术方案已设计`
+> **📋 TODO sync point**: update `<LOCAL_TODO>` → `Phase 1 done: requirement clarified`
 
-### 3.1 确定工程目录
+Work through the key technical decisions:
+
+1. **Which Qt modules**: decide which Qt modules you need (Widgets / Quick / OpenGL / Multimedia / ...)
+2. **Build system**: qmake (.pro) or CMake (CMakeLists.txt)
+3. **Project structure**: single file vs. multiple files, and the directory layout
+4. **Technical approach**: how to implement the core functionality (for example, whether OpenGL uses immediate mode or a shader pipeline)
+
+### Choosing a build system
+
+| Target platform | Build system | Rationale |
+|-----------------|--------------|-----------|
+| Desktop (Windows/macOS/Linux) | qmake (.pro) | Simple and fast; good for a standalone demo |
+| HarmonyOS (OHOS) | CMake | The OHOS project standard, consistent with the glue-code template |
+| Cross-platform | CMake | A single build, making later HarmonyOS porting easier |
+
+---
+
+## Phase 3: create the project
+
+> **📋 TODO sync point**: update `<LOCAL_TODO>` → `Phase 2 done: technical approach designed`
+
+### 3.1 Decide the project directory
 
 ```
 lzh-skill/<INTERNAL_DEMO><demo-name>/
 ```
 
-`<demo-name>` 命名规范：简短描述性名称，用 `-` 分隔单词（如 `render-layers`、`mediaplayer-duration-test`）。
+Naming convention for `<demo-name>`: a short descriptive name with words separated by `-` (such as `render-layers` or `mediaplayer-duration-test`).
 
-### 3.2 创建工程文件
+### 3.2 Create the project files
 
-根据目标平台选择：
+Choose based on the target platform:
 
-**桌面平台（qmake）**：
+**Desktop (qmake)**:
 ```
 <INTERNAL_DEMO><demo-name>/
-├── <demo-name>.pro    ← QT += 所需模块
-└── main.cpp           ← 完整代码
+├── <demo-name>.pro    ← QT += the modules you need
+└── main.cpp           ← the complete code
 ```
 
-**鸿蒙平台（CMake + 胶水模板）**：
+**HarmonyOS (CMake + the glue template)**:
 ```
 <INTERNAL_DEMO><demo-name>/
 ├── CMakeLists.txt
 ├── main.cpp / main.qml
-├── qml.qrc            ← 如使用 QML
+├── qml.qrc            ← if you use QML
 └── README.md
 ```
 
-> 鸿蒙工程必须从 Qt 源码内置胶水模板创建（路径见 `ENV.md` 的 `OHOS_TEMPLATE_SRC`，即 `<QT_SRC>/qtbase/src/harmonyos/templates`）。
-> 详见 [[qt-app-harmonyos-migration]] 阶段 1.3 和 [[qt-harmonyos-project-structure]]。
+> A HarmonyOS project must be created from the glue template bundled with the Qt source (the path is `OHOS_TEMPLATE_SRC` in `ENV.md`, i.e. `<QT_SRC>/qtbase/src/harmonyos/templates`).
+> See [[qt-app-harmonyos-migration]] phase 1.3 and [[qt-harmonyos-project-structure]] for details.
 >
-> **无 Qt 源码时**：从 GitCode releases 下载 `templates-0625.zip` 到 `workspace/templates/`，
-> 然后从该目录复制模板。运行 `bash skills/kb-init/scripts/download-template.sh --dest=workspace/templates`。
-> 下载地址：https://gitcode.com/ohos-qt/qt-harmonyos-src/releases
+> **Without the Qt source**: download `templates-0625.zip` from the GitCode releases into `workspace/templates/`,
+> then copy the template from there. Run `bash skills/kb-init/scripts/download-template.sh --dest=workspace/templates`.
+> Download page: https://gitcode.com/ohos-qt/qt-harmonyos-src/releases
 
-> ⚠️ **陷阱：源码树模板的 OhosExportModules.ts 是陈旧最小版，直接用必崩**
+> ⚠️ **Pitfall: the source tree template's OhosExportModules.ts is a stale minimal version and will crash if used as-is**
 >
-> `qtbase/src/harmonyos/templates` 的 `OhosExportModules.ts` 日期早于所链 libqohos，只有 5 个 `@kit.*` lazy import + factories API（`getOhosExportModulesFactories` 返回箭头工厂），**缺所有 `@ohos.*` eager import**。libqohos 启动/recreate 时裸 eval `"@ohos.deviceInfo"` 会被 ArkTS 运行时拒（未注册为"已知模块路径"）→ Napi::Error `global expression doesn't start with known module path: '@ohos.deviceInfo'` → SIGABRT。且 factories API 与 515 代际 libqohos 的 objects API（`makeJsModulesMap` + 读 `"modules"` 字段）错配，@kit.*/LocalStorage/QEmbeddedComponentCreator 会被静默丢弃。
+> The `OhosExportModules.ts` in `qtbase/src/harmonyos/templates` predates the libqohos you link against; it has only 5 `@kit.*` lazy imports + the factories API (`getOhosExportModulesFactories` returning arrow factories) and **lacks every `@ohos.*` eager import**. When libqohos starts or recreates, its bare eval of `"@ohos.deviceInfo"` is rejected by the ArkTS runtime (not registered as a "known module path") → Napi::Error `global expression doesn't start with known module path: '@ohos.deviceInfo'` → SIGABRT. On top of that, the factories API mismatches the 515-generation libqohos's objects API (`makeJsModulesMap` + reading the `"modules"` field), so @kit.*/LocalStorage/QEmbeddedComponentCreator are silently discarded.
 >
-> **必做检查点**（创建工程后立即）：
-> 1. `strings <SDK>/plugins/platforms/libqohos.so | grep -E "^modules$|^modulesFactories$"` → 定 API（modules=objects / modulesFactories=factories）
-> 2. 用 **qView-ohos 钦定完整版**替换 `entry/src/main/ets/qability/OhosExportModules.ts` + `QtUtils.ets`（26 个 `@ohos.*` + 13 个 `@kit.*` **eager default-import**，objects API，`getModulesMapForQt`），并同步改 `QAbilityStage.ets`/`QChildProcess.ets` 的 `getModulesFactoriesMapForQt()` → `getModulesMapForQt()`
-> 3. 详见 [[problem-runtime-crash-ohos-deviceinfo-global-expression]]（含 @ohos.deviceInfo 崩溃谱两代际判据）
+> **Mandatory checkpoints** (immediately after creating the project):
+> 1. `strings <SDK>/plugins/platforms/libqohos.so | grep -E "^modules$|^modulesFactories$"` → determine the API (modules = objects / modulesFactories = factories)
+> 2. Replace `entry/src/main/ets/qability/OhosExportModules.ts` + `QtUtils.ets` with the **canonical full versions from qView-ohos** (26 `@ohos.*` + 13 `@kit.*` **eager default-imports**, the objects API, `getModulesMapForQt`), and correspondingly change `getModulesFactoriesMapForQt()` → `getModulesMapForQt()` in `QAbilityStage.ets`/`QChildProcess.ets`
+> 3. See [[problem-runtime-crash-ohos-deviceinfo-global-expression]] for details (including the diagnostics for both generations of the @ohos.deviceInfo crash family)
 
-### 3.3 Qt+CEF / WebEngine 迁移 demo（特殊：用嫁接脚本，不走常规 6 步）
+### 3.3 Qt+CEF / WebEngine migration demos (special: use the grafting script, not the usual 6 steps)
 
-若 demo 需要 **web 嵌入**（QtWebEngine 在鸿蒙 Out of scope，见 [[qt-harmonyos-modules]]），走 Qt+CEF 路线——**不要从 §3.1/3.2 手工创建工程**，用嫁接脚本一键生成：
+If the demo needs **web embedding** (QtWebEngine is out of scope on HarmonyOS — see [[qt-harmonyos-modules]]), take the Qt+CEF route — **don't hand-create the project per §3.1/3.2**; generate it in one shot with the grafting script:
 
-- **指导**：`procedural/qt-cef-ohos-dev-guide.md`（WebEngine→CEF API 映射 + 迁移方案 + 去版本化组件包 + 版本升级适配）。
-- **脚本**：`tools/kb-cef-graft.py` + 配置 `tools/kb-cef-graft.config.example.json`（环境配置全在配置文件：deveco/device/SDK 版本/Qt .so 清单，换环境只改配置不改脚本）。
-- **一条命令**（graft + 签名 + 装机 + 启动 + 崩溃检查）：
+- **The guide**: `procedural/qt-cef-ohos-dev-guide.md` (the WebEngine→CEF API mapping + migration plan + the de-versioned component package + adapting to version upgrades).
+- **The script**: `tools/kb-cef-graft.py` + the configuration `tools/kb-cef-graft.config.example.json` (all environment configuration lives in the config file: deveco/device/SDK version/the Qt .so list, so switching environments means changing the config, not the script).
+- **One command** (graft + sign + install + launch + crash check):
   ```bash
-  cp tools/kb-cef-graft.config.example.json .config.json  # 改 deveco/device/qt_libs 等
+  cp tools/kb-cef-graft.config.example.json .config.json  # edit deveco/device/qt_libs etc.
   python tools/kb-cef-graft.py --config .config.json \
-    --template <Qt OHOS 模板> --qt-sdk <Qt OHOS SDK> \
-    --ohqtcef-glue <OpenQtCef 胶水> --output <输出工程> --run
+    --template <Qt OHOS template> --qt-sdk <Qt OHOS SDK> \
+    --ohqtcef-glue <the OpenQtCef glue> --output <output project> --run
   ```
-  `--run` 自动 devecocli signature generate + run（build+装机+启动 QAbility）+ log --crash。**正确姿势=基于 Qt OHOS 模板嫁接 CEF**（模板 QPA 胶水版本正确），不在 CEF demo 上改。脚本固化了 15 个运行踩坑（P1-P15，见 `_PITFALLS` 注释）。
-- **验证**：进程 `com.example.qtcefdemo` + CEF 子进程（`:NetworkService`/`:Renderer`）+ `devecocli log --crash --bundle-name com.example.qtcefdemo` 无新崩溃。
+  `--run` automatically does devecocli signature generate + run (build + install + launch QAbility) + log --crash. **The correct approach is grafting CEF onto the Qt OHOS template** (whose QPA glue version is correct), not modifying a CEF demo. The script bakes in 15 runtime pitfalls (P1-P15, see the `_PITFALLS` comment).
+- **Verification**: the `com.example.qtcefdemo` process + the CEF subprocesses (`:NetworkService`/`:Renderer`) + `devecocli log --crash --bundle-name com.example.qtcefdemo` showing no new crashes.
 
 ---
 
-## 阶段四：代码编写
+## Phase 4: write the code
 
-> **📋 TODO 同步点**：更新 `<LOCAL_TODO>` → `阶段三完成：工程已创建`
+> **📋 TODO sync point**: update `<LOCAL_TODO>` → `Phase 3 done: project created`
 
-### 编码规范
+### Coding conventions
 
-1. **单文件优先**：demo 应尽量放在单个 `main.cpp` 中，减少文件切换
-2. **兼容性**：使用 Qt 5.12 兼容的 API（`QOpenGLWidget` 而非 `QOpenGLWindow`，除非明确要求）
-3. **中文注释**：关键设计决策用中文注释说明
-4. **文件头注释**：包含 demo 用途、结构图、兼容版本信息
-5. **有意义的视觉输出**：demo 应有直观的视觉反馈，便于判断功能是否正常
+1. **Prefer a single file**: keep the demo in a single `main.cpp` where possible, to reduce file switching
+2. **Compatibility**: use APIs compatible with Qt 5.12 (`QOpenGLWidget` rather than `QOpenGLWindow`, unless explicitly required)
+3. **Comments**: explain key design decisions in comments
+4. **A file header comment**: covering the demo's purpose, a structure diagram, and compatible versions
+5. **Meaningful visual output**: the demo should give direct visual feedback so you can tell whether it works
 
-### Demo 类型与侧重点
+### Demo types and what to emphasize
 
-| 类型 | 侧重点 | 示例 |
-|------|--------|------|
-| **功能演示** | 突出单个 API/功能的用法 | QtOhosExtras startAbility 调用 |
-| **渲染测试** | 视觉效果 + 性能指标（FPS） | 多层控件叠加 + OpenGL 渲染 |
-| **API 对照** | Before/After 对比 | QProcess → posix_spawnp 替换 |
-| **Bug 复现** | 最小化复现代码 + 复现步骤 | 嵌入框架问题分析工作流，不走此流程 |
-| **性能基准** | 计时 + 数据统计 | 大量控件创建/布局性能 |
+| Type | Emphasis | Example |
+|------|----------|---------|
+| **Feature demonstration** | Highlighting one API/feature's usage | Calling QtOhosExtras startAbility |
+| **Rendering test** | Visual effect + performance metrics (FPS) | Layered widgets + OpenGL rendering |
+| **API comparison** | A before/after comparison | Replacing QProcess with posix_spawnp |
+| **Bug reproduction** | Minimal reproduction code + steps | Belongs to the framework issue analysis workflow, not this one |
+| **Performance benchmark** | Timing + statistics | The performance of creating/laying out many widgets |
 
-### 文件头模板
+### File header template
 
 ```cpp
 /*
- * <demo-name> — 一句话描述
+ * <demo-name> — a one-line description
  *
- * 结构（由外到内）:
+ * Structure (outermost to innermost):
  *   MainWindow (...)
  *    └─ Layer-1 ...
  *        └─ Layer-2 ...
  *            └─ ...
  *
- * 兼容: Qt 5.12 / 5.15 / 6.x
- * 用法: qmake && make && ./<demo-name>
+ * Compatible with: Qt 5.12 / 5.15 / 6.x
+ * Usage: qmake && make && ./<demo-name>
  */
 ```
 
 ---
 
-## 阶段五：编译验证
+## Phase 5: verify the build
 
-> **📋 TODO 同步点**：更新 `<LOCAL_TODO>` → `阶段四完成：代码已编写`
+> **📋 TODO sync point**: update `<LOCAL_TODO>` → `Phase 4 done: code written`
 
-### 5.1 编译
+### 5.1 Build
 
 ```powershell
-# 桌面平台 (qmake)
+# Desktop (qmake)
 cd <INTERNAL_DEMO><demo-name>
 qmake <demo-name>.pro
 mingw32-make.exe -j8      # Windows MinGW
-# 或 make -j8             # macOS/Linux
+# or make -j8             # macOS/Linux
 
-# 鸿蒙平台 (CMake)
-# 通过 DevEco Studio 或 hdc 命令行构建部署
+# HarmonyOS (CMake)
+# Build and deploy through DevEco Studio or the hdc command line
 ```
 
-### 5.2 验证清单
+### 5.2 Verification checklist
 
-- [ ] 编译通过（无 warning 或仅无害 warning）
-- [ ] 运行正常（视觉效果符合预期）
-- [ ] 如有性能指标，FPS/计时数据正常显示
-- [ ] 无内存泄漏（快速检查：持续运行 30 秒观察内存）
+- [ ] It builds (no warnings, or only harmless ones)
+- [ ] It runs correctly (the visuals match expectations)
+- [ ] If there are performance metrics, the FPS/timing data displays correctly
+- [ ] No memory leaks (a quick check: run it for 30 seconds and watch memory)
 
-### 5.3 编译失败处理
+### 5.3 Handling build failures
 
-如果编译失败，参考构建排障流程：
-1. 检查 `QT +=` 是否包含所有需要的模块
-2. 检查 `#include` 是否完整
-3. 检查 API 兼容性（Qt 5.12 vs 5.15 vs 6.x）
-4. 查阅 `problems/_lookup.md` 是否有已知编译错误
+If the build fails, follow the build troubleshooting process:
+1. Check that `QT +=` includes every module you need
+2. Check that the `#include`s are complete
+3. Check API compatibility (Qt 5.12 vs. 5.15 vs. 6.x)
+4. Check `problems/_lookup.md` for a known build error
 
 ---
 
-## 阶段六：文档与知识沉淀
+## Phase 6: documentation and knowledge capture
 
-> **📋 TODO 同步点**：更新 `<LOCAL_TODO>` — 从「📌 进行中」移至「✅ 已完成」
+> **📋 TODO sync point**: update `<LOCAL_TODO>` — move it from "📌 In progress" to "✅ Completed"
 
-### 6.1 README（可选但推荐）
+### 6.1 README (optional but recommended)
 
 ```markdown
 # <demo-name>
 
-> 一句话描述
+> A one-line description
 
-## 目的
+## Purpose
 ...
 
-## 编译运行
+## Build and run
 ...
 
-## 结构
+## Structure
 ...
 ```
 
-### 6.2 知识库更新
+### 6.2 Knowledge base updates
 
-| 操作 | 文件 |
-|------|------|
-| 提交变更 | git commit（消息格式 `<type>: <简述>`） |
-| 如有新发现 | 沉淀到 `episodic/` 或 `problems/` |
-
----
-
-## 检查清单
-
-- [ ] 需求已明确（目标/功能/平台/版本）
-- [ ] 技术方案已设计（模块/构建系统/结构）
-- [ ] 工程已创建在 `<INTERNAL_DEMO><demo-name>/`
-- [ ] 代码已编写（单文件优先、兼容 5.12、中文注释）
-- [ ] 编译通过
-- [ ] 运行正常
-- [ ] 已提交 git commit
+| Action | File |
+|--------|------|
+| Commit the changes | git commit (message format `<type>: <short description>`) |
+| If you found something new | Capture it in `episodic/` or `problems/` |
 
 ---
 
-## 与其他工作流的关系
+## Checklist
 
-| 场景 | 使用工作流 |
-|------|-----------|
-| 独立创建功能/渲染/性能 demo | **Demo 生成**（本流程） |
-| Bug 分析中的复现 demo | 框架问题分析 → 阶段一 |
-| 整个应用迁移到鸿蒙 | 应用移植 |
-
----
-
-## 供应链
-
-> 详见 工作流供应链 §Demo 生成
-
-| 维度 | 详情 |
-|------|------|
-| **上游来源** | ① 用户直接需求（"写一个 xx demo"） ② 自驱动（功能验证/渲染测试） ③ 宣传/演示需求 |
-| **上游输入** | demo 目标描述、功能需求、目标平台/版本 |
-| **下游接收方** | 内部使用（测试验证）/ 宣传演示 / 客户展示 |
-| **交付件** | `<INTERNAL_DEMO><demo-name>/`：完整工程 + README（可选） |
-| **交付件路径** | `lzh-skill/<INTERNAL_DEMO>` |
-| **分流规则** | 无（独立交付）；如发现框架 bug → 转入框架问题分析；如需鸿蒙化 → 转入应用移植 |
+- [ ] The requirement is clear (goal/features/platform/version)
+- [ ] The technical approach is designed (modules/build system/structure)
+- [ ] The project is created in `<INTERNAL_DEMO><demo-name>/`
+- [ ] The code is written (single file preferred, Qt 5.12 compatible, commented)
+- [ ] It builds
+- [ ] It runs correctly
+- [ ] A git commit has been made
 
 ---
 
-## 相关上下文
+## Relationship to other workflows
 
-- [[qt-harmonyos-project-structure]] — 工程结构（鸿蒙工程创建参考）
-- [[qt-harmonyos-build]] — 构建指南（编译环境配置）
-- [[qt-app-harmonyos-migration]] — 应用迁移（鸿蒙工程模板使用）
-- 工作流供应链 — 工作流供应链总览
+| Scenario | Workflow to use |
+|----------|-----------------|
+| Creating a standalone feature/rendering/performance demo | **Demo generation** (this process) |
+| A reproduction demo during bug analysis | Framework issue analysis → phase one |
+| Porting a whole application to HarmonyOS | Application porting |
 
-## 内容来源
+---
 
-| 来源类型 | 说明 |
-|----------|------|
-| 🛠️ 工作经验 | 从 render-layers、mediaplayer-duration-test 等实际 demo 创建经验蒸馏 |
+## Supply chain
+
+> See the workflow supply chain, §Demo generation
+
+| Dimension | Details |
+|-----------|---------|
+| **Upstream source** | ① A direct user request ("write an xx demo") ② Self-driven (feature verification/rendering tests) ③ Promotional/demonstration needs |
+| **Upstream input** | A description of the demo's goal, the functional requirements, and the target platform/version |
+| **Downstream recipients** | Internal use (testing and verification) / promotional demos / customer demonstrations |
+| **Deliverables** | `<INTERNAL_DEMO><demo-name>/`: the complete project + a README (optional) |
+| **Deliverable path** | `lzh-skill/<INTERNAL_DEMO>` |
+| **Routing rules** | None (standalone delivery); if you find a framework bug → move to framework issue analysis; if it needs porting to HarmonyOS → move to application porting |
+
+---
+
+## Related context
+
+- [[qt-harmonyos-project-structure]] — Project structure (a reference for creating HarmonyOS projects)
+- [[qt-harmonyos-build]] — The build guide (build environment configuration)
+- [[qt-app-harmonyos-migration]] — Application migration (using the HarmonyOS project template)
+- The workflow supply chain — An overview of the workflow supply chain
+
+## Content sources
+
+| Source type | Notes |
+|-------------|-------|
+| 🛠️ Hands-on experience | Distilled from actually creating demos such as render-layers and mediaplayer-duration-test |

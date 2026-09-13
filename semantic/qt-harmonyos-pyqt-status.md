@@ -9,130 +9,130 @@ status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-build, semantic-qt-harmonyos-modules, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-golden-rules, semantic-qt-harmonyos-third-party-libs]
 summary: >
-  PyQt5 for HarmonyOS 可行性状态：已通过 pyqt5-demo 验证可行（Qt 5.15.16）。
-  架构与标准 C++ Qt 完全一致（libqohos.so QPA 插件），差异仅在 C++ launcher 层
-  嵌入 CPython 3.12 运行时解释执行 Python 脚本。依赖 DevPython-OH（CPython 交叉编译）
-  和 PythonForArkUI（PyQt5 site-packages）。已知坑：openblas 需二进制补丁、
-  sys.exit() 触发 appspawn 崩溃日志、仅支持 tablet/2in1。
+  Feasibility status of PyQt5 for HarmonyOS: verified feasible via pyqt5-demo (Qt 5.15.16).
+  The architecture is identical to standard C++ Qt (the libqohos.so QPA plugin); the only difference is that the C++ launcher layer
+  embeds a CPython 3.12 runtime to interpret Python scripts. It depends on DevPython-OH (a cross-compiled CPython)
+  and PythonForArkUI (the PyQt5 site-packages). Known pitfalls: openblas needs a binary patch,
+  sys.exit() produces appspawn crash logs, and only tablet/2-in-1 are supported.
 leader_summary: >
-  完成 PyQt5 for HarmonyOS 可行性调研与 demo 分析，确认 PyQt5 应用可在 OHOS 上运行，
-  为 PyQt 开源应用鸿蒙化提供了技术路径参考。
-impact: [迁移提效, 框架支撑]
-deliverables: [知识库页面]
-evidence: [pyqt5-demo 仓库分析（https://gitcode.com/ohos-qt/pyqt5-demo）]
+  Completed the feasibility study and demo analysis for PyQt5 on HarmonyOS, confirming that PyQt5 applications run on OHOS
+  and providing a technical reference path for porting open-source PyQt applications.
+impact: [Migration efficiency, Framework support]
+deliverables: [knowledge page]
+evidence: [Analysis of the pyqt5-demo repository (https://gitcode.com/ohos-qt/pyqt5-demo)]
 ---
 
-# PyQt5 for HarmonyOS 状态
+# PyQt5 for HarmonyOS status
 
-> **一句话**：PyQt5 在 HarmonyOS 上可行，架构复用标准 Qt for OHOS QPA 插件，差异仅在 C++ launcher 嵌入 CPython 运行时。
+> **In one sentence**: PyQt5 works on HarmonyOS, reusing the standard Qt for OHOS QPA plugin architecture; the only difference is that the C++ launcher embeds a CPython runtime.
 
-## 可行性结论
+## Feasibility conclusions
 
-| 项目 | 结论 |
-|------|------|
-| **CPython 交叉编译到 OHOS** | ✅ 可行 — [DevPython-OH](https://gitcode.com/OpenHarmonyPCDeveloper/DevPython-OH) 提供 Python 3.12 OHOS 构建 |
-| **PyQt5 在 OHOS 上运行** | ✅ 已验证 — pyqt5-demo（glmark2 GPU 基准测试 GUI）真机运行通过 |
-| **QPA 架构复用** | ✅ 完全复用标准架构 — libqohos.so + XComponent，与 C++ Qt 应用无差异 |
-| **OpenGL ES 渲染** | ✅ 通过 PyOpenGL 使用 OpenGL ES 2.0 |
-| **Demo 来源** | [ohos-qt/pyqt5-demo](https://gitcode.com/ohos-qt/pyqt5-demo)（commit 798669d） |
+| Item | Conclusion |
+|------|------------|
+| **Cross-compiling CPython for OHOS** | ✅ Feasible — [DevPython-OH](https://gitcode.com/OpenHarmonyPCDeveloper/DevPython-OH) provides a Python 3.12 OHOS build |
+| **Running PyQt5 on OHOS** | ✅ Verified — pyqt5-demo (a glmark2 GPU benchmark GUI) runs on a real device |
+| **Reusing the QPA architecture** | ✅ Fully reused — libqohos.so + XComponent, identical to a C++ Qt application |
+| **OpenGL ES rendering** | ✅ Uses OpenGL ES 2.0 via PyOpenGL |
+| **Demo source** | [ohos-qt/pyqt5-demo](https://gitcode.com/ohos-qt/pyqt5-demo) (commit 798669d) |
 
-## 架构（调用链）
+## Architecture (the call chain)
 
 ```
 HarmonyOS UIAbility (QAbility.ets)
-  → libqohos.so (Qt QPA 平台插件，标准架构)
-    → libpyqtlauncher.so (C++ main 入口)
+  → libqohos.so (the Qt QPA platform plugin, standard architecture)
+    → libpyqtlauncher.so (the C++ main entry point)
       → Py_Initialize()
       → PyRun_SimpleFileEx("app.py")
-        → Python 3.12 运行时 (CPython)
+        → the Python 3.12 runtime (CPython)
           → PyQt5 (QtWidgets, QtCore, QtGui)
           → PyOpenGL (OpenGL ES 2.0)
-            → 用户 Python 应用代码
+            → the user's Python application code
 ```
 
-### 与标准 C++ Qt 应用的差异
+### Differences from a standard C++ Qt application
 
-| 层 | C++ Qt 应用 | PyQt5 应用 |
-|----|-------------|-----------|
-| ArkTS 层（QAbility.ets / XComponent） | ✅ 完全一致 | ✅ 完全一致 |
-| QPA 插件（libqohos.so） | ✅ 完全一致 | ✅ 完全一致 |
-| C++ main 入口 | `main()` → `QApplication` + 业务逻辑 | `main()` → `Py_Initialize()` + `PyRun_SimpleFileEx()` |
-| 应用代码 | C++ 编译进 .so | Python 脚本放 resfile/，运行时解释执行 |
-| 额外依赖 | 无 | libpython3.12.so + PyQt5 site-packages（~1.8 GB） |
+| Layer | C++ Qt application | PyQt5 application |
+|-------|--------------------|-------------------|
+| The ArkTS layer (QAbility.ets / XComponent) | ✅ Identical | ✅ Identical |
+| The QPA plugin (libqohos.so) | ✅ Identical | ✅ Identical |
+| The C++ main entry point | `main()` → `QApplication` + business logic | `main()` → `Py_Initialize()` + `PyRun_SimpleFileEx()` |
+| Application code | C++ compiled into a .so | Python scripts in resfile/, interpreted at runtime |
+| Extra dependencies | None | libpython3.12.so + the PyQt5 site-packages (~1.8 GB) |
 
-## 依赖清单
+## Dependency list
 
-### 外部依赖（均需手动组装，gitignored）
+### External dependencies (all assembled manually, gitignored)
 
-| 依赖 | 来源 | 放置位置 |
-|------|------|----------|
-| Qt 5.15.16 OHOS | `tqtc/harmonyos-5.15.16` 分支编译 | `entry/libs/arm64-v8a/*.so` + `libqohos.so` |
-| Python 3.12 运行时 | [DevPython-OH](https://gitcode.com/OpenHarmonyPCDeveloper/DevPython-OH) | 头文件 → `cpp/thirdparty/include/`，.so → `libs/arm64-v8a/` |
-| PyQt5 site-packages | [PythonForArkUI](https://gitcode.com/OpenHarmonyPCDeveloper/PythonForArkUI) `other/site-packages` | `libs/arm64-v8a/Python/lib/python3.12/site-packages/` |
+| Dependency | Source | Where it goes |
+|------------|--------|---------------|
+| Qt 5.15.16 OHOS | Built from the `tqtc/harmonyos-5.15.16` branch | `entry/libs/arm64-v8a/*.so` + `libqohos.so` |
+| The Python 3.12 runtime | [DevPython-OH](https://gitcode.com/OpenHarmonyPCDeveloper/DevPython-OH) | Headers → `cpp/thirdparty/include/`, .so files → `libs/arm64-v8a/` |
+| The PyQt5 site-packages | [PythonForArkUI](https://gitcode.com/OpenHarmonyPCDeveloper/PythonForArkUI), `other/site-packages` | `libs/arm64-v8a/Python/lib/python3.12/site-packages/` |
 
-### Python 包依赖（requirements.txt）
+### Python package dependencies (requirements.txt)
 
-| 包 | 版本要求 | 用途 |
-|----|---------|------|
-| PyQt5 | ≥ 5.15.0 | Qt Python 绑定 |
-| PyOpenGL | ≥ 3.1.5 | OpenGL Python 绑定 |
-| PyOpenGL-accelerate | ≥ 3.1.5 | OpenGL 加速 |
-| numpy | ≥ 1.19.0 | 数值计算 |
+| Package | Version requirement | Purpose |
+|---------|---------------------|---------|
+| PyQt5 | ≥ 5.15.0 | The Qt Python bindings |
+| PyOpenGL | ≥ 3.1.5 | The OpenGL Python bindings |
+| PyOpenGL-accelerate | ≥ 3.1.5 | OpenGL acceleration |
+| numpy | ≥ 1.19.0 | Numerical computing |
 
-### 依赖组装步骤
+### Dependency assembly steps
 
 ```bash
-# 1. Python 3.12 头文件和运行时
+# 1. Python 3.12 headers and runtime
 cp -r python-wheel-3.12/include entry/src/main/cpp/thirdparty/include
 cp python-wheel-3.12/lib/*.so* entry/libs/arm64-v8a/
 mv entry/libs/arm64-v8a/python3.12 entry/libs/arm64-v8a/Python/lib/python3.12
 
-# 2. Qt 5.15.16 运行时
+# 2. The Qt 5.15.16 runtime
 cp <qt-install>/lib/*.so entry/libs/arm64-v8a/
 cp <qt-install>/plugins/platforms/libqohos.so entry/libs/arm64-v8a/
 
-# 3. PyQt5 site-packages
+# 3. The PyQt5 site-packages
 cp -r <PythonForArkUI>/other/site-packages \
   entry/libs/arm64-v8a/Python/lib/python3.12/site-packages
 
-# 4. openblas 二进制补丁（必须在 Linux/WSL 下执行）
+# 4. The openblas binary patch (must be run under Linux/WSL)
 openblas_so=entry/libs/arm64-v8a/Python/lib/python3.12/site-packages/numpy.libs/libopenblasp-r0-76071c68.3.27.so
 printf '\x1f\x20\x03\xd5' | dd of=$openblas_so bs=1 seek=2464508 conv=notrunc
 ```
 
-## C++ Launcher 实现要点
+## Key points of the C++ launcher implementation
 
-PyQt5 应用的 C++ 入口（`pyqtlauncher.cpp`）核心逻辑：
+The core logic of a PyQt5 application's C++ entry point (`pyqtlauncher.cpp`):
 
 ```cpp
 int main(int argc, char *argv[]) {
-    // 1. 设置 PYTHONHOME 指向 HAP 内的 Python 运行时
+    // 1. Point PYTHONHOME at the Python runtime inside the HAP
     setenv("PYTHONHOME", "/data/storage/el1/bundle/libs/arm64/Python", 1);
 
-    // 2. 初始化 Python 解释器
+    // 2. Initialize the Python interpreter
     Py_Initialize();
 
-    // 3. 设置 sys.argv
+    // 3. Set sys.argv
     wchar_t *pyArgv0 = Py_DecodeLocale(scriptPath, NULL);
     PySys_SetArgvEx(1, &pyArgv0, 1);
 
-    // 4. 执行 Python 脚本
+    // 4. Run the Python script
     FILE *pyFile = fopen(scriptPath, "r");
     int ret = PyRun_SimpleFileEx(pyFile, scriptPath, 1);
 
-    // 5. 清理
+    // 5. Clean up
     PyMem_RawFree(pyArgv0);
     Py_Finalize();
     return ret;
 }
 ```
 
-**关键点**：
-- `PYTHONHOME` 必须指向 HAP 包内的 Python 运行时目录（`libs/arm64/Python`）
-- 脚本路径是 HAP 解压后的绝对路径（`/data/storage/el1/bundle/entry/resources/resfile/...`）
-- 用 RAII guard 管理 `Py_Initialize` / `Py_Finalize` 生命周期
+**Key points**:
+- `PYTHONHOME` must point at the Python runtime directory inside the HAP package (`libs/arm64/Python`)
+- The script path is the absolute path after the HAP is unpacked (`/data/storage/el1/bundle/entry/resources/resfile/...`)
+- Use an RAII guard to manage the `Py_Initialize` / `Py_Finalize` lifecycle
 
-### CMake 配置
+### CMake configuration
 
 ```cmake
 add_library(pyqtlauncher SHARED pyqtlauncher.cpp hilog-easy.c)
@@ -146,64 +146,64 @@ target_link_directories(pyqtlauncher PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../.
 target_link_libraries(pyqtlauncher PRIVATE ${PYTHON_LIBRARIES})
 ```
 
-## 已知问题与限制
+## Known problems and limitations
 
-| # | 严重度 | 问题 | 原因 | 解决方案 |
-|---|:------:|------|------|---------|
-| 1 | 🟠 | numpy openblas 在 OHOS 上崩溃 | openblas 中一条 ARM 指令在 HarmonyOS 运行时触发异常 | 二进制补丁 NOP（`\x1f\x20\x03\xd5` at offset 2464508） |
-| 2 | 🟡 | `sys.exit()` 产生崩溃日志 | appspawn 拦截 `exit()` 系统调用 | 功能不受影响，日志可忽略；或改用 `QApplication.quit()` |
-| 3 | 🟠 | 仅支持 tablet / 2in1 | phone 设备存在窗口最小化后无法恢复的 bug（QTFOROH-1076） | module.json5 中 deviceTypes 排除 phone |
-| 4 | 🟡 | HAP 包体积大（~1.8 GB） | CPython + PyQt5 + numpy + Qt 全部打入 | 裁剪不需要的 site-packages；考虑只打包实际使用的模块 |
-| 5 | 🟡 | Python 路径硬编码 | launcher 中 `PYTHONHOME` 和脚本路径写死为绝对路径 | 可通过环境变量或配置文件参数化 |
+| # | Severity | Problem | Cause | Solution |
+|---|:--------:|---------|-------|----------|
+| 1 | 🟠 | numpy's openblas crashes on OHOS | One ARM instruction in openblas raises an exception in the HarmonyOS runtime | Binary-patch it to a NOP (`\x1f\x20\x03\xd5` at offset 2464508) |
+| 2 | 🟡 | `sys.exit()` produces crash logs | appspawn intercepts the `exit()` syscall | Functionality is unaffected and the logs can be ignored; or use `QApplication.quit()` instead |
+| 3 | 🟠 | Only tablet / 2-in-1 are supported | Phone devices have a bug where a minimized window can't be restored (QTFOROH-1076) | Exclude phone from deviceTypes in module.json5 |
+| 4 | 🟡 | The HAP is large (~1.8 GB) | CPython + PyQt5 + numpy + Qt are all packaged | Trim the site-packages you don't need; consider packaging only the modules actually used |
+| 5 | 🟡 | Hard-coded Python paths | `PYTHONHOME` and the script path are hard-coded as absolute paths in the launcher | They could be parameterized through environment variables or a config file |
 
-## 鸿蒙化 PyQt 应用的决策树
+## A decision tree for porting PyQt applications to HarmonyOS
 
 ```
-收到 PyQt 应用鸿蒙化需求
+A request to port a PyQt application to HarmonyOS
   │
-  ├─ 应用仅用 QtWidgets/QtCore/QtGui？ ──────────────→ ✅ 可行，参考 demo 架构
+  ├─ Does it only use QtWidgets/QtCore/QtGui? ───────→ ✅ Feasible; follow the demo architecture
   │
-  ├─ 应用用 QML/QtQuick？ ────────────────────────────→ ⚠️ 未验证
-  │   │                                                   PyQML 绑定需要额外构建
-  │   └─ 可改写为 QtWidgets？ ────────────────────────→ ✅ 可行
+  ├─ Does it use QML/QtQuick? ───────────────────────→ ⚠️ Unverified
+  │   │                                                   The PyQML bindings would need building separately
+  │   └─ Can it be rewritten with QtWidgets? ────────→ ✅ Feasible
   │
-  ├─ 应用用 QtMultimedia？ ───────────────────────────→ 🔴 阻断
-  │                                                       Qt Multimedia 在 OHOS SDK 中未包含
+  ├─ Does it use QtMultimedia? ──────────────────────→ 🔴 Blocked
+  │                                                       Qt Multimedia isn't included in the OHOS SDK
   │
-  ├─ 应用依赖大量 C 扩展模块？ ────────────────────────→ ⚠️ 需逐个验证
-  │   │                                                   每个 C 扩展需交叉编译到 OHOS
-  │   └─ 有纯 Python 替代？ ──────────────────────────→ ✅ 替换后按标准流程
+  ├─ Does it depend on many C extension modules? ────→ ⚠️ Verify each one
+  │   │                                                   Every C extension must be cross-compiled for OHOS
+  │   └─ Is there a pure-Python alternative? ────────→ ✅ Swap it in, then follow the standard process
   │
-  └─ 应用依赖平台特定功能（dbus, system tray 等）？ ──→ 🔴 需逐 API 替换
-                                                          参考 [[qt-harmonyos-api-mapping]]
+  └─ Does it depend on platform-specific features (dbus, system tray, ...)? ──→ 🔴 Replace API by API
+                                                          See [[qt-harmonyos-api-mapping]]
 ```
 
-## 与 C++ Qt 迁移工作流的关系
+## Relationship to the C++ Qt migration workflow
 
-PyQt 应用鸿蒙化的 **ArkTS 层、QPA 层、HAP 打包层** 与 C++ Qt 应用完全一致，[[qt-harmonyos-golden-rules]] 中的铁律（B1–B12 构建部署、W1–W5 窗口管理、L1–L4 生命周期）全部适用。
+For a PyQt application, the **ArkTS layer, the QPA layer, and the HAP packaging layer** are identical to a C++ Qt application, so all the iron rules in [[qt-harmonyos-golden-rules]] apply (B1–B12 build and deployment, W1–W5 window management, L1–L4 lifecycle).
 
-差异仅在 **launcher 层**：
-- C++ Qt：`main()` 直接创建 `QApplication` 和业务窗口
-- PyQt5：`main()` 启动 CPython，由 Python 脚本创建 `QApplication` 和业务窗口
+The only difference is the **launcher layer**:
+- C++ Qt: `main()` creates `QApplication` and the business windows directly
+- PyQt5: `main()` starts CPython, and the Python script creates `QApplication` and the business windows
 
-因此 PyQt 迁移复用 [[qt-app-harmonyos-migration]] 工作流的阶段 1–4（pre-flight → 可行性 → 构建部署 → 验证），仅需在阶段 0 增加 Python 运行时和 site-packages 的准备步骤。
+So a PyQt migration reuses phases 1–4 of the [[qt-app-harmonyos-migration]] workflow (pre-flight → feasibility → build and deploy → verify); you only need to add preparing the Python runtime and site-packages to phase 0.
 
-## 相关上下文
+## Related context
 
-- [[qt-harmonyos-overview]] — Qt for HarmonyOS 总体架构
-- [[qt-harmonyos-build]] — Qt 编译构建流程
-- [[qt-harmonyos-modules]] — Qt 模块支持矩阵
-- [[qt-harmonyos-platform-limits]] — 平台限制
-- [[qt-harmonyos-project-structure]] — 工程结构
-- [[qt-harmonyos-third-party-libs]] — 三方库接入
-- [[qt-harmonyos-golden-rules]] — 铁律速查
+- [[qt-harmonyos-overview]] — The overall Qt for HarmonyOS architecture
+- [[qt-harmonyos-build]] — The Qt build process
+- [[qt-harmonyos-modules]] — The Qt module support matrix
+- [[qt-harmonyos-platform-limits]] — Platform limitations
+- [[qt-harmonyos-project-structure]] — Project structure
+- [[qt-harmonyos-third-party-libs]] — Integrating third-party libraries
+- [[qt-harmonyos-golden-rules]] — Quick reference to the iron rules
 
-## 成果展示
+## Results
 
-| 字段 | 内容 |
-|------|------|
-| 领导摘要 | 完成 PyQt5 for HarmonyOS 可行性验证，确认 PyQt5 开源应用可鸿蒙化，扩展了迁移支撑范围 |
-| 影响面 | PyQt 开源应用迁移评估、商业 PyQt 项目咨询 |
-| 交付物 | 知识库页面、demo 仓库分析 |
-| 证据 | pyqt5-demo 仓库（commit 798669d）源码分析 |
-| 可复用方式 | 收到 PyQt 应用鸿蒙化需求时，先扫描此页判断可行性和技术路径 |
+| Field | Content |
+|-------|---------|
+| Leadership summary | Verified the feasibility of PyQt5 for HarmonyOS, confirming that open-source PyQt5 applications can be ported and widening the scope of migration support |
+| Scope of impact | Migration assessments for open-source PyQt applications, consulting on commercial PyQt projects |
+| Deliverables | Knowledge page, demo repository analysis |
+| Evidence | Source analysis of the pyqt5-demo repository (commit 798669d) |
+| How to reuse | When you get a request to port a PyQt application to HarmonyOS, scan this page first to judge feasibility and the technical path |

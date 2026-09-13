@@ -1,96 +1,96 @@
-# 安装指南
+# Installation guide
 
-本知识库提供自动化初始化 skill，帮你快速完成环境配置。
+This knowledge base ships an automated initialization skill to get your environment configured quickly.
 
-## 快速开始
+## Quick start
 
-克隆本仓库后，在你的 AI 工具中说"初始化知识库"或"帮我配置环境"，Agent 会自动执行 `skills/kb-init/` 中的初始化流程。
+After cloning this repository, tell your AI tool "initialize the knowledge base" or "help me configure the environment", and the agent will run the initialization flow in `skills/kb-init/`.
 
-## 初始化 skill 会做什么
+## What the initialization skill does
 
-`skills/kb-init/` 包含以下组件：
+`skills/kb-init/` contains the following components:
 
-| 文件 | 职责 |
-|------|------|
-| `SKILL.md` | Agent 指令：引导用户完成交互式决策（选择 Qt 版本、确认路径等） |
-| `scripts/detect-env.sh` | 确定性检测：扫描已安装的工具、SDK、Qt 源码，输出结构化结果 |
-| `scripts/generate-env-local.sh` | 确定性生成：根据检测结果写入 `ENV.local.md` |
-| `scripts/verify-env.sh` | 确定性验证：检查所有必要路径存在、工具版本兼容，输出就绪报告 |
+| File | Responsibility |
+|------|----------------|
+| `SKILL.md` | Agent instructions: walk the user through interactive decisions (choosing a Qt version, confirming paths, and so on) |
+| `scripts/detect-env.sh` | Deterministic detection: scan for installed tools, SDKs, and Qt sources, and emit a structured result |
+| `scripts/generate-env-local.sh` | Deterministic generation: write `ENV.local.md` based on the detection results |
+| `scripts/verify-env.sh` | Deterministic verification: check that all required paths exist and tool versions are compatible, and emit a readiness report |
 
-## 初始化流程
+## The initialization flow
 
 ```
-1. Agent 读取 SKILL.md，开始引导
+1. The agent reads SKILL.md and starts the walkthrough
 
-2. 运行 detect-env.sh（确定性）
-   ├── 检测操作系统（Windows / macOS / Linux）
-   ├── 检测已安装工具（DevEco Studio? hdc? git? cmake? MinGW? Perl?）
-   ├── 检测已有的 Qt 源码/SDK（扫描常见路径）
-   └── 输出结构化检测结果
+2. Run detect-env.sh (deterministic)
+   ├── Detect the operating system (Windows / macOS / Linux)
+   ├── Detect installed tools (DevEco Studio? hdc? git? cmake? MinGW? Perl?)
+   ├── Detect existing Qt sources/SDKs (scan common paths)
+   └── Emit structured detection results
 
-3. Agent 根据检测结果，引导用户补齐缺失依赖
+3. Based on the results, the agent guides the user through filling in the missing dependencies
    ├── DevEco Studio + HarmonyOS SDK
-   ├── Qt 源码获取（有 license / 无 license / 预编译 SDK）
-   ├── 构建工具链（MinGW / Strawberry Perl，仅 Windows 编译 Qt 时需要）
-   └── 验证各工具版本兼容
+   ├── Obtaining the Qt source (with a license / without a license / prebuilt SDK)
+   ├── The build toolchain (MinGW / Strawberry Perl — only needed when building Qt on Windows)
+   └── Verify that each tool's version is compatible
 
-4. 运行 generate-env-local.sh（确定性）
-   ├── 输入：检测结果 + 用户选择
-   ├── 输出：ENV.local.md
-   └── Agent 展示生成结果，请用户确认
+4. Run generate-env-local.sh (deterministic)
+   ├── Input: the detection results + the user's choices
+   ├── Output: ENV.local.md
+   └── The agent shows the result and asks the user to confirm
 
-5. 运行 verify-env.sh（确定性）
-   ├── 检查所有必要路径存在
-   ├── 检查工具版本兼容
-   ├── 可选：尝试编译一个最简 Qt 鸿蒙 demo
-   └── 输出环境就绪报告（通过/未通过 + 具体缺失项）
+5. Run verify-env.sh (deterministic)
+   ├── Check that all required paths exist
+   ├── Check that tool versions are compatible
+   ├── Optional: try building a minimal Qt HarmonyOS demo
+   └── Emit an environment readiness report (pass/fail + the specific missing items)
 ```
 
-## 手动安装（不使用 skill）
+## Manual installation (without the skill)
 
-如果你不想使用初始化 skill，可以手动完成以下步骤：
+If you'd rather not use the initialization skill, you can do the following by hand:
 
-1. **安装 DevEco Studio + HarmonyOS SDK**
-   - 下载：https://developer.huawei.com/consumer/cn/deveco-studio/
-   - 版本要求：API 17/20
+1. **Install DevEco Studio + the HarmonyOS SDK**
+   - Download: https://developer.huawei.com/consumer/cn/deveco-studio/
+   - Version requirement: API 17/20
 
-2. **获取 Qt 源码**
-   - 有 license：`git clone https://codereview.qt-project.org/qt/tqtc-qt5`
-   - 无 license：`git clone https://gitcode.com/ohos-qt/qt-harmonyos-src`
-   - 只需预编译 SDK：访问 https://gitcode.com/ohos-qt/qt-harmonyos-src/releases 下载
+2. **Obtain the Qt source**
+   - With a license: `git clone https://codereview.qt-project.org/qt/tqtc-qt5`
+   - Without a license: `git clone https://gitcode.com/ohos-qt/qt-harmonyos-src`
+   - Only need the prebuilt SDK: download it from https://gitcode.com/ohos-qt/qt-harmonyos-src/releases
 
-3. **安装构建工具链**（仅 Windows 编译 Qt 时需要）
-   - MinGW：https://www.mingw-w64.org/
-   - Strawberry Perl：https://strawberryperl.com/
+3. **Install the build toolchain** (only needed when building Qt on Windows)
+   - MinGW: https://www.mingw-w64.org/
+   - Strawberry Perl: https://strawberryperl.com/
 
-4. **生成 ENV.local.md**
-   - 复制 `ENV.md` 为 `ENV.local.md`
-   - 替换所有 `<PLACEHOLDER_*>` 为你本机的实际路径
+4. **Generate ENV.local.md**
+   - Copy `ENV.md` to `ENV.local.md`
+   - Replace every `<PLACEHOLDER_*>` with the actual path on your machine
 
-5. **验证环境**
-   - 检查所有必要路径存在
-   - 尝试编译一个最简 Qt 鸿蒙 demo
+5. **Verify the environment**
+   - Check that all required paths exist
+   - Try building a minimal Qt HarmonyOS demo
 
-## 常见问题
+## FAQ
 
-### Q: 我没有 Qt 商业 license，能使用本知识库吗？
+### Q: I don't have a Qt commercial license — can I still use this knowledge base?
 
-A: 可以。本知识库支持三种 Qt 源码获取方式：
-- 有 license：从 codereview.qt-project.org 获取
-- 无 license：从 https://gitcode.com/ohos-qt/qt-harmonyos-src 获取开源代码
-- 只需预编译 SDK：从 https://gitcode.com/ohos-qt/qt-harmonyos-src/releases 下载预编译产物
+A: Yes. This knowledge base supports three ways of obtaining the Qt source:
+- With a license: get it from codereview.qt-project.org
+- Without a license: get the open-source code from https://gitcode.com/ohos-qt/qt-harmonyos-src
+- Only need the prebuilt SDK: download the prebuilt artifacts from https://gitcode.com/ohos-qt/qt-harmonyos-src/releases
 
-### Q: 初始化 skill 检测不到我已安装的工具？
+### Q: The initialization skill can't detect a tool I've already installed?
 
-A: 初始化 skill 会扫描常见路径。如果你的工具安装在非标准路径，可以在 Agent 引导时手动指定路径。
+A: The initialization skill scans common paths. If your tool is installed somewhere non-standard, you can specify the path manually during the agent's walkthrough.
 
-### Q: 初始化完成后，如何验证环境可用？
+### Q: After initialization, how do I verify the environment works?
 
-A: 初始化 skill 的最后一步会运行 `verify-env.sh`，输出环境就绪报告。如果报告中有缺失项，按提示补齐即可。
+A: The last step of the initialization skill runs `verify-env.sh` and emits an environment readiness report. If anything is listed as missing, follow the instructions to fill the gap.
 
-## 相关文件
+## Related files
 
-- `ENV.md`：路径变量定义（占位模板）
-- `ENV.local.md`：你的本地路径配置（由初始化 skill 生成，或手动创建）
-- `skills/kb-init/SKILL.md`：初始化 skill 的 Agent 指令
-- `skills/kb-init/scripts/`：初始化 skill 的确定性脚本
+- `ENV.md`: path variable definitions (a placeholder template)
+- `ENV.local.md`: your local path configuration (generated by the initialization skill, or created by hand)
+- `skills/kb-init/SKILL.md`: the agent instructions for the initialization skill
+- `skills/kb-init/scripts/`: the deterministic scripts for the initialization skill

@@ -7,53 +7,53 @@ created: 2026-06-10
 updated: 2026-06-10
 status: solved
 audience: public
-summary: "Windows Git Bash 下 curl 调 API 请求体中文显示为乱码（编码非 UTF-8）"
+summary: "Chinese text in a curl API request body is garbled under Windows Git Bash (the encoding isn't UTF-8)"
 severity: medium
 
-# ====== 检索关键字 ======
+# ====== Search keywords ======
 error_message: >
-  curl 在 Windows Git Bash 环境下调用 API 时，请求体中的中文显示为乱码。
-  例如 "知识库" 变成 "֪ʶ⽻"，"门禁" 变成 "Ž"。
-  API 返回 200/201 但中文字段全部乱码。
+  When calling an API with curl under Windows Git Bash, Chinese characters in the request body come out garbled.
+  For example, "知识库" becomes "֪ʶ⽻" and "门禁" becomes "Ž".
+  The API returns 200/201, but every Chinese field is mojibake.
 error_code: "N/A"
-keywords: [curl, 乱码, 中文, encoding, UTF-8, Git Bash, Windows, API, garbled, mojibake]
-symptoms: "curl POST/PATCH 请求体中的中文字符在 API 端显示为乱码（如 Cyrillic 字符 ֪ʶ⽻）"
+keywords: [curl, garbled, mojibake, Chinese, encoding, UTF-8, Git Bash, Windows, API]
+symptoms: "Chinese characters in a curl POST/PATCH request body show up garbled on the API side (e.g. Cyrillic characters like ֪ʶ⽻)"
 
-# ====== 问题详情 ======
+# ====== Problem details ======
 environment: "Windows 10/11 + Git Bash (MSYS2) + curl 7.x/8.x"
 refs: []
 related_problems: []
 ---
 
-# curl 中文乱码（Windows Git Bash 环境）
+# curl mojibake with Chinese text (Windows Git Bash)
 
-## 错误信息
+## Error message
 
 ```
-# 期望: "feat: Qt for HarmonyOS 知识库完整交付 + 门禁 CI 体系"
-# 实际: "feat: Qt for HarmonyOS ֪ʶ + Ž CI ϵ"
+# Expected: "feat: Qt for HarmonyOS 知识库完整交付 + 门禁 CI 体系"
+# Actual:   "feat: Qt for HarmonyOS ֪ʶ + Ž CI ϵ"
 ```
 
-API 返回 200/201 成功，但 title/body 等字段中的中文全部变成乱码（通常是 Cyrillic 或 Latin-1 字符）。
+The API returns 200/201 successfully, but all the Chinese in fields like title/body turns into mojibake (usually Cyrillic or Latin-1 characters).
 
-## 根因分析
+## Root cause analysis
 
-Windows Git Bash 的终端默认编码不是 UTF-8，当 curl 的 `-d` 参数直接包含中文时：
+The Windows Git Bash terminal's default encoding is not UTF-8, so when curl's `-d` argument contains Chinese directly:
 
-1. Shell 将中文以终端编码（如 GBK/CP936）传递给 curl
-2. curl 将收到的字节原样发送到 HTTP 请求体
-3. API 端按 UTF-8 解码 → 乱码
+1. The shell passes the Chinese to curl in the terminal's encoding (e.g. GBK/CP936)
+2. curl sends the bytes it received verbatim in the HTTP request body
+3. The API decodes them as UTF-8 → mojibake
 
-**关键**：即使设置了 `Content-Type: application/json; charset=utf-8`，curl 也不会自动转换编码——它只是透传字节。
+**The key point**: even with `Content-Type: application/json; charset=utf-8` set, curl does not convert the encoding — it just passes the bytes through.
 
-## 解决方案
+## Solution
 
-### 方案 A：写入临时文件 + `@file` 引用（推荐）
+### Option A: write to a temporary file and reference it with `@file` (recommended)
 
-将 JSON 内容写入临时文件（确保文件本身是 UTF-8 编码），然后 curl 读取文件：
+Write the JSON to a temporary file (making sure the file itself is UTF-8 encoded), then have curl read the file:
 
 ```bash
-# 1. 用 heredoc 写入临时文件（heredoc 内容以 UTF-8 写入文件）
+# 1. Write the temporary file with a heredoc (heredoc content is written to the file as UTF-8)
 cat > /tmp/pr_data.json << 'JSONEOF'
 {
   "title": "feat: Qt for HarmonyOS 知识库完整交付 + 门禁 CI 体系",
@@ -61,25 +61,25 @@ cat > /tmp/pr_data.json << 'JSONEOF'
 }
 JSONEOF
 
-# 2. curl 读取文件（文件本身是 UTF-8，curl 原样发送）
+# 2. curl reads the file (the file is UTF-8, and curl sends it verbatim)
 curl -s -X PATCH "https://gitcode.com/api/v5/repos/OWNER/REPO/pulls/1" \
   -H "Content-Type: application/json; charset=utf-8" \
   -H "Authorization: Bearer TOKEN" \
   -d @/tmp/pr_data.json
 ```
 
-### 方案 B：`chcp 65001` 切换终端编码
+### Option B: switch the terminal encoding with `chcp 65001`
 
 ```bash
-# 切换到 UTF-8 代码页后再执行 curl
+# Switch to the UTF-8 code page, then run curl
 chcp 65001 >nul 2>&1
 curl -s -X PATCH "URL" -H "Content-Type: application/json; charset=utf-8" \
   -d '{"title": "中文标题"}'
 ```
 
-> ⚠️ 方案 B 在某些 Git Bash 版本中不稳定，推荐方案 A。
+> ⚠️ Option B is unreliable in some Git Bash versions; option A is recommended.
 
-### 方案 C：`printf` + 管道
+### Option C: `printf` + a pipe
 
 ```bash
 printf '{"title":"中文标题"}' | curl -s -X PATCH "URL" \
@@ -87,40 +87,40 @@ printf '{"title":"中文标题"}' | curl -s -X PATCH "URL" \
   -d @-
 ```
 
-## GitCode API 补充经验
+## Additional notes on the GitCode API
 
-| 操作 | 方法 | 认证方式 | 端点 |
-|------|------|---------|------|
-| 创建 PR | `POST` | `Authorization: Bearer TOKEN` | `/api/v5/repos/{owner}/{repo}/pulls` |
-| 更新 PR | `PATCH`（不是 PUT） | `Authorization: Bearer TOKEN` | `/api/v5/repos/{owner}/{repo}/pulls/{id}` |
-| 认证失败 | 返回 `401 token not found` | 检查：用 `Bearer` 而非 `token` 前缀 | — |
+| Operation | Method | Authentication | Endpoint |
+|-----------|--------|----------------|----------|
+| Create a PR | `POST` | `Authorization: Bearer TOKEN` | `/api/v5/repos/{owner}/{repo}/pulls` |
+| Update a PR | `PATCH` (not PUT) | `Authorization: Bearer TOKEN` | `/api/v5/repos/{owner}/{repo}/pulls/{id}` |
+| Auth failure | Returns `401 token not found` | Check: use the `Bearer` prefix, not `token` | — |
 
-### GitCode API 认证格式
+### GitCode API authentication format
 
 ```bash
-# ✅ 正确
+# ✅ Correct
 -H "Authorization: Bearer YOUR_TOKEN"
 
-# ❌ 错误（返回 401）
+# ❌ Wrong (returns 401)
 -H "Authorization: token YOUR_TOKEN"
 ```
 
-## 排查步骤
+## Troubleshooting steps
 
-1. **确认乱码来源**：在 curl 命令中加 `-v`，查看 `> ` 开头的请求体是否为正确 UTF-8
-2. **检查文件编码**：`file /tmp/pr_data.json` 应显示 `UTF-8`
-3. **检查终端编码**：`echo $LANG` 查看当前 locale
-4. **验证 API 端**：用 API 返回的 JSON 中的 title 字段确认是否已修复
+1. **Confirm where the garbling happens**: add `-v` to the curl command and check whether the request body on the `> ` lines is valid UTF-8
+2. **Check the file encoding**: `file /tmp/pr_data.json` should report `UTF-8`
+3. **Check the terminal encoding**: `echo $LANG` to see the current locale
+4. **Verify on the API side**: check the title field in the JSON the API returns to confirm the fix
 
-## 可复用经验
+## Reusable lessons
 
-1. **Windows + Git Bash + curl + 中文 = 必须用文件传递 JSON**，不要直接在 `-d` 参数中写中文
-2. **GitCode API 更新 PR 用 PATCH**，不支持 PUT（返回 405）
-3. **GitCode API 认证用 Bearer**，不支持 `token` 前缀（返回 401）
-4. **API Token 安全**：Token 一旦暴露在对话/日志中，应立即撤销并重新生成
+1. **Windows + Git Bash + curl + Chinese = you must pass the JSON via a file**; don't write Chinese directly in the `-d` argument
+2. **Use PATCH to update a PR on the GitCode API**; PUT isn't supported (returns 405)
+3. **Use Bearer for GitCode API authentication**; the `token` prefix isn't supported (returns 401)
+4. **API token safety**: once a token is exposed in a conversation or log, revoke it and regenerate immediately
 
-## 参考来源
+## References
 
-| 来源类型 | 说明 |
-|----------|------|
-| 🛠️ 工作经验 | 2026-06-10 创建 GitCode PR 时遇到的实际问题和解决方案 |
+| Source type | Notes |
+|-------------|-------|
+| 🛠️ Hands-on experience | A real problem and its solution, hit while creating a GitCode PR on 2026-06-10 |

@@ -1,18 +1,18 @@
 #!/bin/bash
-# detect-env.sh — 确定性环境检测
-# 检测知识库位置、操作系统、已安装工具、Qt 源码/SDK
+# detect-env.sh — deterministic environment detection
+# Detects the knowledge base location, the operating system, installed tools, and the Qt source/SDK
 #
-# 用法: bash skills/kb-init/scripts/detect-env.sh
-# 输出: key=value 格式，每行一个检测结果
-# 退出码: 0=成功
+# Usage: bash skills/kb-init/scripts/detect-env.sh
+# Output: key=value format, one detection result per line
+# Exit codes: 0=success
 
 set -uo pipefail
 
 # ═══════════════════════════════════════════════════════════
-# 辅助函数
+# Helper functions
 # ═══════════════════════════════════════════════════════════
 detect_os() {
-  # 鸿蒙检测：uname 可能返回 Linux，但 HarmonyBrew 存在说明是鸿蒙
+  # HarmonyOS detection: uname may report Linux, but the presence of HarmonyBrew means it's HarmonyOS
   if [ -d "/storage/Users/currentUser/.harmonybrew" ] || { command -v brew &>/dev/null && brew --prefix 2>/dev/null | grep -q harmonybrew; }; then
     echo "harmonyos"
     return
@@ -20,7 +20,7 @@ detect_os() {
   case "$(uname -s)" in
     Darwin*) echo "macos";;
     Linux*)
-      # 进一步检测鸿蒙：检查 /etc/os-release 或 hdc 环境
+      # Further HarmonyOS detection: check /etc/os-release or the hdc environment
       if [ -f "/etc/ohos-release" ] || [ -f "/etc/openharmony-release" ] || grep -qi "openharmony\|harmonyos" /etc/os-release 2>/dev/null; then
         echo "harmonyos"
       else
@@ -40,13 +40,13 @@ cmd_version() {
 }
 
 # ═══════════════════════════════════════════════════════════
-# 0. 知识库检测
+# 0. Knowledge base detection
 # ═══════════════════════════════════════════════════════════
-# 从脚本位置推算 KB_ROOT（scripts/ → kb-init/ → skills/ → KB root）
+# Derive KB_ROOT from the script's location (scripts/ → kb-init/ → skills/ → the KB root)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 KB_ROOT="$(cd "$SCRIPT_DIR/../../.." 2>/dev/null && pwd || echo "")"
 
-# 验证是否在 ohos-qt-kb 内部知识库中
+# Verify we're inside the ohos-qt-kb knowledge base
 KB_FOUND="false"
 if [ -n "$KB_ROOT" ] && [ -f "$KB_ROOT/AGENTS.md" ] && [ -d "$KB_ROOT/skills/kb-init" ] && [ -d "$KB_ROOT/semantic" ]; then
   KB_FOUND="true"
@@ -55,19 +55,19 @@ fi
 echo "KB_FOUND=$KB_FOUND"
 echo "KB_ROOT=$KB_ROOT"
 
-# workspace 目录
+# The workspace directory
 WORKSPACE_DIR="$KB_ROOT/workspace"
 echo "WORKSPACE_DIR=$WORKSPACE_DIR"
 
 # ═══════════════════════════════════════════════════════════
-# 1. 操作系统
+# 1. Operating system
 # ═══════════════════════════════════════════════════════════
 OS=$(detect_os)
 echo "OS=$OS"
 echo "ARCH=$(uname -m)"
 
 # ═══════════════════════════════════════════════════════════
-# 2. DevEco Studio + HarmonyOS SDK + DevEco CLI
+# 2. DevEco Studio + the HarmonyOS SDK + the DevEco CLI
 # ═══════════════════════════════════════════════════════════
 DEVECO_PATH=""
 DEVECO_FOUND="false"
@@ -116,10 +116,10 @@ elif [ "$OS" = "windows" ]; then
     [ -f "$_cli" ] && { DEVECO_CLI_PATH="$_cli"; DEVECO_CLI_FOUND="true"; }
     [ -f "$DEVECO_PATH/sdk/default/openharmony/ohpm/bin/ohpm" ] && OHPM_FOUND="true"
     [ -f "$DEVECO_PATH/tools/hvigor/bin/hvigorw.js" ] && HVIGORW_FOUND="true"
-    # Windows 版本检测
+    # Windows version detection
     _pkg="$DEVECO_PATH/resources/app/package.json"
     [ -f "$_pkg" ] && DEVECO_VERSION=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "$_pkg" 2>/dev/null | head -1 | sed 's/.*"\([^"]*\)".*/\1/')
-    # 备用路径
+    # A fallback path
     if [ -z "$DEVECO_VERSION" ]; then
       _pkg="$DEVECO_PATH/Contents/Resources/app/package.json"
       [ -f "$_pkg" ] && DEVECO_VERSION=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "$_pkg" 2>/dev/null | head -1 | sed 's/.*"\([^"]*\)".*/\1/')
@@ -155,13 +155,13 @@ elif [ "$OS" = "harmonyos" ]; then
   fi
 fi
 
-# hdc 也可能在 PATH 中
+# hdc may also be on PATH
 if [ "$HDC_FOUND" = "false" ]; then
   HDC_FOUND=$(cmd_exists hdc)
   [ "$HDC_FOUND" = "true" ] && HDC_PATH="$(command -v hdc)"
 fi
 
-# devecocli 也可能在 PATH 中
+# devecocli may also be on PATH
 if [ "$DEVECO_CLI_FOUND" = "false" ]; then
   DEVECO_CLI_FOUND=$(cmd_exists devecocli)
   [ "$DEVECO_CLI_FOUND" = "true" ] && DEVECO_CLI_PATH="$(command -v devecocli)"
@@ -197,7 +197,7 @@ echo "JDK_FOUND=$JDK_FOUND"
 echo "JDK_VERSION=$JDK_VERSION"
 
 # ═══════════════════════════════════════════════════════════
-# 3. 基础工具链
+# 3. The base toolchain
 # ═══════════════════════════════════════════════════════════
 echo "GIT_FOUND=$(cmd_exists git)"
 echo "GIT_VERSION=$(cmd_version git --version)"
@@ -205,7 +205,7 @@ echo "CMAKE_FOUND=$(cmd_exists cmake)"
 echo "CMAKE_VERSION=$(cmd_version cmake --version)"
 
 # ═══════════════════════════════════════════════════════════
-# 4. 平台特定工具
+# 4. Platform-specific tools
 # ═══════════════════════════════════════════════════════════
 MINGW_FOUND="false"; MINGW_PATH=""
 PERL_FOUND="false"; PERL_PATH=""
@@ -238,7 +238,7 @@ echo "POWERSHELL_FOUND=$POWERSHELL_FOUND"
 echo "XCODE_CLT_FOUND=$XCODE_CLT_FOUND"
 
 # ═══════════════════════════════════════════════════════════
-# 5. Qt 源码/SDK 检测（在 workspace/ 下）
+# 5. Qt source/SDK detection (under workspace/)
 # ═══════════════════════════════════════════════════════════
 QT5_12_SRC_FOUND="false"; QT5_12_SRC_PATH=""
 QT5_15_SRC_FOUND="false"; QT5_15_SRC_PATH=""
@@ -247,12 +247,12 @@ QT5_15_SDK_FOUND="false"; QT5_15_OHOS_SDK_PATH=""
 
 if [ "$KB_FOUND" = "true" ]; then
   WS="$KB_ROOT/workspace"
-  # 源码
+  # Source
   for d in "$WS/qt-src/qt5.12" "$WS/qt-src/qt-harmonyos-src"; do
     [ -d "$d/qtbase" ] && { QT5_12_SRC_FOUND="true"; QT5_12_SRC_PATH="$d"; }
   done
   [ -d "$WS/qt-src/qt5.15/qtbase" ] && { QT5_15_SRC_FOUND="true"; QT5_15_SRC_PATH="$WS/qt-src/qt5.15"; }
-  # SDK
+  # SDKs
   for d in "$WS"/qt-sdk/Qt5.12*; do
     [ -d "$d" ] && { QT5_12_SDK_FOUND="true"; QT5_12_OHOS_SDK_PATH="$d"; break; }
   done
@@ -271,7 +271,7 @@ echo "QT5_15_SDK_FOUND=$QT5_15_SDK_FOUND"
 echo "QT5_15_OHOS_SDK_PATH=$QT5_15_OHOS_SDK_PATH"
 
 # ═══════════════════════════════════════════════════════════
-# 5b. 独立模板归档检测（workspace/templates/）
+# 5b. Standalone template archive detection (workspace/templates/)
 # ═══════════════════════════════════════════════════════════
 TEMPLATE_STANDALONE_FOUND="false"
 TEMPLATE_STANDALONE_PATH=""
@@ -286,14 +286,14 @@ echo "TEMPLATE_STANDALONE_FOUND=$TEMPLATE_STANDALONE_FOUND"
 echo "TEMPLATE_STANDALONE_PATH=$TEMPLATE_STANDALONE_PATH"
 
 # ═══════════════════════════════════════════════════════════
-# 6. ENV.local.md 状态
+# 6. ENV.local.md status
 # ═══════════════════════════════════════════════════════════
 ENV_LOCAL_EXISTS="false"
 [ "$KB_FOUND" = "true" ] && [ -f "$KB_ROOT/ENV.local.md" ] && ENV_LOCAL_EXISTS="true"
 echo "ENV_LOCAL_EXISTS=$ENV_LOCAL_EXISTS"
 
 # ═══════════════════════════════════════════════════════════
-# 7. 就绪度快速判断
+# 7. A quick readiness verdict
 # ═══════════════════════════════════════════════════════════
 APP_READY="true"
 [ "$KB_FOUND" = "false" ] && APP_READY="false"

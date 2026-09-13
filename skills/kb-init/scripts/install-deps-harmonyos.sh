@@ -1,20 +1,20 @@
 #!/bin/bash
-# install-deps-harmonyos.sh — 鸿蒙平台依赖检查与安装引导
-# 使用 HarmonyBrew (https://gitcode.com/Harmonybrew) 作为包管理器
+# install-deps-harmonyos.sh — HarmonyOS dependency check and installation guidance
+# Uses HarmonyBrew (https://gitcode.com/Harmonybrew) as the package manager
 #
-# 鸿蒙平台限制：
-#   - DevEco Studio 无鸿蒙版，未上架应用市场
-#   - Command Line Tools 需在统一工单平台提单申请遥测版本
-#   - deveco-cli 仓库未声明鸿蒙支持，但可尝试 npm 安装
+# HarmonyOS platform limitations:
+#   - DevEco Studio has no HarmonyOS build and isn't listed in the app store
+#   - The Command Line Tools telemetry build must be requested via the unified ticket platform
+#   - The deveco-cli repository doesn't declare HarmonyOS support, but npm installation is worth trying
 #
-# 状态分级：
-#   PASS    — 已就绪
-#   FAIL    — 可自动修复但失败了
-#   PENDING — 需用户手动操作（提单申请等）
-#   WARN    — 非阻塞性提示
+# Status levels:
+#   PASS    — ready
+#   FAIL    — could be fixed automatically, but the attempt failed
+#   PENDING — requires manual user action (filing a request, etc.)
+#   WARN    — a non-blocking note
 #
-# 用法: bash skills/kb-init/scripts/install-deps-harmonyos.sh
-# 退出码: 0=全部就绪或仅 PENDING, 1=有 FAIL
+# Usage: bash skills/kb-init/scripts/install-deps-harmonyos.sh
+# Exit codes: 0=everything ready or only PENDING items, 1=there are FAIL items
 
 set -uo pipefail
 
@@ -28,10 +28,10 @@ fail()    { echo "  FAIL: $1${2:+ -- $2}"; FAIL=$((FAIL + 1)); }
 warn()    { echo "  WARN: $1${2:+ -- $2}"; WARN=$((WARN + 1)); }
 pending() { echo "  PENDING: $1${2:+ -- $2}"; PENDING=$((PENDING + 1)); }
 
-echo "--- 鸿蒙平台依赖检查 ---"
+echo "--- HarmonyOS dependency check ---"
 echo ""
-echo "  提示: DevEco Studio / Command Line Tools 当前在鸿蒙平台需手动申请。"
-echo "  可自动安装的依赖会正常安装，不可自动的标记为 PENDING。"
+echo "  Note: DevEco Studio / the Command Line Tools currently require a manual request on HarmonyOS."
+echo "  Dependencies that can be installed automatically will be; the rest are marked PENDING."
 echo ""
 
 # 1. HarmonyBrew
@@ -40,10 +40,10 @@ if command -v brew &>/dev/null; then
   if echo "$BREW_PREFIX" | grep -q "harmonybrew"; then
     ok "HarmonyBrew ($(brew --version 2>/dev/null | head -1))"
   else
-    warn "检测到 Homebrew 而非 HarmonyBrew" "鸿蒙平台建议使用 HarmonyBrew: zsh -c \"\$(curl -fsSL https://harmonybrew.atomgit.com/install.sh)\""
+    warn "Found Homebrew rather than HarmonyBrew" "On HarmonyOS, HarmonyBrew is recommended: zsh -c \"\$(curl -fsSL https://harmonybrew.atomgit.com/install.sh)\""
   fi
 else
-  fail "HarmonyBrew 未安装" "运行: zsh -c \"\$(curl -fsSL https://harmonybrew.atomgit.com/install.sh)\""
+  fail "HarmonyBrew is not installed" "Run: zsh -c \"\$(curl -fsSL https://harmonybrew.atomgit.com/install.sh)\""
 fi
 
 # 2. git
@@ -52,16 +52,16 @@ if command -v git &>/dev/null; then
   GIT_NAME=$(git config --global user.name 2>/dev/null || true)
   GIT_EMAIL=$(git config --global user.email 2>/dev/null || true)
   if [ -z "$GIT_NAME" ]; then
-    warn "git user.name 未配置" "运行: git config --global user.name \"你的名字\""
+    warn "git user.name is not configured" "Run: git config --global user.name \"Your Name\""
   fi
   if [ -z "$GIT_EMAIL" ]; then
-    warn "git user.email 未配置" "运行: git config --global user.email \"你的邮箱\""
+    warn "git user.email is not configured" "Run: git config --global user.email \"your@email\""
   fi
 else
   if command -v brew &>/dev/null; then
-    fail "git 未安装" "运行: brew install git"
+    fail "git is not installed" "Run: brew install git"
   else
-    fail "git 未安装" "请先安装 HarmonyBrew，然后运行: brew install git"
+    fail "git is not installed" "Install HarmonyBrew first, then run: brew install git"
   fi
 fi
 
@@ -70,9 +70,9 @@ if command -v curl &>/dev/null; then
   ok "curl"
 else
   if command -v brew &>/dev/null; then
-    fail "curl 未安装" "运行: brew install curl"
+    fail "curl is not installed" "Run: brew install curl"
   else
-    fail "curl 未安装" "请先安装 HarmonyBrew，然后运行: brew install curl"
+    fail "curl is not installed" "Install HarmonyBrew first, then run: brew install curl"
   fi
 fi
 
@@ -81,9 +81,9 @@ if command -v node &>/dev/null; then
   ok "Node.js ($(node --version 2>/dev/null))"
 else
   if command -v brew &>/dev/null; then
-    fail "Node.js 未安装" "运行: brew install node（deveco-cli 和 hvigor 依赖 Node.js）"
+    fail "Node.js is not installed" "Run: brew install node (deveco-cli and hvigor depend on Node.js)"
   else
-    fail "Node.js 未安装" "请先安装 HarmonyBrew，然后运行: brew install node"
+    fail "Node.js is not installed" "Install HarmonyBrew first, then run: brew install node"
   fi
 fi
 
@@ -92,9 +92,9 @@ if command -v java &>/dev/null; then
   ok "Java ($(java -version 2>&1 | head -1))"
 else
   if command -v brew &>/dev/null; then
-    warn "Java 未安装" "运行: brew install openjdk"
+    warn "Java is not installed" "Run: brew install openjdk"
   else
-    warn "Java 未安装" "请先安装 HarmonyBrew，然后运行: brew install openjdk"
+    warn "Java is not installed" "Install HarmonyBrew first, then run: brew install openjdk"
   fi
 fi
 
@@ -103,9 +103,9 @@ if command -v cmake &>/dev/null; then
   ok "cmake ($(cmake --version 2>/dev/null | head -1))"
 else
   if command -v brew &>/dev/null; then
-    fail "cmake 未安装" "运行: brew install cmake"
+    fail "cmake is not installed" "Run: brew install cmake"
   else
-    fail "cmake 未安装" "请先安装 HarmonyBrew，然后运行: brew install cmake"
+    fail "cmake is not installed" "Install HarmonyBrew first, then run: brew install cmake"
   fi
 fi
 
@@ -126,95 +126,95 @@ if [ "$DEVECO_FOUND" = "false" ]; then
     DEVECO_PATH=$(dirname "$(dirname "$(command -v devecocli)")")
     ok "DevEco CLI (PATH: $DEVECO_PATH)"
   else
-    pending "DevEco Studio / Command Line Tools 未安装" "鸿蒙平台需手动申请：访问 https://developer.huawei.com/consumer/cn/ 统一工单平台，提单申请 Command Line Tools for HarmonyOS 遥测版本。获得后运行: bash skills/kb-init/scripts/download-cmdline-tools.sh --dest=\$HOME/commandline-tools --url=<下载链接>"
+    pending "DevEco Studio / Command Line Tools are not installed" "On HarmonyOS these must be requested manually: go to the unified ticket platform at https://developer.huawei.com/consumer/cn/ and request the telemetry build of Command Line Tools for HarmonyOS. Once you have it, run: bash skills/kb-init/scripts/download-cmdline-tools.sh --dest=\$HOME/commandline-tools --url=<download link>"
   fi
 fi
 
 # 8. hdc
 if command -v hdc &>/dev/null; then
-  ok "hdc (PATH)"
+  ok "hdc (on PATH)"
 elif [ "$DEVECO_FOUND" = "true" ] && [ -n "$DEVECO_PATH" ]; then
   _hdc="$DEVECO_PATH/sdk/default/openharmony/toolchains/hdc"
   if [ -f "$_hdc" ]; then
-    ok "hdc (SDK 内置)"
+    ok "hdc (bundled with the SDK)"
   else
-    warn "hdc 未找到" "SDK 中应包含 hdc"
+    warn "hdc not found" "The SDK should include hdc"
   fi
 else
-  pending "hdc 未找到" "随 Command Line Tools 一起获取"
+  pending "hdc not found" "It comes with the Command Line Tools"
 fi
 
-# 9. devecocli (DevEco 内置)
+# 9. devecocli (bundled with DevEco)
 DEVECO_CLI_FOUND="false"
 if command -v devecocli &>/dev/null; then
   DEVECO_CLI_FOUND="true"
-  ok "devecocli (PATH)"
+  ok "devecocli (on PATH)"
 elif [ "$DEVECO_FOUND" = "true" ] && [ -n "$DEVECO_PATH" ]; then
   _cli="$DEVECO_PATH/tools/devecocli"
   if [ -f "$_cli" ]; then
     DEVECO_CLI_FOUND="true"
-    ok "devecocli (内置，未加入 PATH)"
-    warn "devecocli 未加入 PATH" "建议将 $DEVECO_PATH/tools 加入 PATH"
+    ok "devecocli (bundled, not on PATH)"
+    warn "devecocli is not on PATH" "Consider adding $DEVECO_PATH/tools to PATH"
   else
-    pending "devecocli 未找到" "随 Command Line Tools 一起获取"
+    pending "devecocli not found" "It comes with the Command Line Tools"
   fi
 else
-  pending "devecocli 未找到" "随 Command Line Tools 一起获取"
+  pending "devecocli not found" "It comes with the Command Line Tools"
 fi
 
-# 10. deveco-cli (开源工具)
+# 10. deveco-cli (the open-source tool)
 DEVECO_CLI_OSS_FOUND="false"
 if command -v deveco-cli &>/dev/null; then
   DEVECO_CLI_OSS_FOUND="true"
   ok "deveco-cli ($(deveco-cli --version 2>/dev/null || echo 'installed'))"
 else
   if command -v npm &>/dev/null; then
-    echo "  INFO: 尝试自动安装 deveco-cli..."
+    echo "  INFO: attempting to install deveco-cli automatically..."
     if npm install -g deveco-cli &>/dev/null 2>&1; then
       if command -v deveco-cli &>/dev/null; then
         DEVECO_CLI_OSS_FOUND="true"
-        ok "deveco-cli (自动安装成功)"
+        ok "deveco-cli (installed automatically)"
       else
-        warn "deveco-cli npm install 完成但未找到命令" "可能需要重新打开终端"
+        warn "deveco-cli npm install completed but the command wasn't found" "You may need to open a new terminal"
       fi
     else
-      warn "deveco-cli 自动安装失败" "仓库未声明鸿蒙支持。手动安装: npm install -g deveco-cli 或 git clone https://gitcode.com/openharmony-sig/deveco-cli.git"
+      warn "Automatic deveco-cli installation failed" "The repository doesn't declare HarmonyOS support. Install manually: npm install -g deveco-cli, or git clone https://gitcode.com/openharmony-sig/deveco-cli.git"
     fi
   else
-    warn "deveco-cli 未安装 (npm 不可用)" "先安装 Node.js，然后运行: npm install -g deveco-cli"
+    warn "deveco-cli is not installed (npm unavailable)" "Install Node.js first, then run: npm install -g deveco-cli"
   fi
 fi
 
-# 11. 磁盘空间
+# 11. Disk space
 INSTALL_BASE="${1:-$HOME/dev}"
 if [ -d "$(dirname "$INSTALL_BASE")" ]; then
   AVAIL_KB=$(df -k "$(dirname "$INSTALL_BASE")" 2>/dev/null | tail -1 | awk '{print $4}')
   if [ -n "$AVAIL_KB" ]; then
     AVAIL_GB=$((AVAIL_KB / 1024 / 1024))
     if [ "$AVAIL_GB" -ge 5 ]; then
-      ok "磁盘空间 (${AVAIL_GB}GB 可用)"
+      ok "Disk space (${AVAIL_GB}GB available)"
     else
-      warn "磁盘空间不足 (${AVAIL_GB}GB 可用，建议至少 5GB)"
+      warn "Not enough disk space (${AVAIL_GB}GB available; at least 5GB recommended)"
     fi
   fi
 fi
 
 echo ""
-echo "--- 结果 ---"
+echo "--- Results ---"
 echo "  PASS: $PASS  FAIL: $FAIL  PENDING: $PENDING  WARN: $WARN"
 echo ""
 
 if [ "$PENDING" -gt 0 ]; then
-  echo "PENDING 项需要手动操作："
-  echo "  DevEco Studio / Command Line Tools 在鸿蒙平台需通过统一工单平台申请。"
-  echo "  申请地址: https://developer.huawei.com/consumer/cn/"
-  echo "  获得下载链接后运行: bash skills/kb-init/scripts/download-cmdline-tools.sh --dest=<目录> --url=<链接>"
+  echo "The PENDING items need manual action:"
+  echo "  On HarmonyOS, DevEco Studio / the Command Line Tools must be requested through the unified ticket platform."
+  echo "  Request them at: https://developer.huawei.com/consumer/cn/"
+  echo "  Once you have the download link, run: bash skills/kb-init/scripts/download-cmdline-tools.sh --dest=<directory> --url=<link>"
   echo ""
 fi
 
 if [ "$FAIL" -gt 0 ]; then
   echo "STATUS=not-ready"
-  echo "请修复上述 FAIL 项后重新运行。"
+  echo "Please fix the FAIL items above and run again."
   exit 1
 else
   echo "STATUS=ready"

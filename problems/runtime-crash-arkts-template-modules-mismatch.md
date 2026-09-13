@@ -10,13 +10,13 @@ severity: high
 audience: public
 refs: [semantic-qt-harmonyos-window-model, semantic-qt-harmonyos-project-structure]
 summary: >
-  新编译的 libqohos.so 读 modulesFactories 属性，旧 ArkTS 模板传 modules->NAPI 抛异常->启动崩溃。
-  根因：Qt 源码树的 ArkTS 模板已升级 API（modules->modulesFactories），旧工程的 QAbilityStage.ets 未同步更新。
-  修复：从 Qt 源码树 entry/src/main/ets/ 替换 19 个文件。
+  A freshly built libqohos.so reads the modulesFactories property, but the old ArkTS template passes modules -> NAPI throws -> the app crashes at startup.
+  Root cause: the ArkTS template in the Qt source tree upgraded its API (modules -> modulesFactories), while the old project's QAbilityStage.ets was never updated to match.
+  Fix: replace 19 files from the Qt source tree's entry/src/main/ets/.
 leader_summary: >
-  定位 ArkTS 模板版本不匹配崩溃根因，从 Qt 源码树同步模板解决，沉淀为已知坑点
-impact: [框架支撑, 运行时排障]
-deliverables: [problem记录]
+  Identified the root cause of the ArkTS template version mismatch crash, fixed it by syncing the template from the Qt source tree, and captured it as a known pitfall
+impact: [Framework support, Runtime troubleshooting]
+deliverables: [problem record]
 evidence: [ohos-qt-patch-delivery/template/]
 
 error_message: >
@@ -25,54 +25,54 @@ error_message: >
   import qpa from 'libqohos.so' returns undefined
   NAPI module not registered
 error_code: ""
-keywords: [modulesFactories, modules, libqohos.so, QAbilityStage, ArkTS模板, 启动崩溃, NAPI]
-symptoms: "HAP 安装成功但点击启动崩溃，报 QAbilityStage.ets 中 handleAbilityStageOnCreate undefined"
+keywords: [modulesFactories, modules, libqohos.so, QAbilityStage, ArkTS template, startup crash, NAPI]
+symptoms: "The HAP installs successfully but crashes when launched, reporting handleAbilityStageOnCreate undefined in QAbilityStage.ets"
 
-environment: "OHOS + Qt 5.15.16 + 新编译 libqohos.so + 旧 ArkTS 工程"
+environment: "OHOS + Qt 5.15.16 + freshly built libqohos.so + an old ArkTS project"
 ---
 
-# ArkTS 模板版本不匹配 -> NAPI 启动崩溃
+# ArkTS template version mismatch -> NAPI startup crash
 
-## 错误信息
+## Error message
 
 ```
 Cannot read property 'handleAbilityStageOnCreate' of undefined
 at QAbilityStage.ets:47
 ```
 
-## 场景
+## Scenario
 
-重新编译 libqohos.so（含新 patch 或更新 Qt 源码）后部署到旧的 ohostemplate 工程，启动崩溃。
-回退 libqohos.so 到旧版本也同样崩溃 -> 证明非 libqohos.so 本身问题。
+After rebuilding libqohos.so (with new patches or updated Qt source) and deploying it into an old ohostemplate project, the application crashes at startup.
+Reverting libqohos.so to the old version crashes identically -> proving the problem isn't libqohos.so itself.
 
-## 原因
+## Cause
 
-Qt 源码树中的 ArkTS 模板已升级 API：
-- 旧：`modules: QtUtils.getModulesMapForQt()`
-- 新：`modulesFactories: QtUtils.getModulesFactoriesMapForQt()`
+The ArkTS template in the Qt source tree upgraded its API:
+- Old: `modules: QtUtils.getModulesMapForQt()`
+- New: `modulesFactories: QtUtils.getModulesFactoriesMapForQt()`
 
-新编译的 libqohos.so C++ 代码读 `modulesFactories` 属性，旧 ArkTS 工程传的是 `modules`。
-属性名不匹配导致 NAPI 模块未正确注册，`import qpa from 'libqohos.so'` 返回 undefined。
+The freshly built libqohos.so C++ code reads the `modulesFactories` property, while the old ArkTS project passes `modules`.
+The property name mismatch means the NAPI module isn't registered correctly, so `import qpa from 'libqohos.so'` returns undefined.
 
-## 解决方案
+## Solution
 
-从 Qt 源码树替换 ArkTS 模板文件：
+Replace the ArkTS template files from the Qt source tree:
 
 ```
-源: qtbase/src/harmonyos/templates/entry/src/main/ets/
-目标: <工程>/entry/src/main/ets/
+Source: qtbase/src/harmonyos/templates/entry/src/main/ets/
+Target: <project>/entry/src/main/ets/
 ```
 
-替换 19 个文件：
-- 16 个 entry .ets/.ts 文件
-- 3 个 qEmbeddedUiExtensionHost .ets 文件
+Replace 19 files:
+- 16 entry .ets/.ts files
+- 3 qEmbeddedUiExtensionHost .ets files
 
-关键变更：`modules` -> `modulesFactories`，`getModulesMapForQt()` -> `getModulesFactoriesMapForQt()`。
+Key change: `modules` -> `modulesFactories`, and `getModulesMapForQt()` -> `getModulesFactoriesMapForQt()`.
 
-保留工程自定义部分：cpp、resources、libs、配置文件（build-profile 含签名）。
+Keep the project's own customizations: cpp, resources, libs, and configuration files (build-profile contains signing settings).
 
-## 注意事项
+## Notes
 
-- 每次更新 libqohos.so 都应检查是否需要更新 ArkTS 模板
-- `import lazy` 语法需要 `compatibleSdkVersionStage: "beta3"` 加到 build-profile.json5
-- `APP_LIBRARY_NAME` 需与 CMake `add_library` 名一致
+- Every time you update libqohos.so, check whether the ArkTS template needs updating too
+- The `import lazy` syntax requires adding `compatibleSdkVersionStage: "beta3"` to build-profile.json5
+- `APP_LIBRARY_NAME` must match the CMake `add_library` name

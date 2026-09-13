@@ -1,15 +1,15 @@
 ---
 id: arkui-window-xcomponent-model
-title: ArkUI 窗口与 XComponent 承载模型
+title: The ArkUI window and XComponent hosting model
 status: active
 confidence: 0.5
 sources:
   - type: official
-    name: "HarmonyOS Window 与 XComponent 开发指南"
+    name: "HarmonyOS Window and XComponent development guide"
     date: 2026-08-11
     uri: "https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/window-overview"
   - type: experience
-    name: "Qt QPA 的 WindowStage、XComponent 与 SurfaceHolder 适配审计"
+    name: "Audit of Qt QPA's WindowStage, XComponent, and SurfaceHolder adaptation"
     date: 2026-08-11
 created: 2026-08-14
 updated: 2026-08-14
@@ -18,56 +18,55 @@ review_by: null
 superseded_by: null
 tags: [arkui, window, xcomponent, surface, native-window, focus]
 refs: []
-summary: "区分 WindowStage/main/subwindow、XComponent 节点、native surface、焦点/可见/可绘制状态及新旧 API seam。"
+summary: "Distinguishing WindowStage/main/subwindow, XComponent nodes, the native surface, focus/visible/drawable states, and the old-vs-new API seam."
 audience: public
 ---
 
-# ArkUI 窗口与 XComponent 承载模型
+# The ArkUI window and XComponent hosting model
 
-本页定义跨框架可复用的概念边界，不把某个 QPA、Skia、JVM 或 WebView adapter 的内部状态机提升为平台行为。
+This page defines conceptual boundaries that are reusable across frameworks; it does not promote the internal state machine of any particular QPA, Skia, JVM, or WebView adapter into platform behavior.
 
-## 窗口层次
+## Window hierarchy
 
-- UIAbility 通过 WindowStage 获得窗口承载；
-- 应用主窗口、子窗口、浮窗或其他扩展窗口具有不同的系统任务、父子、权限与生命周期语义；
-- 框架 top-level window 不必与平台 main window 一一对应；映射由 adapter 决定；
-- 窗口对象存在、请求显示、系统可见、获得焦点和 surface 可绘制是不同状态。
+- A UIAbility obtains its window host through the WindowStage.
+- The application's main window, subwindows, floating windows, and other extension windows have different system-task, parent-child, permission, and lifecycle semantics.
+- A framework's top-level windows need not map one-to-one onto platform main windows; the mapping is the adapter's decision.
+- "Window object exists", "display requested", "visible to the system", "has focus", and "surface is drawable" are all distinct states.
 
-排障时分别观察 platform window state、focus、visibility/exposure、surface lifecycle 和框架自身 visible flag，不能用其中一个替代全部状态。
+When troubleshooting, observe the platform window state, focus, visibility/exposure, surface lifecycle, and the framework's own visible flag separately — no single one of them stands in for all the others.
 
-## XComponent seam
+## The XComponent seam
 
-XComponent 用于在 ArkUI 节点树中承载 native surface 或 native node，使 C/C++ 渲染/组件能够嵌入页面。典型 seam 包含：
+XComponent hosts a native surface or native node within the ArkUI node tree, letting C/C++ rendering and components embed into a page. A typical seam consists of:
 
-1. ArkUI 创建并挂载 XComponent/ContentSlot 节点；
-2. 平台创建或变更 surface/native window；
-3. native adapter 接收 lifecycle、size、touch/mouse/key/focus 等事件；
-4. 渲染线程只在 surface 有效且尺寸/状态就绪时提交；
-5. 节点卸载或 surface 销毁后停止使用旧 handle。
+1. ArkUI creates and mounts the XComponent/ContentSlot node.
+2. The platform creates or changes the surface/native window.
+3. The native adapter receives lifecycle, size, and touch/mouse/key/focus events.
+4. The render thread submits only while the surface is valid and the size/state are ready.
+5. Once the node is unmounted or the surface is destroyed, the old handle is no longer used.
 
-## 新旧 API 边界
+## The old/new API boundary
 
-OH_NativeXComponent、Node API SurfaceHolder/SurfaceCallback 等接口可能覆盖不同年代或职责。已观察到两套 surface 管理路径混用时创建失败，但互斥的精确触发边界仍需最小原生复现确认。
+Interfaces such as OH_NativeXComponent and the Node API's SurfaceHolder/SurfaceCallback may cover different eras or different responsibilities. Creation failures have been observed when two surface-management paths are mixed, but the precise boundary at which they are mutually exclusive still needs a minimal native reproduction to confirm.
 
-因此 common 只固定以下规则：
+So this common knowledge base pins down only the following rules:
 
-- 一个 adapter 必须明确选择谁拥有 surface lifecycle；
-- 不同时注册两套未知兼容性的 surface owner 后假定可共存；
-- 输入、无障碍和 surface 管理可有不同 API seam，迁移前逐项列依赖；
-- API deprecated/替代关系以目标 SDK 文档为准；未验证的 Qt 现象不能写成系统全局限制。
+- An adapter must explicitly decide who owns the surface lifecycle.
+- Don't register two surface owners of unknown compatibility simultaneously and assume they can coexist.
+- Input, accessibility, and surface management may have different API seams; enumerate each dependency before migrating.
+- Defer to the target SDK documentation for API deprecation/replacement relationships; an unverified Qt symptom must not be written up as a global system limitation.
 
-## 焦点、可见与可绘制
+## Focus, visibility, and drawability
 
-| 状态 | 回答的问题 |
+| State | The question it answers |
 |---|---|
-| requested visible | 应用/框架是否请求显示 |
-| system visibility/window status | 系统当前如何呈现窗口 |
-| focus/active | 键盘、输入与视觉激活由谁获得 |
-| surface available/exposed | native renderer 当前能否提交内容 |
+| requested visible | Has the application/framework requested display? |
+| system visibility/window status | How is the system currently presenting the window? |
+| focus/active | Who receives keyboard, input, and visual activation? |
+| surface available/exposed | Can the native renderer submit content right now? |
 
-异步窗口 API 成功返回通常只说明请求已受理。应等待对应 callback/event，并在超时或窗口销毁时取消旧请求。
+A successful return from an asynchronous window API usually just means the request was accepted. Wait for the corresponding callback/event, and cancel stale requests on timeout or window destruction.
 
-## Adapter 验证
+## Adapter verification
 
-覆盖首次创建、旋转/resize、前后台、hide/show、surface 重建、窗口关闭、焦点切换、触摸/鼠标/键盘、无障碍树和多窗口。保存 native handle 前定义有效期，所有回调都防止使用已销毁 surface/node。
-
+Cover first creation, rotation/resize, foreground/background transitions, hide/show, surface recreation, window close, focus changes, touch/mouse/keyboard, the accessibility tree, and multiple windows. Define a validity lifetime before storing a native handle, and guard every callback against using an already-destroyed surface/node.

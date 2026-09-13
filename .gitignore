@@ -1,14 +1,14 @@
-# 个人本地配置（不入库）
+# Personal local configuration (not checked in)
 ENV.local.md
 TODO.local.md
 
-# 构建产物
+# Build artifacts
 dist/
 build/
 outputs/
 *.hap
 *.so
 
-# 临时/工具目录
+# Temporary / tooling directories
 _temp/
 screenshot/

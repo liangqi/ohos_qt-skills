@@ -10,102 +10,102 @@ severity: medium
 audience: public
 refs: [semantic-qt-harmonyos-golden-rules, semantic-qt-harmonyos-platform-limits, problem-runtime-crash-libqohos-modules-mismatch]
 summary: >
-  OHOS 系统暗主题下 Qt QML 应用按钮/输入框背景纯黑看不清。根因：QOhosPlatformTheme 的 Dark 调色板把
-  QPalette::Base = activeWindowFrame = #000000(纯黑)，QML SystemPalette.base 取之，应用用 sysPalette.base
-  做控件/窗口背景 → 全纯黑一片。修复：app.cpp 加 Q_OS_OHOS 分支 QGuiApplication::setPalette(createDarkModePalette())
-  override(setColorsTheme 不调 setPalette，override 持久)；base #1E1E1E 可读。
+  Under the OHOS system dark theme, buttons and text fields in a Qt QML application have pure-black backgrounds and are unreadable. Root cause: QOhosPlatformTheme's Dark palette sets
+  QPalette::Base = activeWindowFrame = #000000 (pure black), QML's SystemPalette.base takes that, and the application uses sysPalette.base
+  as the widget/window background → everything is pure black. Fix: add a Q_OS_OHOS branch in app.cpp calling QGuiApplication::setPalette(createDarkModePalette())
+  as an override (setColorsTheme doesn't call setPalette, so the override persists); base #1E1E1E is readable.
 leader_summary: >
-  沉淀 OHOS 暗主题 Qt QML 应用控件纯黑显示问题的根因(平台 palette.Base 取窗口框色)与应用层 override 修复，
-  批量移植暗色 Qt QML 应用的通用样式拦路问题
-impact: [迁移提效, 框架支撑]
-deliverables: [problem 记录, RESP.app 样式修复(app.cpp), 真机截图对比]
-evidence: [src/app/app.cpp Q_OS_OHOS palette override, screenshot/resp-after-fix.png, libqohos.so strings #FF000000]
+  Captured the root cause of pure-black widgets in Qt QML applications under the OHOS dark theme (the platform's palette.Base takes the window frame color) and the application-level override fix —
+  a common styling blocker when batch-porting dark-themed Qt QML applications
+impact: [Migration efficiency, Framework support]
+deliverables: [problem record, the RESP.app styling fix (app.cpp), before/after device screenshots]
+evidence: [The Q_OS_OHOS palette override in src/app/app.cpp, screenshot/resp-after-fix.png, the #FF000000 string in libqohos.so]
 
-# ====== 检索关键字（Agent 快速匹配用）======
+# ====== Search keywords (for fast agent matching) ======
 error_message: >
-  视觉症状(非报错)：OHOS 暗主题下 Qt QML 应用，Button 与 TextField 默认背景色纯黑(#000000)，与窗口背景
-  融为一片看不清控件边界；文字浅色可见但控件不可辨。
-  根因日志线索：QOhosPlatformTheme Dark palette: QPalette::Base = system.activeWindowFrame = QColor("#FF000000")
-  (qohosplatformtheme.cpp:204, :485)。QML SystemPalette.base → app.qml `color: sysPalette.base`
-  / BetterButton `palette.button: sysPalette.button` / BetterTextField base → 纯黑。
-  strings libqohos.so 含 "#FF000000"(Dark activeWindowFrame) / "#FFE4E4E4"(Light)。
+  A visual symptom (not an error): under the OHOS dark theme, a Qt QML application's Button and TextField default background color is pure black (#000000),
+  merging into the window background so widget boundaries are indistinguishable; the light-colored text is visible but the widgets aren't.
+  The root-cause log clue: QOhosPlatformTheme Dark palette: QPalette::Base = system.activeWindowFrame = QColor("#FF000000")
+  (qohosplatformtheme.cpp:204, :485). QML SystemPalette.base → app.qml `color: sysPalette.base`
+  / BetterButton `palette.button: sysPalette.button` / BetterTextField base → pure black.
+  strings libqohos.so contains "#FF000000" (the Dark activeWindowFrame) and "#FFE4E4E4" (Light).
 error_code: ""
-keywords: [palette, Base, activeWindowFrame, "#000000", "#FF000000", Dark theme, SystemPalette, sysPalette, QML, Controls, pure black, QOhosPlatformTheme, setColorsTheme, createDarkModePalette, setPalette, Q_OS_OHOS, Q_OS_LINUX, G1, Fusion, darkmode.h, isDarkThemeEnabled, RESP.app, 暗主题, 纯黑背景, 控件看不清]
+keywords: [palette, Base, activeWindowFrame, "#000000", "#FF000000", Dark theme, SystemPalette, sysPalette, QML, Controls, pure black, QOhosPlatformTheme, setColorsTheme, createDarkModePalette, setPalette, Q_OS_OHOS, Q_OS_LINUX, G1, Fusion, darkmode.h, isDarkThemeEnabled, RESP.app, dark theme, pure black background, widgets unreadable]
 symptoms: >
-  Qt QML 应用在 OHOS 暗主题设备运行，按钮和输入框默认背景纯黑，控件与背景融为一片看不清边界(文字可见)。
+  A Qt QML application running on an OHOS device with the dark theme: buttons and text fields have pure-black default backgrounds, and the widgets merge into the background with indistinguishable boundaries (though the text is visible).
 
-# ====== 问题详情 ======
+# ====== Problem details ======
 environment: >
-  Qt 5.15.16 OHOS SDK(${QT5_15_OHOS_SDK_FULL}, libqohos.so 5.8MB built 2026-07-25) |
-  HarmonyOS | HUAWEI MateBook Fold(系统暗主题) | RESP.app(Redis Desktop Manager) Qt5 QML 应用(QApplication 入口)
+  Qt 5.15.16 OHOS SDK (${QT5_15_OHOS_SDK_FULL}, libqohos.so 5.8 MB, built 2026-07-25) |
+  HarmonyOS | HUAWEI MateBook Fold (system dark theme) | RESP.app (Redis Desktop Manager), a Qt5 QML application (QApplication entry point)
 
 ---
 
-# OHOS 暗主题 Qt 应用控件背景纯黑（palette.Base = activeWindowFrame = \#000000）
+# Pure-black widget backgrounds in Qt applications under the OHOS dark theme (palette.Base = activeWindowFrame = \#000000)
 
-## 错误信息（视觉症状）
+## Error message (a visual symptom)
 
-纯黑控件背景，无报错。截图特征：Qt QML 应用在 OHOS 暗主题设备运行，Button/TextField 背景色 = \#000000(纯黑)，与窗口背景(也取 sysPalette.base)融为一片，控件边界不可辨；文字浅色可见。
+Pure-black widget backgrounds, with no error. Screenshot signature: a Qt QML application on an OHOS device with the dark theme, where Button/TextField background = \#000000 (pure black), merging into the window background (which also uses sysPalette.base) so widget boundaries are indistinguishable; the light-colored text is visible.
 
-## 场景
+## Scenario
 
-移植 Qt5 QML 应用(如 RESP.app)到 OHOS，应用 QML 用 `SystemPalette`(sysPalette) 的 base/button 色做控件与窗口背景(`color: sysPalette.base`)。在系统暗主题设备(HUAWEI MateBook Fold)运行即现；Light 主题设备正常(\#FFE4E4E4 浅灰可读)。
+Porting a Qt5 QML application (such as RESP.app) to OHOS, where the application's QML uses `SystemPalette`'s (sysPalette) base/button colors for widget and window backgrounds (`color: sysPalette.base`). It shows up on any device with the system dark theme (a HUAWEI MateBook Fold); devices with the Light theme are fine (\#FFE4E4E4 light gray is readable).
 
-## 原因（三层，由表及里）
+## Cause (three layers, from surface to root)
 
-### 第一层：OHOS QOhosPlatformTheme 的 Dark 调色板 Base = 纯黑
+### Layer 1: the Dark palette of OHOS's QOhosPlatformTheme has Base = pure black
 
-`qtbase/src/plugins/platforms/ohos/qohosplatformtheme.cpp`：
+In `qtbase/src/plugins/platforms/ohos/qohosplatformtheme.cpp`:
 ```cpp
 // Light theme (line 194):
-.activeWindowFrame = QColor("#FFE4E4E4"),   // 浅灰
+.activeWindowFrame = QColor("#FFE4E4E4"),   // light gray
 // Dark theme (line 204):
-.activeWindowFrame = QColor("#FF000000"),   // ★ 纯黑
+.activeWindowFrame = QColor("#FF000000"),   // ★ pure black
 ```
-`makeSystemPalette` 设 `QPalette::Base = system.activeWindowFrame`(line 485-487)：
+`makeSystemPalette` sets `QPalette::Base = system.activeWindowFrame` (lines 485-487):
 ```cpp
 {QPalette::Active,   QPalette::Base, palettesColors.system.activeWindowFrame},  // Dark → #000000
 {QPalette::Disabled, QPalette::Base, palettesColors.system.inactiveWindowFrame}, // #FF18181A
 {QPalette::Inactive, QPalette::Base, palettesColors.system.inactiveWindowFrame},
 ```
-即 **OHOS 把"窗口框色"(activeWindowFrame)当 `QPalette::Base` 用**。Dark 主题窗口框=\#000000，故 Base=纯黑。Light 主题=\#FFE4E4E4 浅灰，故 Light 设备正常。
+In other words, **OHOS uses the "window frame color" (activeWindowFrame) as `QPalette::Base`**. In the Dark theme the window frame is \#000000, so Base is pure black. In the Light theme it's \#FFE4E4E4 light gray, so Light devices are fine.
 
-### 第二层：QML SystemPalette.base 直接取 QGuiApplication::palette().Base
+### Layer 2: QML's SystemPalette.base comes straight from QGuiApplication::palette().Base
 
-QML `SystemPalette`(app.qml:87 `id: sysPalette`) 的 base 色来自 `QGuiApplication::palette().color(QPalette::Base)`。OHOS Dark → sysPalette.base = \#000000。
+The base color of QML's `SystemPalette` (app.qml:87, `id: sysPalette`) comes from `QGuiApplication::palette().color(QPalette::Base)`. On OHOS Dark → sysPalette.base = \#000000.
 
-应用 QML 普遍用 sysPalette.base 做背景：
-- `app.qml:290 color: sysPalette.base`(appWrapper 背景)
-- `app.qml:383 color: sysPalette.base`(TabBar background)
+Applications commonly use sysPalette.base as a background in QML:
+- `app.qml:290 color: sysPalette.base` (the appWrapper background)
+- `app.qml:383 color: sysPalette.base` (the TabBar background)
 - `BetterButton.qml:18 palette.button: sysPalette.button`
-- `BetterTextField`(base 色做输入框背景)
+- `BetterTextField` (which uses the base color for the input background)
 
-→ 所有控件与窗口背景都 = sysPalette.base = \#000000 → 纯黑一片，控件不可辨。
+→ Every widget and the window background = sysPalette.base = \#000000 → everything pure black, with indistinguishable widgets.
 
-### 第三层：应用原有 darkmode override 在 OHOS 未触发
+### Layer 3: the application's existing dark-mode override doesn't fire on OHOS
 
-应用 `src/app/app.cpp` 原暗色 override 只为 Windows/Linux 桌面设计，OHOS 因 G1 命中但不执行：
+The existing dark override in the application's `src/app/app.cpp` was designed only for Windows/Linux desktop, and on OHOS the branch is taken but its body doesn't run:
 ```cpp
-#if defined(Q_OS_WINDOWS) || defined(Q_OS_LINUX)   // ★ G1: Q_OS_OHOS 隐含 Q_OS_LINUX → OHOS 命中此分支
-  if (isDarkThemeEnabled()) {                      // ★ darkmode.h LINUX 分支读 QSettings "app/darkModeOn"(默认 false)
-    setStyle(QStyleFactory::create("Fusion"));     //    → OHOS 默认返回 false → 不 override
-    setPalette(createDarkModePalette());           //    → 用 OHOS 平台默认 palette(Dark Base=黑)
+#if defined(Q_OS_WINDOWS) || defined(Q_OS_LINUX)   // ★ G1: Q_OS_OHOS implies Q_OS_LINUX → OHOS takes this branch
+  if (isDarkThemeEnabled()) {                      // ★ darkmode.h's LINUX branch reads the QSettings "app/darkModeOn" (default false)
+    setStyle(QStyleFactory::create("Fusion"));     //    → on OHOS it returns false → no override
+    setPalette(createDarkModePalette());           //    → so the OHOS platform default palette is used (Dark Base = black)
   }
 #endif
 ```
-- golden-rules **G1**：`Q_OS_OHOS` 隐含 `Q_OS_LINUX`，故 `#if Q_OS_LINUX` 分支在 OHOS 命中(但应用本意是 Windows/Linux 桌面)。
-- `darkmode.h isDarkThemeEnabled()` 的 `Q_OS_LINUX` 分支读 `QSettings app/darkModeOn`(默认 false)，OHOS 无此设置 → 返回 false → override 不执行 → 用 OHOS 平台 palette(Dark Base=黑)。
+- golden-rules **G1**: `Q_OS_OHOS` implies `Q_OS_LINUX`, so a `#if Q_OS_LINUX` branch is taken on OHOS (even though the application meant Windows/Linux desktop).
+- `darkmode.h`'s `isDarkThemeEnabled()` `Q_OS_LINUX` branch reads the `QSettings app/darkModeOn` (default false); OHOS has no such setting → it returns false → the override doesn't run → the OHOS platform palette (Dark Base = black) is used.
 
-## 解决方案（应用层 override palette）
+## Solution (override the palette at the application level)
 
-在 `app.cpp` 加 `Q_OS_OHOS` 专属分支，无条件 `setPalette(createDarkModePalette())`(base=\#1E1E1E 深灰可读)：
+Add an OHOS-specific branch in `app.cpp` that unconditionally calls `setPalette(createDarkModePalette())` (base = \#1E1E1E, a readable dark gray):
 
 ```cpp
 #if defined(Q_OS_OHOS)
-  // OHOS dark theme: Base = activeWindowFrame = #000000 → QML sysPalette.base 纯黑。
-  // Override 为可读暗色 palette(base #1E1E1E, button #323232, text #DFDFDF)。
-  // setColorsTheme() 只翻转平台内部 palette map，不调 QGuiApplication::setPalette()，
-  // 故应用层 setPalette 一次 override 即持久生效，无需跟踪 color-mode 变化。
+  // OHOS dark theme: Base = activeWindowFrame = #000000 → QML's sysPalette.base is pure black.
+  // Override it with a readable dark palette (base #1E1E1E, button #323232, text #DFDFDF).
+  // setColorsTheme() only flips the platform's internal palette map and doesn't call QGuiApplication::setPalette(),
+  // so a single application-level setPalette override persists and we don't need to track color-mode changes.
   setPalette(createDarkModePalette());
 #elif defined(Q_OS_WINDOWS) || defined(Q_OS_LINUX)
   if (isDarkThemeEnabled()) {
@@ -115,48 +115,48 @@ QML `SystemPalette`(app.qml:87 `id: sysPalette`) 的 base 色来自 `QGuiApplica
 #endif
 ```
 
-`createDarkModePalette()`(应用自带，`src/app/darkmode.h`)：base=`QColor(30,30,30)`(\#1E1E1E)、button=`QColor(50,50,50)`(\#323232)、text=`QColor(223,223,223)`(\#DFDFDF) —— 深灰可读暗色，控件与背景有层次，边界可辨。
+`createDarkModePalette()` (shipped with the application, in `src/app/darkmode.h`): base = `QColor(30,30,30)` (\#1E1E1E), button = `QColor(50,50,50)` (\#323232), text = `QColor(223,223,223)` (\#DFDFDF) — a readable dark gray where widgets and background have contrast and boundaries are visible.
 
-### 为什么 override 持久（关键判据）
+### Why the override persists (the key diagnostic)
 
-`QOhosPlatformTheme::setColorsTheme()`(qohosplatformtheme.cpp:931) 只改 `m_currentColorsTheme`(平台内部 map 选择)，**不调 `QGuiApplication::setPalette()`**。`QOhosPlatformTheme::palette()`(:982) 返回内部 map。
+`QOhosPlatformTheme::setColorsTheme()` (qohosplatformtheme.cpp:931) only changes `m_currentColorsTheme` (which internal map is selected) and **doesn't call `QGuiApplication::setPalette()`**. `QOhosPlatformTheme::palette()` (:982) returns that internal map.
 
-Qt 逻辑：`QGuiApplication::palette()` 优先返回 `QGuiApplicationPrivate::app_palette`(应用 `setPalette` 设过)，否则 fallback `QPlatformTheme::palette()`(= QOhosPlatformTheme)。故应用 `setPalette` 后，`QGuiApplication::palette()` 恒返回 override 的 createDarkModePalette，**不再 fallback 到平台黑 palette**，系统色模后续变化也不影响。
+Qt's logic: `QGuiApplication::palette()` returns `QGuiApplicationPrivate::app_palette` first (if the application called `setPalette`), otherwise falling back to `QPlatformTheme::palette()` (= QOhosPlatformTheme). So once the application calls `setPalette`, `QGuiApplication::palette()` always returns the overridden createDarkModePalette and **never falls back to the platform's black palette**, and later system color-mode changes don't affect it.
 
-## 验证方法
+## How to verify
 
-1. `build_project(entry@default, debug)` → BUILD SUCCESSFUL(13s)
-2. `start_app` 装机(HUAWEI MateBook Fold，暗主题)
-3. `perform_ui_action screenshot` 截图对比：修复前控件/背景全 \#000000；修复后 base=\#1E1E1E、button=\#323232，控件边界可辨、文字可读
-4. **判主题**：`strings <SDK>/plugins/platforms/libqohos.so | grep -E "FFE4E4E4|FF000000"` —— 两 hex 都在 = 该 .so 含 Light/Dark 双 palette；设备系统暗主题 → 取 Dark → Base=\#000000
+1. `build_project(entry@default, debug)` → BUILD SUCCESSFUL (13 s)
+2. `start_app` to install it (HUAWEI MateBook Fold, dark theme)
+3. `perform_ui_action screenshot` and compare: before the fix, widgets and background are all \#000000; after the fix, base = \#1E1E1E and button = \#323232, with visible widget boundaries and readable text
+4. **To determine the theme**: `strings <SDK>/plugins/platforms/libqohos.so | grep -E "FFE4E4E4|FF000000"` — both hex values present means that `.so` contains both the Light and Dark palettes; a device with the system dark theme → takes Dark → Base = \#000000
 
-## 注意事项
+## Notes
 
-- **无条件 override**：OHOS 分支不检测系统主题，Light 系统下应用也固定暗色(不跟随系统 Light)。因 `setColorsTheme` 时序(可能在 QApplication 构造后才设 Dark) + 无应用层 colorMode 变化信号，条件式 override 会错过 Dark。固定暗色对开发者工具可接受；若要跟随系统，需用 QtOhosExtras 的 ColorThemeMode(但 CMake 不支持 QtOhosExtras，见 golden-rules B6)。
-- **createDarkModePalette 是 QWidgets Fusion 设计**：其 Light/Dark role 反常(Light=\#4C4C4C 深、Dark=\#EBEBEB 浅，为 Fusion 3D 凸起效果)。QML Controls 2 flat 控件不显式用 Light/Dark 做边框，故反常值不影响 BetterButton 等。base/button/text 是主要可用色。
-- **PlaceholderText 未设**：createDarkModePalette 未设 `QPalette::PlaceholderText`，用 QPalette 默认(WindowText 半透明)，深灰 base 上可读。次要。
-- **非 OHOS 平台不受影响**：`#elif Q_OS_WINDOWS || Q_OS_LINUX` 保留原 isDarkThemeEnabled 逻辑。
-- **同类但不同因**：QML 全黑无内容(缺 qml/ 模块部署)或白屏(WMS/Qt 可见性状态不同步)是另一类问题(见 _lookup.md 黑屏/白屏类);本页是控件/背景纯黑但应用正常渲染(文字可见),根因是 palette.Base 取窗口框色。
+- **The override is unconditional**: the OHOS branch doesn't check the system theme, so the application stays dark even under a Light system (it doesn't follow the system's Light theme). This is because of `setColorsTheme` timing (Dark may only be set after QApplication is constructed) plus the lack of an application-level colorMode change signal, so a conditional override would miss Dark. Being permanently dark is acceptable for a developer tool; to follow the system, you'd need QtOhosExtras' ColorThemeMode (but CMake doesn't support QtOhosExtras — see golden-rules B6).
+- **createDarkModePalette is designed for QWidgets Fusion**: its Light/Dark roles are inverted (Light = \#4C4C4C dark, Dark = \#EBEBEB light, for Fusion's 3D raised effect). QML Controls 2's flat widgets don't explicitly use Light/Dark for borders, so those inverted values don't affect BetterButton and friends. base/button/text are the primary usable colors.
+- **PlaceholderText isn't set**: createDarkModePalette doesn't set `QPalette::PlaceholderText`, so QPalette's default (a semi-transparent WindowText) is used, which is readable on a dark-gray base. Minor.
+- **Non-OHOS platforms are unaffected**: the `#elif Q_OS_WINDOWS || Q_OS_LINUX` branch keeps the original isDarkThemeEnabled logic.
+- **Similar but different causes**: QML rendering entirely black with no content (a missing qml/ module deployment) or a white screen (the WMS/Qt visibility state being out of sync) are different problems (see the black-screen/white-screen category in _lookup.md); this page is about widgets/backgrounds being pure black while the application renders correctly (the text is visible), rooted in palette.Base taking the window frame color.
 
-## 成果展示
+## Results
 
-| 字段 | 内容 |
-|------|------|
-| 领导摘要 | 沉淀 OHOS 暗主题 Qt QML 应用控件纯黑显示问题的根因(平台 palette.Base 取窗口框色)与应用层 override 修复 |
-| 影响面 | 批量移植暗色 Qt QML 应用到 OHOS 的通用样式拦路问题 |
-| 交付物 | problem 记录 + RESP.app app.cpp 修复 + 真机截图对比 |
-| 证据 | src/app/app.cpp Q_OS_OHOS override、screenshot/resp-after-fix.png、libqohos.so strings \#FF000000 |
-| 可复用方式 | 以后遇到"OHOS Qt QML 控件/背景纯黑但应用正常"直接复用本页：app.cpp setPalette override + strings libqohos.so 查 \#FF000000 确认 Dark palette |
+| Field | Content |
+|-------|---------|
+| Leadership summary | Captured the root cause of pure-black widgets in Qt QML applications under the OHOS dark theme (the platform's palette.Base takes the window frame color) and the application-level override fix |
+| Scope of impact | A common styling blocker when batch-porting dark-themed Qt QML applications to OHOS |
+| Deliverables | problem record + the RESP.app app.cpp fix + before/after device screenshots |
+| Evidence | The Q_OS_OHOS override in src/app/app.cpp, screenshot/resp-after-fix.png, the \#FF000000 string in libqohos.so |
+| How to reuse | Whenever you see "OHOS Qt QML widgets/background pure black but the application renders correctly", apply this page directly: the app.cpp setPalette override + `strings libqohos.so` to confirm the \#FF000000 Dark palette |
 
-## 相关
+## Related
 
-- [[semantic-qt-harmonyos-golden-rules]] G1(Q_OS_OHOS 隐含 Q_OS_LINUX，致 `#if Q_OS_LINUX` 分支在 OHOS 命中)
-- [[semantic-qt-harmonyos-platform-limits]] OHOS 平台行为
-- [[problem-runtime-crash-libqohos-modules-mismatch]] 同项目(RESP.app)胶水代码 modulesFactories 崩溃修复
-- QML 全黑/白屏(不同因,非本页) → 查 problems/_lookup.md "黑屏/白屏" 类
-- Qt 源码 `qtbase/src/plugins/platforms/ohos/qohosplatformtheme.cpp`(makeSystemPalette / setColorsTheme / palette)
+- [[semantic-qt-harmonyos-golden-rules]] G1 (Q_OS_OHOS implies Q_OS_LINUX, so `#if Q_OS_LINUX` branches are taken on OHOS)
+- [[semantic-qt-harmonyos-platform-limits]] OHOS platform behavior
+- [[problem-runtime-crash-libqohos-modules-mismatch]] The modulesFactories glue-code crash fix in the same project (RESP.app)
+- Entirely black / white QML screens (different causes, not this page) → see the "black screen / white screen" category in problems/_lookup.md
+- The Qt source `qtbase/src/plugins/platforms/ohos/qohosplatformtheme.cpp` (makeSystemPalette / setColorsTheme / palette)
 
 ---
 
-> **模板说明**：此模板用于记录实际执行中遇到的报错。
-> Qt 平台已知限制（如 chmod 不支持）请记录在 `semantic/qt-harmonyos-platform-limits.md`，不使用此模板。
+> **Template note**: this template is for recording errors encountered during real execution.
+> Known Qt platform limitations (such as chmod being unsupported) belong in `semantic/qt-harmonyos-platform-limits.md` and should not use this template.

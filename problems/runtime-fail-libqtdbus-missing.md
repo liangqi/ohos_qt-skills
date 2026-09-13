@@ -10,13 +10,13 @@ severity: critical
 audience: public
 refs: [semantic-qt-harmonyos-build-run-workflow, procedural-qt-ohos-run-test]
 summary: >
-  libqohos.so 运行时依赖 libQt5DBus.so，但 CMakeLists.txt 未链接 Qt5::DBus 导致该库未部署到 HAP，
-  设备端 dlopen 失败 → QPA 插件加载失败 → JSCrash。修复：CMake 添加 Qt5::DBus。
+  libqohos.so depends on libQt5DBus.so at runtime, but CMakeLists.txt doesn't link Qt5::DBus, so the library never gets deployed into the HAP;
+  dlopen fails on the device → the QPA plugin fails to load → JSCrash. Fix: add Qt5::DBus in CMake.
 leader_summary: >
-  解决 Qt 鸿蒙应用因 DBus 库缺失导致的启动崩溃，沉淀为可复用的 CMake 配置检查项。
-impact: [迁移提效, 框架支撑]
-deliverables: [problem记录, CMake修复]
-evidence: [RedisView真机验证commit, 崩溃日志]
+  Fixed a startup crash in Qt HarmonyOS applications caused by a missing DBus library, and captured it as a reusable CMake configuration check.
+impact: [Migration efficiency, Framework support]
+deliverables: [problem record, CMake fix]
+evidence: [RedisView on-device verification commit, crash log]
 error_message: >
   W MUSL-LDSO: load libQt5DBus.so failed, namespace=ndk no inherits, errno=2
   W MUSL-LDSO: load libQt5DBus.so failed, namespace=moduleNs_default, errno=2
@@ -25,13 +25,13 @@ error_message: >
   TypeError: Cannot read property handleAbilityStageOnCreate of undefined
 error_code: ""
 keywords: [libQt5DBus, libqohos, dlopen, MUSL-LDSO, QPA, Qt5::DBus, find_package]
-symptoms: "应用启动后立即崩溃（JSCrash TypeError），日志显示 libQt5DBus.so 加载失败"
+symptoms: "The application crashes immediately after launch (JSCrash TypeError), with logs showing libQt5DBus.so failing to load"
 environment: "Qt 5.15.16 OHOS / HarmonyOS 6.0 / HUAWEI MateBook 14"
 ---
 
-# libQt5DBus.so 未部署导致 QPA 插件加载失败
+# libQt5DBus.so isn't deployed, so the QPA plugin fails to load
 
-## 错误信息
+## Error message
 
 ```
 W C03F07/MUSL-LDSO: load libQt5DBus.so failed, namespace=ndk no inherits, errno=2
@@ -43,39 +43,39 @@ E C03F00/com.xxx/ArkCompiler: TypeError: Cannot read property handleAbilityStage
     at onCreate entry (entry/src/main/ets/qabilitystage/QAbilityStage.ets:47:9)
 ```
 
-## 场景
+## Scenario
 
-Qt 鸿蒙化应用构建成功、安装成功，但启动后立即崩溃。崩溃类型为 JSCrash（TypeError），不是 C++ 崩溃。
+The Qt HarmonyOS port builds and installs successfully, but crashes immediately after launch. The crash is a JSCrash (TypeError), not a C++ crash.
 
-## 原因
+## Cause
 
-`libqohos.so`（Qt OHOS QPA 平台插件）在编译时链接了 `libQt5DBus.so`，但应用的 `CMakeLists.txt` 中 `find_package` 和 `target_link_libraries` 未包含 `DBus` 模块。
+`libqohos.so` (the Qt OHOS QPA platform plugin) was linked against `libQt5DBus.so` when it was built, but the application's `CMakeLists.txt` doesn't include the `DBus` module in `find_package` or `target_link_libraries`.
 
-构建系统只部署了 `target_link_libraries` 中显式声明的 Qt 模块 .so 到 HAP 中，`libQt5DBus.so` 未被拷贝到 `entry/build/default/intermediates/cmake/default/obj/arm64-v8a/`，因此不在最终 HAP 的 `libs/arm64/` 目录中。
+The build system only deploys the `.so` files for Qt modules explicitly declared in `target_link_libraries` into the HAP, so `libQt5DBus.so` was never copied into `entry/build/default/intermediates/cmake/default/obj/arm64-v8a/` and therefore isn't in the final HAP's `libs/arm64/` directory.
 
-设备端 `dlopen("libqohos.so")` 时，动态链接器尝试解析 `libQt5DBus.so` 依赖失败，导致整个 `libqohos.so` 加载失败。ArkTS 侧的 native 模块 `qohos` 导出为 `undefined`，后续调用 `handleAbilityStageOnCreate` 时触发 TypeError。
+When the device runs `dlopen("libqohos.so")`, the dynamic linker fails to resolve the `libQt5DBus.so` dependency, so the whole of `libqohos.so` fails to load. The native module `qohos` is exported as `undefined` on the ArkTS side, and the subsequent call to `handleAbilityStageOnCreate` raises a TypeError.
 
-## 解决方案
+## Solution
 
-在 `OhosExampleApp/CMakeLists.txt` 中添加 `DBus` 模块：
+Add the `DBus` module in `OhosExampleApp/CMakeLists.txt`:
 
 ```cmake
-# 修改前
+# Before
 find_package(Qt5 5.15 REQUIRED COMPONENTS Core Gui Widgets Network Sql Xml)
 
-# 修改后
+# After
 find_package(Qt5 5.15 REQUIRED COMPONENTS Core Gui Widgets Network Sql Xml DBus)
 ```
 
 ```cmake
-# 修改前
+# Before
 target_link_libraries(OhosRedisView PRIVATE
     Qt5::Core Qt5::Gui Qt5::Widgets Qt5::Network
     Qt5::Sql Qt5::Xml
     Qt5::QOhosPlatformIntegrationPlugin
 )
 
-# 修改后
+# After
 target_link_libraries(OhosRedisView PRIVATE
     Qt5::Core Qt5::Gui Qt5::Widgets Qt5::Network
     Qt5::Sql Qt5::Xml Qt5::DBus
@@ -83,32 +83,32 @@ target_link_libraries(OhosRedisView PRIVATE
 )
 ```
 
-## 验证方法
+## How to verify
 
-构建后检查 native 库目录：
+After building, check the native library directory:
 
 ```powershell
 Get-ChildItem "entry\build\default\intermediates\cmake\default\obj\arm64-v8a" -Filter "*.so" | Select-Object Name
-# 确认 libQt5DBus.so 存在
+# Confirm libQt5DBus.so is present
 ```
 
-## 注意事项
+## Notes
 
-- `libqohos.so` 的 DT_NEEDED 列表取决于 Qt 编译时的配置，不同 Qt 版本可能依赖不同的模块集合
-- 通用排查方法：用 `readelf -d libqohos.so | grep NEEDED` 检查所有运行时依赖，确保每个都在 `target_link_libraries` 中
-- 此问题在编译阶段不会报错（因为 `libqohos.so` 是预编译的，不参与当前 CMake 的链接检查），只在设备运行时暴露
+- `libqohos.so`'s DT_NEEDED list depends on how Qt was configured at build time; different Qt versions may depend on different module sets
+- A general approach: run `readelf -d libqohos.so | grep NEEDED` to check every runtime dependency and make sure each one is in `target_link_libraries`
+- This problem produces no build error (since `libqohos.so` is prebuilt and doesn't participate in the current CMake link check) — it only shows up when running on a device
 
-## 成果展示
+## Results
 
-| 字段 | 内容 |
-|------|------|
-| 领导摘要 | 解决 Qt 鸿蒙应用因 DBus 库缺失导致的启动崩溃，形成通用 .so 依赖检查方法 |
-| 影响面 | 所有使用 Playbook A 编译的 Qt 鸿蒙应用 |
-| 交付物 | problem 记录 + CMake 修复 |
-| 证据 | RedisView 真机验证 commit |
-| 可复用方式 | 遇到 `Error loading shared library libQt5DBus.so` 时直接复用 |
+| Field | Content |
+|-------|---------|
+| Leadership summary | Fixed a startup crash in Qt HarmonyOS applications caused by a missing DBus library, producing a general method for checking .so dependencies |
+| Scope of impact | Every Qt HarmonyOS application built with Playbook A |
+| Deliverables | problem record + CMake fix |
+| Evidence | RedisView on-device verification commit |
+| How to reuse | Apply directly when you hit `Error loading shared library libQt5DBus.so` |
 
-## 相关
+## Related
 
-- [[runtime-fail-qpa-plugin-not-found]] — 类似的 QPA 插件加载失败
-- [[qt-harmonyos-build-run-workflow]] — 构建运行工作流
+- [[runtime-fail-qpa-plugin-not-found]] — a similar QPA plugin load failure
+- [[qt-harmonyos-build-run-workflow]] — The build-and-run workflow

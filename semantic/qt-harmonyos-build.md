@@ -9,26 +9,26 @@ status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview]
 summary: >
-  Qt for HarmonyOS 构建指南：macOS/Windows 编译环境搭建、configure 参数、
-  Qt Creator Kit 配置、DevEco Studio 集成、OpenSSL/OpenGL 配置、Qt 5.15 skip 列表。
+  The Qt for HarmonyOS build guide: setting up the macOS/Windows build environment, configure options,
+  Qt Creator kit configuration, DevEco Studio integration, OpenSSL/OpenGL configuration, and the Qt 5.15 skip list.
 ---
 
-# Qt for HarmonyOS 构建指南
+# The Qt for HarmonyOS build guide
 
-## 前置依赖
+## Prerequisites
 
 ### macOS (Sonoma 14.0+)
 - git ≥ 2.39.3
 - python ≥ 3.12.0
-- DevEco Studio（自带 SDK）
+- DevEco Studio (which bundles the SDK)
 
 ### Windows
-- **MinGW 工具链**：推荐 `llvm-mingw-20230919-ucrt-x86_64.zip`（解压到如 `D:\`）
-- **Perl**：[Strawberry Perl](https://strawberryperl.com/)
-- **DevEco Studio** + HarmonyOS SDK
-- 将 MinGW 和 Perl 加入 PATH，并设置 `MINGW_ROOT`、`PERL_ROOT`
+- **MinGW toolchain**: `llvm-mingw-20230919-ucrt-x86_64.zip` is recommended (extract it to, say, `D:\`)
+- **Perl**: [Strawberry Perl](https://strawberryperl.com/)
+- **DevEco Studio** + the HarmonyOS SDK
+- Add MinGW and Perl to PATH, and set `MINGW_ROOT` and `PERL_ROOT`
 
-## 环境变量
+## Environment variables
 
 ```bash
 # macOS
@@ -41,7 +41,7 @@ SET LLVM_INSTALL_DIR=%NATIVE_OHOS_SDK%\llvm
 SET QT5_ROOT_DIR=<LOCAL_PATH>
 ```
 
-## Configure 命令
+## The configure command
 
 ### macOS (arm64-v8a)
 
@@ -96,7 +96,7 @@ call ..\tqtc-qt5\configure.bat -v -xplatform ohos-clang ^
  -no-gcc-sysroot -c++std c++14 -ohos-arch arm64-v8a
 ```
 
-### Qt 5.15.16 Skip 列表（更精简）
+### The Qt 5.15.16 skip list (leaner)
 
 ```
 -skip doc -skip qtactiveqt -skip qtandroidextras -skip qtcanvas3d
@@ -108,97 +108,97 @@ call ..\tqtc-qt5\configure.bat -v -xplatform ohos-clang ^
 -skip qtopcua -skip qtknx -skip qtconnectivity -skip coap
 ```
 
-## OpenSSL 配置
+## OpenSSL configuration
 
-如需 OpenSSL 支持，configure 时追加：
+If you need OpenSSL support, append this to configure:
 ```
 -openssl-runtime -I"${QT_SOURCE_DIR_OPENSSL}" -ssl
 ```
-头文件来源：[gitee.com/openharmony/third_party_openssl](https://gitee.com/openharmony/third_party_openssl/tree/master/include/)
+Header source: [gitee.com/openharmony/third_party_openssl](https://gitee.com/openharmony/third_party_openssl/tree/master/include/)
 
-## OpenGL 配置
+## OpenGL configuration
 
-- **此 commit 之前**（qtbase c5de1b3d）：必须显式指定 `-opengles3`
-- **此 commit 之后**：
-  - 自动检测：`./configure` 不带参数
-  - 强制 Desktop OpenGL：`-opengl desktop`
-  - 强制 OpenGL ES：`-opengl es2 -opengles3`
+- **Before this commit** (qtbase c5de1b3d): you must specify `-opengles3` explicitly
+- **After this commit**:
+  - Auto-detect: `./configure` with no such option
+  - Force desktop OpenGL: `-opengl desktop`
+  - Force OpenGL ES: `-opengl es2 -opengles3`
 
-**Desktop OpenGL 构建失败的解决**：
-1. 确保 SDK 和设备版本 ≥ API 20
-2. 从 [gitee.com/inkuu/opengl](https://gitee.com/inkuu/opengl/tree/mesa_headers_all) 下载 `libGLv4.so`
-3. 复制到 SDK：`sysroot/usr/lib/aarch64-linux-ohos/` 替换现有文件
-4. 重新编译
-5. 在 `app.json5` 中设置 `NEED_OPENGL` 环境变量
+**Fixing a failed desktop OpenGL build**:
+1. Make sure the SDK and device version are ≥ API 20
+2. Download `libGLv4.so` from [gitee.com/inkuu/opengl](https://gitee.com/inkuu/opengl/tree/mesa_headers_all)
+3. Copy it into the SDK at `sysroot/usr/lib/aarch64-linux-ohos/`, replacing the existing file
+4. Rebuild
+5. Set the `NEED_OPENGL` environment variable in `app.json5`
 
-## Qt Creator Kit 配置
+## Qt Creator kit configuration
 
-### 1. 添加 Qt Version
-Preferences → Kits → Qt Versions → Add → 选择编译生成的 `qmake`
+### 1. Add the Qt version
+Preferences → Kits → Qt Versions → Add → select the `qmake` your build produced
 
-### 2. 配置编译器
-Compilers → Add → Custom → C：
+### 2. Configure the compiler
+Compilers → Add → Custom → C:
 - **Name**: OHOS Clang
 - **Compiler path**: `<SDK>/native/llvm/bin/clang`
 - **ABI**: `arm - linux - generic - elf - 64bit`
 
-C++ 同理，选 `clang++`，Name 设为 `OHOS Clang++`
+Do the same for C++, selecting `clang++` and naming it `OHOS Clang++`
 
-### 3. 创建 Kit
-Kits → Add → 选择上面配置的 Qt Version 和编译器
+### 3. Create the kit
+Kits → Add → select the Qt version and compilers you configured above
 
-### 4. 设置环境变量
-Preferences → Environment → System → Change：
+### 4. Set the environment variable
+Preferences → Environment → System → Change:
 ```
-NATIVE_OHOS_SDK=<SDK路径>/native
+NATIVE_OHOS_SDK=<SDK path>/native
 ```
 
-## Qt5 源码增量编译与 install
+## Incremental Qt5 source builds and install
 
-> 应用诊断补丁/加日志后，需重新编译 Qt 并 install 到 SDK，demo 才能链到带改动的 libqohos.so。
-> 初次 configure 全量编译见上文 §Configure 命令；本节聚焦**增量编译 + install**（日常排查框架问题的高频操作）。
+> After adding a diagnostic patch or logging, you need to rebuild Qt and install it into the SDK before your demo will link against the modified libqohos.so.
+> For the initial full configure and build, see §The configure command above; this section focuses on **incremental builds + install** (the high-frequency operation when investigating framework problems).
 
-### Windows（主力环境）
+### Windows (the primary environment)
 
-从 **PowerShell 或 cmd** 执行；若在 bash/git-bash，加 `SHELL=cmd.exe` 覆盖——`mingw32-make` 默认调 `/usr/bin/sh` 会把反斜杠路径（`C:\...`）当转义吞掉，`SHELL=cmd.exe` 强制用 cmd.exe 作 shell，bash/PowerShell/cmd 三端通吃：
+Run this from **PowerShell or cmd**; from bash/git-bash, add `SHELL=cmd.exe` to override it — `mingw32-make` calls `/usr/bin/sh` by default, which treats backslash paths (`C:\...`) as escapes and swallows them, whereas `SHELL=cmd.exe` forces cmd.exe as the shell and works from bash, PowerShell, and cmd alike:
 
 ```powershell
-# build 目录从 ENV.md 取（QT5_12_BUILD；5.15 用 ${QT_BUILD_ROOT}/build_5.15.16_arm64-v8a）
+# Take the build directory from ENV.md (QT5_12_BUILD; for 5.15 use ${QT_BUILD_ROOT}/build_5.15.16_arm64-v8a)
 cd ${QT5_12_BUILD}
 mingw32-make.exe SHELL=cmd.exe -j64 install
 ```
 
-`install` 目标把编译产物（含改过的 `libqohos.so`、Qt5 模块 .so）传播到已安装 SDK（`QT5_12_OHOS_SDK`，真实值见 ENV.md）。之后重新编译 demo，它链到的就是带日志/改动的 libqohos.so。
+The `install` target propagates the build outputs (including the modified `libqohos.so` and the Qt5 module `.so` files) into the installed SDK (`QT5_12_OHOS_SDK`; the real value is in ENV.md). Rebuild your demo afterwards and it will link against the libqohos.so containing your logging/changes.
 
 ### macOS
 
 ```bash
-cd <QT_BUILD_DIR>   # 如 tqtc-qt5/build_arm64-v8a
+cd <QT_BUILD_DIR>   # e.g. tqtc-qt5/build_arm64-v8a
 make -j16 install
 ```
 
-### 完整链路（patch → 日志生效）
+### The full chain (patch → logging takes effect)
 
 ```
-qtbase 工作树改源码（加 qOhosPrintfWarning 等）
-  → mingw32-make install（PowerShell）
-    → SDK 下 libqohos.so 更新
-      → demo 重新 hvigorw assembleHap
-        → lib<app>.so 链入新 libqohos.so
-          → 部署设备 → hilog 抓日志
+Edit the source in the qtbase working tree (adding qOhosPrintfWarning, etc.)
+  → mingw32-make install (PowerShell)
+    → libqohos.so is updated in the SDK
+      → rebuild the demo with hvigorw assembleHap
+        → lib<app>.so links in the new libqohos.so
+          → deploy to the device → capture logs with hilog
 ```
 
-### 常见坑
+## Common pitfalls
 
-| 现象 | 根因 | 解决 |
-|------|------|------|
-| 改了源码但 hilog 无新日志 | 只 `make` 没 `install`，SDK 下 libqohos.so 未更新 | 必须带 `install` 目标 |
-| bash/git-bash 里 mingw32-make 报路径错误 | mingw32-make 调 `/usr/bin/sh` 吞反斜杠路径 | 加 `SHELL=cmd.exe` 参数，或切 PowerShell/cmd |
-| demo 链到的还是旧 libqohos.so | install 后没重新编译 demo | install 后重跑 `hvigorw assembleHap` |
-| `mingw32-make: command not found` | MINGW_ROOT 未加 PATH | ENV.md 的 `MINGW_ROOT` 加 PATH |
+| Symptom | Root cause | Fix |
+|---------|------------|-----|
+| You changed the source but hilog shows no new logs | You ran `make` without `install`, so libqohos.so in the SDK wasn't updated | The `install` target is mandatory |
+| mingw32-make reports path errors in bash/git-bash | mingw32-make calls `/usr/bin/sh`, which swallows backslash paths | Add the `SHELL=cmd.exe` argument, or switch to PowerShell/cmd |
+| The demo still links the old libqohos.so | You didn't rebuild the demo after install | Re-run `hvigorw assembleHap` after install |
+| `mingw32-make: command not found` | MINGW_ROOT isn't on PATH | Add ENV.md's `MINGW_ROOT` to PATH |
 
-> 编译 Qt 源码加日志排查框架问题的完整流程见框架问题分析方法论阶段二。
+> For the full process of building the Qt source with added logging to investigate framework problems, see phase two of the framework issue analysis methodology.
 
-## 参考来源
+## References
 
 - [Building Qt for HarmonyOS](https://wiki.qt.io/Building_Qt_for_HarmonyOS)

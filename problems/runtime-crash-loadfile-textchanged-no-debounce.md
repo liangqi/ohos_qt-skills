@@ -10,58 +10,58 @@ severity: high
 audience: public
 refs: []
 summary: >
-  QtSerialMonitor 在 Load File 路径输入框每输入一个字符即触发 getFileTimeRange（open+readAll+split 重操作），
-  导致 SIGSEGV 闪退。修复：QTimer 防抖 500ms + 空列表检查。
+  In QtSerialMonitor, every character typed into the Load File path field triggers getFileTimeRange (a heavy open+readAll+split),
+  causing a SIGSEGV crash. Fix: a 500 ms QTimer debounce + an empty-list check.
 leader_summary: >
-  沉淀 QLineEdit textChanged 信号触发重操作的防抖模式，避免应用层每字符触发文件解析导致崩溃。
-impact: [迁移提效, 应用完善]
-deliverables: [problem记录, patch]
-evidence: [QtSerialMonitor 真机测试 TC-08, src/mainwindow.cpp 修复]
+  Captured the debounce pattern for QLineEdit textChanged signals that trigger heavy work, preventing crashes from per-keystroke file parsing at the application layer.
+impact: [Migration efficiency, Application polish]
+deliverables: [problem record, patch]
+evidence: [QtSerialMonitor on-device test TC-08, fix in src/mainwindow.cpp]
 
-# ====== 检索关键字（Agent 快速匹配用）======
+# ====== Search keywords (for fast agent matching) ======
 error_message: >
   SIGSEGV crash when typing in Load File path input field; on_lineEditLoadFilePath_textChanged triggers getFileTimeRange on every keystroke
 error_code: ""
 keywords: [textChanged, debounce, getFileTimeRange, loadfile, crash, SIGSEGV, QLineEdit]
-symptoms: "用户在 Load File 路径输入框输入路径时应用闪退（还没点 Load 按钮）"
+symptoms: "The application crashes while the user is typing a path into the Load File field (before clicking the Load button)"
 
-# ====== 问题详情 ======
-environment: "Qt 5.15.16 OHOS (Qt5.15.16-arm64-v8a-full SDK), HUAWEI MateBook Pro (2in1), API 24"
+# ====== Problem details ======
+environment: "Qt 5.15.16 OHOS (Qt5.15.16-arm64-v8a-full SDK), HUAWEI MateBook Pro (2-in-1), API 24"
 ---
 
-# Load File 路径输入时 SIGSEGV 闪退（textChanged 无防抖）
+# SIGSEGV crash while typing a Load File path (textChanged with no debounce)
 
-## 错误信息
+## Error message
 
-应用闪退，无明确错误日志（SIGSEGV 在 getFileTimeRange 内部）。
+The application crashes with no clear error log (the SIGSEGV happens inside getFileTimeRange).
 
-## 场景
+## Scenario
 
-QtSerialMonitor 真机测试 TC-08：用户在窗口底部 "Load File" 路径输入框（`lineEditLoadFilePath`）输入文件路径时，**还没点 Load 按钮**，应用即闪退。
+QtSerialMonitor on-device test TC-08: while the user types a file path into the "Load File" path field at the bottom of the window (`lineEditLoadFilePath`) — **before clicking the Load button** — the application crashes.
 
-## 原因
+## Cause
 
-`MainWindow::on_lineEditLoadFilePath_textChanged(const QString &arg1)` 在用户**每输入一个字符**时触发，调用 `fileReader.getFileTimeRange(&file)`。该函数执行：
-1. `file.open(QIODevice::ReadOnly)` — 打开文件
-2. `file.readAll()` — 读取全部内容到内存
-3. `allData.split(QRegExp("[\\n+\\r+]"), Qt::SplitBehaviorFlags::SkipEmptyParts)` — 正则 split
+`MainWindow::on_lineEditLoadFilePath_textChanged(const QString &arg1)` fires on **every character typed** and calls `fileReader.getFileTimeRange(&file)`. That function performs:
+1. `file.open(QIODevice::ReadOnly)` — opens the file
+2. `file.readAll()` — reads the entire contents into memory
+3. `allData.split(QRegExp("[\\n+\\r+]"), Qt::SplitBehaviorFlags::SkipEmptyParts)` — a regex split
 
-每字符触发一次重操作（open+readAll+split），导致：
-- 资源竞争（频繁 open/close 同一文件）
-- 可能触发 Qt 内部信号/槽重入崩溃
-- `Qt::SplitBehaviorFlags::SkipEmptyParts` 在 Qt 5.15 OHOS 运行时可能符号解析不稳定
+Triggering this heavy work (open+readAll+split) on every character leads to:
+- Resource contention (repeatedly opening/closing the same file)
+- Possible crashes from Qt's internal signal/slot reentrancy
+- `Qt::SplitBehaviorFlags::SkipEmptyParts` may resolve unreliably at runtime on Qt 5.15 OHOS
 
-## 解决方案
+## Solution
 
-在 `on_lineEditLoadFilePath_textChanged` 中加 QTimer 防抖（延迟 500ms 触发），并加空列表检查：
+Add a QTimer debounce (fire after 500 ms) in `on_lineEditLoadFilePath_textChanged`, plus an empty-list check:
 
 ```cpp
 void MainWindow::on_lineEditLoadFilePath_textChanged(const QString &arg1)
 {
-    // 防抖：延迟 500ms 触发，避免每字符触发一次 getFileTimeRange（open+readAll+split 重操作）
+    // Debounce: fire after 500 ms so getFileTimeRange (a heavy open+readAll+split) isn't triggered per character
     QTimer::singleShot(500, this, [this, arg1]() {
         if (ui->lineEditLoadFilePath->text() != arg1)
-            return; // 路径已变，忽略旧触发
+            return; // the path changed; ignore the stale trigger
         
         QFile file(arg1);
         if (!file.exists())
@@ -83,33 +83,33 @@ void MainWindow::on_lineEditLoadFilePath_textChanged(const QString &arg1)
 }
 ```
 
-**关键修改点**：
-1. `QTimer::singleShot(500, ...)` — 防抖 500ms
-2. `if (ui->lineEditLoadFilePath->text() != arg1) return;` — 路径已变则忽略旧触发
-3. `if (timeRange.count() >= 2)` — 空列表保护
+**Key changes**:
+1. `QTimer::singleShot(500, ...)` — a 500 ms debounce
+2. `if (ui->lineEditLoadFilePath->text() != arg1) return;` — ignore stale triggers when the path has changed
+3. `if (timeRange.count() >= 2)` — guard against an empty list
 
-## 注意事项
+## Notes
 
-- 防抖延迟 500ms 是经验值，可根据文件解析耗时调整
-- `getFileTimeRange` 本身也有优化空间（可改为只读首尾几行而非 readAll）
-- 此模式适用于所有 QLineEdit textChanged 触发重操作的场景
+- The 500 ms debounce is an empirical value; adjust it based on how long file parsing takes
+- `getFileTimeRange` itself could also be optimized (reading just the first and last few lines instead of readAll)
+- This pattern applies to any case where a QLineEdit textChanged signal triggers heavy work
 
-## 成果展示
+## Results
 
-| 字段 | 内容 |
-|------|------|
-| 领导摘要 | 沉淀 QLineEdit textChanged 防抖模式，避免应用层每字符触发文件解析导致崩溃 |
-| 影响面 | QtSerialMonitor 真机测试 TC-08；其他有类似 textChanged 触发重操作的 Qt OHOS 应用 |
-| 交付物 | problem 记录 + src/mainwindow.cpp patch |
-| 证据 | QtSerialMonitor 真机测试 TC-08 修复验证通过 |
-| 可复用方式 | 以后遇到 "QLineEdit textChanged 触发重操作导致崩溃" 时直接复用防抖模式 |
+| Field | Content |
+|-------|---------|
+| Leadership summary | Captured the QLineEdit textChanged debounce pattern, preventing crashes from per-keystroke file parsing at the application layer |
+| Scope of impact | QtSerialMonitor on-device test TC-08; other Qt OHOS applications where textChanged triggers heavy work |
+| Deliverables | problem record + a patch to src/mainwindow.cpp |
+| Evidence | QtSerialMonitor on-device test TC-08 fix verified |
+| How to reuse | Reuse the debounce pattern whenever "QLineEdit textChanged triggering heavy work causes a crash" |
 
-## 相关
+## Related
 
-- [[qt-app-harmonyos-completion]] — 应用鸿蒙化完善工作流（TC-08 属于此工作流）
-- [[qt-harmonyos-golden-rules]] — 铁律速查
+- [[qt-app-harmonyos-completion]] — The application-polish workflow for HarmonyOS porting (TC-08 belongs to this workflow)
+- [[qt-harmonyos-golden-rules]] — Quick reference to the iron rules
 
 ---
 
-> **模板说明**：此模板用于记录实际执行中遇到的报错。
-> Qt 平台已知限制（如 chmod 不支持）请记录在 `semantic/qt-harmonyos-platform-limits.md`，不使用此模板。
+> **Template note**: this template is for recording errors encountered during real execution.
+> Known Qt platform limitations (such as chmod being unsupported) belong in `semantic/qt-harmonyos-platform-limits.md` and should not use this template.

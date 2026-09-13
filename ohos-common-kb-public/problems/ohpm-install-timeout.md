@@ -1,11 +1,11 @@
 ---
 id: ohpm-install-timeout
-title: ohpm install 超时或 registry 不可达
+title: ohpm install times out or the registry is unreachable
 status: active
 confidence: 0.9
 sources:
   - type: experience
-    name: "Tauri 应用迁移中的 ohpm install 超时"
+    name: "ohpm install timeout during a Tauri application migration"
     date: 2026-07-15
 created: 2026-08-15
 updated: 2026-08-15
@@ -13,40 +13,40 @@ last_confirmed: 2026-07-30
 superseded_by: null
 tags: [ohos, ohpm, registry, timeout, network, problem]
 refs: [deveco-cli-usage-rules]
-summary: "ohpm install 长时间无响应或超时通常是 registry、代理或网络可达性问题；先诊断当前配置，再切换到组织批准且可达的 registry。"
+summary: "An ohpm install that hangs or times out is usually a registry, proxy, or network reachability problem; diagnose the current configuration first, then switch to a registry that is organization-approved and reachable."
 audience: public
 error_message: |
-  ohpm install 超时
-  ohpm install 长时间无响应
+  ohpm install times out
+  ohpm install hangs for a long time
 ---
 
-# ohpm install 超时或 registry 不可达
+# ohpm install times out or the registry is unreachable
 
-## 症状
+## Symptoms
 
-执行 `ohpm install` 时长时间无响应、连接失败或超时。该问题属于 OHPM registry 与网络链路，不由上层 Qt、Tauri、AWT/Swing 或 Avalonia 框架决定。
+Running `ohpm install` hangs for a long time, fails to connect, or times out. This is a problem with the OHPM registry and the network path — it is not determined by the higher-level Qt, Tauri, AWT/Swing, or Avalonia framework.
 
-## 诊断
+## Diagnosis
 
-1. 记录 `ohpm --version` 和当前 registry 配置，确认实际使用的客户端与源；
-2. 检查目标 registry 的 DNS、TLS 和代理可达性，区分源不可达、代理配置错误与临时网络波动；
-3. 在同一终端重试最小 `ohpm install`，不要用删除锁文件或反复清缓存掩盖网络根因；
-4. 若通过 `devecocli` 构建，结合其详细日志确认失败确实发生在 OHPM 安装阶段。
+1. Record `ohpm --version` and the current registry configuration to confirm which client and source are actually in use.
+2. Check DNS, TLS, and proxy reachability for the target registry, distinguishing an unreachable source, a misconfigured proxy, and transient network flakiness.
+3. Retry a minimal `ohpm install` in the same terminal — don't paper over the network root cause by deleting lock files or repeatedly clearing caches.
+4. If you build through `devecocli`, use its verbose logs to confirm the failure really occurs during the OHPM install phase.
 
-## 处置
+## What to do
 
-优先使用组织批准且在当前网络可达的 registry。经批准使用华为云镜像时，可执行：
+Prefer a registry that is organization-approved and reachable from your current network. If the Huawei Cloud mirror is approved for your use, you can run:
 
 ```bash
 ohpm config set registry https://repo.huaweicloud.com/repository/ohpm/
 ```
 
-切换后重新读取 registry 配置并执行安装验证。若组织要求官方源或内部代理，以该策略为准；不要把某个镜像地址写死到框架模板或应用源码。
+After switching, re-read the registry configuration and run the install to verify. If your organization mandates the official source or an internal proxy, follow that policy instead; don't hard-code a mirror address into a framework template or application source.
 
-## 框架 adapter 边界
+## Framework adapter boundary
 
-框架仓只需保留生成工程中从哪里触发 `ohpm install`、如何采集日志以及修复后的框架构建回归证据。registry、代理和网络诊断由本页统一维护。
+The framework repository only needs to record where in the generated project `ohpm install` is triggered, how to collect logs, and the framework build regression evidence after a fix. Registry, proxy, and network diagnosis is maintained here.
 
-## 关联
+## Related
 
-- [[../procedural/deveco-cli-usage-rules|deveco-cli 使用规则]] — OHPM 在 DevEco 工具链中的职责与底层诊断边界
+- [[../procedural/deveco-cli-usage-rules|deveco-cli usage rules]] — OHPM's role in the DevEco toolchain and the boundary of low-level diagnosis

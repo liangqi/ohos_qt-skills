@@ -1,29 +1,29 @@
 ---
-name: 能力 / 工作流诉求
-about: 希望知识库新增某能力或自动工作流（AI 自动做什么）
-title: "[能力诉求] "
+name: Capability / workflow request
+about: Request a new capability or automated workflow for the knowledge base (what the AI should do automatically)
+title: "[Capability request] "
 labels: ["kb-capability-request"]
 ---
 
-## 期望的能力 / 工作流
-<!-- 一句话：希望 AI / 知识库能自动做什么（如"扫描源码自动生成鸿蒙化迁移清单"） -->
+## Desired capability / workflow
+<!-- One sentence: what you want the AI / knowledge base to do automatically (e.g. "scan source code and auto-generate a HarmonyOS migration checklist") -->
 
-## 当前痛点
-<!-- 现在你怎么做、为什么不够（手动步骤多 / 容易漏 / 无统一入口） -->
+## Current pain point
+<!-- How you do it today and why that isn't good enough (too many manual steps / easy to miss things / no single entry point) -->
 
-## 期望的触发方式
-- [ ] 自然语言关键词（贴出你平时会怎么说）
-- [ ] 任务路由码（如扩展某 task 类型）
-- [ ] 文件类型 / 目录约定
-- [ ] 手动命令
+## Desired trigger
+- [ ] Natural-language keywords (paste how you would normally phrase it)
+- [ ] Task routing code (e.g. extending an existing task type)
+- [ ] File type / directory convention
+- [ ] Manual command
 
-## 期望的输入 / 输出
-- 输入：<!-- 用户给什么 / 扫描什么 -->
-- 输出：<!-- 结构化方案 / 代码 / 报告 / 清单 -->
+## Desired input / output
+- Input: <!-- what the user provides / what gets scanned -->
+- Output: <!-- structured plan / code / report / checklist -->
 
-## 涉及的现有知识页（如扩展某工作流）
-<!-- 如 procedural/xxx.md 或 semantic/xxx.md -->
+## Existing knowledge pages involved (if extending a workflow)
+<!-- e.g. procedural/xxx.md or semantic/xxx.md -->
 
-## 是否愿意参与
-- [ ] 我能提供样例输入/期望输出用于设计
-- [ ] 我能帮忙验证产出
+## Willing to help?
+- [ ] I can provide sample inputs / expected outputs for the design
+- [ ] I can help validate the result

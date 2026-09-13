@@ -1,43 +1,43 @@
-# 安全反馈
+# Security feedback
 
-如果你发现本知识库中的安全问题（如泄露的凭据、不安全的配置示例、潜在的安全漏洞等），请通过以下方式反馈。
+If you find a security problem in this knowledge base (leaked credentials, insecure configuration examples, potential vulnerabilities, and so on), please report it through one of the channels below.
 
-## 反馈方式
+## How to report
 
-### 方式一：GitCode 安全 Issue（推荐）
+### Option 1: GitCode security issue (recommended)
 
-GitCode 支持安全/私有 Issue，仅作者和项目成员可见：
+GitCode supports security/private issues that are visible only to the author and project members:
 
-1. 在本仓库点击"Issues" → "New Issue"
-2. 选择"Security"类型（如果可用）
-3. 描述安全问题，附上相关文件路径和证据
-4. 提交后，仅你和项目成员可见
+1. In this repository, click "Issues" → "New Issue"
+2. Choose the "Security" type (if available)
+3. Describe the security problem, including the relevant file paths and evidence
+4. Once submitted, it is visible only to you and the project members
 
-## 反馈内容
+## What to include
 
-请提供以下信息：
+Please provide the following:
 
-- **问题描述**：简要描述安全问题
-- **涉及文件**：具体文件路径或代码片段
-- **影响范围**：可能影响的场景
-- **建议修复**：如果有修复建议，请附上
+- **Problem description**: a brief description of the security problem
+- **Files involved**: specific file paths or code snippets
+- **Scope of impact**: the scenarios that could be affected
+- **Suggested fix**: include one if you have a suggestion
 
-## 注意事项
+## Please note
 
-- **不要在公开 Issue 中暴露敏感信息**（如真实凭据、内部 URL、个人路径）
-- **不要在 Issue 标题中包含敏感摘要**
-- 安全问题修复后，维护者会在内部源修复，下次发布时自动带入本仓库
+- **Do not expose sensitive information in a public issue** (real credentials, internal URLs, personal paths)
+- **Do not put a sensitive summary in the issue title**
+- Once a security problem is fixed, the maintainers fix it in the internal source, and the fix flows into this repository automatically at the next release
 
-## 本仓库的安全边界
+## This repository's security boundary
 
-本仓库是只读派生视图，内容由内部源按 `audience:public` 过滤后生成。内部源的门禁会检查：
+This repository is a read-only derived view; its content is generated from an internal source filtered by `audience:public`. The gating on the internal source checks that there are:
 
-- 无 secret、内部 URL、个人路径
-- 无未公开的凭据或配置
-- 无内部项目代号或敏感信息
+- No secrets, internal URLs, or personal paths
+- No undisclosed credentials or configuration
+- No internal project codenames or sensitive information
 
-如果你发现本仓库中有安全问题，说明内部源的门禁可能有遗漏，维护者会同步修复内部源的门禁规则。
+If you find a security problem in this repository, it means the internal source's gating may have a gap, and the maintainers will fix the internal gating rules as well.
 
 ## License
 
-MIT（见 `LICENSE`）。提交的安全反馈视同在该协议下贡献。
+MIT (see `LICENSE`). Security feedback you submit is treated as a contribution under that license.

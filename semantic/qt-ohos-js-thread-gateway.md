@@ -9,35 +9,35 @@ status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-ohos-extras, problem-ohos-mainthread-mismatch, semantic-qt-harmonyos-qt6-status, episodic-quit-deadlock-tsfn]
 summary: >
-  Qt↔ArkTS/JS 线程桥接的私有 API：QOhosJsThreadGateway 命名空间（invoke/runAndWait/eval/
-  evalWithPromise/invokeAndWaitForContinue）是把 Qt 线程的调用安全 marshal 到唯一 JS 主线程的入口，
-  QOhosJsThreadOps 是其背后的抽象接口（QPA 插件用 JsThreadOpsImpl 注册实现）。位于 QtCore 私有头
-  qcore_ohos_p.h，非公共 API。开发者用命名空间自由函数，不直接碰 QOhosJsThreadOps。
+  The private API for bridging Qt and ArkTS/JS threads: the QOhosJsThreadGateway namespace (invoke/runAndWait/eval/
+  evalWithPromise/invokeAndWaitForContinue) is the entry point for safely marshalling calls from Qt threads onto the single JS main thread,
+  and QOhosJsThreadOps is the abstract interface behind it (the QPA plugin registers a JsThreadOpsImpl implementation). It lives in QtCore's private header
+  qcore_ohos_p.h and is not public API. Developers use the namespace's free functions and don't touch QOhosJsThreadOps directly.
 ---
 
-# Qt↔JS 线程桥接：QOhosJsThreadGateway / QOhosJsThreadOps
+# Bridging Qt and JS threads: QOhosJsThreadGateway / QOhosJsThreadOps
 
-## 背景：为什么需要这套接口
+## Background: why this interface exists
 
-Qt for HarmonyOS 是**双线程模型**（详见 [[ohos-mainthread-mismatch]]）：
+Qt for HarmonyOS uses a **dual-thread model** (see [[ohos-mainthread-mismatch]] for details):
 
-| 线程 | 用途 |
-|------|------|
-| ArkTS UI 线程（JS 线程） | 运行 ArkTS 生命周期回调、Node-API 回调，持有 `napi_env` |
-| QtMainThread | 运行 Qt 事件循环、用户 `main()`、QPA 事件分发 |
+| Thread | Purpose |
+|--------|---------|
+| The ArkTS UI thread (the JS thread) | Runs ArkTS lifecycle callbacks and Node-API callbacks, and holds the `napi_env` |
+| QtMainThread | Runs the Qt event loop, the user's `main()`, and QPA event dispatch |
 
-**核心约束**：Node-API 对象（`napi_value` / `napi_ref` / `QNapi::Value`）**只能在 JS 主线程访问**。因此 Qt 线程要调用任何 ArkTS/系统 API（取字体路径、wifi、标准路径、调 `@ohos.*` 模块等），必须把调用 marshal 到 JS 线程。`QOhosJsThreadGateway` 就是这个方向的入口；反方向（JS 线程 → Qt 线程）用 `QtOhos::invokeInQtThread`。
+**The core constraint**: Node-API objects (`napi_value` / `napi_ref` / `QNapi::Value`) **can only be accessed on the JS main thread**. So whenever a Qt thread needs to call any ArkTS/system API (getting font paths, wifi, standard paths, calling an `@ohos.*` module, and so on), the call must be marshalled onto the JS thread. `QOhosJsThreadGateway` is the entry point for that direction; for the reverse direction (JS thread → Qt thread), use `QtOhos::invokeInQtThread`.
 
-## 两者关系（源码核实）
+## How the two relate (verified in the source)
 
 | | `QOhosJsThreadGateway` | `QOhosJsThreadOps` |
 |---|---|---|
-| 性质 | **namespace**（门面，自由函数） | **抽象类**（虚接口 + `static instance()/registerInstance()` 单例） |
-| 定义 | `qtbase/src/corelib/kernel/qcore_ohos.cpp:36-54` | `qtbase/src/corelib/kernel/qcore_ohos.cpp:19-34` |
-| 头文件 | `QtCore/private/qcore_ohos_p.h` | 同 |
-| 谁用 | **调用方**（开发者 / Qt 模块） | **实现方**（QPA ohos 插件） |
+| Nature | A **namespace** (a façade of free functions) | An **abstract class** (a virtual interface + a `static instance()/registerInstance()` singleton) |
+| Defined in | `qtbase/src/corelib/kernel/qcore_ohos.cpp:36-54` | `qtbase/src/corelib/kernel/qcore_ohos.cpp:19-34` |
+| Header | `QtCore/private/qcore_ohos_p.h` | Same |
+| Who uses it | **Callers** (developers / Qt modules) | **Implementers** (the OHOS QPA plugin) |
 
-委托链（命名空间函数只是薄门面，转调单例）：
+The delegation chain (the namespace functions are a thin façade that forwards to the singleton):
 
 ```cpp
 // qcore_ohos.cpp
@@ -46,72 +46,72 @@ void QOhosJsThreadGateway::runAndWait(
 {
     QOhosJsThreadOps::instance().runAndWait(task, std::move(callerContextName));
 }
-// invoke / invokeAndWaitForContinue 同样转调 instance()
+// invoke / invokeAndWaitForContinue forward to instance() the same way
 ```
 
-后端实现是 QPA ohos 插件的 `JsThreadOpsImpl`（`qtbase/src/plugins/platforms/ohos/qohosplugincore.cpp:780-821`），启动时由 `initJsThreadState()` 通过 `QOhosJsThreadOps::registerInstance(&jsThreadOpsImpl)`（:920）注册为单例，内部转调真正排任务的 `QtOhos::runInJsThreadAndWait / invokeInJsThread / invokeInJsThreadAndWaitForContinue`。
+The backend implementation is the OHOS QPA plugin's `JsThreadOpsImpl` (`qtbase/src/plugins/platforms/ohos/qohosplugincore.cpp:780-821`), registered as the singleton at startup by `initJsThreadState()` via `QOhosJsThreadOps::registerInstance(&jsThreadOpsImpl)` (:920), which internally forwards to the real task-queueing functions `QtOhos::runInJsThreadAndWait / invokeInJsThread / invokeInJsThreadAndWaitForContinue`.
 
-**结论**：开发者用 `QOhosJsThreadGateway::*` 自由函数；`QOhosJsThreadOps` 是给"要换后端实现的人"用的接口，不要直接 `instance().xxx()` 调用。`runAndWait` 两边同名，应用/模块代码一律用命名空间版本。
+**Conclusion**: developers use the `QOhosJsThreadGateway::*` free functions; `QOhosJsThreadOps` is the interface for "someone replacing the backend implementation" — don't call `instance().xxx()` directly. `runAndWait` exists on both sides, so application/module code should always use the namespace version.
 
-## ⚠️ 私有 API 边界
+## ⚠️ The private API boundary
 
-- 都在 `QtCore/private/qcore_ohos_p.h`，头文件顶部明确 **"not part of the Qt API. It may change from version to version without notice, or even be removed."**
-- 符号靠 `Q_CORE_EXPORT` 从 QtCore 导出，可链接，但**无 ABI/API 兼容性承诺**
-- Qt 自身在大量内部模块使用：字体库（`qohosplatformfontdatabase.cpp`）、QStandardPaths（`qstandardpaths_ohos.cpp`）、wifi bearer（`qohoswifi.cpp`）、QPA 插件自身
-- 应用层若要用：需 `#include <QtCore/private/qcore_ohos_p.h>`、链接 Qt 私有头（CMake `Qt5::CorePrivate` / `find_package(Qt5 ... COMPONENTS ... Private)`），并自担升级风险
+- Both live in `QtCore/private/qcore_ohos_p.h`, whose header comment states explicitly that it is **"not part of the Qt API. It may change from version to version without notice, or even be removed."**
+- The symbols are exported from QtCore via `Q_CORE_EXPORT` and are linkable, but come with **no ABI/API compatibility guarantee**
+- Qt itself uses them widely in internal modules: the font database (`qohosplatformfontdatabase.cpp`), QStandardPaths (`qstandardpaths_ohos.cpp`), the wifi bearer (`qohoswifi.cpp`), and the QPA plugin itself
+- To use them from the application layer you need `#include <QtCore/private/qcore_ohos_p.h>`, to link the Qt private headers (CMake `Qt5::CorePrivate` / `find_package(Qt5 ... COMPONENTS ... Private)`), and to accept the upgrade risk yourself
 
-## ⚠️ 构建前置条件（易漏，本文示例全部命中）
+## ⚠️ Build prerequisites (easy to miss; every example here hits them)
 
-本页所有示例（及任何直接命名 `QNapi::*` 类型的 TU）除 `Qt5::CorePrivate` 外还**必须**满足两条，否则编译/链接失败（2026-07-27 实证 Qt 5.15.16 full SDK 安装树）：
+Every example on this page (and any TU that names `QNapi::*` types directly) **must** satisfy two things beyond `Qt5::CorePrivate`, or compilation/linking fails (verified 2026-07-27 against a Qt 5.15.16 full SDK installation tree):
 
-1. **node-addon-api 的 `napi.h`**：`qcore_ohos_p.h` → `qnapi_p.h:24 #include <napi.h>`。5.15.16 full SDK **不含** `napi.h`（`find` 全树 0 命中）；`Qt5::CorePrivate` target 只携带 `Qt5Core_OWN_PRIVATE_INCLUDE_DIRS`（私有头目录），**不带** node-addon-api 路径（`Qt5CoreConfigExtras.cmake` 无 `3rdparty`/`node-addon` 条目）。必须从 Qt5 源码树 `qtbase/src/3rdparty/node-addon-api/` 取，手动 `target_include_directories(<tgt> PRIVATE <path>/node-addon-api)`，或设 `QT5_SRC_3RDPARTY` 环境变量。
-2. **链接 `ace_napi.z`**：node-addon-api 是 header-only 内联封装，`napi_*` C 函数由 OHOS 运行时 `libace_napi.z.so` 提供（sysroot `<OHOS_SDK_NATIVE>/sysroot/usr/lib/aarch64-linux-ohos/libace_napi.z.so`）。`Qt5::Core` **不传递**此依赖（`Qt5CoreConfigExtras.cmake` 无 `INTERFACE_LINK_LIBRARIES` 含 ace_napi），应用须在 `target_link_libraries` 显式加 `ace_napi.z`，否则 `undefined reference to napi_*`。
+1. **node-addon-api's `napi.h`**: `qcore_ohos_p.h` → `qnapi_p.h:24 #include <napi.h>`. The 5.15.16 full SDK **doesn't ship** `napi.h` (a whole-tree `find` gives 0 matches); the `Qt5::CorePrivate` target only carries `Qt5Core_OWN_PRIVATE_INCLUDE_DIRS` (the private header directories) and **not** the node-addon-api path (`Qt5CoreConfigExtras.cmake` has no `3rdparty`/`node-addon` entries). You must take it from the Qt5 source tree's `qtbase/src/3rdparty/node-addon-api/` and add it by hand with `target_include_directories(<tgt> PRIVATE <path>/node-addon-api)`, or via a `QT5_SRC_3RDPARTY` environment variable.
+2. **Linking `ace_napi.z`**: node-addon-api is a header-only inline wrapper, and the `napi_*` C functions are provided by the OHOS runtime's `libace_napi.z.so` (in the sysroot at `<OHOS_SDK_NATIVE>/sysroot/usr/lib/aarch64-linux-ohos/libace_napi.z.so`). `Qt5::Core` **doesn't propagate** this dependency (`Qt5CoreConfigExtras.cmake` has no `INTERFACE_LINK_LIBRARIES` containing ace_napi), so the application must add `ace_napi.z` explicitly to `target_link_libraries` or you get `undefined reference to napi_*`.
 
-> 💡 仅当应用代码完全不用 `QNapi::*` 类型、只用 `jsState.eval<T>(expr)` 取 POD 返回时，理论上 napi.h 仍被 `qcore_ohos_p.h` 传递包含（躲不开）；ace_napi.z 链接则任何使用本网关的 TU 都需要。
+> 💡 Even if your application code never uses `QNapi::*` types and only calls `jsState.eval<T>(expr)` for POD return values, napi.h is still transitively included by `qcore_ohos_p.h` (unavoidable); and linking ace_napi.z is required by any TU that uses this gateway.
 
-## 取主窗口 / Window id 的现行写法（5.15.16，易写错）
+## The current way to get the main window / a window id (5.15.16, easy to get wrong)
 
-- **主窗口**：`jsState.defaultWindowStageOrEmpty().call<QNapi::Object>("getMainWindowSync")`（同步，`@ohos.window.d.ts` `WindowStage.getMainWindowSync(): Window`；源码 `qohosqabilityinstancesmanager.cpp:312` / `qohoswindowproxydatafactory.cpp:267` 同款）。
-- **Window id 访问**：`window.get<QNapi::Number>("getWindowProperties().id")`，**不是** `.get<QNapi::Number>("id")`——5.15.16 的 Window 对象 `id` 非直接属性，须经 `getWindowProperties().id`（源码 `qohoswindowproxy.cpp:489/518`）。
-- **子窗口枚举**：`windowStage.call<QNapi::Promise>("getSubWindow")` **无参**，返回 `Promise<Array<Window>>`（`@ohos.window.d.ts:8480`），在 `onThen` 内按 `getWindowProperties().id` 匹配。**不要**给 `getSubWindow` 传 id 入参（旧代码传了会被忽略）。
-- **GC 警告**：`getSubWindow` 异步，`onThen` 在另一 JS turn 执行。在其中要用的 `QNapi::Object`（如 policy）**必须在该回调内用 `info.Env()` 当场构造**，不能从外层 task 按值捕获——非 persistent 的 `napi_value` 跨 turn 会被 GC。同步路径（如 `getMainWindowSync` 后立即 `call`）无此问题。
+- **The main window**: `jsState.defaultWindowStageOrEmpty().call<QNapi::Object>("getMainWindowSync")` (synchronous; `@ohos.window.d.ts`'s `WindowStage.getMainWindowSync(): Window`; the source does the same at `qohosqabilityinstancesmanager.cpp:312` / `qohoswindowproxydatafactory.cpp:267`).
+- **Accessing the window id**: `window.get<QNapi::Number>("getWindowProperties().id")`, **not** `.get<QNapi::Number>("id")` — in 5.15.16, `id` isn't a direct property of the Window object and must go through `getWindowProperties().id` (source: `qohoswindowproxy.cpp:489/518`).
+- **Enumerating subwindows**: `windowStage.call<QNapi::Promise>("getSubWindow")` takes **no arguments** and returns `Promise<Array<Window>>` (`@ohos.window.d.ts:8480`); match by `getWindowProperties().id` inside `onThen`. **Don't** pass an id argument to `getSubWindow` (older code that did was simply ignored).
+- **A GC warning**: `getSubWindow` is asynchronous and `onThen` runs in a different JS turn. Any `QNapi::Object` you need in there (a policy object, say) **must be constructed inside that callback using `info.Env()`** rather than captured by value from the outer task — a non-persistent `napi_value` gets garbage-collected across turns. The synchronous path (e.g. calling `call` right after `getMainWindowSync`) doesn't have this problem.
 
-## 5 个入口（全部在 `QOhosJsThreadGateway` 命名空间）
+## The 5 entry points (all in the `QOhosJsThreadGateway` namespace)
 
-| 场景 | 接口 | 阻塞 | 返回值 |
+| Scenario | Interface | Blocking | Returns a value |
 |---|---|:---:|:---:|
-| 异步投递、不要结果 | `invoke(task)` | 否 | 无 |
-| 同步阻塞、不要结果 | `runAndWait(task, ctx)` | 是 | 无 |
-| 同步阻塞、要返回值 | `eval(func, ctx)`（模板，推导返回类型） | 是 | 有 |
-| JS 返回 Promise、阻塞等副作用 | `invokeAndWaitForContinue(task, ctx)` | 是 | 无 |
-| JS 返回 Promise、阻塞等并取值 | `evalWithPromise<T>(func, ctx)` | 是 | `T` |
+| Post asynchronously, no result needed | `invoke(task)` | No | No |
+| Block synchronously, no result needed | `runAndWait(task, ctx)` | Yes | No |
+| Block synchronously and get a value | `eval(func, ctx)` (a template that deduces the return type) | Yes | Yes |
+| JS returns a Promise; block for the side effect | `invokeAndWaitForContinue(task, ctx)` | Yes | No |
+| JS returns a Promise; block and get the value | `evalWithPromise<T>(func, ctx)` | Yes | `T` |
 
-`ctx`（`callerContextName`）是出错定位用，习惯传 `Q_FUNC_INFO`。
+`ctx` (`callerContextName`) is for error localization; the convention is to pass `Q_FUNC_INFO`.
 
-### 用法示例（仿 Qt 自身实现）
+### Usage examples (mirroring Qt's own implementations)
 
 ```cpp
 #include <QtCore/private/qcore_ohos_p.h>
 
-// 1) 异步 fire-and-forget
+// 1) Asynchronous fire-and-forget
 QOhosJsThreadGateway::invoke([](QOhosJsState &) {
-    // 在 JS 线程做不需要结果的事
+    // do something on the JS thread whose result you don't need
 });
 
-// 2) 同步阻塞、无返回值（Qt 字体库取字体路径的模式）
+// 2) Synchronous, blocking, no return value (the pattern Qt's font database uses for font paths)
 QStringList fontPaths;
 QOhosJsThreadGateway::runAndWait(
     [&](QOhosJsState &jsState) {
-        fontPaths.append(getSystemFontPaths(jsState)); // 必须在 JS 线程内取
+        fontPaths.append(getSystemFontPaths(jsState)); // must be fetched on the JS thread
     }, Q_FUNC_INFO);
 
-// 3) 同步阻塞、带返回值（最常用；QStandardPaths/wifi 模式）
+// 3) Synchronous, blocking, with a return value (the most common; the QStandardPaths/wifi pattern)
 QString family = QOhosJsThreadGateway::eval(
     [&](QOhosJsState &jsState) {
         return QString::fromStdString(getDefaultFontFamily(jsState));
     });
 
-// 4) JS 侧返回 Promise、阻塞等并取值（wifi getLinkedInfo 模式）
+// 4) The JS side returns a Promise; block and get the value (the wifi getLinkedInfo pattern)
 auto linked = QOhosJsThreadGateway::evalWithPromise<QOhosOptional<WifiLinkedInfo>>(
     [&](QOhosJsState &jsState, QOhosTaskPromise<QOhosOptional<WifiLinkedInfo>> p) {
         auto branches = std::move(p).makeThenCatchBranches(Q_FUNC_INFO);
@@ -120,7 +120,7 @@ auto linked = QOhosJsThreadGateway::evalWithPromise<QOhosOptional<WifiLinkedInfo
             .catch(std::move(branches.catchFunc));
     });
 
-// 5) JS 侧返回 Promise、只要副作用、不要值
+// 5) The JS side returns a Promise; you only want the side effect, not the value
 QOhosJsThreadGateway::invokeAndWaitForContinue(
     [&](QOhosJsState &jsState, QOhosTaskPromise<> done) {
         jsState.evalToPromiseOrRejectOnThrow("doSomethingAsync()")
@@ -129,44 +129,44 @@ QOhosJsThreadGateway::invokeAndWaitForContinue(
     }, Q_FUNC_INFO);
 ```
 
-task 拿到的 `QOhosJsState &` 提供：
-- `env()` — `napi_env`
-- `eval(expr, args)` — 执行 JS 表达式，模板返回值
-- `evalToPromiseOrRejectOnThrow(expr, args)` — 拿到 `QNapi::Promise`
-- `defaultWindowStageOrEmpty()` / `defaultUiContextOrEmpty()` — ArkUI 对象
-- `mapOhosEnumToJs / mapOhosEnumFromJs / tryMapOhosEnumFromJs` — 鸿蒙枚举双向映射
+The `QOhosJsState &` the task receives provides:
+- `env()` — the `napi_env`
+- `eval(expr, args)` — evaluate a JS expression, with a templated return type
+- `evalToPromiseOrRejectOnThrow(expr, args)` — get a `QNapi::Promise`
+- `defaultWindowStageOrEmpty()` / `defaultUiContextOrEmpty()` — ArkUI objects
+- `mapOhosEnumToJs / mapOhosEnumFromJs / tryMapOhosEnumFromJs` — bidirectional HarmonyOS enum mapping
 
-## 关键约束
+## A key constraint
 
-`eval` / `evalWithPromise` 内有 `static_assert`：**返回类型不能是 `napi_value` / `napi_ref` / `QNapi::Value` 等 NAPI 值**——必须在 JS 线程内转成普通 C++ 类型（`std::string` / `int` / `bool` / `std::vector` / `QOhosOptional<T>` 等）再返回。违反在编译期报错。这就是 Qt wifi 代理返回 `std::vector<ScanInfo>` / `QOhosOptional<WifiLinkedInfo>` 而非 NAPI 对象的原因。
+`eval` / `evalWithPromise` contain a `static_assert`: **the return type must not be a NAPI value** such as `napi_value` / `napi_ref` / `QNapi::Value` — you must convert to an ordinary C++ type on the JS thread (`std::string` / `int` / `bool` / `std::vector` / `QOhosOptional<T>` and so on) before returning. Violations are caught at compile time. That's why Qt's wifi proxy returns `std::vector<ScanInfo>` / `QOhosOptional<WifiLinkedInfo>` rather than NAPI objects.
 
-## 反方向（JS 线程 → Qt 线程）
+## The reverse direction (JS thread → Qt thread)
 
-同文件 `qcore_ohos_p.h` 还提供反方向工具，凑齐跨线程全景：
+The same file `qcore_ohos_p.h` also provides the reverse-direction tools, completing the cross-thread picture:
 
-- `QtOhos::invokeInQtThread(task)` — 任意线程可调，把 task 排进 Qt 线程执行（[[ohos-mainthread-mismatch]] 的"ArkTS UI 线程回调不能直接用 Qt API"就用它）
-- `QtOhos::QThreadSafeRef<T>::visitInQtThreadIfAlive(func)` / `QObjectThreadSafeRef` — 持有 QObject 的线程安全引用，内部用 `QPointer` 判活后在 Qt 线程访问
-- `QtOhos::makeProxyWithJsThreadDeleter(shared_ptr)` — 给 shared_ptr 套自定义删除器，确保被管对象在 JS 线程析构（内部用 `QOhosJsThreadGateway::runAndWait` 实现）
-- `QtOhos::initQtThreadState(qpaFunctions)` — 启动期从 Qt 线程调用一次，初始化 `QtState`
+- `QtOhos::invokeInQtThread(task)` — callable from any thread; queues the task for execution on the Qt thread (this is what "ArkTS UI thread callbacks can't use Qt APIs directly" in [[ohos-mainthread-mismatch]] refers to)
+- `QtOhos::QThreadSafeRef<T>::visitInQtThreadIfAlive(func)` / `QObjectThreadSafeRef` — a thread-safe reference to a QObject that internally uses `QPointer` to check liveness before accessing it on the Qt thread
+- `QtOhos::makeProxyWithJsThreadDeleter(shared_ptr)` — wraps a shared_ptr with a custom deleter so the managed object is destroyed on the JS thread (implemented internally with `QOhosJsThreadGateway::runAndWait`)
+- `QtOhos::initQtThreadState(qpaFunctions)` — called once from the Qt thread at startup to initialize the `QtState`
 
-## 决策表
+## Decision table
 
-| 我要做什么 | 用哪个 |
+| What I want to do | Which to use |
 |---|---|
-| 任意 Qt 线程 → JS 线程，异步、不要结果 | `QOhosJsThreadGateway::invoke` |
-| 任意 Qt 线程 → JS 线程，同步阻塞、无返回值 | `QOhosJsThreadGateway::runAndWait` |
-| 任意 Qt 线程 → JS 线程，同步阻塞、取返回值 | `QOhosJsThreadGateway::eval` |
-| 任意 Qt 线程 → JS 线程调一个返回 Promise 的 API，阻塞等并取值 | `QOhosJsThreadGateway::evalWithPromise<T>` |
-| 同上但只要副作用不要值 | `QOhosJsThreadGateway::invokeAndWaitForContinue` |
-| JS 线程（NAPI 回调里） → Qt 线程 | `QtOhos::invokeInQtThread` |
-| 跨线程持有 QObject 引用并安全访问 | `QtOhos::QThreadSafeRef<T>` |
+| Any Qt thread → the JS thread, asynchronously, no result | `QOhosJsThreadGateway::invoke` |
+| Any Qt thread → the JS thread, blocking, no return value | `QOhosJsThreadGateway::runAndWait` |
+| Any Qt thread → the JS thread, blocking, with a return value | `QOhosJsThreadGateway::eval` |
+| Any Qt thread → calling a JS-thread API that returns a Promise, blocking for the value | `QOhosJsThreadGateway::evalWithPromise<T>` |
+| The same, but only for the side effect | `QOhosJsThreadGateway::invokeAndWaitForContinue` |
+| The JS thread (inside a NAPI callback) → the Qt thread | `QtOhos::invokeInQtThread` |
+| Holding a QObject reference across threads and accessing it safely | `QtOhos::QThreadSafeRef<T>` |
 
-## 用例：同步化异步 Ability 结果（OAuth 场景）
+## Use case: synchronizing an asynchronous Ability result (the OAuth scenario)
 
-`startAbilityForResult` 在 OHOS SDK 里**没有 sync 变体**（源码 grep `interface_sdk-js` 全树 0 命中），Stage `UIAbility` 也无 `onAbilityResult` 生命周期覆写；`QtOhosExtras` **有** `startAbilityForResult`（异步，返回 `requestId` 经 `startAbilityForResultResponseReceived` 信号回调），但**无同步阻塞变体**（[[qt-ohos-extras]]）。要在 Qt 侧同步等结果（OAuth 授权码、选择器回传等），用 `evalWithPromise<T>` 在 **worker 线程**上阻塞等 ArkTS Promise resolve：
+`startAbilityForResult` has **no sync variant** in the OHOS SDK (grepping the whole `interface_sdk-js` tree gives 0 matches), and the Stage `UIAbility` has no `onAbilityResult` lifecycle override; `QtOhosExtras` **does have** `startAbilityForResult` (asynchronous, returning a `requestId` with the result delivered through the `startAbilityForResultResponseReceived` signal), but **no synchronous blocking variant** ([[qt-ohos-extras]]). To wait synchronously for a result on the Qt side (an OAuth authorization code, a picker result, and so on), use `evalWithPromise<T>` on a **worker thread** to block until the ArkTS Promise resolves:
 
 ```cpp
-// worker 线程（GUI 线程绝不能调）
+// On a worker thread (never call this from the GUI thread)
 QString code = QOhosJsThreadGateway::evalWithPromise<QString>(
     [&](QOhosJsState &js, QOhosTaskPromise<QString> p) {
         auto br = std::move(p).makeThenCatchBranches(Q_FUNC_INFO);
@@ -176,39 +176,39 @@ QString code = QOhosJsThreadGateway::evalWithPromise<QString>(
     });
 ```
 
-**三个硬约束**：
+**Three hard constraints**:
 
-1. **必须 worker 线程**：`evalWithPromise` 内部 `std::future::wait()` 真阻塞，GUI 线程调 = UI 冻 + appfreeze；JS 主线程调 = tsfn 回调不 fire = 死锁（[[ohos-mainthread-mismatch]]）。
-2. **context 暴露**：`startAbilityForResult` 是 `UIAbilityContext` 实例方法，eval 上下文拿不到——caller 宿主 Ability 须先注册全局 helper（如 `globalThis.__qtStartOAuthForResult = async (wantJson) => await ctx.startAbilityForResult(...)`），纯 ArkTS NEXT 下 `globalThis` 受限时改走 NAPI tsfn 回调注入（`napi_create_reference` 持函数引用）。`evalWithPromise` 对模块级调用（`@ohos.wifiManager.getLinkedInfo()`）开箱即用，对实例方法须自己暴露符号。
-3. **超时兜底**：OAuth 期间宿主 Ability 未销毁，tsfn 正常 pump；但绝不在退出路径上依赖 tsfn——[[quit-deadlock-tsfn]] 证明 Ability destroy 阶段 ArkTS 运行时不 pump tsfn 回调，Promise 永不 settle，阻塞调用 hang ~2min。`wait_for(timeout)` + `std::make_shared<std::promise<T>>`（防 broken_promise）是硬性要求。OHOS musl 无 `pthread_cancel`，阻塞调用无法强制打断。
+1. **It must be a worker thread**: `evalWithPromise` genuinely blocks on `std::future::wait()` internally, so calling it from the GUI thread freezes the UI and triggers appfreeze; calling it from the JS main thread means the tsfn callback never fires and you deadlock ([[ohos-mainthread-mismatch]]).
+2. **Exposing the context**: `startAbilityForResult` is a `UIAbilityContext` instance method that the eval context can't reach — the calling host Ability must first register a global helper (such as `globalThis.__qtStartOAuthForResult = async (wantJson) => await ctx.startAbilityForResult(...)`), or, where `globalThis` is restricted under pure ArkTS NEXT, inject it through a NAPI tsfn callback (holding a function reference with `napi_create_reference`). `evalWithPromise` works out of the box for module-level calls (`@ohos.wifiManager.getLinkedInfo()`), but you must expose the symbol yourself for instance methods.
+3. **A timeout fallback**: during OAuth the host Ability isn't destroyed and the tsfn pumps normally — but never depend on the tsfn on the exit path. [[quit-deadlock-tsfn]] proves that the ArkTS runtime doesn't pump tsfn callbacks during Ability destruction, so the Promise never settles and the blocking call hangs for ~2 minutes. `wait_for(timeout)` + `std::make_shared<std::promise<T>>` (to avoid broken_promise) are mandatory. OHOS musl has no `pthread_cancel`, so a blocking call can't be forcibly interrupted.
 
-**替代方案**：搬运既有同步 `doOAuth()` 且不想绑 Qt 私有 API 时，手写 NAPI tsfn + `std::promise<QString>` + requestCode-keyed `OAuthStore` 单例，同样在 worker 线程 `wait_for`。**别用嵌套 `QEventLoop`** 做 sync-from-async：OHOS 上 mid-wait 重入 + 依赖 JS 线程 pump tsfn，脆弱；Qt 自家 gateway 故意用 `std::promise::wait()` 而非嵌套 loop。
+**An alternative**: if you're porting an existing synchronous `doOAuth()` and don't want to bind to Qt's private API, hand-write a NAPI tsfn + `std::promise<QString>` + a requestCode-keyed `OAuthStore` singleton, and `wait_for` on a worker thread the same way. **Don't use a nested `QEventLoop`** to make async look synchronous: on OHOS that means mid-wait reentrancy plus relying on the JS thread to pump the tsfn — fragile. Qt's own gateway deliberately uses `std::promise::wait()` rather than a nested loop.
 
-## 源码引用（Qt 5.15.16 / tqtc/harmonyos-5.15.16）
+## Source references (Qt 5.15.16 / tqtc/harmonyos-5.15.16)
 
-| 文件 | 行号 | 说明 |
-|------|------|------|
-| `qtbase/src/corelib/kernel/qcore_ohos_p.h` | 51-167 | `QOhosJsState` / `QOhosJsThreadGateway` namespace / `QOhosJsThreadOps` 声明 |
-| `qtbase/src/corelib/kernel/qcore_ohos.cpp` | 19-54 | `QOhosJsThreadOps` 单例 + `QOhosJsThreadGateway` 门面转调 |
-| `qtbase/src/plugins/platforms/ohos/qohosplugincore.cpp` | 780-821, 920 | `JsThreadOpsImpl` 实现 + `registerInstance` |
-| `qtbase/src/platformsupport/fontdatabases/ohos/qohosplatformfontdatabase.cpp` | 86, 169, 235 | `evalWithPromise` / `runAndWait` / `eval` 实战用法 |
-| `qtbase/src/corelib/io/qstandardpaths_ohos.cpp` | 22 | `eval` 实战用法 |
-| `qtbase/src/plugins/bearer/ohos/src/ohosinterfaces/qohoswifi.cpp` | 90, 144, 187, 271, 285, 310, 332, 348 | `eval` / `evalWithPromise` 大量实战用法 |
+| File | Lines | Description |
+|------|-------|-------------|
+| `qtbase/src/corelib/kernel/qcore_ohos_p.h` | 51-167 | The declarations of `QOhosJsState` / the `QOhosJsThreadGateway` namespace / `QOhosJsThreadOps` |
+| `qtbase/src/corelib/kernel/qcore_ohos.cpp` | 19-54 | The `QOhosJsThreadOps` singleton + the `QOhosJsThreadGateway` façade forwarding |
+| `qtbase/src/plugins/platforms/ohos/qohosplugincore.cpp` | 780-821, 920 | The `JsThreadOpsImpl` implementation + `registerInstance` |
+| `qtbase/src/platformsupport/fontdatabases/ohos/qohosplatformfontdatabase.cpp` | 86, 169, 235 | Real-world uses of `evalWithPromise` / `runAndWait` / `eval` |
+| `qtbase/src/corelib/io/qstandardpaths_ohos.cpp` | 22 | A real-world use of `eval` |
+| `qtbase/src/plugins/bearer/ohos/src/ohosinterfaces/qohoswifi.cpp` | 90, 144, 187, 271, 285, 310, 332, 348 | Many real-world uses of `eval` / `evalWithPromise` |
 
-## 参考来源
+## References
 
-本文基于 Qt 5.15.16（tqtc/harmonyos-5.15.16, commit 962aa625）源码核实，非外部文档蒸馏——此为 Qt 私有 API，无官方外部文档。
+This page is verified against the Qt 5.15.16 source (tqtc/harmonyos-5.15.16, commit 962aa625) rather than distilled from external documentation — this is Qt private API with no official external documentation.
 
-| 来源 | 说明 |
-|------|------|
-| 🛠️ Qt 源码 | `qtbase/src/corelib/kernel/qcore_ohos.{cpp,p.h}` — 网关与接口声明/实现 |
-| 🛠️ Qt 源码 | `qtbase/src/plugins/platforms/ohos/qohosplugincore.cpp` — `JsThreadOpsImpl` 后端实现 |
-| 🛠️ Qt 源码 | `qohosplatformfontdatabase.cpp` / `qstandardpaths_ohos.cpp` / `qohoswifi.cpp` — 实战用法参考 |
-| 📦 安装头文件 | `<LOCAL_PATH>` |
+| Source | Notes |
+|--------|-------|
+| 🛠️ Qt source | `qtbase/src/corelib/kernel/qcore_ohos.{cpp,p.h}` — the gateway and interface declarations/implementations |
+| 🛠️ Qt source | `qtbase/src/plugins/platforms/ohos/qohosplugincore.cpp` — the `JsThreadOpsImpl` backend implementation |
+| 🛠️ Qt source | `qohosplatformfontdatabase.cpp` / `qstandardpaths_ohos.cpp` / `qohoswifi.cpp` — real-world usage references |
+| 📦 Installed headers | `<LOCAL_PATH>` |
 
-## 相关上下文
+## Related context
 
-- [[qt-harmonyos-overview]] — QPA 插件架构总览
-- [[qt-ohos-extras]] — 公共鸿蒙专有 API（`startAbility`/`QOhosWant` 等），与本文私有桥接层互补
-- [[ohos-mainthread-mismatch]] — 双线程架构与 `theMainThread` 断言崩溃，反方向 `invokeInQtThread` 的使用场景
-- [[qt-harmonyos-qt6-status]] — Qt6 鸿蒙化状态，迁移时注意此私有 API 可能在 Qt6 重构
+- [[qt-harmonyos-overview]] — An overview of the QPA plugin architecture
+- [[qt-ohos-extras]] — The public HarmonyOS-specific APIs (`startAbility`/`QOhosWant` and so on), complementing this private bridging layer
+- [[ohos-mainthread-mismatch]] — The dual-thread architecture and the `theMainThread` assertion crash; the use case for the reverse-direction `invokeInQtThread`
+- [[qt-harmonyos-qt6-status]] — Qt6 HarmonyOS porting status; note that this private API may be restructured in Qt6 when migrating

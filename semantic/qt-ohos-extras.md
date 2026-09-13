@@ -9,310 +9,310 @@ status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-api, semantic-qt-ohos-js-thread-gateway, semantic-qt-harmonyos-lifecycle, semantic-qt-harmonyos-qt6-status, semantic-qt-harmonyos-window-model, semantic-qt-ohos-extras-examples]
 summary: >
-  QtOhosExtras 模块：Qt 与鸿蒙系统交互的桥梁。Qt5 公开 API 145+ 个（2026-07-15 源码全扫补全，此前仅录 ~9 个）。
-  覆盖：窗口（setWindowCornerRadius/tryGetNativeWindowId/setShowWindowAsFloatWindowHint/隐私模式/常亮/拖拽缩放）、
-  Ability 启动（startAbility/startAbilityForResult★异步/startAppProcess/startNoUiChildProcess/startAbilityByType）、
-  权限申请、系统分享(ShareKit)、文件共享(FileShare)、设备迁移续接、启动选项(QOhosStartOptions)、
-  Want/WantInfo、剪贴板/文件/多媒体工具。使用：QT += ohosextras。Qt6 私有化。
+  The QtOhosExtras module: the bridge between Qt and the HarmonyOS system. Qt5 exposes 145+ public APIs (completed by a full source scan on 2026-07-15; only ~9 had been recorded before).
+  It covers: windows (setWindowCornerRadius/tryGetNativeWindowId/setShowWindowAsFloatWindowHint/privacy mode/keep-awake/drag-resizing),
+  launching abilities (startAbility/startAbilityForResult★async/startAppProcess/startNoUiChildProcess/startAbilityByType),
+  permission requests, system sharing (ShareKit), file sharing (FileShare), cross-device continuation, launch options (QOhosStartOptions),
+  Want/WantInfo, and clipboard/file/multimedia utilities. Usage: QT += ohosextras. It's private in Qt6.
 ---
 
-# QtOhosExtras 模块
+# The QtOhosExtras module
 
-## 概述
+## Overview
 
-QtOhosExtras 是 Qt for HarmonyOS 的专有扩展模块，提供与鸿蒙系统交互的 API。
+QtOhosExtras is Qt for HarmonyOS's proprietary extension module, providing the APIs for interacting with the HarmonyOS system.
 
-> **2026-07-15 全量扫描补全**：对源码 `qtohosextras/src/ohosextras/` 全部公开头文件做了一次完整扫描，公开 API 共 **145+ 个**（含 `qohoswindowutils.h`）。此前知识库仅收录 ~9 个，漏 90%+，含多处误导性错误（见各节 ⚠️ 及末尾「已纠正的历史错误」）。
+> **Completed by a full scan on 2026-07-15**: a complete scan of every public header under `qtohosextras/src/ohosextras/` in the source found **145+** public APIs (including `qohoswindowutils.h`). The knowledge base had previously recorded only ~9 — missing over 90% — including several misleading errors (see the ⚠️ notes in each section and "Historical errors corrected" at the end).
 >
-> **版本**：全部为 Qt5 公开 API。Qt 5.12.12（commit `613336de`）与 5.15.16（commit `962aa625`）的 `qtohosextras` 头文件**逐字一致**——本页 API 两版均有。Qt6 中 QtOhosExtras 不再独立、API 私有化（`_p.h`），无公开等价物（见 [[qt-harmonyos-qt6-status]]）。
+> **Versions**: these are all Qt5 public APIs. The `qtohosextras` headers in Qt 5.12.12 (commit `613336de`) and 5.15.16 (commit `962aa625`) are **identical word for word**, so every API on this page exists in both. In Qt6, QtOhosExtras is no longer standalone and the APIs are private (`_p.h`) with no public equivalent (see [[qt-harmonyos-qt6-status]]).
 
-## 使用方式
+## Usage
 
 ```cpp
-#include <QtOhosExtras>          // 模块级总头（推荐），或子头 <QtOhosExtras/qohoswindowutils.h> 等
-// 项目文件 (.pro):  QT += ohosextras
-// CMake:            find_package(Qt5 REQUIRED COMPONENTS OhosExtras)
-//                   target_link_libraries(... Qt5::OhosExtras)
+#include <QtOhosExtras>          // the module-level umbrella header (recommended), or a sub-header such as <QtOhosExtras/qohoswindowutils.h>
+// In the project file (.pro):  QT += ohosextras
+// CMake:                       find_package(Qt5 REQUIRED COMPONENTS OhosExtras)
+//                              target_link_libraries(... Qt5::OhosExtras)
 ```
 
-## 核心 API
+## The core APIs
 
-### 窗口相关（`qohoswindowutils.h` · `QtOhosExtras` 命名空间自由函数）
+### Windows (`qohoswindowutils.h`, free functions in the `QtOhosExtras` namespace)
 
-> ⚠️ 本节曾严重缺失：2026-07-15 前仅收录 2 个、漏 11 个（含 `setWindowCornerRadius`）——直接导致答错"QtOhosExtras 无窗口圆角接口"。
+> ⚠️ This section used to be badly incomplete: before 2026-07-15 only 2 APIs were recorded and 11 were missing (including `setWindowCornerRadius`) — which directly led to the wrong answer that "QtOhosExtras has no window corner radius interface".
 
-**枚举**：
-- `enum class CloseEventRootCause { InternalClose, AbilityClose, WindowStageClose }` — close 事件根因
-- `enum class WindowGeometryPersistenceHint { Disabled, Enabled, FollowSystemSetting }` — 主窗口几何持久化策略
+**Enums**:
+- `enum class CloseEventRootCause { InternalClose, AbilityClose, WindowStageClose }` — the root cause of a close event
+- `enum class WindowGeometryPersistenceHint { Disabled, Enabled, FollowSystemSetting }` — the main window's geometry persistence policy
 
-**函数**（标"重载"者 `QWindow*` 与 `QWidget*` 各一版）：
+**Functions** (those marked "overloaded" have a `QWindow*` and a `QWidget*` version):
 
-| 函数 | 用途 |
-|------|------|
-| `getCloseEventRootCause(QCloseEvent*)` → `CloseEventRootCause` | 查询 close 事件根因 |
-| `setShowWindowAsFloatWindowHint(QWindow*/QWidget*, bool)`（重载） | 置为浮窗模式（浮窗 demo 用，见 [[qt-harmonyos-window-model]] §浮窗） |
-| `setMainWindowGeometryPersistenceHint(WindowGeometryPersistenceHint)` | 主窗口几何持久化（仅 2in1） |
-| `setWindowPrivacyMode(QWindow*, bool)` | 窗口隐私模式（防截屏） |
-| `setSurfaceBackgroundColor(QWindow*/QWidget*, const QColor&)`（重载） | 设窗口 surface 背景色 |
-| **`setWindowCornerRadius(QWindow*/QWidget*, double radius)`**（重载） | ★ **设窗口圆角半径**（鸿蒙系统窗口圆角的 extra 封装；官方 demo `windowcornerradius`） |
-| `setWindowKeepScreenOn(QWindow*/QWidget*, bool)`（重载） | 屏幕常亮 |
-| `setWindowDragResizable(QWindow*/QWidget*, bool)`（重载） | 拖拽缩放开关 |
-| `tryGetNativeWindowId(QWindow*)` → `QSharedPointer<double>` | ArkTS 侧 WindowProperties.id（不保证生命周期内有效） |
-| `tryGetScreenDisplayId(QScreen*)` → `QSharedPointer<double>` | 屏幕 display id |
-| `setBundledAbilityAndQWindowBindingKeyForQWindow(QWindow*, const QString&)` | 绑定 Ability-QWindow key |
+| Function | Purpose |
+|----------|---------|
+| `getCloseEventRootCause(QCloseEvent*)` → `CloseEventRootCause` | Query a close event's root cause |
+| `setShowWindowAsFloatWindowHint(QWindow*/QWidget*, bool)` (overloaded) | Switch it to floating window mode (used by the floating window demo; see [[qt-harmonyos-window-model]] §Floating windows) |
+| `setMainWindowGeometryPersistenceHint(WindowGeometryPersistenceHint)` | Main window geometry persistence (2-in-1 only) |
+| `setWindowPrivacyMode(QWindow*, bool)` | Window privacy mode (screenshot blocking) |
+| `setSurfaceBackgroundColor(QWindow*/QWidget*, const QColor&)` (overloaded) | Set the window surface's background color |
+| **`setWindowCornerRadius(QWindow*/QWidget*, double radius)`** (overloaded) | ★ **Set the window's corner radius** (an extras wrapper around HarmonyOS's system window corner radius; the official demo is `windowcornerradius`) |
+| `setWindowKeepScreenOn(QWindow*/QWidget*, bool)` (overloaded) | Keep the screen on |
+| `setWindowDragResizable(QWindow*/QWidget*, bool)` (overloaded) | Toggle drag-resizing |
+| `tryGetNativeWindowId(QWindow*)` → `QSharedPointer<double>` | The ArkTS-side WindowProperties.id (not guaranteed valid for the process's lifetime) |
+| `tryGetScreenDisplayId(QScreen*)` → `QSharedPointer<double>` | The screen's display id |
+| `setBundledAbilityAndQWindowBindingKeyForQWindow(QWindow*, const QString&)` | Bind an Ability-QWindow key |
 
-> **`setWindowCornerRadius` 用法**（官方 demo `qtohosextras/examples/qtohosextras/windowcornerradius/main.cpp`）：
+> **Using `setWindowCornerRadius`** (the official demo `qtohosextras/examples/qtohosextras/windowcornerradius/main.cpp`):
 > ```cpp
 > auto *w = new QWidget; w->setWindowFlags(Qt::Window); w->resize(300, 300);
-> QtOhosExtras::setWindowCornerRadius(w, 16.0);   // double，官方在 show() 前调用
+> QtOhosExtras::setWindowCornerRadius(w, 16.0);   // a double; the official example calls it before show()
 > w->show();
 > ```
-> 作用于 `QWindow`/`QWidget` 对应的鸿蒙窗口；对短生命周期 popup（QMenu/下拉）需在窗口创建后、`show()` 前调，时机需 demo 验证。
+> It acts on the HarmonyOS window corresponding to the `QWindow`/`QWidget`; for short-lived popups (QMenu/dropdowns) it must be called after the window is created but before `show()`, and the exact timing needs verifying with a demo.
 
-### Ability 启动与上下文（`qohosabilitycontext.h`）
+### Launching abilities and contexts (`qohosabilitycontext.h`)
 
-> ⚠️ **纠正历史错误**：本页曾断言"无 `startAbilityForResult`"。源码 `qohosabilitycontext.h:79-80` **明确提供** `QOhosAbilityContext::startAbilityForResult` 两个重载（异步，返回 `requestId`，结果经信号回调）。要**同步阻塞**等结果时才需 [[qt-ohos-js-thread-gateway]] 的 `evalWithPromise` 同步化（QtOhosExtras 无同步阻塞变体，见末尾「已纠正」）。
+> ⚠️ **A historical error corrected**: this page used to claim there was "no `startAbilityForResult`". The source at `qohosabilitycontext.h:79-80` **clearly provides** two `QOhosAbilityContext::startAbilityForResult` overloads (asynchronous, returning a `requestId`, with the result delivered by signal). You only need [[qt-ohos-js-thread-gateway]]'s `evalWithPromise` to make it **synchronously blocking** (QtOhosExtras has no blocking variant — see "Historical errors corrected" at the end).
 
-> **子进程选型**：启动子进程不能一刀切（`QProcess`/`startAppProcess()`/`startAbility()`/`startNoUiChildProcess()` 各有适用场景），决策树见 [[qt-harmonyos-api-mapping]] §1。
+> **Choosing a child-process mechanism**: there's no one-size-fits-all way to start a child process (`QProcess`/`startAppProcess()`/`startAbility()`/`startNoUiChildProcess()` each have their place); for the decision tree, see [[qt-harmonyos-api-mapping]] §1.
 
-**命名空间级自由函数**：
+**Namespace-level free functions**:
 
-| 函数 | 用途 |
-|------|------|
-| `startAbility(const QOhosWant&)` → `QSharedPointer<QOhosOperationStatus>` | 启动指定 Ability（fire-and-forget） |
-| `startAbility(const QOhosWant&, const QOhosStartOptions&)` | 带 StartOptions 启动 Ability |
-| `startAbilityByType(const QString &appType, const QJsonObject &wantParameters)` | 按应用类型启动（隐式 Want） |
-| `startNewAbilityInstance(QWidget *instanceWidget)` | 启动新 Ability 实例 |
-| `startAppProcess(const QString &processId, const QOhosWant &requestWant)` | 启动应用进程 |
-| `startAppProcess(..., const QOhosStartOptions &options)` | 带选项启动应用进程 |
-| `setAbilityInstanceDestroyEnabled(QWindow*, bool)` | 设置某 Ability 实例窗口是否允许系统销毁 |
-| `tryGetOnContinueData(const QOhosWant&)` → `QSharedPointer<QByteArray>` | 从 Want 中取设备迁移续接数据 |
+| Function | Purpose |
+|----------|---------|
+| `startAbility(const QOhosWant&)` → `QSharedPointer<QOhosOperationStatus>` | Launch the specified Ability (fire-and-forget) |
+| `startAbility(const QOhosWant&, const QOhosStartOptions&)` | Launch an Ability with StartOptions |
+| `startAbilityByType(const QString &appType, const QJsonObject &wantParameters)` | Launch by application type (an implicit Want) |
+| `startNewAbilityInstance(QWidget *instanceWidget)` | Launch a new Ability instance |
+| `startAppProcess(const QString &processId, const QOhosWant &requestWant)` | Launch an application process |
+| `startAppProcess(..., const QOhosStartOptions &options)` | Launch an application process with options |
+| `setAbilityInstanceDestroyEnabled(QWindow*, bool)` | Set whether the system may destroy a given Ability instance's window |
+| `tryGetOnContinueData(const QOhosWant&)` → `QSharedPointer<QByteArray>` | Get cross-device continuation data from a Want |
 
-**`QOhosAbilityContext` 类方法**（继承 QObject，`instance()` 单例）：
+**`QOhosAbilityContext` class methods** (inherits QObject, with an `instance()` singleton):
 
-| 方法 | 用途 |
-|------|------|
-| `static instance()` / `getDefaultInstance()` | 单例 / 默认实例（共享指针） |
-| `static getInstanceForMainWindow(QWindow*)` | 为指定主窗口获取对应实例 |
-| `setDestroyFromSystemEnabled(bool)` | 系统可否销毁该 Ability 实例 |
-| `requestPermissionFromUserIfNeeded(Permission)` / `(const QString&)` | 按需向用户请求权限（枚举/字符串名） |
-| `requestPermissionOnSettingIfNeeded(Permission)` / `(const QString&)` | 按需跳设置页请求权限 |
-| ★ `startAbilityForResult(const QOhosWant&)` → `QByteArray` | 启动 Ability 并**异步**等结果（返回 requestId） |
-| ★ `startAbilityForResult(const QOhosWant&, const QOhosStartOptions&)` | 带 StartOptions 的异步等结果启动 |
-| `shareDataWithShareKit(records, controllerOptions)` | 通过 ShareKit 系统面板分享数据 |
-| `tryOpenLink(const QString&)` / `(..., const QOhosOpenLinkOptions&)` | 用系统打开链接（可带选项） |
-| `setContinuationActive(bool)` | 设置跨设备迁移续接激活状态 |
+| Method | Purpose |
+|--------|---------|
+| `static instance()` / `getDefaultInstance()` | The singleton / the default instance (a shared pointer) |
+| `static getInstanceForMainWindow(QWindow*)` | Get the instance for a given main window |
+| `setDestroyFromSystemEnabled(bool)` | Whether the system may destroy this Ability instance |
+| `requestPermissionFromUserIfNeeded(Permission)` / `(const QString&)` | Request a permission from the user if needed (by enum/by name) |
+| `requestPermissionOnSettingIfNeeded(Permission)` / `(const QString&)` | Request a permission via the settings page if needed |
+| ★ `startAbilityForResult(const QOhosWant&)` → `QByteArray` | Launch an Ability and wait **asynchronously** for the result (returns a requestId) |
+| ★ `startAbilityForResult(const QOhosWant&, const QOhosStartOptions&)` | The same with StartOptions |
+| `shareDataWithShareKit(records, controllerOptions)` | Share data through the ShareKit system sheet |
+| `tryOpenLink(const QString&)` / `(..., const QOhosOpenLinkOptions&)` | Open a link with the system (optionally with options) |
+| `setContinuationActive(bool)` | Set the cross-device continuation active state |
 
-**`QOhosAbilityContext` 信号**（异步结果回调入口）：
+**`QOhosAbilityContext` signals** (the entry points for asynchronous results):
 
-| 信号 | 用途 |
-|------|------|
-| `newWantReceived(QOhosWant)` / `newWantInfoReceived(QSharedPointer<QOhosWantInfo>)` | 收到新 Want/WantInfo |
-| `continueRequestReceived(QSharedPointer<QOhosOnContinueContext>)` | 收到设备迁移续接请求 |
-| `permissionRequestResponseReceived(Permission, PermissionResult)` / `namedPermissionRequestResponseReceived(...)` | 权限请求响应 |
-| `permissionRequestOnSettingResponseReceived(Permission, bool)` / `named...` | 设置页权限响应 |
-| ★ `startAbilityForResultResponseReceived(requestId, resultCode, optWant)` | `startAbilityForResult` 成功响应 |
-| ★ `startAbilityForResultErrorResponseReceived(requestId)` | `startAbilityForResult` 错误响应 |
-| `shareKitPanelClosed(requestId)` / `shareKitCompleted(requestId, result)` | ShareKit 面板关闭/分享完成 |
+| Signal | Purpose |
+|--------|---------|
+| `newWantReceived(QOhosWant)` / `newWantInfoReceived(QSharedPointer<QOhosWantInfo>)` | A new Want/WantInfo arrived |
+| `continueRequestReceived(QSharedPointer<QOhosOnContinueContext>)` | A cross-device continuation request arrived |
+| `permissionRequestResponseReceived(Permission, PermissionResult)` / `namedPermissionRequestResponseReceived(...)` | A permission request response |
+| `permissionRequestOnSettingResponseReceived(Permission, bool)` / `named...` | A settings-page permission response |
+| ★ `startAbilityForResultResponseReceived(requestId, resultCode, optWant)` | A successful `startAbilityForResult` response |
+| ★ `startAbilityForResultErrorResponseReceived(requestId)` | A `startAbilityForResult` error response |
+| `shareKitPanelClosed(requestId)` / `shareKitCompleted(requestId, result)` | The ShareKit sheet closed / the share completed |
 
-> **打开链接辅助**：`createOpenLinkOptions()` 工厂 + `QOhosOpenLinkOptions::setAppLinkingOnly(bool)`（仅应用链接打开，不走浏览器）。
+> **Link-opening helpers**: the `createOpenLinkOptions()` factory + `QOhosOpenLinkOptions::setAppLinkingOnly(bool)` (open only via app linking, not the browser).
 
-### 应用上下文 `QOhosAppContext`（`qohosappcontext.h`，单例）
+### The application context `QOhosAppContext` (`qohosappcontext.h`, a singleton)
 
-| 方法 | 用途 |
-|------|------|
-| `static instance()` | AppContext 单例 |
-| `static isNoUiChildMode()` | 当前是否无 UI 子进程模式 |
-| `static startNoUiChildProcess(QString libraryName, QStringList args)` | 启动无 UI 后台子进程（按库名+参数） |
-| `static getAppLaunchWant()` / `getAppLaunchWantInfo()` | 应用启动时的 Want / WantInfo（迁移/深链必用） |
-| `isPermissionGranted(Permission)` / `(const QString&)` | 查询权限是否已授予 |
-| `requestPermissionFromUserIfNeeded(Permission)` / `requestPermissionOnSettingIfNeeded(Permission)` | 按需请求权限 |
-| `fontSizeScale()` | 系统字体大小缩放比例 |
-| `darkThemeActive()` / `setColorThemeMode(ColorThemeMode)` | 深色主题查询/设置 |
-| `enableContextMenuEventOnLongPress()` | 启用触摸长按触发 `QContextMenuEvent`（默认仅鼠标右键） |
-| `getBundleInfo()` → `QSharedPointer<QOhosBundleInfo>` | 应用包信息 |
-| `restartApp()` / `restartApp(const QOhosWant&)` | 重启应用（`Q_NORETURN`） |
-| `hasSerialPortAccessRight(const QString &portName)` / `requestSerialPortAccessRightIfNeeded(const QString &portName)` | ★ 串口访问权限查询/按需申请（源码 `qohosappcontext.h:53-54`；官方 demo `serialportpermissions`，`QT += serialport`） |
+| Method | Purpose |
+|--------|---------|
+| `static instance()` | The AppContext singleton |
+| `static isNoUiChildMode()` | Whether we're currently in UI-less child process mode |
+| `static startNoUiChildProcess(QString libraryName, QStringList args)` | Start a UI-less background child process (by library name + arguments) |
+| `static getAppLaunchWant()` / `getAppLaunchWantInfo()` | The Want / WantInfo the application was launched with (essential for continuation/deep links) |
+| `isPermissionGranted(Permission)` / `(const QString&)` | Query whether a permission has been granted |
+| `requestPermissionFromUserIfNeeded(Permission)` / `requestPermissionOnSettingIfNeeded(Permission)` | Request a permission if needed |
+| `fontSizeScale()` | The system's font size scale factor |
+| `darkThemeActive()` / `setColorThemeMode(ColorThemeMode)` | Query/set the dark theme |
+| `enableContextMenuEventOnLongPress()` | Enable a touch long press to produce a `QContextMenuEvent` (by default only a right click does) |
+| `getBundleInfo()` → `QSharedPointer<QOhosBundleInfo>` | The application's bundle information |
+| `restartApp()` / `restartApp(const QOhosWant&)` | Restart the application (`Q_NORETURN`) |
+| `hasSerialPortAccessRight(const QString &portName)` / `requestSerialPortAccessRightIfNeeded(const QString &portName)` | ★ Query/request serial port access permission (source: `qohosappcontext.h:53-54`; the official demo is `serialportpermissions`, with `QT += serialport`) |
 
-**枚举**：`enum class ColorThemeMode { LightTheme, DarkTheme, FollowSystemSetting }`
-**信号**：`permissionRequestResponseReceived` / `...WithResultReceived` / `...OnSettingResponseReceived` / `fontSizeScaleChanged(double)` / `darkThemeActiveChanged(bool)` / ★ `serialPortAccessRightResponseReceived(QString portName, QSharedPointer<QObject> accessRightContext)`
+**Enum**: `enum class ColorThemeMode { LightTheme, DarkTheme, FollowSystemSetting }`
+**Signals**: `permissionRequestResponseReceived` / `...WithResultReceived` / `...OnSettingResponseReceived` / `fontSizeScaleChanged(double)` / `darkThemeActiveChanged(bool)` / ★ `serialPortAccessRightResponseReceived(QString portName, QSharedPointer<QObject> accessRightContext)`
 
-> ⚠️ **串口权限约束**（官方 demo `serialportpermissions`）：`accessRightContext` 须保持存活，销毁即撤销权限（示例把它存进 `PermissionWindow` 成员，窗口关闭即撤销）。`QSerialPort` 前置需 `QT += serialport`。
+> ⚠️ **A serial port permission constraint** (the official demo `serialportpermissions`): the `accessRightContext` must be kept alive — destroying it revokes the permission (the example stores it as a `PermissionWindow` member, so closing the window revokes it). `QSerialPort` requires `QT += serialport`.
 
-> ⚠️ **`enableContextMenuEventOnLongPress` 注意**（源码 `qohosappcontext.cpp:501-513`）：
-> - **调用时机**：`app.exec()` 之前调用一次，全局生效（非 per-widget）。
-> - **触发 reason 为 `Other`**：长按产生的 `QContextMenuEvent::reason()` 是 `Other`，**非** `Mouse`。若按 reason 过滤需同时接受 `Other`。
-> - **仅 Qt5**：Qt6 中此 API 已私有化，无公开等价物。
+> ⚠️ **Notes on `enableContextMenuEventOnLongPress`** (source: `qohosappcontext.cpp:501-513`):
+> - **When to call it**: once, before `app.exec()`; it applies globally (not per widget).
+> - **The trigger reason is `Other`**: a `QContextMenuEvent` produced by a long press has `reason()` == `Other`, **not** `Mouse`. If you filter by reason, you must also accept `Other`.
+> - **Qt5 only**: this API is private in Qt6 with no public equivalent.
 
-### 启动选项 `QOhosStartOptions`（`qohosstartoptions.h`）
+### Launch options: `QOhosStartOptions` (`qohosstartoptions.h`)
 
-> 多窗口/分屏/启动画面配置核心，移植应用高频使用。整块曾缺失。
+> The core of multi-window/split-screen/splash configuration, used heavily when porting applications. This whole block used to be missing.
 
-**工厂**：`createStartOptions()` → `QSharedPointer<QOhosStartOptions>`；`createWindowCreateParams()` → `QSharedPointer<QOhosWindowCreateParams>`
+**Factories**: `createStartOptions()` → `QSharedPointer<QOhosStartOptions>`; `createWindowCreateParams()` → `QSharedPointer<QOhosWindowCreateParams>`
 
-**`QOhosStartOptions` setter**：
+**`QOhosStartOptions` setters**:
 
-| 分组 | setter |
-|------|--------|
-| 窗口几何 | `setWindowLeft/Top/Width/Height(int)` |
-| 窗口边界 | `setMinWindowWidth/Height`、`setMaxWindowWidth/Height` |
-| 窗口模式 | `setWindowMode(WindowMode)`、`setSupportWindowModes(QList<SupportWindowMode>)` |
-| 显示器 | `setDisplayId(int)` |
-| 动画/可见 | `setWithAnimation(bool)`、`setStartupVisibility(StartupVisibility)`、`setHideStartWindow(bool)` |
-| 进程 | `setProcessMode(ProcessMode)` |
-| 启动画面 | `setStartWindowIcon(QImage)`、`setStartWindowBackgroundColor(QColor)` |
-| 窗口创建参数 | `setWindowCreateParams(QOhosWindowCreateParams)` |
-| ⚠️ 废弃 | `setWindowFocused(bool)`（`QT_DEPRECATED_X`，无效果） |
+| Group | Setters |
+|-------|---------|
+| Window geometry | `setWindowLeft/Top/Width/Height(int)` |
+| Window bounds | `setMinWindowWidth/Height`, `setMaxWindowWidth/Height` |
+| Window mode | `setWindowMode(WindowMode)`, `setSupportWindowModes(QList<SupportWindowMode>)` |
+| Display | `setDisplayId(int)` |
+| Animation/visibility | `setWithAnimation(bool)`, `setStartupVisibility(StartupVisibility)`, `setHideStartWindow(bool)` |
+| Process | `setProcessMode(ProcessMode)` |
+| The splash screen | `setStartWindowIcon(QImage)`, `setStartWindowBackgroundColor(QColor)` |
+| Window creation parameters | `setWindowCreateParams(QOhosWindowCreateParams)` |
+| ⚠️ Deprecated | `setWindowFocused(bool)` (`QT_DEPRECATED_X`, no effect) |
 
-**`QOhosWindowCreateParams`**：`setAnimationType(AnimationType)`，`enum class AnimationType { FADE_IN_OUT = 0 }`
+**`QOhosWindowCreateParams`**: `setAnimationType(AnimationType)`, with `enum class AnimationType { FADE_IN_OUT = 0 }`
 
-**枚举**：
+**Enums**:
 - `QOhosStartOptions::ProcessMode { NEW_PROCESS_ATTACH_TO_PARENT, NEW_PROCESS_ATTACH_TO_STATUS_BAR_ITEM }`
 - `QOhosStartOptions::StartupVisibility { STARTUP_HIDE, STARTUP_SHOW }`
 - `QOhosStartOptions::WindowMode { WINDOW_MODE_SPLIT_PRIMARY, WINDOW_MODE_SPLIT_SECONDARY, WINDOW_MODE_FULLSCREEN }`
 - `QOhosStartOptions::SupportWindowMode { FULL_SCREEN, SPLIT, FLOATING }`
 
-### 启动请求 `QOhosStartRequest`（`qohosstartrequest.h` · `qohosbundlemanager.h`）
+### Launch requests: `QOhosStartRequest` (`qohosstartrequest.h`, `qohosbundlemanager.h`)
 
-> ⚠️ **2026-07-21 示例补全新增**：旧版 KB 未录。源码头文件 `qohosstartrequest.h` + `qohosbundlemanager.h`；官方 demo `abilitycontext/startoptions` 演示。
+> ⚠️ **Added 2026-07-21 when the examples were surveyed**: the older KB didn't record this. Source headers: `qohosstartrequest.h` + `qohosbundlemanager.h`; demonstrated by the official demo `abilitycontext/startoptions`.
 
-**工厂**：`QtOhosExtras::createStartRequest(const QOhosStartOptions &options)` → `QSharedPointer<QOhosStartRequest>`
+**The factory**: `QtOhosExtras::createStartRequest(const QOhosStartOptions &options)` → `QSharedPointer<QOhosStartRequest>`
 
-**`QOhosStartRequest` 类**（QObject，不可直接构造，用工厂创建）：
+**The `QOhosStartRequest` class** (a QObject that can't be constructed directly — use the factory):
 
-| 信号 | 用途 |
-|------|------|
-| `requestSucceeded(QOhosElementName elementName, QString message)` | 启动成功回调（completion handler） |
-| `requestFailed(QOhosElementName elementName, QString message)` | 启动失败回调 |
+| Signal | Purpose |
+|--------|---------|
+| `requestSucceeded(QOhosElementName elementName, QString message)` | The launch-succeeded callback (a completion handler) |
+| `requestFailed(QOhosElementName elementName, QString message)` | The launch-failed callback |
 
-**`QOhosElementName` 结构体**（`qohosbundlemanager.h`，`Q_DECLARE_METATYPE`）：`deviceId / bundleName / abilityName / uri / shortName / moduleName`
+**The `QOhosElementName` struct** (`qohosbundlemanager.h`, `Q_DECLARE_METATYPE`): `deviceId / bundleName / abilityName / uri / shortName / moduleName`
 
-**配套 `startAbility` / `startAbilityForResult` 重载**（命名空间级 + `QOhosAbilityContext` 方法，均接收 `QOhosStartRequest`）：
-- `startAbility(const QOhosWant&, const QOhosStartRequest&)` — 带 completion 回调的启动
-- `QOhosAbilityContext::startAbilityForResult(const QOhosWant&, const QOhosStartRequest&)` — 带回调的等结果启动
-- `startAppProcess(processId, requestWant, const QOhosStartRequest&)` — 带回调的启动应用进程
+**The matching `startAbility` / `startAbilityForResult` overloads** (namespace-level and `QOhosAbilityContext` methods, all taking a `QOhosStartRequest`):
+- `startAbility(const QOhosWant&, const QOhosStartRequest&)` — launching with a completion callback
+- `QOhosAbilityContext::startAbilityForResult(const QOhosWant&, const QOhosStartRequest&)` — launching for a result with a callback
+- `startAppProcess(processId, requestWant, const QOhosStartRequest&)` — launching an application process with a callback
 
-> **何时用 StartRequest**：普通 `startAbility(want, startOptions)` 是 fire-and-forget（只知 `operationStatus->success()`）。要拿到启动最终结果（成功/失败 + ElementName）用 `createStartRequest` + `startAbility(want, *startRequest)`，结果经 `requestSucceeded`/`requestFailed` 信号回调。用法见 [[qt-ohos-extras-examples]] §4。
+> **When to use StartRequest**: a plain `startAbility(want, startOptions)` is fire-and-forget (you only learn `operationStatus->success()`). To get the launch's final result (success/failure + the ElementName), use `createStartRequest` + `startAbility(want, *startRequest)` and receive the result through the `requestSucceeded`/`requestFailed` signals. For usage, see [[qt-ohos-extras-examples]] §4.
 
-### Want / WantInfo（`qohoswant.h`）
+### Want / WantInfo (`qohoswant.h`)
 
-**`QOhosWant` 结构体**（鸿蒙 Want 的 C++ 映射）：`deviceId / bundleName / moduleName / abilityName / uri / type / action / entities / flags / parameters / fds`
-- `enum class QOhosWantFlag { AuthReadUriPermission, AuthWriteUriPermission, InstallOnDemand }`（QFlags 组合）
+**The `QOhosWant` struct** (the C++ mapping of HarmonyOS's Want): `deviceId / bundleName / moduleName / abilityName / uri / type / action / entities / flags / parameters / fds`
+- `enum class QOhosWantFlag { AuthReadUriPermission, AuthWriteUriPermission, InstallOnDemand }` (combinable as QFlags)
 
-**`QOhosWantInfo` 访问方法**（纯虚成员）：
+**`QOhosWantInfo` accessors** (pure virtual members):
 
-| 方法 | 用途 |
-|------|------|
-| `want() const` → `QOhosWant` | 取完整 Want |
-| `tryGetSharedRecordsFromShareKit() const` | 取通过 ShareKit 传入的分享记录 |
-| `tryGetContactInfo() const` → `ContactInfo` | 取 Want 携带的联系人信息 |
-| `launchReason() const` → `LaunchReason` | 应用启动原因 |
+| Method | Purpose |
+|--------|---------|
+| `want() const` → `QOhosWant` | Get the complete Want |
+| `tryGetSharedRecordsFromShareKit() const` | Get the share records passed in through ShareKit |
+| `tryGetContactInfo() const` → `ContactInfo` | Get the contact information carried in the Want |
+| `launchReason() const` → `LaunchReason` | Why the application was launched |
 
 - `enum class LaunchReason { Unknown, StartAbility, Continuation, PrepareContinuation, Preload }`
 - `struct ContactInfo { QString contactType; QString contactId; }`
 
-### 系统分享 ShareKit（`qohossharekit.h` · `ShareKit` 命名空间）
+### System sharing: ShareKit (`qohossharekit.h`, the `ShareKit` namespace)
 
-**工厂**：`createContentRecord(QMimeType, QString content)` / `createFileRecord(QFileInfo)` / `createUrlRecord(QUrl)` / `createControllerOptions()` → 均返回 `QSharedPointer<...>`
+**Factories**: `createContentRecord(QMimeType, QString content)` / `createFileRecord(QFileInfo)` / `createUrlRecord(QUrl)` / `createControllerOptions()` — all returning a `QSharedPointer<...>`
 
-**`QOhosSharedRecord`** getter/setter（16 个）：`mimeType/content/filePath/isUrlContent`（只读）；`setTitle/title`、`setLabel/label`、`setDescription/description`、`setThumbnail/thumbnail`（QByteArray）、`setThumbnailFilePath/thumbnailFilePath`、`setExtraData/extraData`（QVariantMap）
+**`QOhosSharedRecord`** getters/setters (16 of them): `mimeType/content/filePath/isUrlContent` (read-only); `setTitle/title`, `setLabel/label`, `setDescription/description`, `setThumbnail/thumbnail` (a QByteArray), `setThumbnailFilePath/thumbnailFilePath`, `setExtraData/extraData` (a QVariantMap)
 
-**`QOhosShareControllerOptions`**：`setAnchor(QPoint)` / `setAnchor(QRect)`、`setSingleSelectionMode(bool)`、`setDefaultPreviewMode(bool)`、`setExcludedAbilities(QList<ShareAbilityType>)`
-**`QOhosShareOperationResult`**：`targetAbilityName() const`
-**枚举**：`enum class ShareAbilityType { CopyToPasteboard, SaveToMediaAsset, SaveAsFile, Print, SaveToSuperHub }`
+**`QOhosShareControllerOptions`**: `setAnchor(QPoint)` / `setAnchor(QRect)`, `setSingleSelectionMode(bool)`, `setDefaultPreviewMode(bool)`, `setExcludedAbilities(QList<ShareAbilityType>)`
+**`QOhosShareOperationResult`**: `targetAbilityName() const`
+**Enum**: `enum class ShareAbilityType { CopyToPasteboard, SaveToMediaAsset, SaveAsFile, Print, SaveToSuperHub }`
 
-> 入口：`QOhosAbilityContext::shareDataWithShareKit(records, options)`，完成经 `shareKitCompleted` 信号回调。
+> The entry point: `QOhosAbilityContext::shareDataWithShareKit(records, options)`, with completion delivered through the `shareKitCompleted` signal.
 
-### 文件共享 FileShare（`qohosfileshare.h` · `FileShare` 命名空间）
+### File sharing: FileShare (`qohosfileshare.h`, the `FileShare` namespace)
 
-沙箱外文件访问授权的官方途径。批量操作，均返回 `QSharedPointer<ActionResult>` / `QSharedPointer<CheckResult>`。
+The official route to authorizing access to files outside the sandbox. These are batch operations, all returning a `QSharedPointer<ActionResult>` / `QSharedPointer<CheckResult>`.
 
-| 函数 | 用途 |
-|------|------|
-| `persistPermission(QList<PathPolicy>)` | 持久化文件共享权限 |
-| `revokePermission(QList<PathPolicy>)` | 撤销权限 |
-| `activatePermission(QList<PathPolicy>)` | 激活已持久化权限 |
-| `deactivatePermission(QList<PathPolicy>)` | 停用权限 |
-| `checkPersistent(QList<PathPolicy>)` | 检查持久化状态 |
+| Function | Purpose |
+|----------|---------|
+| `persistPermission(QList<PathPolicy>)` | Persist file-sharing permissions |
+| `revokePermission(QList<PathPolicy>)` | Revoke permissions |
+| `activatePermission(QList<PathPolicy>)` | Activate already-persisted permissions |
+| `deactivatePermission(QList<PathPolicy>)` | Deactivate permissions |
+| `checkPersistent(QList<PathPolicy>)` | Check the persistence state |
 
-- `enum class OperationMode { Read=1<<0, Write=1<<1 }`（QFlags 组合）
+- `enum class OperationMode { Read=1<<0, Write=1<<1 }` (combinable as QFlags)
 - `enum class PathPolicyError { Unknown, PersistenceForbidden, InvalidMode, InvalidPath, PermissionNotPersisted }`
 - `struct PathPolicy { QString path; OperationModes operationModes; }`
-- `ActionResult::operationStatus()` / `errorInfoList()`；`CheckResult::checkResultList()`
+- `ActionResult::operationStatus()` / `errorInfoList()`; `CheckResult::checkResultList()`
 
-### 权限 AppPermissions（`qohosapppermissions.h` · `AppPermissions` 命名空间）
+### Permissions: AppPermissions (`qohosapppermissions.h`, the `AppPermissions` namespace)
 
-- `enum class Permission { ReadPasteboard, CustomScreenCapture, AccessBluetooth, ApproximatelyLocation, Location }` — QtOhosExtras 预置 5 种可申请权限
+- `enum class Permission { ReadPasteboard, CustomScreenCapture, AccessBluetooth, ApproximatelyLocation, Location }` — the 5 requestable permissions QtOhosExtras predefines
 - `struct PermissionResult { bool permissionGranted; bool dialogShown; }`
 
-> 入口：`QOhosAppContext` / `QOhosAbilityContext` 的 `requestPermissionFromUserIfNeeded` / `requestPermissionOnSettingIfNeeded`，结果经 `permissionRequestResponse*` 信号回调。
+> The entry points: `requestPermissionFromUserIfNeeded` / `requestPermissionOnSettingIfNeeded` on `QOhosAppContext` / `QOhosAbilityContext`, with results delivered through the `permissionRequestResponse*` signals.
 
-### 设备迁移续接 `QOhosOnContinueContext`
+### Cross-device continuation: `QOhosOnContinueContext`
 
-| 方法 | 用途 |
-|------|------|
-| `setAgreeResponse(const QByteArray &responseData)` | 同意迁移，携带响应数据 |
-| `setRejectResponse()` | 拒绝迁移 |
-| `setMismatchResponse()` | 迁移不匹配响应 |
-| `setExitAppOnSourceDeviceAfterMigration(bool)` | 迁移完成后是否退出源设备应用 |
-| `sourceApplicationVersionCode() const` | 源应用版本号 |
+| Method | Purpose |
+|--------|---------|
+| `setAgreeResponse(const QByteArray &responseData)` | Agree to the handoff, carrying the response data |
+| `setRejectResponse()` | Refuse the handoff |
+| `setMismatchResponse()` | A handoff-mismatch response |
+| `setExitAppOnSourceDeviceAfterMigration(bool)` | Whether to exit the application on the source device after the handoff |
+| `sourceApplicationVersionCode() const` | The source application's version code |
 
-> 入口：`QOhosAbilityContext::continueRequestReceived` 信号 + `setContinuationActive`；`tryGetOnContinueData` 取数据。详见 [[qt-harmonyos-lifecycle]]。
+> The entry points: the `QOhosAbilityContext::continueRequestReceived` signal + `setContinuationActive`; `tryGetOnContinueData` retrieves the data. See [[qt-harmonyos-lifecycle]] for details.
 
-### 工具函数
+### Utility functions
 
-| 头文件 / 命名空间 | 函数 | 用途 |
-|------|------|------|
-| `qohosfileutils.h` | `moveFileToTrash(const QString&)` → bool | 文件移入回收站 |
-| `qohosfileutils.h` | `authorizeFilePath(QWindow*, const QString&)` → bool | 弹系统授权窗，访问沙箱外路径 |
-| `qohosmultimediautils.h` · `Multimedia` | `setAudioStreamUsageHintProperty(QObject*, AudioStreamUsageHint)` | 给 QSoundEffect/QSound 设音频流场景 |
-| `qohosmultimediautils.h` | `tryGetAudioStreamUsageHintProperty(QObject*, AudioStreamUsageHint*)` | 读取音频流场景属性 |
-| `qohospasteboard.h` · `QOhosPasteboard` | `setInAppOnlyPasteboardShareOption(bool)` | 剪贴板内容仅应用内共享 |
+| Header / namespace | Function | Purpose |
+|--------------------|----------|---------|
+| `qohosfileutils.h` | `moveFileToTrash(const QString&)` → bool | Move a file to the recycle bin |
+| `qohosfileutils.h` | `authorizeFilePath(QWindow*, const QString&)` → bool | Show the system authorization dialog to access a path outside the sandbox |
+| `qohosmultimediautils.h`, `Multimedia` | `setAudioStreamUsageHintProperty(QObject*, AudioStreamUsageHint)` | Set the audio stream scenario for a QSoundEffect/QSound |
+| `qohosmultimediautils.h` | `tryGetAudioStreamUsageHintProperty(QObject*, AudioStreamUsageHint*)` | Read the audio stream scenario property |
+| `qohospasteboard.h`, `QOhosPasteboard` | `setInAppOnlyPasteboardShareOption(bool)` | Restrict clipboard content to in-app sharing only |
 
-- `enum class AudioStreamUsageHint { Unknown, Music, VoiceCommunication, VoiceAssistant, Alarm, VoiceMessage, Ringtone, Notification, Accessibility, Movie, Game, Audiobook, Navigation, VideoCommunication }`（14 种，影响系统音量类型/打断策略）
+- `enum class AudioStreamUsageHint { Unknown, Music, VoiceCommunication, VoiceAssistant, Alarm, VoiceMessage, Ringtone, Notification, Accessibility, Movie, Game, Audiobook, Navigation, VideoCommunication }` (14 values, affecting the system volume category and interruption policy)
 
-### 枚举与类型（`qohosenums.h`）
+### Enums and types (`qohosenums.h`)
 
-- `enum class ColorMode { COLOR_MODE_NOT_SET, COLOR_MODE_DARK, COLOR_MODE_LIGHT }`（命名空间 `QtOhos::enums::...::ConfigurationConstant`，对应 `@ohos.app.ability.ConfigurationConstant.ColorMode`）
-- `struct OhosEnumMeta<Enum>` 模板：为 OHOS 枚举提供全类型名 + 枚举值↔字符串映射（桥接 NAPI 反射），当前仅特化 `ColorMode`
+- `enum class ColorMode { COLOR_MODE_NOT_SET, COLOR_MODE_DARK, COLOR_MODE_LIGHT }` (in the namespace `QtOhos::enums::...::ConfigurationConstant`, corresponding to `@ohos.app.ability.ConfigurationConstant.ColorMode`)
+- The `struct OhosEnumMeta<Enum>` template: provides an OHOS enum's fully qualified type name plus enumerator↔string mappings (bridging NAPI reflection); currently only specialized for `ColorMode`
 
-### `QOhosBundleInfo`（`qohosappbundleinfo.h`）
+### `QOhosBundleInfo` (`qohosappbundleinfo.h`)
 
-- `versionCode() const` — 应用版本号
+- `versionCode() const` — the application's version code
 
-> `QOhosUiAbilityContext`（`qohosuiabilitycontext.h`）是 `QOhosAbilityContext` 的类型别名，无新 API。
-> `QOhosOperationStatus::success() const` — 异步操作（startAbility 等）是否成功。
+> `QOhosUiAbilityContext` (`qohosuiabilitycontext.h`) is a type alias for `QOhosAbilityContext` with no new APIs.
+> `QOhosOperationStatus::success() const` — whether an asynchronous operation (startAbility and friends) succeeded.
 
-## ⚠️ 已纠正的历史错误（2026-07-15）
+## ⚠️ Historical errors corrected (2026-07-15)
 
-| 原错误（旧版 KB） | 纠正（源码核实） |
-|------|------|
-| "无 `startAbilityForResult`，需绕道 [[qt-ohos-js-thread-gateway]]" | `QOhosAbilityContext::startAbilityForResult` **存在**（2 重载，异步返回 `requestId`，经 `startAbilityForResultResponseReceived` / `...Error...` 信号回调）。要**同步阻塞**等结果才用 gateway `evalWithPromise`（QtOhosExtras 无同步变体） |
-| "QtOhosExtras 无窗口圆角接口" | `QtOhosExtras::setWindowCornerRadius(QWindow*/QWidget*, double)` **存在**（见窗口节，官方 demo `windowcornerradius`） |
-| 窗口相关仅录 2 个 API | `qohoswindowutils.h` 共 13 个窗口 API + 2 枚举 |
-| 全页仅录 ~9 个 API | 公开 API 145+ 个（含 StartOptions/ShareKit/FileShare/权限/迁移/工具等整块） |
+| The original error (the old KB) | The correction (verified in the source) |
+|--------------------------------|------------------------------------------|
+| "There's no `startAbilityForResult`; you have to go around it via [[qt-ohos-js-thread-gateway]]" | `QOhosAbilityContext::startAbilityForResult` **exists** (2 overloads, asynchronous, returning a `requestId`, with results delivered through the `startAbilityForResultResponseReceived` / `...Error...` signals). You only need the gateway's `evalWithPromise` to wait **synchronously** (QtOhosExtras has no blocking variant) |
+| "QtOhosExtras has no window corner radius interface" | `QtOhosExtras::setWindowCornerRadius(QWindow*/QWidget*, double)` **exists** (see the windows section; the official demo is `windowcornerradius`) |
+| Only 2 window-related APIs recorded | `qohoswindowutils.h` has 13 window APIs + 2 enums |
+| Only ~9 APIs recorded across the whole page | There are 145+ public APIs (including whole blocks: StartOptions/ShareKit/FileShare/permissions/continuation/utilities) |
 
-## API 参考来源
+## API references
 
-- [Qt OHOS Extras C++ Classes](https://wiki.qt.io/Qt_for_HarmonyOS/qtohosextras_doc/Qt_Ohos_Extras_C%2B%2B_Classes)（类索引页，**不含函数签名**——曾因此误判"无圆角接口"，查具体 API 须看源码头文件）
+- [Qt OHOS Extras C++ Classes](https://wiki.qt.io/Qt_for_HarmonyOS/qtohosextras_doc/Qt_Ohos_Extras_C%2B%2B_Classes) (the class index page, which **has no function signatures** — this is exactly why we wrongly concluded "there's no corner radius interface"; to check a specific API you must read the source headers)
 - [Qt OHOS Extras Examples](https://wiki.qt.io/Qt_for_HarmonyOS/qtohosextras_doc/Qt_Ohos_Extras_Examples)
 - [Qt OHOS Extras Document](https://wiki.qt.io/Qt_for_HarmonyOS/qtohosextras_doc)
 
-## 参考来源
+## References
 
-| 来源 | 说明 |
-|------|------|
-| 🛠️ Qt 源码 | `qtohosextras/src/ohosextras/*.h`（5.15.16 commit `962aa625` + 5.12.12 commit `613336de`，逐字一致）—— 2026-07-15 全量扫描 |
-| 🛠️ Qt 源码 | `qtohosextras/examples/qtohosextras/windowcornerradius/main.cpp` — `setWindowCornerRadius` 官方 demo |
-| 📦 安装头文件 | `<LOCAL_PATH>/include/QtOhosExtras/` |
-| 🛠️ Qt 源码示例 | `qtohosextras/examples/qtohosextras/`（24 个 example 全量，2026-07-21 扫描）— 详见 [[qt-ohos-extras-examples]]，串口/StartRequest API 即由示例补全 |
+| Source | Notes |
+|--------|-------|
+| 🛠️ Qt source | `qtohosextras/src/ohosextras/*.h` (5.15.16 commit `962aa625` + 5.12.12 commit `613336de`, identical word for word) — the full scan on 2026-07-15 |
+| 🛠️ Qt source | `qtohosextras/examples/qtohosextras/windowcornerradius/main.cpp` — the official `setWindowCornerRadius` demo |
+| 📦 Installed headers | `<LOCAL_PATH>/include/QtOhosExtras/` |
+| 🛠️ Qt source examples | `qtohosextras/examples/qtohosextras/` (all 24 examples, surveyed 2026-07-21) — see [[qt-ohos-extras-examples]]; the serial port and StartRequest APIs were filled in from the examples |
 
-## 相关上下文
+## Related context
 
-- [[qt-harmonyos-overview]] — QPA 插件架构总览
-- [[qt-harmonyos-api]] — 平台差异（`winId()` vs `tryGetNativeWindowId`）
-- [[qt-ohos-extras-examples]] — ★ 24 个官方示例菜谱（功能→API→代码模式），开发者问"如何实现某功能"时先查此页
-- [[qt-ohos-js-thread-gateway]] — Qt↔ArkTS 私有桥接；同步化 `startAbilityForResult` 结果（异步信号→同步等值）
-- [[qt-harmonyos-lifecycle]] — 生命周期、Want 接续、设备迁移
-- [[qt-harmonyos-window-model]] — 窗口模型（浮窗、popup、XComponent 承载）
-- [[qt-harmonyos-qt6-status]] — Qt6 中本模块私有化
+- [[qt-harmonyos-overview]] — An overview of the QPA plugin architecture
+- [[qt-harmonyos-api]] — Platform differences (`winId()` vs. `tryGetNativeWindowId`)
+- [[qt-ohos-extras-examples]] — ★ A recipe book for the 24 official examples (feature → API → code pattern); check this page first when a developer asks "how do I implement X"
+- [[qt-ohos-js-thread-gateway]] — The private Qt↔ArkTS bridge; making `startAbilityForResult`'s result synchronous (an async signal → a synchronous wait)
+- [[qt-harmonyos-lifecycle]] — Lifecycle, Want continuation, cross-device handoff
+- [[qt-harmonyos-window-model]] — The window model (floating windows, popups, XComponent hosting)
+- [[qt-harmonyos-qt6-status]] — This module is private in Qt6

@@ -7,27 +7,27 @@ created: 2026-06-03
 updated: 2026-06-03
 status: solved
 audience: public
-summary: "编译报错 QtOhosExtras::AbilityClose/WindowStageClose/InternalClose 枚举找不到（API 路径变更）"
+summary: "Build error: the QtOhosExtras::AbilityClose/WindowStageClose/InternalClose enumerators can't be found (API path changed)"
 severity: high
 
-# ====== 检索关键字（Agent 快速匹配用）======
+# ====== Search keywords (for fast agent matching) ======
 error_message: >
   error: 'AbilityClose' is not a member of 'QtOhosExtras'
   error: 'WindowStageClose' is not a member of 'QtOhosExtras'
   error: 'InternalClose' is not a member of 'QtOhosExtras'
 error_code: ""
 keywords: [CloseEventRootCause, AbilityClose, WindowStageClose, InternalClose, enum, compile]
-symptoms: "编译报错：QtOhosExtras::AbilityClose 等枚举值找不到"
+symptoms: "Build error: enumerators such as QtOhosExtras::AbilityClose can't be found"
 
-# ====== 问题详情 ======
+# ====== Problem details ======
 environment: "Qt 5.12/5.15 for HarmonyOS, C++14/C++17"
 refs: [semantic-qt-harmonyos-lifecycle, semantic-qt-ohos-extras, semantic-qt-harmonyos-golden-rules]
 related_problems: []
 ---
 
-# CloseEventRootCause 短路径编译失败
+# CloseEventRootCause short path fails to compile
 
-## 错误信息
+## Error message
 
 ```
 error: 'AbilityClose' is not a member of 'QtOhosExtras'
@@ -36,55 +36,55 @@ error: 'AbilityClose' is not a member of 'QtOhosExtras'
 note: suggested alternative: 'CloseEventRootCause'
 ```
 
-或类似：
+Or similar:
 
 ```
 error: 'WindowStageClose' is not a member of 'QtOhosExtras'
 error: 'InternalClose' is not a member of 'QtOhosExtras'
 ```
 
-## 场景
+## Scenario
 
-在 `closeEvent()` 处理中使用短路径 `QtOhosExtras::AbilityClose` 访问关闭原因枚举值，编译失败。
+Using the short path `QtOhosExtras::AbilityClose` to access the close-reason enumerators in a `closeEvent()` handler fails to compile.
 
-## 原因
+## Cause
 
-`CloseEventRootCause` 是 C++11 `enum class`（强类型枚举），其值**不在**外层命名空间 `QtOhosExtras` 中直接可见。必须使用完整路径：
+`CloseEventRootCause` is a C++11 `enum class` (a strongly typed enum), so its enumerators are **not** directly visible in the enclosing `QtOhosExtras` namespace. You must use the fully qualified path:
 
 ```
 QtOhosExtras::CloseEventRootCause::AbilityClose       ✅
 QtOhosExtras::AbilityClose                             ❌
 ```
 
-这是 审计中发现的 **修正传播遗漏** 问题：`lifecycle.md`（金标准）使用了正确路径，但 `porting-workflow.md` 和 `api-mapping.md` 仍使用短路径。
+This was a **correction-propagation gap** found during an audit: `lifecycle.md` (the gold standard) used the correct path, but `porting-workflow.md` and `api-mapping.md` still used the short path.
 
-## 解决方案
+## Solution
 
-将所有枚举引用改为完整路径：
+Change every enum reference to the fully qualified path:
 
 ```cpp
 auto cause = QtOhosExtras::getCloseEventRootCause(event);
 
-// ✅ 正确：完整 enum class 路径
+// ✅ Correct: the full enum class path
 if (cause == QtOhosExtras::CloseEventRootCause::WindowStageClose) {
-    // Level 1：用户关窗口
+    // Level 1: the user closed the window
 } else if (cause == QtOhosExtras::CloseEventRootCause::AbilityClose) {
-    // Level 2：系统回收
+    // Level 2: the system is reclaiming it
 } else {
     // InternalClose
 }
 ```
 
-## 注意事项
+## Notes
 
-- 同样的规则适用于 `ColorThemeMode` 枚举：`QtOhosExtras::ColorThemeMode::FollowSystemSetting`（不是 `QtOhosExtras::FollowSystemSetting`）
-- 黄金法则 A1/A2 明确要求完整路径
-- 此问题已在 06-03 审计中全部修正（porting-workflow.md + api-mapping.md，共 6 处）
+- The same rule applies to the `ColorThemeMode` enum: `QtOhosExtras::ColorThemeMode::FollowSystemSetting` (not `QtOhosExtras::FollowSystemSetting`)
+- Golden rules A1/A2 explicitly require the fully qualified path
+- This was fully corrected in the 06-03 audit (porting-workflow.md + api-mapping.md, 6 occurrences in total)
 
-## 相关
+## Related
 
-- [[qt-harmonyos-lifecycle]] — 金标准（canonical source）
-- [[qt-ohos-extras]] — CloseEventRootCause 枚举定义
-- [[qt-harmonyos-golden-rules]] — 规则 A1/A2
+- [[qt-harmonyos-lifecycle]] — the gold standard (canonical source)
+- [[qt-ohos-extras]] — the CloseEventRootCause enum definition
+- [[qt-harmonyos-golden-rules]] — rules A1/A2
 
-> 📋 返回 [错误速查表](_lookup.md)
+> 📋 Back to the [error quick-reference table](_lookup.md)

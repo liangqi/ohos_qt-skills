@@ -1,11 +1,11 @@
 ---
 domain: problems
 description: >
-  实际执行错误知识库。编译/部署/运行时报错与解决方案。
+  Knowledge base of real execution errors. Build/deployment/runtime failures and their solutions.
 ---
 
 # problems
 
-错误速查入口：[_lookup](_lookup.md)。Qt 平台已知限制在 semantic/qt-harmonyos-platform-limits.md。
+Error quick-reference entry point: [_lookup](_lookup.md). Known Qt platform limitations live in semantic/qt-harmonyos-platform-limits.md.
 
-_（本域无活跃页）_
+_(No active pages in this domain)_

@@ -9,29 +9,29 @@ status: active
 audience: public
 refs: [semantic-qt-harmonyos-window-model]
 summary: >
-  ToolWindow跨屏闪烁系统问题分析：moveWindowToGlobalDisplay与resizeAsync在跨屏拖拽场景冲突，
-  screenIdChanged仅拖拽结束时触发，Qt已通过完整调用链追踪定位根因，归属鸿蒙系统接口。
+  Analysis of the ToolWindow cross-screen flicker system issue: moveWindowToGlobalDisplay conflicts with resizeAsync during cross-screen dragging,
+  screenIdChanged only fires when the drag ends, and Qt traced the full call chain to the root cause and attributed it to the HarmonyOS system interface.
 ---
 
-# ToolWindow 跨屏闪烁 — 系统问题分析
+# ToolWindow cross-screen flicker — system issue analysis
 
-> 商业 Qt 反馈：拖拽 MainWindow 标题栏跨屏时，Qt::Tool 子窗口闪烁。
-> 工作流 系统问题验证 完整执行。
+> Commercial Qt report: dragging the MainWindow title bar across screens makes Qt::Tool child windows flicker.
+> The system issue verification workflow was executed in full.
 
 ---
 
-## 问题概述
+## Problem overview
 
-| 项目 | 内容 |
-|------|------|
-| 报告来源 | 商业 Qt 问题反馈 |
-| 问题现象 | 拖拽 MainWindow 跨屏时 ToolWidget 闪烁 |
-| 触发条件 | 多屏设备 + 拖拽标题栏 + Qt::Tool 子窗口 |
-| 归属判定 | **鸿蒙系统接口** |
-| 交付路径 | `<WORK_DIR>/toolwindow-crossscreen-flicker/` |
-| 复现 Demo | `<INTERNAL_DEMO>` |
+| Item | Details |
+|------|---------|
+| Report source | A commercial Qt problem report |
+| Symptom | The ToolWidget flickers while dragging the MainWindow across screens |
+| Trigger conditions | A multi-screen device + dragging the title bar + a Qt::Tool child window |
+| Attribution | **The HarmonyOS system interface** |
+| Delivery path | `<WORK_DIR>/toolwindow-crossscreen-flicker/` |
+| Reproduction demo | `<INTERNAL_DEMO>` |
 
-## 完整调用链
+## Full call chain
 
 ```
 MainWindow::moveEvent()
@@ -50,83 +50,83 @@ MainWindow::moveEvent()
               → "resizeAsync(w, h)"                   [line 452, Promise]
 ```
 
-## 根因
+## Root cause
 
-Qt 在 `QOhosFloatingWindow::setGeometry` 中同时调用 `setPosition` 和 `setSize`，通过 QOhosView 的批处理机制（`setSystemUpdateProperty` + `flushSystemPropertyUpdatesImmediate`）同时 flush 到系统接口。
+In `QOhosFloatingWindow::setGeometry`, Qt calls both `setPosition` and `setSize`, and QOhosView's batching mechanism (`setSystemUpdateProperty` + `flushSystemPropertyUpdatesImmediate`) flushes them to the system interface together.
 
-在跨屏拖拽场景中：
-- `moveWindowToGlobalDisplay` 触发窗口的屏幕迁移
-- `resizeAsync` 在窗口正在迁移屏幕时被执行
-- 两个异步操作的渲染在跨屏上下文中产生冲突 → **闪烁**
+In the cross-screen dragging scenario:
+- `moveWindowToGlobalDisplay` triggers the window's migration to another screen
+- `resizeAsync` executes while the window is migrating between screens
+- The rendering of these two asynchronous operations conflicts in a cross-screen context → **flicker**
 
-## 关键证据
+## Key evidence
 
-1. **屏蔽 resizeAsync → 闪烁消失**（窗口大小实际未变化）
-2. screenIdChanged 仅在拖拽结束时触发（Qt 无异议）
-3. Qt 已确认 setPosition 和 setSize 在 QOhosView 层做了批处理
+1. **Suppressing resizeAsync makes the flicker disappear** (the window size never actually changes)
+2. screenIdChanged only fires when the drag ends (Qt doesn't dispute this)
+3. Qt confirmed that setPosition and setSize are batched at the QOhosView layer
 
-## 日志证据（编译安装 libqohos.so 后抓取）
+## Log evidence (captured after building and installing libqohos.so)
 
-**每次 moveEvent 的完整调用序列**：
+**The full call sequence for each moveEvent**:
 ```
 setGeometry: win=0x5a1f8f2b80 pos=(1888,743) size=476x203 isToolWindow=11
 flush: updateWindowSize win=0x5a1f8f2b80 size=476x203
 WindowProxy::setSize 476,203 proxyType=2
-JS-CALL: resizeAsync(476,203)                    ← 每次都调用，即使 size 未变
+JS-CALL: resizeAsync(476,203)                    ← called every time, even when the size hasn't changed
 flush: updateWindowPosition win=0x5a1f8f2b80 pos=(1888,743) hasDisplayId=0
 WindowProxy::moveToGlobal 1888,743 displayId=-1.000000 proxyType=2
-JS-CALL: moveWindowToGlobalDisplay(1888,743)      ← 在 resize 之后
+JS-CALL: moveWindowToGlobalDisplay(1888,743)      ← after the resize
 ```
 
-**关键发现**：
-- 窗口大小 476×203 在整个拖拽过程中**从未变化**
-- 但每次 moveEvent 都触发了 `resizeAsync`（10+ 次冗余调用）
-- 执行顺序固定：`resizeAsync` → `moveWindowToGlobalDisplay`
-- 用户验证：**不调用 resizeAsync 时闪烁完全消失**
+**Key findings**:
+- The window size 476×203 **never changes** throughout the drag
+- Yet every moveEvent triggers `resizeAsync` (10+ redundant calls)
+- The order is fixed: `resizeAsync` → `moveWindowToGlobalDisplay`
+- User-verified: **the flicker disappears entirely when resizeAsync isn't called**
 
-## 根因确认
+## Root cause confirmation
 
-**系统接口问题**：鸿蒙系统的 `moveWindowToGlobalDisplay` 和 `resizeAsync` 在跨屏拖拽场景下无法保证渲染原子性。
+**A system interface problem**: HarmonyOS's `moveWindowToGlobalDisplay` and `resizeAsync` cannot guarantee rendering atomicity during cross-screen dragging.
 
-Qt 框架行为：
-1. `QOhosView` 批处理机制正常工作 — position 和 size 在同一次 flush 中发出
-2. `QOhosFloatingWindow::setGeometry` 每次都无条件调用 `setPosition` + `setSize`
-3. 这是合理的框架设计 — 保证窗口状态与系统同步
+Qt framework behavior:
+1. The `QOhosView` batching mechanism works correctly — position and size are emitted in the same flush
+2. `QOhosFloatingWindow::setGeometry` unconditionally calls `setPosition` + `setSize` every time
+3. That is a reasonable framework design — it keeps the window state in sync with the system
 
-系统侧行为：
-1. 接收到 `resizeAsync` 后触发窗口重绘/动画
-2. 紧接着 `moveWindowToGlobalDisplay` 触发跨屏迁移
-3. 两个异步操作的渲染无法在同一帧内完成 → **中间状态导致闪烁**
+System-side behavior:
+1. Receiving `resizeAsync` triggers a window repaint/animation
+2. `moveWindowToGlobalDisplay` immediately after triggers the cross-screen migration
+3. The rendering of the two asynchronous operations can't complete within the same frame → **an intermediate state causes the flicker**
 
-## 归属判定
+## Attribution
 
-🔴 **鸿蒙系统接口问题**（非 Qt 框架 bug）
+🔴 **A HarmonyOS system interface problem** (not a Qt framework bug)
 
-Qt 的 `setSize` 调用是必要的（确保窗口状态同步），不应跳过。问题在于系统侧无法原子化执行 resize + move 操作。
+Qt's `setSize` call is necessary (it keeps window state in sync) and shouldn't be skipped. The problem is that the system side can't execute resize + move atomically.
 
-## 纯鸿蒙真机验证（2026-06-05）
+## Pure-HarmonyOS on-device verification (2026-06-05)
 
-在 **HUAWEI MateBook Fold | ULTIMATE DESIGN** 双屏真机上，使用纯 ArkTS 代码（不依赖 Qt）成功复现完全一致的闪烁现象。
+On a dual-screen **HUAWEI MateBook Fold | ULTIMATE DESIGN**, pure ArkTS code (with no Qt involved) reproduced exactly the same flicker.
 
-**实现方式**：`setInterval(50ms)` 轮询主窗口位置变化 → 同时调用 `subWindow.moveWindowTo()` + `subWindow.resize()`
+**Implementation**: `setInterval(50ms)` polls the main window's position for changes → calls `subWindow.moveWindowTo()` and `subWindow.resize()` together
 
-| 操作 | 结果 |
-|------|------|
-| `moveWindowTo` + `resize` 同时调用 | **子窗口闪烁** ✅ 复现 |
-| 仅 `moveWindowTo`，不调用 `resize` | **子窗口不闪烁** |
+| Operation | Result |
+|-----------|--------|
+| `moveWindowTo` + `resize` called together | **The child window flickers** ✅ reproduced |
+| Only `moveWindowTo`, without `resize` | **The child window doesn't flicker** |
 
-**结论**：问题在鸿蒙系统层面，与 Qt 框架无关。
+**Conclusion**: the problem is at the HarmonyOS system level and unrelated to the Qt framework.
 
-## 可复用经验
+## Reusable lessons
 
-1. **批处理不等于原子性**：Qt 在 QOhosView 层做了批处理（两个操作同时 flush），但系统侧对两个异步操作的原子性保证不足
-2. **冗余调用是触发器**：即使 size 未变，`setSize` 仍触发 `resizeAsync`，这种"无害"的冗余调用在跨屏场景下成为问题触发器
-3. **跨屏场景特殊性**：很多窗口操作在单屏场景下正常，但在跨屏场景下（窗口正在迁移屏幕时）行为不可预测
-4. **screenIdChanged 延迟触发**：拖拽过程中不触发屏幕变更回调，这意味着 Qt 在拖拽期间无法得知窗口当前所在屏幕
-5. **⚠️ 不要急于修改 Qt 框架**：遇到疑似系统问题时，应先评估系统接口表现是否正常，而非优先修改 Qt 代码。修改框架代码必须严格评估影响范围（如跳过 setSize 可能导致首次大小不正确）
+1. **Batching is not atomicity**: Qt batches at the QOhosView layer (both operations flush together), but the system side doesn't guarantee atomicity across two asynchronous operations
+2. **Redundant calls are the trigger**: even when the size hasn't changed, `setSize` still triggers `resizeAsync`; this "harmless" redundant call becomes the trigger in a cross-screen scenario
+3. **Cross-screen scenarios are special**: many window operations behave fine on a single screen but become unpredictable across screens (while the window is migrating)
+4. **screenIdChanged fires late**: it doesn't fire during the drag, which means Qt has no way of knowing which screen the window is currently on while dragging
+5. **⚠️ Don't rush to modify the Qt framework**: when you suspect a system problem, first evaluate whether the system interface itself behaves correctly rather than changing Qt code first. Any framework change must have its blast radius carefully assessed (for example, skipping setSize could make the initial size wrong)
 
-## 相关上下文
+## Related context
 
-- 系统问题验证 — 本问题使用的工作流
-- [[qt-harmonyos-window-model]] — 窗口模型理解
-- Qt 框架分析方法论
+- System issue verification — the workflow used for this problem
+- [[qt-harmonyos-window-model]] — Understanding the window model
+- The Qt framework analysis methodology

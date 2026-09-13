@@ -9,169 +9,169 @@ status: active
 audience: public
 refs: [semantic-qt-harmonyos-lifecycle]
 summary: >
-  退出死锁复盘：<STAKEHOLDER>(<PRODUCT>) qApp->quit()后应用卡死~2分钟。
-  根因：HarmonyOS在Ability销毁阶段不处理N-API ThreadSafeFunction回调，
-  导致qWindowDestroyPromise的resolve回调永远不被执行，Promise永不resolve。
-  修复：外部补丁通过原子变量+并行轮询绕过TSFN机制，已验证有效。
-  关联确认：退出流程中sensor插件触发崩溃，伙伴确认移除即规避（2026-07-13）。
+  Exit deadlock retrospective: <STAKEHOLDER> (<PRODUCT>) hangs for ~2 minutes after qApp->quit().
+  Root cause: HarmonyOS doesn't process N-API ThreadSafeFunction callbacks during the Ability destruction phase,
+  so qWindowDestroyPromise's resolve callback is never executed and the Promise never resolves.
+  Fix: an external patch bypasses the TSFN mechanism using an atomic variable + parallel polling; verified effective.
+  Related confirmation: the sensor plugin triggers a crash during the exit flow, and a partner confirmed that removing it avoids the issue (2026-07-13).
 ---
 
-# 退出死锁：qApp->quit() 后 handleAbilityOnDestroy Promise 永不 resolve
+# Exit deadlock: the handleAbilityOnDestroy Promise never resolves after qApp->quit()
 
-## 问题概述
+## Problem overview
 
-| 项目 | 内容 |
-|------|------|
-| 外部 | <PRODUCT> |
-| 现象 | 调用 `qApp->quit()` 后应用卡死约 2 分钟才退出 |
-| Qt 版本 | 5.12.12 (tqtc/harmonyos-5.12.12, commit 613336de) |
-| 设备 | 真机 |
-| 根因 | HarmonyOS ArkTS runtime 在 Ability 销毁阶段不处理 TSFN 回调 |
-| 修复 | 外部补丁：原子变量 + 并行轮询绕过 TSFN |
+| Item | Details |
+|------|---------|
+| External party | <PRODUCT> |
+| Symptom | After calling `qApp->quit()`, the application hangs for about 2 minutes before exiting |
+| Qt version | 5.12.12 (tqtc/harmonyos-5.12.12, commit 613336de) |
+| Device | A real device |
+| Root cause | The HarmonyOS ArkTS runtime doesn't process TSFN callbacks during the Ability destruction phase |
+| Fix | An external patch: an atomic variable + parallel polling, bypassing TSFN |
 
-## 时间线
+## Timeline
 
-| 日期 | 阶段 | 产出 |
-|------|------|------|
-| 2026-06-05 | 收到外部反馈 | 初始排查方案（TROUBLESHOOTING_GUIDE.md） |
-| 2026-06-05 | 外部确认的根因 | WINDOW_DESTROYED 时序问题 + 补丁代码 |
-| 2026-06-08 | 日志深度分析 | 确认 TSFN 回调阻塞是真正根因 |
-| 2026-06-08 | Demo 复现 | 堆分配 QApplication（不 delete）精确复现 |
-| 2026-06-09 | 交付件整理 | <WORK_DIR>/quit-deadlock/（ISSUE.md + patch + demo） |
+| Date | Phase | Output |
+|------|-------|--------|
+| 2026-06-05 | Received the external report | An initial triage plan (TROUBLESHOOTING_GUIDE.md) |
+| 2026-06-05 | The root cause the external party confirmed | A WINDOW_DESTROYED timing problem + patch code |
+| 2026-06-08 | In-depth log analysis | Confirmed that TSFN callback blocking is the real root cause |
+| 2026-06-08 | Demo reproduction | Reproduced exactly with a heap-allocated QApplication (never deleted) |
+| 2026-06-09 | Deliverables assembled | <WORK_DIR>/quit-deadlock/ (ISSUE.md + patch + demo) |
 
-## 根因分析
+## Root cause analysis
 
-### 表面现象
+### The surface symptom
 
-`main()` 返回后，`handleAbilityOnDestroy` 返回 Promise 给 ArkTS 框架，但 Promise 永远不 resolve，导致 ArkTS 框架 await 超时（~2 分钟）。
+After `main()` returns, `handleAbilityOnDestroy` returns a Promise to the ArkTS framework, but the Promise never resolves, so the ArkTS framework's await times out (~2 minutes).
 
-### 初始误判
+### The initial misdiagnosis
 
-最初认为根因是 **QApplication 未被正确析构**（堆分配且未 delete），导致 `QOhosView::destroyed` 信号不触发，`qWindowDestroyPromise` 永远 pending。
+We initially believed the root cause was **QApplication not being destructed properly** (heap-allocated and never deleted), so the `QOhosView::destroyed` signal never fired and `qWindowDestroyPromise` stayed pending forever.
 
-**修正**：即使 `delete app` 在 `main()` 返回前执行，QOhosView 正确析构、destroyed 信号触发、`resolveQWindowDestroyPromiseFunc` 被调用，**resolve 仍然通过 `Napi::ThreadSafeFunction::NonBlockingCall()` 投递到 JS 线程**。而 HarmonyOS 在 Ability 销毁阶段不处理这些 TSFN 回调。
+**Correction**: even when `delete app` runs before `main()` returns — so QOhosView is destructed correctly, the destroyed signal fires, and `resolveQWindowDestroyPromiseFunc` is called — **the resolve is still dispatched to the JS thread through `Napi::ThreadSafeFunction::NonBlockingCall()`**. And HarmonyOS doesn't process those TSFN callbacks during the Ability destruction phase.
 
-### 真正根因
+### The real root cause
 
 ```
 qApp->quit()
-  → Qt 事件循环退出 → main() 返回
+  → the Qt event loop exits → main() returns
   → exit handler: invokeInJsThread(terminateAllAbilityInstances)
-  → JS 线程: context.terminateSelf → 系统开始销毁 Ability
-  → 系统: onDestroy → handleAbilityOnDestroy
-  → handleAbilityOnDestroy 获取 qWindowDestroyPromise
-  → initialPromise.onFinally(callback) 注册
-  → 返回 resultPromiseDeferred->Promise() → ArkTS await
+  → JS thread: context.terminateSelf → the system starts destroying the Ability
+  → system: onDestroy → handleAbilityOnDestroy
+  → handleAbilityOnDestroy obtains qWindowDestroyPromise
+  → initialPromise.onFinally(callback) is registered
+  → returns resultPromiseDeferred->Promise() → ArkTS awaits it
 
-  ★ 死锁点：
-    qWindowDestroyPromise 的 resolve 通过 TSFN 投递
-    → ArkTS runtime 在 await 期间不处理 TSFN 回调
-    → deferred.Resolve() 永远不被执行
-    → initialPromise 永远 pending
-    → onFinally 永远不触发
-    → resultPromise 永远不 resolve
-    → ArkTS 等待超时 → AbilityStage::onDestroy → _Exit(0)
+  ★ The deadlock point:
+    qWindowDestroyPromise's resolve is dispatched through TSFN
+    → the ArkTS runtime doesn't process TSFN callbacks while awaiting
+    → deferred.Resolve() is never executed
+    → initialPromise stays pending forever
+    → onFinally never fires
+    → resultPromise never resolves
+    → ArkTS times out → AbilityStage::onDestroy → _Exit(0)
 ```
 
-### 关键日志证据
+### The key log evidence
 
 ```
 19:07:35.002  [JS thread]  handleAbilityOnDestroy → returning Promise for id='0'
 19:07:35.003  [JS thread]  Tagging JS Window as closing (from: WINDOW_DESTROYED)
-    ⚠️ 此后 2 分 10 秒无任何 Qt 框架日志
-    ❌ "initial Promise resolved" — 从未出现
-    ❌ "Qt: requested Qt app quit" — 从未出现
-    ❌ "Qt: end waiting" — 从未出现（5 秒超时机制从未启动）
+    ⚠️ No Qt framework logs at all for the next 2 minutes 10 seconds
+    ❌ "initial Promise resolved" — never appears
+    ❌ "Qt: requested Qt app quit" — never appears
+    ❌ "Qt: end waiting" — never appears (the 5-second timeout mechanism never starts)
 19:09:45.013  [JS thread]  QAbilityStage::onDestroy()
 19:09:45.035  [JS thread]  AbilityStage::onDestroy: calling _Exit(0)
 ```
 
-## 复现方法
+## How to reproduce
 
-**核心设计**：堆分配 QApplication，不 delete。
+**Core design**: heap-allocate QApplication and never delete it.
 
 ```cpp
 int main(int argc, char *argv[]) {
-    auto *app = new QApplication(argc, argv);  // 堆分配，不 delete
-    // ... 创建主窗口 ...
+    auto *app = new QApplication(argc, argv);  // heap-allocated, never deleted
+    // ... create the main window ...
     QTimer::singleShot(5000, []() { qApp->quit(); });
     mainWindow->show();
     int ret = app->exec();
-    // 不 delete app
+    // app is never deleted
     return ret;
 }
 ```
 
-**关键发现**：`delete app` **不能解决**此问题。原因是 resolve 回调通过 TSFN 投递，被 ArkTS runtime 阻塞，与 QApplication 是否析构无关。
+**Key finding**: `delete app` **does not fix** this problem. The resolve callback is dispatched through TSFN and blocked by the ArkTS runtime, regardless of whether QApplication is destructed.
 
-## 修复方案
+## The fix
 
-### 外部补丁（已验证有效）
+### The external patch (verified effective)
 
-**核心思路**：绕过 TSFN，用原子变量 + 并行轮询直接检测 Qt 线程状态。
+**Core idea**: bypass TSFN and detect the Qt thread's state directly with an atomic variable + parallel polling.
 
-1. 新增 `std::atomic_bool s_qtAppThreadIdle{true}`
-2. `main()` 开始 → `false`，`main()` 返回 → `true`
-3. `handleAbilityOnDestroy` 中：
-   - 如果 `s_qtAppThreadIdle.load() == true` → 直接 `continueDestroyFlow`
-   - 启动并行轮询任务：独立线程每 100ms 检查，如果 Qt idle → `continueDestroyFlow`
-4. `continueDestroyFlow` 用 `compare_exchange_strong` 防止重复执行
+1. Add `std::atomic_bool s_qtAppThreadIdle{true}`
+2. Set it to `false` when `main()` starts and `true` when `main()` returns
+3. In `handleAbilityOnDestroy`:
+   - If `s_qtAppThreadIdle.load() == true` → go straight to `continueDestroyFlow`
+   - Start a parallel polling task: a separate thread checks every 100 ms, and when Qt is idle → `continueDestroyFlow`
+4. `continueDestroyFlow` uses `compare_exchange_strong` to prevent running twice
 
-### 为什么有效
+### Why it works
 
-- 不依赖 TSFN 回调（绕过了被阻塞的通道）
-- 原子变量是跨线程安全的，无需 JS 线程处理
-- 并行轮询在独立线程运行，不受 ArkTS runtime 影响
+- It doesn't rely on TSFN callbacks (bypassing the blocked channel)
+- Atomic variables are safe across threads and don't need the JS thread to do anything
+- The parallel polling runs on a separate thread, unaffected by the ArkTS runtime
 
-## 经验教训
+## Lessons learned
 
-1. **不要假设 delete app 能解决所有退出问题** — 根因可能在更底层的运行时行为
-2. **日志中的"缺失"比"存在"更有诊断价值** — 三条关键日志的"不存在"直接指向了死锁点
-3. **跨线程通信机制（TSFN）在系统生命周期特定阶段可能失效** — 这是 HarmonyOS 平台特有限制
-4. **Demo 复现必须精确匹配实际场景** — 局部变量 QApplication 无法复现，必须堆分配
-5. **提交 Tqtc 的交付件必须包含可复现问题的 demo** — 已写入工作流铁律
+1. **Don't assume `delete app` solves every exit problem** — the root cause may be lower-level runtime behavior
+2. **What's *missing* from a log can be more diagnostic than what's present** — the absence of three key log lines pointed straight at the deadlock
+3. **Cross-thread communication mechanisms (TSFN) can stop working during specific system lifecycle phases** — this is a HarmonyOS-specific limitation
+4. **A reproduction demo must match the real scenario exactly** — a stack-allocated QApplication doesn't reproduce it; it must be heap-allocated
+5. **Deliverables submitted to Tqtc must include a demo that reproduces the problem** — now an iron rule in the workflow
 
-## 关联崩溃确认：退出流程中 sensor 插件触发崩溃
+## Related crash confirmation: the sensor plugin triggers a crash during the exit flow
 
-> 2026-07-13 与伙伴确认。与本文 quit-deadlock 同属 Ability 销毁阶段的退出路径问题，并入本页沉淀。
+> Confirmed with a partner on 2026-07-13. Like the quit-deadlock above, it's a problem on the exit path during the Ability destruction phase, so it's captured on this page.
 
-| 项目 | 内容 |
-|------|------|
-| 外部 | 同上文 quit-deadlock 伙伴 |
-| 现象 | 应用退出流程中触发崩溃 |
-| 根因 | 应用集成的 sensor 插件（来源未确认：Qt Sensors 模块后端 / 伙伴自研 / 第三方，未深查）在退出阶段触发崩溃 |
-| 验证 | 伙伴确认：去掉 sensor 插件后崩溃消失 |
-| 确认日期 | 2026-07-13 |
+| Item | Details |
+|------|---------|
+| External party | The same partner as the quit-deadlock above |
+| Symptom | A crash during the application's exit flow |
+| Root cause | A sensor plugin integrated into the application (origin unconfirmed: the Qt Sensors module backend / the partner's own / third-party — not investigated further) crashes during the exit phase |
+| Verification | The partner confirmed: removing the sensor plugin makes the crash disappear |
+| Confirmation date | 2026-07-13 |
 
-### 确认结论
+### Conclusion
 
-跟伙伴确认：**sensor 插件去掉后不会崩了**。
+Confirmed with the partner: **the crash stops once the sensor plugin is removed**.
 
-- 崩溃发生在应用退出流程中，与本文 quit-deadlock 同属 Ability 销毁阶段这一高风险退出窗口
-- quit-deadlock 已揭示 HarmonyOS 在 Ability 销毁阶段不 pump TSFN 回调，多条正常路径在该窗口失效/异常；sensor 插件在此窗口触发的崩溃属同类退出阶段问题
-- sensor 插件具体来源未进一步深查——移除即规避，伙伴已接受此解法
+- The crash occurs in the application's exit flow, in the same high-risk exit window (the Ability destruction phase) as the quit-deadlock above
+- The quit-deadlock already showed that HarmonyOS doesn't pump TSFN callbacks during Ability destruction, and several normally-working paths fail or misbehave in that window; a crash triggered by the sensor plugin in that window is the same class of exit-phase problem
+- The sensor plugin's exact origin wasn't investigated further — removing it avoids the issue, and the partner accepted that solution
 
-### 待办（若后续需保留 sensor 功能）
+### To do (if the sensor functionality needs to be kept)
 
-- 深查该 sensor 插件在退出阶段崩溃的具体机理：析构顺序 / TSFN 残留回调 / 后端硬件资源释放时序，参照本页退出路径分析
-- 退出阶段是 HarmonyOS + Qt 的高风险窗口：凡涉及回调投递、跨线程、动态资源释放的插件，在该窗口都应做防御性处理（参照本页"原子变量 + 并行轮询绕过 TSFN"思路）
+- Investigate the specific mechanism by which this sensor plugin crashes during the exit phase: destruction order / leftover TSFN callbacks / backend hardware resource release timing, following this page's exit-path analysis
+- The exit phase is a high-risk window on HarmonyOS + Qt: any plugin that dispatches callbacks, crosses threads, or releases dynamic resources should be handled defensively in that window (following this page's "atomic variable + parallel polling to bypass TSFN" approach)
 
-## 交付件
+## Deliverables
 
 ```
 <WORK_DIR>/quit-deadlock/
-├── ISSUE.md              # 中英双语根因分析
+├── ISSUE.md              # Bilingual (Chinese/English) root cause analysis
 ├── patches/
-│   └── 0001-*.patch      # 外部补丁（git diff 格式）
+│   └── 0001-*.patch      # The external patch (git diff format)
 ├── demo/
-│   ├── ohos-repro/       # OHOS 完整工程（可编译部署）
-│   └── qt-repro/         # 桌面版（代码审查用）
-└── README.md             # 交付件概览
+│   ├── ohos-repro/       # The complete OHOS project (buildable and deployable)
+│   └── qt-repro/         # The desktop version (for code review)
+└── README.md             # Deliverables overview
 ```
 
-## 相关上下文
+## Related context
 
-- 框架问题分析工作流
-- [[qt-harmonyos-lifecycle]] — 生命周期详解
-- 外部日志：`<log-dir>/destroyError20260608_*.log`
-- Demo 源码：`<demos-dir>/quit-signal-repro/`
+- The framework issue analysis workflow
+- [[qt-harmonyos-lifecycle]] — Lifecycle in detail
+- External logs: `<log-dir>/destroyError20260608_*.log`
+- Demo source: `<demos-dir>/quit-signal-repro/`

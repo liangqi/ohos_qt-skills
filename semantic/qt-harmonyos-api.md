@@ -9,75 +9,75 @@ status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-ohos-extras]
 summary: >
-  Qt 鸿蒙化 API 兼容性要点：argv 参数差异、子进程按场景选（无界面 QProcess 可用/有界面 Qt 用 startAppProcess/有界面非Qt 用 startAbility）、
-  窗口模型差异（QDialog/Popup 为子窗口）、
-  modality 仅子窗口有效、winId() 非原生句柄、setSurfaceConsumer 获取 OHNativeWindow* 的公开路径、hide() 语义不同、
-  setMask() 仅子窗口、closeEvent 可能来自系统生命周期。
-  平台判断：Qt.platform.os 在鸿蒙返回 "linux"（上游 os() 缺 Q_OS_OHOS 分支），临时用 pluginName，建议上游修复。
-  设备类型判断：Qt 不导出公开设备类型接口；私有层 QtCore 的 QOhosDeviceInfo（Q_CORE_EXPORT，可 include 可 link，但仅 2in1/tablet/phone 三档、本质是 @ohos.deviceInfo 缓存）可用，应用层推荐直接走 Node-API 调 @ohos.deviceInfo。
+  Key Qt API compatibility points for HarmonyOS porting: argv differences; choosing a child-process approach per scenario (headless can use QProcess / a Qt UI uses startAppProcess / a non-Qt UI uses startAbility);
+  window model differences (QDialog/Popup are subwindows);
+  modality only applies to subwindows; winId() isn't a native handle; the public path to an OHNativeWindow* via setSurfaceConsumer; hide() has different semantics;
+  setMask() only works on subwindows; closeEvent may come from the system lifecycle.
+  Platform detection: Qt.platform.os returns "linux" on HarmonyOS (upstream's os() has no Q_OS_OHOS branch) — use pluginName for now, and an upstream fix is recommended.
+  Device type detection: Qt exposes no public device-type interface; QtCore's private QOhosDeviceInfo (Q_CORE_EXPORT, includable and linkable, but with only three tiers — 2in1/tablet/phone — and essentially a cache of @ohos.deviceInfo) is usable, though applications are better off calling @ohos.deviceInfo directly through Node-API.
 ---
 
-# Qt for HarmonyOS API 兼容性笔记
+# Qt for HarmonyOS API compatibility notes
 
-> 来源：[API Compatibility Notes](https://wiki.qt.io/Qt_for_HarmonyOS/api_inconsistencies_on_harmonyos)
+> Source: [API Compatibility Notes](https://wiki.qt.io/Qt_for_HarmonyOS/api_inconsistencies_on_harmonyos)
 
-## 平台判断（QML 与 C++）
+## Platform detection (QML and C++)
 
-> **源码验证**（Qt 5.15.16 OHOS commit `962aa625`，tqtc/harmonyos-5.15.16 分支）
+> **Verified in the source** (Qt 5.15.16 OHOS commit `962aa625`, branch tqtc/harmonyos-5.15.16)
 
-### 现状：`Qt.platform.os` 在鸿蒙返回 `"linux"`，而非 `"ohos"`
+### The current situation: `Qt.platform.os` returns `"linux"` on HarmonyOS, not `"ohos"`
 
 ```qml
-Qt.platform.os === "ohos"    // false（鸿蒙下 os 返回 "linux"）
-Qt.platform.os === "linux"   // true，但无法区分鸿蒙与 Linux 桌面
+Qt.platform.os === "ohos"    // false (os returns "linux" on HarmonyOS)
+Qt.platform.os === "linux"   // true, but you can't tell HarmonyOS from desktop Linux
 ```
 
-**根因（Qt 上游实现缺陷）**：`QQmlPlatform::os()`（`qtdeclarative/src/qml/qml/qqmlplatform.cpp:59`）的 `#ifdef` 链**缺少 `Q_OS_OHOS` 分支**；而 `qsystemdetection.h:115-117` 中 `__OHOS__` 同时定义了 `Q_OS_OHOS` **和** `Q_OS_LINUX`，于是命中 `Q_OS_LINUX → "linux"`。这与同平台 `QSysInfo::productType()` 返回 `"ohos"`（`qglobal.cpp:2718`，有 `Q_OS_OHOS` 分支）不一致——属 Qt 内部不一致，应向上游反馈修复。
+**Root cause (an upstream Qt implementation gap)**: the `#ifdef` chain in `QQmlPlatform::os()` (`qtdeclarative/src/qml/qml/qqmlplatform.cpp:59`) **has no `Q_OS_OHOS` branch**, while `qsystemdetection.h:115-117` has `__OHOS__` define both `Q_OS_OHOS` **and** `Q_OS_LINUX`, so it matches `Q_OS_LINUX → "linux"`. That's inconsistent with `QSysInfo::productType()` on the same platform, which returns `"ohos"` (`qglobal.cpp:2718`, which does have a `Q_OS_OHOS` branch) — an internal Qt inconsistency that should be reported upstream for a fix.
 
-### 临时方案：用 `pluginName` 判断（上游修复前过渡）
+### The interim approach: detect via `pluginName` (until upstream fixes it)
 
-鸿蒙 QPA 插件 key 为 `"ohos"`（`qtbase/src/plugins/platforms/ohos/ohos.json` 的 `Keys`、`qohosplatformplugin.cpp:23` 的 `key.compare("ohos")`），`Qt.platform.pluginName` 正好返回它：
+The HarmonyOS QPA plugin's key is `"ohos"` (the `Keys` in `qtbase/src/plugins/platforms/ohos/ohos.json`, and `key.compare("ohos")` at `qohosplatformplugin.cpp:23`), and `Qt.platform.pluginName` returns exactly that:
 
 ```qml
 readonly property bool isHarmony: Qt.platform.pluginName === "ohos"
 ```
 
-> ⚠️ `pluginName` 依赖运行时加载的 QPA 插件；用 `-platform offscreen` 等测试环境跑时值会变。绝对可靠用 C++ 编译期 `#ifdef Q_OS_OHOS` 注入 context property。
+> ⚠️ `pluginName` depends on the QPA plugin loaded at runtime, so it changes when running in a test environment with `-platform offscreen` and the like. For absolute reliability, inject a context property from C++ using a compile-time `#ifdef Q_OS_OHOS`.
 
-### C++ 侧判断
+### Detection on the C++ side
 
 ```cpp
-// 运行时
-const bool isHarmony = QSysInfo::productType() == "ohos";  // qglobal.cpp:2718 有 Q_OS_OHOS 分支
+// At runtime
+const bool isHarmony = QSysInfo::productType() == "ohos";  // qglobal.cpp:2718 has a Q_OS_OHOS branch
 
-// 编译期（最可靠，零运行时开销）
+// At compile time (the most reliable, with zero runtime cost)
 #ifdef Q_OS_OHOS
-    // 鸿蒙特有代码
+    // HarmonyOS-specific code
 #endif
 ```
 
-> **注意**：`QSysInfo::productType()` 返回 `"ohos"`，`Qt.platform.os` 返回 `"linux"`——两者实现不同，**不要互相印证**。
+> **Note**: `QSysInfo::productType()` returns `"ohos"` while `Qt.platform.os` returns `"linux"` — they have different implementations, so **don't cross-check one against the other**.
 
-### 设备类型判断：Qt 框架不导出，须走 Node-API
+### Device type detection: Qt doesn't export it, so go through Node-API
 
-> **结论**：Qt（含 QtOhosExtras）**没有**任何鸿蒙设备类型（phone/tablet/2in1/tv/car/wearable）判断的公开接口。
+> **Conclusion**: Qt (including QtOhosExtras) has **no** public interface for determining the HarmonyOS device type (phone/tablet/2in1/tv/car/wearable).
 
-**源码验证**（Qt 5.15.16 OHOS commit `962aa625`）：
+**Verified in the source** (Qt 5.15.16 OHOS commit `962aa625`):
 
-1. **QtOhosExtras 公开头文件无设备类型接口**：`qtohosextras/src/ohosextras/` 全部公开头（appcontext/want/startrequest/sharekit/pasteboard/...）中**没有** deviceType/deviceInfo/deviceProfile 类符号。
-2. **Qt 标准平台 API 只判"系统"不判"设备"**：`productType()`→`"ohos"`、`Qt.platform.os`→`"linux"`、`pluginName`→`"ohos"`，均不返回设备形态。
-3. **框架内部有设备类型判断，分两层**：
-   - **✅ 可用层 `QOhosDeviceInfo`（QtCore 私有导出，Q_CORE_EXPORT）**：`QtCore/private/qohosdeviceinfo_p.h` 的 `is2in1()`/`isPhone()`/`isTablet()`/`sdkApiVersion()`/`tryGetRecognizedDeviceType()`。符号**导出在 libQt5Core.so**，应用可 `#include <QtCore/private/qohosdeviceinfo_p.h>`（qmake `QT += core-private`）并 link。但 **`RecognizedDeviceType` 仅 `_2in1/tablet/phone` 三档**，无 tv/car/wearable。
-   - **❌ 不可用层（QPA 插件内部，不导出/不可 include）**：`qohosruntimedevicetypeandmode.h` 的 `queryQOhosRuntimeDeviceAndMode()`/`isHandheldDeviceType()`、`qohossettings.h` 的 `QOhosSettings::isWindowPcModeEnabled()`。它们只是 `QOhosDeviceInfo` 的二次封装，头文件不在 SDK、符号 `-fvisibility=hidden`。
-   - **数据源**：两层最终都来自 `qohosjsmain.cpp` 启动时 `eval("@ohos.deviceInfo")` → `QOhosDeviceInfo::init(map)` 填充的静态缓存。即 **`QOhosDeviceInfo` 本质就是 `@ohos.deviceInfo` 的 C++ 缓存壳**。
+1. **The QtOhosExtras public headers have no device-type interface**: none of the public headers in `qtohosextras/src/ohosextras/` (appcontext/want/startrequest/sharekit/pasteboard/...) contain any deviceType/deviceInfo/deviceProfile symbols.
+2. **Qt's standard platform APIs identify the "system", not the "device"**: `productType()` → `"ohos"`, `Qt.platform.os` → `"linux"`, `pluginName` → `"ohos"` — none of them report the device form factor.
+3. **The framework does determine device type internally, in two layers**:
+   - **✅ The usable layer, `QOhosDeviceInfo` (a private QtCore export, Q_CORE_EXPORT)**: `is2in1()`/`isPhone()`/`isTablet()`/`sdkApiVersion()`/`tryGetRecognizedDeviceType()` in `QtCore/private/qohosdeviceinfo_p.h`. The symbols **are exported from libQt5Core.so**, so an application can `#include <QtCore/private/qohosdeviceinfo_p.h>` (with qmake's `QT += core-private`) and link against them. But **`RecognizedDeviceType` has only three tiers — `_2in1/tablet/phone`** — with no tv/car/wearable.
+   - **❌ The unusable layer (internal to the QPA plugin, not exported and not includable)**: `queryQOhosRuntimeDeviceAndMode()`/`isHandheldDeviceType()` in `qohosruntimedevicetypeandmode.h`, and `QOhosSettings::isWindowPcModeEnabled()` in `qohossettings.h`. These are just secondary wrappers around `QOhosDeviceInfo`; the headers aren't in the SDK and the symbols are `-fvisibility=hidden`.
+   - **The data source**: both layers ultimately come from the static cache that `qohosjsmain.cpp` fills at startup via `eval("@ohos.deviceInfo")` → `QOhosDeviceInfo::init(map)`. In other words, **`QOhosDeviceInfo` is essentially a C++ cache shell around `@ohos.deviceInfo`**.
 
-**用私有入口的代价**：①无 ABI 承诺（头文件明文 may change/remove without notice）；②依赖 QPA init 时机，过早调用拿空值；③仅三档设备类型；④本质是系统 deviceInfo 缓存。
+**The cost of using the private entry point**: ① no ABI guarantee (the header says in plain text that it may change/be removed without notice); ② it depends on QPA init timing, so calling it too early gives empty values; ③ only three device-type tiers; ④ it's fundamentally just a cache of the system's deviceInfo.
 
-**推荐方案**：直接走 Node-API 调 `@ohos.deviceInfo` 取 `deviceInfo.deviceType`——数据等价、鸿蒙公开稳定 API、粒度全、无 Qt 版本耦合。仅当需与 QPA 判断口径完全一致、且能接受 Qt 强耦合时，才用 `QOhosDeviceInfo`。
+**The recommended approach**: call `@ohos.deviceInfo` directly through Node-API and read `deviceInfo.deviceType` — the same data, a public and stable HarmonyOS API, full granularity, and no coupling to the Qt version. Only use `QOhosDeviceInfo` when you need to match the QPA's determination exactly and can accept the tight Qt coupling.
 
-### 上游修复建议
+### A suggested upstream fix
 
-建议 Qt 在 `QQmlPlatform::os()` 增加 `Q_OS_OHOS` 分支，返回 `"ohos"`：
+We suggest Qt add a `Q_OS_OHOS` branch to `QQmlPlatform::os()` returning `"ohos"`:
 
 ```diff
  QString QQmlPlatform::os()
@@ -100,154 +100,154 @@ const bool isHarmony = QSysInfo::productType() == "ohos";  // qglobal.cpp:2718 �
      return QStringLiteral("linux");
 ```
 
-**要点**：
-- 分支须置于 `Q_OS_LINUX` **之前**——`Q_OS_OHOS` 隐含 `Q_OS_LINUX`（同 `Q_OS_ANDROID` 置于 `Q_OS_LINUX` 之前的既有模式）。
-- 与 `QSysInfo::productType()`（已返回 `"ohos"`）保持一致，消除 Qt 内部不一致。
-- 修复后 QML 可用 `Qt.platform.os === "ohos"` 正常判断，临时 `pluginName` 方案即可移除。
-- **兼容性**：行为变更，影响依赖 `os==="linux"` 的 OHOS 代码与 `QFileSelector` 平台选择器（若用 "linux"）。建议 release notes 标注。Qt6 同适用（`os()` 实现一致）。
+**Key points**:
+- The branch must come **before** `Q_OS_LINUX` — `Q_OS_OHOS` implies `Q_OS_LINUX` (following the existing pattern where `Q_OS_ANDROID` precedes `Q_OS_LINUX`).
+- It makes things consistent with `QSysInfo::productType()` (which already returns `"ohos"`), removing the internal Qt inconsistency.
+- After the fix, QML can use `Qt.platform.os === "ohos"` normally and the interim `pluginName` approach can be dropped.
+- **Compatibility**: this is a behavior change, affecting OHOS code that relies on `os==="linux"` and `QFileSelector`'s platform selectors (if they use "linux"). It should be noted in the release notes. The same applies to Qt6 (whose `os()` implementation is identical).
 
-## 应用启动与参数传递
+## Application launch and argument passing
 
 ### main(int argc, char *argv[])
-- `argv[0]` 是应用库路径，**不是**传统可执行文件路径
-- 通过 Want 传参时，`want.uri` 可能占用 `argv[1]`
-- **不要假设**业务参数从 `argv[1]` 开始
-- 应根据 `argc/argv` 实际内容解析
+- `argv[0]` is the application library path, **not** a traditional executable path
+- When arguments come through a Want, `want.uri` may occupy `argv[1]`
+- **Don't assume** your own arguments start at `argv[1]`
+- Parse based on the actual contents of `argc/argv`
 
-### 启动进程/实例
-- **不要**用桌面思维"给路径启动进程"
-- 使用 Ability/Want 接口：
-  - `QtOhosExtras::startAbility()` — 启动 Ability
-  - `QtOhosExtras::startNewAbilityInstance()` — 启动新实例
-  - `QtOhosExtras::startAppProcess()` — 启动应用进程
+### Launching processes/instances
+- **Don't** think in desktop terms of "start a process from a path"
+- Use the Ability/Want interfaces:
+  - `QtOhosExtras::startAbility()` — launch an Ability
+  - `QtOhosExtras::startNewAbilityInstance()` — launch a new instance
+  - `QtOhosExtras::startAppProcess()` — launch an application process
 
 ### QProcess
 
-> 详见 [[qt-harmonyos-api-mapping]] §1 进程管理（决策树 + Before/After）。
+> See [[qt-harmonyos-api-mapping]] §1 Process management (the decision tree + before/after).
 
-### 无 UI 子进程
-- `QtOhosExtras::QOhosAppContext::startNoUiChildProcess()` — 使用鸿蒙 Child Process Manager
-- 进入 NoUiChildProcess 模式后，UI 渲染管线不初始化
-- 用 `isNoUiChildMode()` 检测状态
-- **禁止**在此模式下创建或操作窗口/UI
+### UI-less child processes
+- `QtOhosExtras::QOhosAppContext::startNoUiChildProcess()` — uses HarmonyOS's Child Process Manager
+- Once in NoUiChildProcess mode, the UI rendering pipeline isn't initialized
+- Use `isNoUiChildMode()` to check the state
+- **Never** create or manipulate windows/UI in this mode
 
-## 窗口类型与关系
+## Window types and relationships
 
 ### QDialog / Qt::Popup / Qt::ToolTip / Qt::Tool
-- 在鸿蒙上行为类似**子窗口**（非独立顶层窗口）
-- 父子关系严格执行，激活/关闭行为依赖主窗口
-- **必须**显式设置 parent 或 transientParent
+- On HarmonyOS these behave like **subwindows** (not independent top-level windows)
+- The parent-child relationship is enforced strictly, and activation/closing behavior depends on the main window
+- You **must** set an explicit parent or transientParent
 
-### setParent() / Reparenting
-- 鸿蒙对父子关系调整有额外限制
-- **不要**将外部嵌入窗口视为标准父窗口
+### setParent() / reparenting
+- HarmonyOS places extra restrictions on changing parent-child relationships
+- **Don't** treat an externally embedded window as a standard parent window
 
-## 模态、最小化、全屏
+## Modality, minimizing, and fullscreen
 
 ### Qt::WindowModality
 
-> **源码验证**（Qt 5.12.12 OHOS commit `613336de`）：鸿蒙**不支持桌面语义的应用级模态**。QPA 将 `Qt::WindowModality` 映射为鸿蒙 `@ohos.window.ModalityType` 枚举（`WINDOW_MODALITY` / `APPLICATION_MODALITY`），经 `setSubWindowModal` 接口生效，但有多层限制。
+> **Verified in the source** (Qt 5.12.12 OHOS commit `613336de`): HarmonyOS **doesn't support desktop-semantics application-level modality**. The QPA maps `Qt::WindowModality` onto HarmonyOS's `@ohos.window.ModalityType` enum (`WINDOW_MODALITY` / `APPLICATION_MODALITY`) via the `setSubWindowModal` interface, but with several layers of restriction.
 
-- 模态**仅对子窗口生效**——主窗口设模态被 QPA 在两处 early-return 丢弃（`qohosview.cpp:910`、`qohoswindowproxy.cpp:967`）
-- `Qt::ApplicationModal` **不等于桌面全局模态**：
-  - QPA 打印警告 `ApplicationModal policy is unsupported by the platform`（`qohosview.cpp:914`），但实际仍映射为 `APPLICATION_MODALITY` 传给鸿蒙（**非**降级为 `WINDOW_MODALITY`——源码警告措辞略误导）
-  - 仅当 `QOhosSettings::isWindowPcModeEnabled()` 为真——即 **2in1 设备**或**平板开启 PC 窗口模式**（自由多窗状态）——才生效；否则 `setSubWindowModalEnabled` 直接 `return` 跳过（`qohoswindowproxy.cpp:971`）
-  - PC 模式判定：`qohossettings.cpp:98`（`is2in1()` ‖ 系统设置 `window_pcmode_switch_status=="true"`）
-- **不要依赖**传统桌面全局应用级模态；手机端 `ApplicationModal` 完全无效（静默跳过）
+- Modality **only applies to subwindows** — setting modality on the main window is dropped by two early returns in the QPA (`qohosview.cpp:910`, `qohoswindowproxy.cpp:967`)
+- `Qt::ApplicationModal` is **not desktop global modality**:
+  - The QPA prints the warning `ApplicationModal policy is unsupported by the platform` (`qohosview.cpp:914`), but in fact it is still mapped to `APPLICATION_MODALITY` and passed to HarmonyOS (it is **not** downgraded to `WINDOW_MODALITY` — the source's warning wording is slightly misleading)
+  - It only takes effect when `QOhosSettings::isWindowPcModeEnabled()` is true — that is, on a **2-in-1 device** or a **tablet with PC window mode enabled** (free multi-window state); otherwise `setSubWindowModalEnabled` simply `return`s and skips it (`qohoswindowproxy.cpp:971`)
+  - The PC mode determination is at `qohossettings.cpp:98` (`is2in1()` ‖ the system setting `window_pcmode_switch_status=="true"`)
+- **Don't rely on** traditional desktop global application modality; on phones `ApplicationModal` has no effect at all (it's silently skipped)
 
-**调用链**：`QWindow::setModality` → `modalityChanged` →（`qohosfloatingwindow.cpp:351`）→ `QOhosView::setModality`（`qohosview.cpp:765`）→ `updateWindowModality`（`qohosview.cpp:907`，做子窗口/警告检查）→ `mapQtWindowModalityToOhosOrDefault`（`qohosview.cpp:55`，WindowModal→WINDOW_MODALITY / ApplicationModal→APPLICATION_MODALITY）→ `setSubWindowModalEnabled`（`qohoswindowproxy.cpp:965`，做主窗口/PC 模式检查）→ 鸿蒙 JS `setSubWindowModal(true, ModalityType)`
+**The call chain**: `QWindow::setModality` → `modalityChanged` → (`qohosfloatingwindow.cpp:351`) → `QOhosView::setModality` (`qohosview.cpp:765`) → `updateWindowModality` (`qohosview.cpp:907`, doing the subwindow/warning checks) → `mapQtWindowModalityToOhosOrDefault` (`qohosview.cpp:55`, WindowModal→WINDOW_MODALITY / ApplicationModal→APPLICATION_MODALITY) → `setSubWindowModalEnabled` (`qohoswindowproxy.cpp:965`, doing the main-window/PC-mode checks) → the HarmonyOS JS `setSubWindowModal(true, ModalityType)`
 
 ### showFullScreen()
-- 支持，运行时调用可切换全屏
-- **首个主窗口**与后续窗口创建路径不同：首个可能不支持"启动即全屏"
-- **建议**：窗口创建显示后再调用 `showFullScreen()`
+- Supported; calling it at runtime toggles fullscreen
+- The **first main window** takes a different creation path than later windows: the first one may not support "launch straight into fullscreen"
+- **Recommendation**: call `showFullScreen()` after the window has been created and shown
 
 ### showMinimized()
-- **仅主窗口**支持最小化
-- 子窗口不支持桌面风格的最小化
+- **Only the main window** supports minimizing
+- Subwindows don't support desktop-style minimizing
 
 ### hide()
-- **主窗口**：优先系统级隐藏（需系统托盘），不支持则回退到最小化
-- **子窗口/浮窗**：隐藏当前窗口，但不携带主窗口级"隐藏"语义
-- **不要**在 `closeEvent()` 中用 `hide()` 作为通用"关闭替代"
-- 主窗口保活优先用 `showMinimized()`
+- **The main window**: prefers a system-level hide (which needs a system tray) and falls back to minimizing when that isn't supported
+- **Subwindows/floating windows**: hide that window, without the main-window-level "hidden" semantics
+- **Don't** use `hide()` in `closeEvent()` as a general "alternative to closing"
+- To keep the main window alive, prefer `showMinimized()`
 
-## 窗口标志与标题栏
+## Window flags and the title bar
 
 ### MinimizeButtonHint / MaximizeButtonHint / CloseButtonHint
-- 主要针对主窗口，通常仅 PC 模式有效
-- **不要假设**这些标志在不同设备/窗口类型下稳定生效
+- These mainly target the main window and usually only take effect in PC mode
+- **Don't assume** these flags behave consistently across device/window types
 
 ### Qt::FramelessWindowHint
-- 主窗口和子窗口隐藏系统装饰
-- 主窗口启用后标准三按钮(最小/最大/关闭)也不可用
+- Hides the system decorations on both main windows and subwindows
+- Once enabled on the main window, the standard three buttons (minimize/maximize/close) are unavailable too
 
 ### Qt::WindowStaysOnTopHint
-- 仅主窗口 + PC 模式
+- Main window + PC mode only
 
-### 系统拖拽移动 startSystemMove ↔ startMoving()
+### System drag-to-move: startSystemMove ↔ startMoving()
 
-无边框窗口（`Qt::FramelessWindowHint`）自定义标题栏拖拽移动场景。鸿蒙侧系统级窗口移动 API 实为 `window.Window.startMoving()`（API 14+，无参）、`startMoving(offsetX, offsetY)`（API 15+）和 `stopMoving()`（API 15+）——公开文档中**没有**名为 `startSystemMove` 的鸿蒙 API，"startSystemMove" 是 Qt 侧命名。
+This is the scenario of dragging a custom title bar on a frameless window (`Qt::FramelessWindowHint`). On the HarmonyOS side, the system-level window-move API is actually `window.Window.startMoving()` (API 14+, no arguments), `startMoving(offsetX, offsetY)` (API 15+), and `stopMoving()` (API 15+) — there is **no** HarmonyOS API named `startSystemMove` in the public documentation; "startSystemMove" is Qt's name for it.
 
-| Qt 接口 | 版本 | 说明 |
-|---------|------|------|
-| `QPlatformWindow::startSystemMove(QPoint)` | ≥5.11 | 平台虚函数，基类默认返回 `false`（no-op）|
-| `QWindow::startSystemMove()` | **Qt6 新增** | 公开便捷方法，无参，返回 bool |
+| Qt interface | Version | Notes |
+|--------------|---------|-------|
+| `QPlatformWindow::startSystemMove(QPoint)` | ≥5.11 | A platform virtual; the base class returns `false` (a no-op) |
+| `QWindow::startSystemMove()` | **New in Qt6** | A public convenience method with no arguments, returning bool |
 
-**OHOS QPA 接通链路**（5.12/5.15/6 均有，源码 `qohosfloatingwindow.cpp`）：
-`QOhosFloatingWindow::startSystemMove()` → `QOhosView::startMoving()` → `QOhosWindowProxy::startMoving()` → ArkTS 侧 `jsWindowRef` eval/call `"startMoving()"`（5.x 用 `evalToPromiseOrRejectOnThrow`，Qt6 用 `call<QNapi::Promise>`）。
+**The OHOS QPA connection chain** (present in 5.12/5.15/6; source: `qohosfloatingwindow.cpp`):
+`QOhosFloatingWindow::startSystemMove()` → `QOhosView::startMoving()` → `QOhosWindowProxy::startMoving()` → an eval/call of `"startMoving()"` on the ArkTS-side `jsWindowRef` (5.x uses `evalToPromiseOrRejectOnThrow`, Qt6 uses `call<QNapi::Promise>`).
 
-**关键**：`createPlatformWindow` 工厂对**几乎所有顶层窗口**（主窗口、Tool、Dialog 等普通窗口）都创建 `QOhosFloatingWindow`，仅 `QFileDialogClassWindow` 原生对话框和 UIExtension 窗口走基类——因此**主窗口也走这条链路**，`startSystemMove` 在主窗口上是接通的。
+**The key point**: the `createPlatformWindow` factory creates a `QOhosFloatingWindow` for **almost every top-level window** (the main window, Tool, Dialog, and other ordinary windows); only the native `QFileDialogClassWindow` dialog and UIExtension windows use the base class — so **the main window goes through this chain too**, and `startSystemMove` is wired up for it.
 
-**是否真正移动取决于鸿蒙策略**：`startMoving()` 对系统窗口/子窗口/全局悬浮窗/模态窗生效；对**应用主窗口仅在自由窗口（FLOATING）状态下生效**，否则返回 `801`/`1300004`。移动端/非自由窗口设备调用返回 `801`。
+**Whether it actually moves depends on HarmonyOS policy**: `startMoving()` works for system windows, subwindows, global floating windows, and modal windows; for an **application main window it only works in the free-window (FLOATING) state**, otherwise it returns `801`/`1300004`. On mobile / non-free-window devices, calling it returns `801`.
 
-**调用方式**：
-- Qt6：`window->startSystemMove()`
-- Qt5.12/5.15：无公开 `QWindow::startSystemMove()`，走 `window->handle()->startSystemMove(pos)`（`QPlatformWindow` 公开虚函数）
-- 典型在自定义标题栏的 mousePress / `onTouch(TouchType.Down)` 中调用
+**How to call it**:
+- Qt6: `window->startSystemMove()`
+- Qt 5.12/5.15: there's no public `QWindow::startSystemMove()`, so go through `window->handle()->startSystemMove(pos)` (a public `QPlatformWindow` virtual)
+- Typically called from a custom title bar's mousePress / `onTouch(TouchType.Down)`
 
-## 窗口形状与裁剪
+## Window shape and clipping
 
 ### setMask()
-- **仅子窗口**有效，主窗口不支持
-- 主窗口特殊外观用内容级裁剪或自定义绘制
+- **Only works on subwindows**; the main window doesn't support it
+- For a special main window appearance, use content-level clipping or custom painting
 
-## 窗口几何持久化
+## Window geometry persistence
 
-- 依赖 `QtOhosExtras::setMainWindowGeometryPersistenceHint()`
-- 仅针对**首个主窗口**
-- 必须在首个主窗口显示前设置
-- 目前仅 **2in1 设备**支持
+- Relies on `QtOhosExtras::setMainWindowGeometryPersistenceHint()`
+- Applies only to the **first main window**
+- Must be set before the first main window is shown
+- Currently supported only on **2-in-1 devices**
 
-## 窗口关闭语义
+## Window close semantics
 
 ### closeEvent(QCloseEvent *)
-- 关闭事件可能来自用户操作或系统 Ability 生命周期终止
-- **不要**把所有 `closeEvent()` 当"用户点了关闭按钮"
-- 需区分窗口关闭和生命周期终止
+- A close event may come from a user action or from the system terminating the Ability's lifecycle
+- **Don't** treat every `closeEvent()` as "the user clicked the close button"
+- You need to distinguish a window close from lifecycle termination
 
-## 原生窗口句柄
+## Native window handles
 
 ### QWindow::winId()
-- 鸿蒙上返回的是 Qt 内部私有结构，**不是**原生窗口句柄
-- 类型和布局可能随时变更
-- `QtOhosExtras::tryGetNativeWindowId(QWindow *)` 返回 ArkTS 侧 WindowProperties.id
-  - 但官方警告：不保证应用生命周期内有效，使用后稳定性/性能可能差
+- On HarmonyOS this returns a Qt-internal private structure, **not** a native window handle
+- Its type and layout may change at any time
+- `QtOhosExtras::tryGetNativeWindowId(QWindow *)` returns the ArkTS-side WindowProperties.id
+  - But the official warning is that it isn't guaranteed to stay valid for the application's lifetime, and stability/performance may suffer if you use it
 
-### setSurfaceConsumer（获取 OHNativeWindow* 的公开路径）
+### setSurfaceConsumer (the public path to an OHNativeWindow*)
 
-> **源码验证**（Qt 5.15.16 OHOS commit `962aa625`，tqtc/harmonyos-5.15.16 分支）
+> **Verified in the source** (Qt 5.15.16 OHOS commit `962aa625`, branch tqtc/harmonyos-5.15.16)
 
-QPA 插件通过 `platformFunction("setSurfaceConsumer")` 暴露 `OHNativeWindow*`，这是 Qt 内部 **唯一公开** 的获取原生窗口句柄的路径。`winId()` 不返回 OHNativeWindow。
+The QPA plugin exposes the `OHNativeWindow*` through `platformFunction("setSurfaceConsumer")`; this is the **only public** path within Qt for obtaining the native window handle. `winId()` does not return an OHNativeWindow.
 
-**注册**（`qohosplatformnativeinterface.cpp`）：
+**Registration** (`qohosplatformnativeinterface.cpp`):
 ```cpp
 } else if (functionName == "setSurfaceConsumer") {
     return reinterpret_cast<QFunctionPointer>(&QOhosPlatformWindow::setSurfaceConsumer);
 }
 ```
 
-**签名**（`qohosplatformwindow.h`）：
+**The signature** (`qohosplatformwindow.h`):
 ```cpp
 static std::shared_ptr<void> setSurfaceConsumer(
     QWindow *targetWindow,
@@ -255,9 +255,9 @@ static std::shared_ptr<void> setSurfaceConsumer(
     std::function<void(QOhosOptional<void *>)> surfaceConsumer);
 ```
 
-**回调中的 `void*`** 是 `QOhosSurface::nativeWindow()` 返回的 `OHNativeWindow*`。回调在 surface 创建/销毁/变化时触发（包括初始 surface 和 `surfaceStatusChanged` 信号）。返回的 `shared_ptr<void>` 是句柄，析构时自动注销 consumer。
+**The `void*` in the callback** is the `OHNativeWindow*` returned by `QOhosSurface::nativeWindow()`. The callback fires when the surface is created/destroyed/changed (including for the initial surface and on the `surfaceStatusChanged` signal). The returned `shared_ptr<void>` is a handle that unregisters the consumer when it's destroyed.
 
-**QtMultimedia 已在用**（`qtmultimedia/src/plugins/ohos/src/mediaplayer/qohosvideowidget.cpp`）：
+**QtMultimedia already uses it** (`qtmultimedia/src/plugins/ohos/src/mediaplayer/qohosvideowidget.cpp`):
 ```cpp
 auto setSurfaceConsumerFunc = reinterpret_cast<...>(
     qApp->platformFunction("setSurfaceConsumer"));
@@ -269,13 +269,13 @@ m_surfaceConsumerHandle = setSurfaceConsumerFunc(
     });
 ```
 
-**使用场景**：
-- C++ 应用：直接 `qApp->platformFunction("setSurfaceConsumer")` 获取函数指针
-- Python/PyQt5 应用：需通过 ctypes + C++ shim .so 桥接（PyQt5 sip 未暴露 `platformFunction`）
-- 典型用途：将 OHNativeWindow 传给三方渲染库（libvlc、OpenGL 等）
+**Use cases**:
+- C++ applications: get the function pointer directly with `qApp->platformFunction("setSurfaceConsumer")`
+- Python/PyQt5 applications: you need to bridge through ctypes + a C++ shim `.so` (PyQt5's sip doesn't expose `platformFunction`)
+- A typical use: passing the OHNativeWindow to a third-party rendering library (libvlc, OpenGL, and so on)
 
-**注意**：`QOhosOptional` 是 Qt OHOS QPA 内部类型，二进制布局兼容性需在编译时验证。
+**Note**: `QOhosOptional` is an internal Qt OHOS QPA type, so its binary layout compatibility needs verifying at compile time.
 
-## 参考来源
+## References
 
 - [Qt for HarmonyOS API Compatibility Notes](https://wiki.qt.io/Qt_for_HarmonyOS/api_inconsistencies_on_harmonyos)

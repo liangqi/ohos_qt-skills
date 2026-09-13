@@ -1,24 +1,24 @@
 ---
 domain: episodic
 description: >
-  情景知识域索引。项目复盘、决策记录。
+  Episodic knowledge domain index. Project retrospectives and decision records.
 ---
 
 # episodic
 
-## 子目录
+## Subdirectories
 
-| 目录 | 用途 |
-|------|------|
-| postmortems/ | 踩坑与复盘 |
-| decisions/ | 架构决策记录(ADR) |
+| Directory | Purpose |
+|-----------|---------|
+| postmortems/ | Pitfalls and retrospectives |
+| decisions/ | Architecture decision records (ADRs) |
 
-## 本域知识页
+## Knowledge pages in this domain
 
-- [coin3d-quarter-ohos](postmortems/coin3d-quarter-ohos.md) — Coin3D Quarter 鸿蒙化完整迁移：交叉编译 libQuarter.so (ARM aarch64) + Demo 应用构建 (37MB HAP) + 3D 渲染验证通过。关键发现：OHOS Qt5 不含 UiTools 模块、FindOpenGL 需自定义（OHOS 用 GLES/EGL）、 CMAKE_FIND_ROOT_PATH_MODE ONLY 需绝对路径绕过、hvigor 需 DEVECO_SDK_HOME。 可复用：OHOS 交叉编译 CMake 模板 + FindOpenGL 映射模式 + 预编译库集成模式。
-- [ohostemplate-blockedbymodal-patch](postmortems/ohostemplate-blockedbymodal-patch.md) — ohostemplate matplotlib 三级窗口(Configure subplots->Export values)关不掉。根因：无 parent 的 QDialog 经 syntheticParent fallback 分类为 SubWindow，但 OHOS QPA 从不调 setTransientParent() 反写 Qt 层， 导致 blockedByModalWindow=1 拦截 close()。Qt 源码修复：showImmediate() 在 fallback 后反写 transientParent（约8 行 qohosview.cpp），设备日志验证 blockedByModalWindow=0、close()=1。 同时发现并修复 ArkTS 模板版本不匹配崩溃（modules->modulesFactories）。
-- [qt-opensource-apps-harmonyos-survey](postmortems/qt-opensource-apps-harmonyos-survey.md) — 2026-06-25 多 agent 工作流扫描 GitHub/KDE Apps/Gitee/SourceForge/Wikipedia，筛选 229 个 Qt 开源桌面应用并逐个评估鸿蒙化难度。难度分布：低 3 / 中 23 / 高 126 / 阻断 77；D-Bus(107)、 QtMultimedia(76)、QtWebEngine(62) 为三大阻断模块。产出清单在 <INTERNAL_OUTPUT>。沉淀"大 schema 输出失败→主循环生成"的工作流教训。
-- [quit-deadlock-tsfn](postmortems/quit-deadlock-tsfn.md) — 退出死锁复盘：<STAKEHOLDER>(<PRODUCT>) qApp->quit()后应用卡死~2分钟。 根因：HarmonyOS在Ability销毁阶段不处理N-API ThreadSafeFunction回调， 导致qWindowDestroyPromise的resolve回调永远不被执行，Promise永不resolve。 修复：外部补丁通过原子变量+并行轮询绕过TSFN机制，已验证有效。 关联确认：退出流程中sensor插件触发崩溃，伙伴确认移除即规避（2026-07-13）。
-- [saribbon-ohos](postmortems/saribbon-ohos.md) — SARibbon v2.5.5 鸿蒙化完整迁移：独立构建文件 + MainWindowExample 应用编译 (48MB HAP) + 两个编译问题修复（QDesktopWidget::screen 类型不匹配 + lazy import 语法不兼容）。 关键发现：SARibbon 源码内 QDesktopWidget API 在 Qt 5.12 OHOS 下返回 QWidget* 而非 QScreen*、 模板 lazy import 语法需 API 12 beta3、需为项目创建独立 CMakeLists.txt 避免改源码。 可复用：三方 Qt 库鸿蒙化时保持源码完整性的独立构建文件模式。
-- [toolwindow-crossscreen-flicker](postmortems/toolwindow-crossscreen-flicker.md) — ToolWindow跨屏闪烁系统问题分析：moveWindowToGlobalDisplay与resizeAsync在跨屏拖拽场景冲突， screenIdChanged仅拖拽结束时触发，Qt已通过完整调用链追踪定位根因，归属鸿蒙系统接口。
-- [wa-nativewindow-leave-bug](postmortems/wa-nativewindow-leave-bug.md) — WA_NativeWindow Leave 事件不灵敏 Bug 完整分析：双重盲区根因（Qt Widget 层 internalWinId() 跳过 + OHOS QPA hover 回调不可靠）、完整调用链追踪、 修复策略评估（3 种方案对比）、10 场景风险矩阵、时序图。Qt 5.12 OHOS。 ✅ 手动验证通过，交付件已输出至 <WORK_DIR>/leave-event-fix/（2026-06-09 最终整理）。
+- [coin3d-quarter-ohos](postmortems/coin3d-quarter-ohos.md) — Complete Coin3D Quarter HarmonyOS migration: cross-compiling libQuarter.so (ARM aarch64) + building the demo application (37 MB HAP) + 3D rendering verified. Key findings: OHOS Qt5 doesn't include the UiTools module, FindOpenGL needs customizing (OHOS uses GLES/EGL), CMAKE_FIND_ROOT_PATH_MODE ONLY needs absolute paths to work around, and hvigor needs DEVECO_SDK_HOME. Reusable: an OHOS cross-compilation CMake template + a FindOpenGL mapping pattern + a prebuilt-library integration pattern.
+- [ohostemplate-blockedbymodal-patch](postmortems/ohostemplate-blockedbymodal-patch.md) — In ohostemplate, matplotlib's third-level window (Configure subplots -> Export values) can't be closed. Root cause: a parentless QDialog is classified as a SubWindow through the syntheticParent fallback, but the OHOS QPA never calls setTransientParent() to write that back to the Qt layer, so blockedByModalWindow=1 blocks close(). Qt source fix: showImmediate() writes the transientParent back after the fallback (about 8 lines in qohosview.cpp); device logs confirm blockedByModalWindow=0 and close()=1. Also found and fixed the ArkTS template version mismatch crash (modules -> modulesFactories).
+- [qt-opensource-apps-harmonyos-survey](postmortems/qt-opensource-apps-harmonyos-survey.md) — On 2026-06-25, a multi-agent workflow scanned GitHub/KDE Apps/Gitee/SourceForge/Wikipedia, shortlisted 229 open-source Qt desktop applications, and assessed each one's HarmonyOS porting difficulty. Difficulty distribution: low 3 / medium 23 / high 126 / blocked 77; D-Bus (107), QtMultimedia (76), and QtWebEngine (62) are the three biggest blockers. The resulting list is in <INTERNAL_OUTPUT>. Captured the workflow lesson "large schema output fails → generate in a main loop".
+- [quit-deadlock-tsfn](postmortems/quit-deadlock-tsfn.md) — Exit deadlock retrospective: <STAKEHOLDER> (<PRODUCT>) hangs for ~2 minutes after qApp->quit(). Root cause: HarmonyOS doesn't process N-API ThreadSafeFunction callbacks during the Ability destruction phase, so qWindowDestroyPromise's resolve callback is never executed and the Promise never resolves. Fix: an external patch bypasses the TSFN mechanism using an atomic variable + parallel polling; verified effective. Related confirmation: the sensor plugin triggers a crash during the exit flow, and a partner confirmed that removing it avoids the issue (2026-07-13).
+- [saribbon-ohos](postmortems/saribbon-ohos.md) — Complete SARibbon v2.5.5 HarmonyOS migration: standalone build files + building the MainWindowExample application (48 MB HAP) + two build fixes (QDesktopWidget::screen type mismatch + incompatible lazy import syntax). Key findings: the QDesktopWidget API inside the SARibbon source returns QWidget* rather than QScreen* under Qt 5.12 OHOS, the template's lazy import syntax requires API 12 beta3, and the project needs its own CMakeLists.txt to avoid modifying the source. Reusable: the standalone-build-file pattern for keeping third-party Qt library sources intact during HarmonyOS porting.
+- [toolwindow-crossscreen-flicker](postmortems/toolwindow-crossscreen-flicker.md) — Analysis of the ToolWindow cross-screen flicker system issue: moveWindowToGlobalDisplay conflicts with resizeAsync during cross-screen dragging, and screenIdChanged only fires when the drag ends. Qt traced the full call chain to the root cause and attributed it to the HarmonyOS system interface.
+- [wa-nativewindow-leave-bug](postmortems/wa-nativewindow-leave-bug.md) — Complete analysis of the WA_NativeWindow Leave event insensitivity bug: the dual-blind-spot root cause (the Qt Widget layer skips internalWinId() + the OHOS QPA hover callback is unreliable), full call-chain tracing, fix strategy assessment (three options compared), a 10-scenario risk matrix, and sequence diagrams. Qt 5.12 OHOS. ✅ Manually verified; deliverables were output to <WORK_DIR>/leave-event-fix/ (final cleanup 2026-06-09).

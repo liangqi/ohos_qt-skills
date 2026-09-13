@@ -9,82 +9,82 @@ status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-api]
 summary: >
-  HarmonyOS 平台限制的 Qt/QPA/QML adapter：记录 QFile/QStandardPaths/QPluginLoader/QTimeZone、
-  字体、XComponent、ZINK 与 Qt.platform 的可观察症状、Qt workaround 和 QTBUG；平台状态与原因由 common 维护。
+  The Qt/QPA/QML adapter for HarmonyOS platform limitations: records the observable symptoms, Qt workarounds, and QTBUGs for
+  QFile/QStandardPaths/QPluginLoader/QTimeZone, fonts, XComponent, ZINK, and Qt.platform; the platform status and underlying causes are maintained in the common knowledge base.
 ---
 
-# HarmonyOS 平台限制的 Qt adapter
+# The Qt adapter for HarmonyOS platform limitations
 
-> 来源：[HarmonyOS Platform Limitations](https://wiki.qt.io/Qt_for_HarmonyOS/platform_limitations)
-> 父 issue：[QTBUG-146618](https://bugreports.qt.io/issues/?jql=project%20%3D%20QTBUG%20AND%20parent%20%3D%20QTBUG-146618)
+> Source: [HarmonyOS Platform Limitations](https://wiki.qt.io/Qt_for_HarmonyOS/platform_limitations)
+> Parent issue: [QTBUG-146618](https://bugreports.qt.io/issues/?jql=project%20%3D%20QTBUG%20AND%20parent%20%3D%20QTBUG-146618)
 >
-> 跨框架成立的平台限制、证据边界与使用方法，以 common 的 [[ohos-common-kb/semantic/harmonyos-platform-limits|HarmonyOS 平台限制]]（[standalone 链接](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)）为准。本页保留 `QFile`、`QStandardPaths`、`QPluginLoader`、QML、Qt rendering 与 QTBUG 层面的症状和修复。
+> For platform limitations that hold across frameworks, their evidence boundaries, and how to use them, the authority is the common knowledge base's [[ohos-common-kb/semantic/harmonyos-platform-limits|HarmonyOS platform limitations]] ([standalone link](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-platform-limits.md)). This page keeps the symptoms and fixes at the `QFile`, `QStandardPaths`, `QPluginLoader`, QML, Qt rendering, and QTBUG level.
 
-## 平台限制到 Qt API 的映射
+## Mapping platform limitations to Qt APIs
 
-下表只记录 Qt 层可观察结果和 adapter；限制是否成立、平台原因、错误码和确认状态以 common 为准。
+The table below records only the observable results at the Qt layer and the adapter; whether a limitation holds, the platform-level cause, error codes, and confirmation status all come from the common knowledge base.
 
-| Qt 消费点 | Qt 层症状 | Qt adapter / 路由 | Qt 追踪 |
+| Qt consumption point | Symptom at the Qt layer | Qt adapter / routing | Qt tracking |
 |---|---|---|---|
-| `QFile::setPermissions()` | 对已有文件返回失败 | 不用它作为业务成功条件；权限需求交给平台打包契约 | [QTBUG-146619](https://bugreports.qt.io/browse/QTBUG-146619) |
-| `QFile::link()` | 无法创建应用所需链接 | 构建/打包阶段展开为真实文件，避免运行时建链接 | [QTBUG-146621](https://bugreports.qt.io/browse/QTBUG-146621) |
-| `QFileInfo` / `QStandardPaths::findExecutable()` | 系统可执行探测结果不可靠 | 不用桌面式 PATH 扫描选择程序；使用平台声明的入口 | [QTBUG-146625](https://bugreports.qt.io/browse/QTBUG-146625) |
-| Qt 文件 IO 尾随斜杠 | 与桌面错误分支不同 | Qt 业务层先规范化并验证目标路径 | [QTBUG-146578](https://bugreports.qt.io/browse/QTBUG-146578) |
-| `QFile` 包装的非阻塞流 | EOF 状态可能提前出现 | 同时检查 Qt IO 状态与底层错误，补回归测试 | [QTBUG-146579](https://bugreports.qt.io/browse/QTBUG-146579) |
-| `QTimeZone` | libc 后端无法提供完整数据 | 构建 Qt 时选用 ICU 后端并验证目标时区 | [QTBUG-146717](https://bugreports.qt.io/browse/QTBUG-146717) / [QTBUG-146559](https://bugreports.qt.io/browse/QTBUG-146559) |
-| Qt/三方 worker | 依赖线程取消的代码不可移植 | 使用 Qt interruption/cooperative cancellation | [QTBUG-146708](https://bugreports.qt.io/browse/QTBUG-146708) |
-| `QPluginLoader` / runtime `.so` | 动态插件加载失败 | 让插件随最终 HAP 的 native library 闭包交付，或固定集合时静态链接；见 [runtime-fail-dlopen-writable-path](../problems/runtime-fail-dlopen-writable-path.md) | [QTBUG-146624](https://bugreports.qt.io/browse/QTBUG-146624) |
-| Qt/三方共享库部署 | 处理后的 ELF 无法加载 | Qt 打包预检保留 loader 所需信息并验证 fresh HAP | [QTBUG-146620](https://bugreports.qt.io/browse/QTBUG-146620) |
+| `QFile::setPermissions()` | Returns failure for an existing file | Don't use it as a success condition for your feature; hand permission requirements to the platform packaging contract | [QTBUG-146619](https://bugreports.qt.io/browse/QTBUG-146619) |
+| `QFile::link()` | Can't create the link the application needs | Expand it into a real file at build/packaging time rather than creating links at runtime | [QTBUG-146621](https://bugreports.qt.io/browse/QTBUG-146621) |
+| `QFileInfo` / `QStandardPaths::findExecutable()` | System executable detection is unreliable | Don't pick programs by scanning PATH desktop-style; use the entry points the platform declares | [QTBUG-146625](https://bugreports.qt.io/browse/QTBUG-146625) |
+| Trailing slashes in Qt file IO | Different error branches than on desktop | Normalize and validate the target path in the Qt business layer first | [QTBUG-146578](https://bugreports.qt.io/browse/QTBUG-146578) |
+| Non-blocking streams wrapped by `QFile` | The EOF state can appear early | Check both the Qt IO state and the underlying error, and add regression tests | [QTBUG-146579](https://bugreports.qt.io/browse/QTBUG-146579) |
+| `QTimeZone` | The libc backend can't provide complete data | Build Qt with the ICU backend and verify the target time zones | [QTBUG-146717](https://bugreports.qt.io/browse/QTBUG-146717) / [QTBUG-146559](https://bugreports.qt.io/browse/QTBUG-146559) |
+| Qt/third-party workers | Code relying on thread cancellation isn't portable | Use Qt interruption / cooperative cancellation | [QTBUG-146708](https://bugreports.qt.io/browse/QTBUG-146708) |
+| `QPluginLoader` / runtime `.so` | Dynamic plugin loading fails | Ship plugins as part of the final HAP's native library closure, or link statically when the set is fixed; see [runtime-fail-dlopen-writable-path](../problems/runtime-fail-dlopen-writable-path.md) | [QTBUG-146624](https://bugreports.qt.io/browse/QTBUG-146624) |
+| Qt/third-party shared library deployment | A post-processed ELF won't load | Have the Qt packaging pre-check preserve what the loader needs and verify a fresh HAP | [QTBUG-146620](https://bugreports.qt.io/browse/QTBUG-146620) |
 
-## 标准路径
+## Standard paths
 
-### QStandardPaths 约束
-- `standardLocations()` 和 `writableLocation()` 返回相同单路径
-- `AppLocalDataLocation` 映射到鸿蒙 `preferencesDir`
-- **不支持**（返回空）：`PublicShareLocation`, `TemplatesLocation`, `StateLocation`, `GenericStateLocation`
-- `findExecutable()` 因 `stat()` 限制无法工作
-- **QTBUG**：[QTBUG-146625](https://bugreports.qt.io/browse/QTBUG-146625)
+### QStandardPaths constraints
+- `standardLocations()` and `writableLocation()` return the same single path
+- `AppLocalDataLocation` maps to HarmonyOS's `preferencesDir`
+- **Unsupported** (returns empty): `PublicShareLocation`, `TemplatesLocation`, `StateLocation`, `GenericStateLocation`
+- `findExecutable()` doesn't work because of `stat()` restrictions
+- **QTBUG**: [QTBUG-146625](https://bugreports.qt.io/browse/QTBUG-146625)
 
-### 资源目录
-- 路径：`<bundleCodeDir>/entry/resources/resfile`
-- 当前**无** QStandardPaths 枚举映射此路径
-- **QTBUG**：[QTBUG-146626](https://bugreports.qt.io/browse/QTBUG-146626)
+### The resource directory
+- Path: `<bundleCodeDir>/entry/resources/resfile`
+- Currently **no** QStandardPaths enumerator maps to this path
+- **QTBUG**: [QTBUG-146626](https://bugreports.qt.io/browse/QTBUG-146626)
 
-## 字体系统
+## The font system
 
-### 无等宽字体
-- **影响**：`QFontDatabase::systemFont(FixedFont)` 返回非等宽字体
-- **Workaround**：应用需自带等宽字体，用 `QFontDatabase::addApplicationFont()` 注册
-- **QTBUG**：[QTBUG-146623](https://bugreports.qt.io/browse/QTBUG-146623)
+### No monospace font
+- **Impact**: `QFontDatabase::systemFont(FixedFont)` returns a non-monospace font
+- **Workaround**: the application must bundle its own monospace font and register it with `QFontDatabase::addApplicationFont()`
+- **QTBUG**: [QTBUG-146623](https://bugreports.qt.io/browse/QTBUG-146623)
 
-## ArkUI/ArkTS API
+## ArkUI/ArkTS APIs
 
-### XComponent（ARKUI_XCOMPONENT_TYPE_SURFACE）在 API 20 弃用
-- **状态**：华为已弃用
-- **影响**：Qt 使用 ARKUI_XCOMPONENT_TYPE_SURFACE 作为 OpenGL 原生渲染表面
-- **迁移方向**：ContentSlot 组件
-- **参考**：[ContentSlot 文档](https://developer.huawei.com/consumer/en/doc/harmonyos-guides/arkts-rendering-control-contentslot)
-- **QTBUG**：[QTBUG-146622](https://bugreports.qt.io/browse/QTBUG-146622)
+### XComponent (ARKUI_XCOMPONENT_TYPE_SURFACE) is deprecated in API 20
+- **Status**: deprecated by Huawei
+- **Impact**: Qt uses ARKUI_XCOMPONENT_TYPE_SURFACE as its native OpenGL rendering surface
+- **Migration direction**: the ContentSlot component
+- **Reference**: [ContentSlot documentation](https://developer.huawei.com/consumer/en/doc/harmonyos-guides/arkts-rendering-control-contentslot)
+- **QTBUG**: [QTBUG-146622](https://bugreports.qt.io/browse/QTBUG-146622)
 
-## 参考来源
+## References
 
 - [HarmonyOS Platform Limitations](https://wiki.qt.io/Qt_for_HarmonyOS/platform_limitations)
-- [HarmonyOS MUSL 特殊符号不导出](https://developer.huawei.com/consumer/en/doc/harmonyos-references/musl-peculiar-symbol)
+- [HarmonyOS MUSL doesn't export peculiar symbols](https://developer.huawei.com/consumer/en/doc/harmonyos-references/musl-peculiar-symbol)
 
-## OpenGL / ZINK 渲染
+## OpenGL / ZINK rendering
 
-> OHOS Qt5.12 通过 Mesa ZINK（OpenGL-over-Vulkan，`NEED_OPENGL=1`）提供 OpenGL Desktop；main.cpp `QSurfaceFormat(3,2 CoreProfile)` → Qt3D 选 gl3 shader。ZINK 在 GL→Vulkan 翻译层有若干静默坑。
+> OHOS Qt 5.12 provides desktop OpenGL through Mesa ZINK (OpenGL-over-Vulkan, `NEED_OPENGL=1`); main.cpp's `QSurfaceFormat(3,2 CoreProfile)` → Qt3D selects gl3 shaders. ZINK has a few silent pitfalls in its GL→Vulkan translation layer.
 
-### glGenerateMipmap 对 RGBA8 alpha 纹理失败（mipmap 不完整→采样黑）
-- **状态**：实测确认（planets-qml 真机，2026-07-14）
-- **表现**：Qt3D/QtQuick `Texture2D` 用 **RGBA8 alpha-PNG** + `generateMipMaps:true` + `LinearMipMapLinear` 时，实体贴图**纯黑**（光照/阴影正常）；同配置下 **RGB8 JPG 正常**。hilog **无 GL 错误**（OpenGL 规范：不完整纹理按设计静默返回 `(0,0,0,1)`，不报错）
-- **原因**：ZINK 用 `vkCmdBlitImage` 实现 `glGenerateMipmap`，对 **GL_RGBA8（alpha 通道）** mipmap 生成失败/坏 mipchain → 纹理不完整 → `LinearMipMapLinear` 采样返回黑。**GL_RGB8（无 alpha）mipmap 正常**。ZINK 把 RGB8/RGBA8 都映射到 `VK_FORMAT_R8G8B8A8_UNORM`，故不对称在 GL 级 completeness/mip-blit 层，不在 VkImage 创建
-- **判别**：纯黑（而非彩色带+透明缺口）是关键——alpha-PNG 不透明区有色，若仅 blending-off 会显示彩色带；纯黑说明贴图采样返回 0 = 不完整
-- **Workaround**：alpha-PNG 实体关 mipmap（`generateMipMaps:false` + `minificationFilter:Texture.Linear`，**两者必须同时改**，否则 base-level-only 配 mipmap min filter 仍不完整→仍黑）；JPG 实体保留 mipmap。详见 [problems/render-black-rgba8-zink-mipmap](../problems/render-black-rgba8-zink-mipmap.md)
-- **关联次要缺陷**：透明实体（`opacity<1`）还需显式 `BlendEquation`+`BlendEquationArguments`+`NoDepthMask` RenderState——Qt3D 的 `opacity` 只是 shader uniform，**不会自动开 GL_BLEND**。这是独立缺陷，不是黑的成因
+### glGenerateMipmap fails for RGBA8 alpha textures (incomplete mipmaps → black sampling)
+- **Status**: confirmed by testing (planets-qml on a real device, 2026-07-14)
+- **Symptom**: when a Qt3D/QtQuick `Texture2D` uses an **RGBA8 alpha PNG** with `generateMipMaps:true` and `LinearMipMapLinear`, the entity's texture renders **pure black** (lighting/shadows are fine); the same configuration with an **RGB8 JPG works**. hilog shows **no GL errors** (per the OpenGL spec, an incomplete texture silently returns `(0,0,0,1)` by design rather than raising an error)
+- **Cause**: ZINK implements `glGenerateMipmap` with `vkCmdBlitImage`, and mipmap generation for **GL_RGBA8 (with an alpha channel)** fails or produces a broken mip chain → the texture is incomplete → `LinearMipMapLinear` sampling returns black. **GL_RGB8 (no alpha) mipmaps work fine.** ZINK maps both RGB8 and RGBA8 to `VK_FORMAT_R8G8B8A8_UNORM`, so the asymmetry lives at the GL-level completeness/mip-blit layer, not in VkImage creation
+- **How to tell**: pure black (rather than a colored band with transparent gaps) is the key signal — an alpha PNG's opaque regions have color, so blending being off alone would show a colored band; pure black means texture sampling returned 0 = incomplete
+- **Workaround**: turn off mipmaps for alpha-PNG entities (`generateMipMaps:false` + `minificationFilter:Texture.Linear` — **both must change**, since base-level-only with a mipmap min filter is still incomplete and still black); keep mipmaps for JPG entities. See [problems/render-black-rgba8-zink-mipmap](../problems/render-black-rgba8-zink-mipmap.md)
+- **A related secondary defect**: transparent entities (`opacity<1`) also need explicit `BlendEquation` + `BlendEquationArguments` + `NoDepthMask` RenderStates — Qt3D's `opacity` is just a shader uniform and **doesn't enable GL_BLEND automatically**. That's an independent defect, not the cause of the black rendering
 
-### Qt.platform.os 在 OHOS 返回 "linux"（不是 "ohos"）
-- **状态**：源码确认
-- **原因**：`qsystemdetection.h:115-117` 同时定义 `Q_OS_OHOS` 和 `Q_OS_LINUX`（同 Android 模式）；`qqmlplatform.cpp` 无 `Q_OS_OHOS` 分支 → 落回 `Q_OS_LINUX` → `Qt.platform.os` 返回 **"linux"**
-- **影响**：QML 里用 `Qt.platform.os === "ohos"` 守卫会**永不触发**（静默 bug）
-- **Workaround**：QML 检测 OHOS 用 `Qt.platform.pluginName === "ohos"`（QPA 插件 key 是 "ohos"，经 `Qt.platform.pluginName` 暴露）
+### Qt.platform.os returns "linux" on OHOS (not "ohos")
+- **Status**: confirmed in the source
+- **Cause**: `qsystemdetection.h:115-117` defines both `Q_OS_OHOS` and `Q_OS_LINUX` (the same pattern as Android); `qqmlplatform.cpp` has no `Q_OS_OHOS` branch → it falls through to `Q_OS_LINUX` → `Qt.platform.os` returns **"linux"**
+- **Impact**: a QML guard like `Qt.platform.os === "ohos"` will **never fire** (a silent bug)
+- **Workaround**: detect OHOS in QML with `Qt.platform.pluginName === "ohos"` (the QPA plugin key is "ohos", exposed through `Qt.platform.pluginName`)

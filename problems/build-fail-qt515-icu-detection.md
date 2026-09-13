@@ -8,17 +8,17 @@ status: open
 created: 2026-08-06
 updated: 2026-08-09
 summary: >
-  Qt5.15 OHOS configure 阶段 ICU 检测失败（ICU=no、ures.h not found、UCNV_FROM_U_CALLBACK_SUBSTITUTE 未声明），因 sysroot 仅含 stub libicu.so 缺完整 ICU 三件套（libicui18n/libicuuc/libicudata）；解法：升级 SDK 到 26.0.0.32+ 或打 qtbase configure.json 补丁补 OHOS 专用 ICU 源。
+  ICU detection fails during the Qt 5.15 OHOS configure stage (ICU=no, ures.h not found, UCNV_FROM_U_CALLBACK_SUBSTITUTE undeclared) because the sysroot only contains a stub libicu.so and lacks the full ICU trio (libicui18n/libicuuc/libicudata). Fix: upgrade the SDK to 26.0.0.32+, or patch qtbase's configure.json to add an OHOS-specific ICU source.
 error_message: "unable to find library -licui18n / ICU=no / ures.h not found / UCNV_FROM_U_CALLBACK_SUBSTITUTE undeclared"
 related_problems: [problem-build-fail-qtnetwork-no-ssl]
 audience: public
 ---
 
-# Qt5.15 OHOS ICU 检测失败
+# Qt 5.15 OHOS ICU detection failure
 
-## 症状
+## Symptoms
 
-Qt5.15.16 OHOS 源码编译 configure 阶段，ICU 检测失败：
+During the configure stage of building the Qt 5.15.16 OHOS source, ICU detection fails:
 
 ```
 Checking for ICU...
@@ -31,27 +31,27 @@ Checking for ICU...
 ICU .................................... no
 ```
 
-后续编译报错：
+The subsequent build then reports:
 ```
 error: 'ures.h' file not found
 error: use of undeclared identifier 'UCNV_FROM_U_CALLBACK_SUBSTITUTE'
 ```
 
-## 原因
+## Cause
 
-OHOS sysroot 只合并了 stub `libicu.so`（单文件，不含 `libicui18n` / `libicuuc` / `libicudata` 三件套），导致 Qt5 configure 的 ICU 检测脚本找不到 ICU 库。
+The OHOS sysroot only merges in a stub `libicu.so` (a single file, without the `libicui18n` / `libicuuc` / `libicudata` trio), so Qt 5's configure ICU detection script can't find the ICU libraries.
 
-同时 `ures.h`（ICU 资源文件头）和 `UCNV_FROM_U_CALLBACK_SUBSTITUTE`（ICU 转换器回调）在 sysroot 中缺失，即使强制启用 ICU 也会在编译期报错。
+At the same time, `ures.h` (the ICU resource-file header) and `UCNV_FROM_U_CALLBACK_SUBSTITUTE` (an ICU converter callback) are missing from the sysroot, so even force-enabling ICU produces build errors.
 
-## 解决方案
+## Solution
 
-### 方案 A：升级 OHOS SDK（推荐）
+### Option A: upgrade the OHOS SDK (recommended)
 
-升级 SDK 到 26.0.0.32 或更新版本，新版 sysroot 包含完整 ICU 三件套。
+Upgrade the SDK to 26.0.0.32 or newer; the newer sysroot contains the complete ICU trio.
 
-### 方案 B：configure.json 打补丁
+### Option B: patch configure.json
 
-修改 `qtbase/src/corelib/configure.json`，为 ICU 检测添加 OHOS 专用源：
+Edit `qtbase/src/corelib/configure.json` to add an OHOS-specific source to the ICU detection:
 
 ```json
 {
@@ -71,9 +71,9 @@ OHOS sysroot 只合并了 stub `libicu.so`（单文件，不含 `libicui18n` / `
 }
 ```
 
-### 方案 C：qcollator 守卫 ures.h
+### Option C: guard ures.h in qcollator
 
-在 `qtbase/src/corelib/text/qcollator_icu.cpp` 中守卫 `ures.h` 和 `UCNV_FROM_U_CALLBACK_SUBSTITUTE`：
+In `qtbase/src/corelib/text/qcollator_icu.cpp`, guard `ures.h` and `UCNV_FROM_U_CALLBACK_SUBSTITUTE`:
 
 ```cpp
 #if defined(Q_OS_OHOS)
@@ -83,14 +83,14 @@ OHOS sysroot 只合并了 stub `libicu.so`（单文件，不含 `libicui18n` / `
 #endif
 ```
 
-## 影响范围
+## Scope of impact
 
-- Qt5.15.16 OHOS 源码编译（Qt5.12 SDK 预编译版不受影响）
-- 影响 `QCollator`（locale-aware 字符串排序）和 `QTimeZone`（时区数据）功能
-- 如果 ICU=no，这两个功能会 fallback 到非 ICU 实现
+- Building the Qt 5.15.16 OHOS source (the prebuilt Qt 5.12 SDK is unaffected)
+- Affects `QCollator` (locale-aware string collation) and `QTimeZone` (time zone data)
+- If ICU=no, both of those fall back to non-ICU implementations
 
-## 经验教训
+## Lessons learned
 
-- OHOS sysroot 的 ICU stub 是 **合并 stub**（单 .so），不是标准的三件套（icui18n/icuuc/icudata）
-- 升级 SDK 版本可能引入新的枚举偏差（见 `build-fail-ohos-sdk-enum-werror`），需同步处理
-- configure 检测失败不一定代表库不存在，可能是 sysroot 布局与标准 Linux 不同
+- The OHOS sysroot's ICU stub is a **merged stub** (a single .so), not the standard trio (icui18n/icuuc/icudata)
+- Upgrading the SDK version may introduce new enum discrepancies (see `build-fail-ohos-sdk-enum-werror`), which need to be handled at the same time
+- A configure detection failure doesn't necessarily mean the library is absent — the sysroot layout may just differ from standard Linux
