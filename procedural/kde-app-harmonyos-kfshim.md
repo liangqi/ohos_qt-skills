@@ -126,6 +126,15 @@ EOF
 | `KAcceleratorManager` | no-op |
 | `Kdelibs4ConfigMigrator` | 上游通常已被 `QT_VERSION < 6` 包住，直接不管 |
 
+> **把 shim 做成独立库，别 vendor 进应用**：shim 与具体应用无关，做成一个独立
+> git 仓库（`add_library(kfshim STATIC ...)` + `target_include_directories(... PUBLIC include)`），
+> 应用侧 `add_subdirectory()` 即可。理由很实际——§坑 1 那种缺陷一旦在两份拷贝之间分叉，
+> 就是"A 应用修好了、B 应用还在静默丢设置"。
+>
+> 库化时要把 shim 里的应用名硬编码拔掉：KF 的 `KStandardAction::preferences` 文案本来就是
+> `i18n("&Configure %1...", componentName)`，shim 照做即可（取 `applicationDisplayName()`，
+> 回退 `applicationName()`）；`KLocalizedString::applicationDomain()` 未设置时也回退到应用名。
+
 ### 4. 替代 kconfig_compiler
 
 `kconfig_add_kcfg_files()` 从 `.kcfg` + `.kcfgc` 生成设置类。写个脚本产出**同名访问器**的类，
@@ -139,6 +148,13 @@ EOF
 - `<min>` / `<max>`（在 setter 里 clamp）
 - `<parameter>` 索引项（`nameConstant$(ConstIndex)` → `setNameConstant(int i, ...)`）
 - `.kcfgc` 的 `Singleton` / `Mutators` / `UseEnumTypes`
+
+再包一个 CMake 函数对齐 KDE 的用法，应用侧调用形态就完全一致：
+
+```cmake
+# 对标 KDE 的 kconfig_add_kcfg_files()
+kfshim_add_kcfg_files(myapp myapp.kcfg myapp_settings.kcfgc)
+```
 
 两个生成细节：
 
@@ -187,6 +203,10 @@ find_library(GMP_LIBRARY NAMES gmp PATHS "${PREFIX}/lib" NO_DEFAULT_PATH NO_CMAK
 - **`createGUI()` 产出的菜单栏顺序**（见 §坑 2）
 
 > 如果上游 `main()` 在同一个 .cpp 里，用 `#ifndef APP_NO_MAIN` 包住，测试目标就能链接主窗口类。
+
+shim 库本身还应带一份**不依赖任何应用**的自测：自带一个小 `.kcfg`、一个 `.rc`、
+一个手搓的设置页，覆盖上面四类断言。这样换下一个应用时，先跑库自测就能把"是 shim 的问题
+还是新应用的问题"分开。
 
 真机验证按 [[qt-ohos-run-test]]；打包/签名/依赖闭包按 [[gallery-qt6-harmonyos-port]]。
 
@@ -291,7 +311,7 @@ Q_PROPERTY(QColor color READ color WRITE setColor NOTIFY changed USER true)
 | 平台条件代码 | 全工程**无任何 `Q_OS_*` 分支**，移植也没新增 |
 | 原生依赖 | GMP 6.3.0 + MPFR 4.2.2 交叉编译为静态 PIC 库 |
 | HAP | 104.5 MB；27 个 .so，依赖闭包 **0 未解析** |
-| 自测 | host 离屏 16 项全过（含 42 个 `kcfg_` 控件全绑定） |
+| 自测 | 应用侧 host 离屏 16 项全过（含 42 个 `kcfg_` 控件全绑定）；shim 库另带 24 项独立自测 |
 | **真机** | ✅ HUAWEI HAD-W32 / HarmonyOS 6.1.0(API 24)：渲染正常、深色模式跟随系统、`ohos` style 生效、原生标题栏；`7×8=56` 且 Hex 38 / Oct 70 / Bin 111000 正确；设置跨进程持久化正确回写 |
 
 `QRegExp`→`QRegularExpression` 有个容易漏的语义差：
