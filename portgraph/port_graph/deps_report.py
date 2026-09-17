@@ -63,7 +63,8 @@ WIN32_SYSTEM_LIBS = {
     "d3d9", "d3d11", "dwmapi", "shlwapi", "comctl32", "comdlg32",
     "imm32", "wininet", "winhttp", "crypt32", "secur32", "netapi32",
     "psapi", "version", "iphlpapi", "powrprof", "setupapi", "strmiids",
-    "avifil32", "mfplat", "mfuuid", "strmbase", "strmbasd",
+    "avifil32", "mfplat", "mfuuid", "strmbase", "strmbasd", "wtsapi32",
+    "windowsapp", "delayimp", "opengl32", "glu32", "wintrust", "shcore",
 }
 
 # -l 链接名 → 常见包名对齐（hb 包名口径）
@@ -192,18 +193,27 @@ def _check_req(version_req: Optional[str], available: Optional[str]) -> str:
 def _resolve(conn, name: str) -> Optional[Dict]:
     """包名（find_package/pkg-config/include 线索）→ 已入库包节点。
 
-    pkg-config 模块名常省略 lib 前缀（xkbcommon vs libxkbcommon），
-    未命中时补/去 lib 前缀再试，减少同库异名重复条目。
+    近似对齐依次尝试：原名 / 补 lib 前缀（xkbcommon→libxkbcommon）/
+    去 lib 前缀 / 去 pkg-config 版本后缀（glib-2.0→glib）及其组合。
     """
     if conn is None:
         return None
     name = name.lower()
-    node = kb_seed.resolve_package(conn, name)
-    if node is None and not name.startswith("lib"):
-        node = kb_seed.resolve_package(conn, "lib" + name)
-    if node is None and name.startswith("lib"):
-        node = kb_seed.resolve_package(conn, name[3:])
-    return node
+    stripped = re.sub(r"-\d+(\.\d+)*$", "", name)
+    cands = [name]
+    if not name.startswith("lib"):
+        cands.append("lib" + name)
+    if name.startswith("lib"):
+        cands.append(name[3:])
+    if stripped != name:
+        cands.append(stripped)
+        if not stripped.startswith("lib"):
+            cands.append("lib" + stripped)
+    for cand in cands:
+        node = kb_seed.resolve_package(conn, cand)
+        if node:
+            return node
+    return None
 
 
 def _artifact_of(node: Optional[Dict]) -> Optional[Dict]:
@@ -438,6 +448,77 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
         if note:
             e["ohos_note"] = "KDE Frameworks 组件，需源码交叉编译；" + note
 
+    # ---- 6b) 裸链接名（target_link_libraries / find_library /
+    #          cc.find_library / AC_CHECK_LIB）：不经 find_package 的直接链接
+    for rl in info.get("raw_libs", []):
+        n = rl["name"]
+        ev = "%s (%s)" % ("+".join(rl.get("hows", [])),
+                          rl["evidence"][0] if rl.get("evidence") else "?")
+        if n.lower() in OHOS_SYSTEM_LIBS:
+            e = link.add(n, kind="system-lib", evidence=ev)
+            e["ohos_note"] = OHOS_SYSTEM_LIBS[n.lower()]
+        elif n.lower() in WIN32_SYSTEM_LIBS:
+            e = link.add(n, kind="win32-system-lib", required=False, evidence=ev)
+            e["ohos_note"] = "Windows 系统库：通常位于 win32 平台块，鸿蒙不适用"
+        elif n.lower() in INTERFACE_BOUND_PACKAGES:
+            e = link.add(n, kind="platform-iface", evidence=ev)
+            e["ohos_note"] = INTERFACE_BOUND_PACKAGES[n.lower()]
+        else:
+            aliased = LIB_NAME_ALIASES.get(n.lower())
+            e = link.add(aliased or n, evidence=ev)
+            e.setdefault("ohos_note",
+                         "裸链接名（无 find_package/pkg-config 声明），"
+                         "产物可得性以名称对齐结果为准")
+
+    # ---- 6c) macOS 框架（-framework X）
+    for fw in info.get("macos_frameworks", []):
+        e = link.add(fw["name"], kind="platform-iface", required=False,
+                     evidence="-framework %s (%s)" % (
+                         fw["name"], fw["evidence"][0] if fw.get("evidence") else "?"))
+        e["ohos_note"] = "macOS 框架：位于 APPLE 平台块，鸿蒙不适用"
+
+    # ---- 6d) qmake PKGCONFIG +=
+    for pc in info.get("qmake_pkgconfig", []):
+        link.add(pc["name"],
+                 evidence="qmake PKGCONFIG += %s (%s)" % (
+                     pc["name"], pc["evidence"][0] if pc.get("evidence") else "?"))
+
+    # ---- 6e) meson dependency('name', version: ...)
+    for md in info.get("meson_deps", []):
+        n = md["name"]
+        if n.lower() in CMAKE_BUILTIN_PACKAGES:
+            spec = CMAKE_BUILTIN_PACKAGES[n.lower()]
+            e = link.add(n, kind=spec["kind"],
+                         required=md.get("required", True),
+                         evidence="meson dependency('%s') %s" % (
+                             n, md["evidence"][0] if md.get("evidence") else ""))
+            e["ohos_note"] = spec["note"]
+            continue
+        if n.lower() in INTERFACE_BOUND_PACKAGES:
+            e = link.add(n, kind="platform-iface", required=md.get("required", True),
+                         evidence="meson dependency('%s') %s" % (
+                             n, md["evidence"][0] if md.get("evidence") else ""))
+            e["ohos_note"] = INTERFACE_BOUND_PACKAGES[n.lower()]
+        else:
+            link.add(n, required=md.get("required", True),
+                     version_req=md.get("version"),
+                     evidence="meson dependency('%s'%s) %s" % (
+                         n, " %s" % md["version"] if md.get("version") else "",
+                         md["evidence"][0] if md.get("evidence") else ""))
+
+    # ---- 6f) autotools PKG_CHECK_MODULES（含版本约束）
+    for ad in info.get("autotools_deps", []):
+        n = ad["name"]
+        if n.lower() in INTERFACE_BOUND_PACKAGES:
+            e = link.add(n, kind="platform-iface",
+                         evidence="PKG_CHECK_MODULES %s" % n)
+            e["ohos_note"] = INTERFACE_BOUND_PACKAGES[n.lower()]
+        else:
+            link.add(n, version_req=ad.get("version_req"),
+                     evidence="PKG_CHECK_MODULES(%s%s) %s" % (
+                         n, " %s" % ad["version_req"] if ad.get("version_req") else "",
+                         ad["evidence"][0] if ad.get("evidence") else ""))
+
     # ---- 7) 解析产物 + 版本检查 + 传递 runtime
     runtime_book: Dict[str, Dict] = {}
     link_list = link.values()
@@ -526,6 +607,7 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
 
     # ---- 10) 工具链
     toolchain_info = info.get("toolchain", {})
+    meson_info = info.get("meson", {})
     tools = []
     for tool, hows in sorted(toolchain_info.get("tools", {}).items()):
         tools.append({"tool": tool, "how": hows[:3],
@@ -537,6 +619,12 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                       "provided_by": bt["provided_by"],
                       "note": bt["note"]})
     cxx_std = toolchain_info.get("cxx_standard")
+    if meson_info.get("cxx_standard"):
+        cxx_std = max(cxx_std or 0, meson_info["cxx_standard"])
+    if meson_info.get("version_min"):
+        tools.append({"tool": "meson", "how": [">= %s（meson_version）"
+                                               % meson_info["version_min"]],
+                      "provided_by": "host"})
     toolchain = {
         "cmake_min": toolchain_info.get("cmake_min"),
         "cxx_standard": cxx_std,
@@ -551,7 +639,7 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                 "不部署到设备；Qt 工具（moc/uic/rcc）随 Qt SDK 自动调用",
     }
 
-    # ---- 11) vendored
+    # ---- 11) vendored（submodule / vendored 目录 / FetchContent 等配置期拉取）
     vendored = [{"name": gm.get("name") or gm.get("path"),
                  "path": gm.get("path"), "url": gm.get("url"),
                  "note": "submodule：随项目编译，锁定提交在仓库内"}
@@ -559,6 +647,29 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
     vendored.extend({"name": d, "path": d, "url": None,
                      "note": "vendored 目录：随项目一起编译"}
                     for d in info.get("vendored_dirs", []))
+    vendored.extend({"name": fd["name"], "path": None, "url": fd.get("url"),
+                     "tag": fd.get("tag"),
+                     "note": "%s：configure 阶段拉取源码随项目编译%s" % (
+                         fd["how"],
+                         "，锁定 %s" % fd["tag"] if fd.get("tag") else "")}
+                    for fd in info.get("fetched_deps", []))
+    vendored.extend({"name": sp, "path": "subprojects/%s" % sp, "url": None,
+                     "note": "meson subproject：随项目一起编译"}
+                    for sp in meson_info.get("subprojects", []))
+
+    # ---- 11b) 环境依赖（CI / 安装脚本 apt/brew/pacman install 清单）
+    env_deps = []
+    for env in info.get("env_installs", []):
+        raw_name = env["name"]
+        # 发行版包名 → 库名近似（libfoo-dev → foo）
+        cand = re.sub(r"-dev$", "", raw_name)
+        if cand.startswith("lib") and len(cand) > 3:
+            cand = cand[3:]
+        node = _resolve(conn, cand) or _resolve(conn, raw_name)
+        env_deps.append({
+            "name": raw_name, "resolved_node": node["id"] if node else None,
+            "available_version": node["version"] if node else None,
+            "evidence": env.get("evidence", [])[:2]})
 
     # ---- 12) Qt 版本满足性
     qt_check = None
@@ -611,6 +722,27 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
             "msg": "Qt 版本要求 %s 高于 Qt for HarmonyOS 可用版本（%s）"
                    % (qt_min, "/".join(QT_OHOS_AVAILABLE.get(str(qt_major), ())))})
 
+    # ---- 13b) 环境清单交叉核对：CI 安装但构建文件未声明的库名（潜在漏检）
+    link_names = {e["name"].lower() for e in link_list}
+    link_names.update(m["module"] for m in qt_modules)
+    for ed in env_deps:
+        cand = re.sub(r"-dev$", "", ed["name"].lower())
+        if cand.startswith("lib") and len(cand) > 3:
+            cand = cand[3:]
+        if (ed["resolved_node"] is None and cand
+                and cand not in link_names
+                and not cand.startswith(("qt", "kf", "lxqt", "build-essential"))
+                and cand not in {"meson", "ninja", "cmake", "git", "g++",
+                                 "gcc", "pkg-config", "gettext", "ccache",
+                                 "create-dmg", "flatpak", "flatpak-builder",
+                                 "fakeroot", "devscripts", "debhelper",
+                                 "asciidoctor", "python3"}):
+            warnings.append({
+                "level": "info",
+                "msg": "CI 脚本安装了 %s 但构建文件未声明：可能经变量引用/自"
+                       "定义 Find 模块引入（补查），或仅为构建机工具"
+                       % ed["name"]})
+
     report = {
         "project": {
             "name": info["name"], "root": str(root),
@@ -633,6 +765,7 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
         "dynamic_loads": dynamic_loads,
         "test_deps": test_deps,
         "vendored": vendored,
+        "env_deps": env_deps,
         "counts": {
             "link": len(link_list),
             "runtime": len(runtime_book),
@@ -640,6 +773,7 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
             "build_tools": len(build_tools) + len(tools),
             "test": len(test_deps),
             "vendored": len(vendored),
+            "env": len(env_deps),
             "qt_modules": len(qt_modules),
         },
         "warnings": warnings,
@@ -765,6 +899,18 @@ def render_text(report: Dict) -> str:
         for e in report["vendored"]:
             lines.append("  • %s (%s)%s" % (e["name"], e["note"],
                                             " %s" % e["url"] if e.get("url") else ""))
+
+    env = report.get("env_deps", [])
+    if env:
+        lines.append("")
+        lines.append("── 环境依赖 (env, CI/脚本安装) %d 个：构建机环境清单，"
+                     "交叉核对信源 ──" % len(env))
+        for e in env[:25]:
+            res = ("→ %s v%s" % (e["resolved_node"], e["available_version"])
+                   if e.get("resolved_node") else "（未匹配到已知包）")
+            lines.append("  • %s %s" % (e["name"], res))
+        if len(env) > 25:
+            lines.append("  … 另有 %d 个" % (len(env) - 25))
 
     if report["warnings"]:
         lines.append("")

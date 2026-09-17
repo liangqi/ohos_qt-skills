@@ -112,14 +112,16 @@ python portgraph.py deps flameshot
 
 | 角色 | 含义 | 示例 |
 |---|---|---|
-| link | 项目期望获取到编译产物的依赖（目标侧 headers+libs） | `find_package(ZLIB 1.2 REQUIRED)` |
-| build-tool | 编译器/构建工具依赖（构建机运行，不部署） | cmake≥3.16 / C++17 / protoc / ECM |
+| link | 项目期望获取到编译产物的依赖（目标侧 headers+libs） | `find_package(ZLIB 1.2 REQUIRED)`、`target_link_libraries` 裸名、`find_library`、meson `dependency()`、autotools `PKG_CHECK_MODULES` |
+| build-tool | 编译器/构建工具依赖（构建机运行，不部署） | cmake≥3.16 / C++17 / protoc / ECM / meson≥0.53 |
 | runtime | 运行时依赖（设备侧 .so：传递闭包 + dlopen/QLibrary） | ffmpeg 的 14 个传递依赖 |
 | test | 测试专用，不进发行包 | GTest / Catch2 |
-| vendored | 项目内自带源码（.gitmodules / 3rdparty/） | dep/spdlog |
+| vendored | 项目内自带源码（.gitmodules / 3rdparty/ / FetchContent） | dep/spdlog、qtColorWidgets（GIT_TAG 锁定） |
+| env | CI/脚本安装的环境清单（交叉核对信源） | `apt install libkeyutils-dev` |
 
-每个依赖附版本范围（find_package 最低版本 / pkg-config 约束 / conan 范围）
-与鸿蒙产物可得性、版本满足性检查（satisfied / conflict）。
+每个依赖附版本范围（find_package 最低版本 / pkg-config·meson·autotools
+约束 / conan 范围）与鸿蒙产物可得性、版本满足性检查（satisfied / conflict）。
+18 类声明信号的覆盖全景图见 docs/deps-report.md。
 
 ### 获取交叉编译依赖（非鸿蒙平台）
 
@@ -247,7 +249,7 @@ portgraph/
 
 ```bash
 cd portgraph
-python -m unittest discover -s tests -v    # 28 项：解析器/引擎/守卫/闭包/提取
+python -m unittest discover -s tests -v    # 35 项：解析器/引擎/守卫/闭包/提取/全形式依赖声明
 ```
 
 ## 已知限制

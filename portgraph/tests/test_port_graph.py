@@ -650,5 +650,133 @@ int main() {
         conn.close()
 
 
+class TestDepsFullForms(unittest.TestCase):
+    """第二轮增强：tll 裸名 / find_library / -framework / FetchContent /
+    qmake PKGCONFIG / meson / autotools / CI 脚本安装。"""
+
+    CMAKE = """
+cmake_minimum_required(VERSION 3.16)
+project(Full)
+add_library(internal STATIC src/x.cpp)
+add_executable(fullapp src/main.cpp)
+find_library(KEYUTILS_LIBRARIES NAMES keyutils REQUIRED)
+target_link_libraries(fullapp PRIVATE internal z ssl Qt5::Core
+  ${BOTAN_LIBRARIES} -lpthread
+  "-framework Foundation -framework AppKit"
+  Wtsapi32.lib
+)
+FetchContent_Declare(qhotkey
+  GIT_REPOSITORY https://github.com/Skycoder42/QHotkey.git
+  GIT_TAG v1.1.0
+)
+"""
+
+    MESON = """
+project('m', 'cpp', meson_version: '>= 0.53',
+        default_options: ['cpp_std=gnu++17'])
+glib_dep = dependency('glib-2.0', version: '>= 2.36', required: true)
+opt_dep = dependency('gtk+-3.0', required: false)
+m_dep = cc.find_library('m')
+qt_dep = dependency('qt5', modules: ['Core', 'Widgets'])
+"""
+
+    CONFIGURE_AC = """
+PKG_CHECK_MODULES([FOO], [zlib >= 1.2 libcurl])
+AC_CHECK_LIB([m], [sqrt])
+"""
+
+    def _project(self, tmp: Path):
+        root = tmp / "full"
+        (root / "src").mkdir(parents=True)
+        (root / ".github" / "workflows").mkdir(parents=True)
+        (root / "CMakeLists.txt").write_text(self.CMAKE, encoding="utf-8")
+        (root / "app.pro").write_text(
+            "QT += core\nPKGCONFIG += libqrencode\n", encoding="utf-8")
+        (root / "meson.build").write_text(self.MESON, encoding="utf-8")
+        (root / "configure.ac").write_text(self.CONFIGURE_AC,
+                                           encoding="utf-8")
+        (root / ".github" / "workflows" / "ci.yml").write_text(
+            "run: sudo apt install cmake libkeyutils-dev zlib1g-dev\n",
+            encoding="utf-8")
+        return root
+
+    def test_scanner_extractions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            info = qt_scanner.scan_project(root)
+            raw = {e["name"].lower(): e for e in info["raw_libs"]}
+            # tll 裸名 / find_library / -l / .lib 归一
+            for n in ("z", "ssl", "keyutils", "pthread", "wtsapi32"):
+                self.assertIn(n, raw, "raw_libs missing %s" % n)
+            self.assertNotIn("internal", raw)      # 项目内目标排除
+            self.assertNotIn("qt5::core", raw)     # 导入目标排除
+            self.assertNotIn("botan_libraries", raw)
+            # find_library 归入 raw_libs
+            self.assertIn("find_library", raw["keyutils"]["hows"])
+            # macOS 框架
+            fw = {f["name"] for f in info["macos_frameworks"]}
+            self.assertEqual(fw, {"Foundation", "AppKit"})
+            # FetchContent：名称/URL/锁定 tag
+            self.assertEqual(len(info["fetched_deps"]), 1)
+            fd = info["fetched_deps"][0]
+            self.assertEqual(fd["name"], "qhotkey")
+            self.assertEqual(fd["how"], "FetchContent")
+            self.assertEqual(fd["tag"], "v1.1.0")
+            # qmake PKGCONFIG
+            self.assertEqual([p["name"] for p in info["qmake_pkgconfig"]],
+                             ["libqrencode"])
+            # meson：版本要求 / optional / 内置 qt 模块 / cc.find_library
+            md = {d["name"]: d for d in info["meson_deps"]}
+            self.assertEqual(md["glib-2.0"]["version"], ">= 2.36")
+            self.assertFalse(md["gtk+-3.0"]["required"])
+            self.assertEqual(info["meson"]["version_min"], "0.53")
+            self.assertEqual(info["meson"]["cxx_standard"], 17)
+            self.assertIn("core", info["qt_modules"])
+            self.assertIn("widgets", info["qt_modules"])
+            self.assertIn("m", raw)              # cc.find_library 并入 raw_libs
+            # autotools：PKG_CHECK_MODULES 版本约束
+            ad = {d["name"]: d for d in info["autotools_deps"]}
+            self.assertEqual(ad["zlib"]["version_req"], ">= 1.2")
+            self.assertIn("libcurl", ad)
+            # CI 脚本安装
+            env = {e["name"] for e in info["env_installs"]}
+            self.assertEqual(env, {"cmake", "libkeyutils-dev",
+                                   "zlib1g-dev"})
+
+    def test_report_full_forms(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:glib", "package", "glib", "harmonybrew",
+                           "ported", version="2.84.4")
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            # meson 版本约束 + 满足性检查（2.84.4 >= 2.36）
+            self.assertEqual(link["glib-2.0"]["version_req"], ">= 2.36")
+            self.assertEqual(link["glib-2.0"]["version_check"], "satisfied")
+            # macOS 框架 → platform-iface
+            self.assertEqual(link["foundation"]["kind"], "platform-iface")
+            # .lib → win32-system-lib
+            self.assertEqual(link["wtsapi32"]["kind"], "win32-system-lib")
+            # -pthread / z / ssl → 系统库
+            self.assertEqual(link["z"]["kind"], "system-lib")
+            self.assertEqual(link["pthread"]["kind"], "system-lib")
+            # FetchContent → vendored（含锁定 tag）
+            vend = {v["name"]: v for v in report["vendored"]}
+            self.assertEqual(vend["qhotkey"]["tag"], "v1.1.0")
+            # autotools 版本约束
+            self.assertEqual(link["zlib"]["version_req"], ">= 1.2")
+            # env 清单
+            names = {e["name"] for e in report["env_deps"]}
+            self.assertIn("libkeyutils-dev", names)
+            # 工具链：meson 最低版本
+            tools = {t["tool"] for t in report["toolchain"]["tools"]}
+            self.assertIn("meson", tools)
+            self.assertEqual(report["toolchain"]["cxx_standard"], 17)
+            conn.close()
+
+
 if __name__ == "__main__":
     unittest.main()
