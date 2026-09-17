@@ -7,6 +7,9 @@ KDE Frameworks 组件、第三方库）与平台接口使用（Win32/Cocoa/X11/A
 **独立项目**：无外部知识库依赖。Qt 模块支持矩阵 vendored 在 `data/`，
 工程预扫描器 vendored 在 `port_graph/qt_scanner.py`。
 
+> 给别人讲清楚这个模块？先看 **[OVERVIEW.md](OVERVIEW.md)**（一页纸：
+> 解决什么问题 + 架构图），再回本文档查 CLI 细节。
+
 ---
 
 ## 架构
