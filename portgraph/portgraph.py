@@ -7,6 +7,7 @@
     python tools/portgraph.py clone <git-url>      # shallow clone + 扫描入库
     python tools/portgraph.py scan <project-path>  # 扫描 Qt 工程生成 app 节点
     python tools/portgraph.py analyze <app-id|name># 可移植性判定 + 阻塞点
+    python tools/portgraph.py deps <path|app>      # 综合依赖分析（分类+版本范围）
     python tools/portgraph.py fetch "zlib,openssl@3"  # 下载指定包的鸿蒙 bottle
     python tools/portgraph.py fetch-deps tdesktop    # 一键下载应用全部依赖产物
     python tools/portgraph.py stats                # 数据统计
@@ -294,7 +295,9 @@ def cmd_fetch_deps(args) -> None:
 
         m = deps_fetch.fetch_app_deps(
             conn, app_id, out, force=getattr(args, "force", False),
-            dry_run=getattr(args, "dry_run", False), progress=on_entry)
+            dry_run=getattr(args, "dry_run", False),
+            # --json 时 stdout 只输出 manifest（进度打印会污染机器解析）
+            progress=None if getattr(args, "json", False) else on_entry)
 
         if getattr(args, "json", False):
             _emit(m, args)
@@ -311,6 +314,39 @@ def cmd_fetch_deps(args) -> None:
             print("\nmanifest: %s" % m["manifest_path"])
         if s.get("failed"):
             sys.exit(1)
+    finally:
+        conn.close()
+
+
+def cmd_deps(args) -> None:
+    """综合依赖分析：link/build-tool/runtime/test/vendored 分类 + 版本范围。
+
+    见 docs/deps-report.md。target 为项目路径或已扫描应用名。
+    """
+    from port_graph import deps_report, qt_scanner
+    conn = db.connect()
+    db.init_db(conn)
+    try:
+        target = args.target
+        root = None
+        if Path(target).is_dir():
+            root = Path(target)
+        else:
+            app_id = _resolve_app(conn, target)
+            root_path = db.get_meta(conn, "root_%s" % app_id)
+            if not root_path or not Path(root_path).is_dir():
+                print("[portgraph] 未找到 %s 的项目路径：先用 scan/clone 入库，"
+                      "或直接传项目路径" % target)
+                sys.exit(1)
+            root = Path(root_path)
+        info = qt_scanner.scan_project(root)
+        # 顺手入库（幂等）：让 analyze/fetch-deps 随后可用同一目标
+        project_scanner.scan_project(conn, root, info=info)
+        report = deps_report.analyze_dependencies(conn, root, info=info)
+        if getattr(args, "json", False):
+            _emit(report, args)
+        else:
+            print(deps_report.render_text(report))
     finally:
         conn.close()
 
@@ -354,6 +390,14 @@ def main() -> None:
     p.add_argument("app")
     p.add_argument("--summary", action="store_true")
     p.set_defaults(func=cmd_analyze)
+
+    p = sub.add_parser(
+        "deps", help="综合依赖分析（link/build-tool/runtime/test/vendored "
+                     "分类 + 版本范围 + 产物可得性，见 docs/deps-report.md）")
+    p.add_argument("target", help="项目路径或已扫描应用名（如 tdesktop）")
+    p.add_argument("--json", action="store_true",
+                   help="输出完整报告 JSON（机器可读，供 agent 解析）")
+    p.set_defaults(func=cmd_deps)
 
     p = sub.add_parser("stats", help="数据统计")
     p.set_defaults(func=cmd_stats)

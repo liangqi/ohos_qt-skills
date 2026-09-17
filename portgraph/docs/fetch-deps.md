@@ -65,11 +65,16 @@ manifest 中每个依赖条目带 `status`，agent 按下表决策：
   "out_dir": "workspace/ohos-libs",
   "closure_size": 35,                      // 依赖闭包节点总数
   "summary": {"downloaded": 27, "provided": 5, "cmd_only": 2, "target": 1},
+  "roles": {"link": 8, "runtime": 21, "provided": 5, "target": 1},
   "deps": [                                 // 闭包内每个节点一个条目
     {
       "id": "hb:openssl@3", "name": "openssl@3", "kind": "package",
       "version": "3.6.4", "port_status": "ported",
-      "status": "downloaded",
+      "status": "downloaded", "role": "link",
+      // role（按闭包深度）：link=应用直接声明（编译/链接需要）
+      //                    runtime=传递依赖（设备侧 .so）
+      //                    provided=Qt 模块；target=应用自身
+      // 带版本范围/REQUIRED 语义的精确分类用 `deps` 命令的报告
       "artifact_url": "https://harmonybrew.atomgit.com/bottles/openssl@3-3.6.4.arm64_ohos.bottle.tar.gz",
       "sha256": "verified",
       "installed": "workspace/ohos-libs/openssl@3/3.6.4",
@@ -77,8 +82,9 @@ manifest 中每个依赖条目带 `status`，agent 按下表决策：
       "hints": { "cmake": "...", "qmake": "...", "deploy": "..." },
       "symlinks_fixed": ["lib/libssl.so.3"] // NTFS 下以拷贝落地的 .so 链接
     },
-    {"id": "qt:gui", "kind": "qt-module", "status": "provided", "note": "…"},
-    {"id": "hb:xxx", "status": "need_port",
+    {"id": "qt:gui", "kind": "qt-module", "status": "provided",
+     "role": "provided", "note": "…"},
+    {"id": "hb:xxx", "status": "need_port", "role": "link",
      "source_url": "…", "repo_url": "…", "homepage": "…"}
   ],
   "toolchain": {
@@ -152,4 +158,5 @@ qmake 工程：`LIBS += -L<installed>/lib -lfoo`（`-l` 列表见每条目 `libs
 |---|---|
 | `fetch <pkg,...>` | 手动指定包名下载单个/多个 bottle（fetch-deps 的底层能力） |
 | `analyze <app> --summary` | 可移植性判定 + 阻塞点（回答"能不能移植"）；fetch-deps 回答"依赖产物怎么拿" |
+| `deps <path\|app>` | 综合依赖分析（回答"依赖全景：角色分类 + 版本范围"）；其 runtime 传递闭包口径与本命令一致 |
 | `serve` | Web 图谱；fetch-deps 回写的 artifact_local 会在节点详情中展示 |

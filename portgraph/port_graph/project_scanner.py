@@ -387,7 +387,8 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
     pm = info.get("pkg_manifests", {})
     for c in pm.get("conan", []):
         names.append(c["name"])
-    names.extend(pm.get("vcpkg", []))
+    for v in pm.get("vcpkg", []):        # vcpkg 条目可为 str 或 {name, version}
+        names.append(v["name"] if isinstance(v, dict) else v)
     # 合并 include 启发式发现的（去重保序）
     for h in info.get("third_party_hints", []):
         if h["name"] not in names:
@@ -415,14 +416,19 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
     return {"linked": linked, "unknown": unknown}
 
 
-def scan_project(conn, project_root) -> Dict:
-    """扫描 Qt 工程并写入图。返回摘要。"""
+def scan_project(conn, project_root, info: Dict = None) -> Dict:
+    """扫描 Qt 工程并写入图。返回摘要。
+
+    info: 可传入 qt_scanner.scan_project 的结果复用（避免大仓库重复扫描）。
+    """
     root = Path(project_root).resolve()
-    info = qt_scanner.scan_project(root)
+    info = info or qt_scanner.scan_project(root)
     db.init_db(conn)
 
     app_id = "app:%s" % normalize_app_name(info["name"])
     version = _detect_version(root)
+    # 记录项目根路径：deps / fetch-deps 等命令按应用名回溯源码位置
+    db.set_meta(conn, "root_%s" % app_id, str(root))
     db.upsert_node(
         conn, app_id, "app", info["name"], "scan", "unknown",
         version=version,

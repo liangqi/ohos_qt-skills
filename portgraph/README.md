@@ -101,6 +101,26 @@ blockers: 2
       源码下载: https://ffmpeg.org/releases/ffmpeg-9.0.1.tar.xz
 ```
 
+### 综合依赖分析（角色分类 + 版本范围）
+
+```bash
+# 路径或已扫描应用名皆可；--json 输出机器可读报告
+python portgraph.py deps flameshot
+```
+
+按角色回答"这个项目到底依赖什么"（详见 docs/deps-report.md）：
+
+| 角色 | 含义 | 示例 |
+|---|---|---|
+| link | 项目期望获取到编译产物的依赖（目标侧 headers+libs） | `find_package(ZLIB 1.2 REQUIRED)` |
+| build-tool | 编译器/构建工具依赖（构建机运行，不部署） | cmake≥3.16 / C++17 / protoc / ECM |
+| runtime | 运行时依赖（设备侧 .so：传递闭包 + dlopen/QLibrary） | ffmpeg 的 14 个传递依赖 |
+| test | 测试专用，不进发行包 | GTest / Catch2 |
+| vendored | 项目内自带源码（.gitmodules / 3rdparty/） | dep/spdlog |
+
+每个依赖附版本范围（find_package 最低版本 / pkg-config 约束 / conan 范围）
+与鸿蒙产物可得性、版本满足性检查（satisfied / conflict）。
+
 ### 获取交叉编译依赖（非鸿蒙平台）
 
 `brew install` 只能在鸿蒙设备执行；在其他平台上用 `fetch` 直接下载
@@ -156,6 +176,7 @@ python portgraph.py serve --port 8080
 | `clone <url> [--name N]` | shallow clone + 扫描入库 |
 | `scan <project>` | 扫描本地 Qt 工程 |
 | `analyze <app> [--summary]` | 可移植性分析；`--summary` 人读摘要 |
+| `deps <path\|app> [--json]` | 综合依赖分析：link/build-tool/runtime/test/vendored 分类 + 版本范围 + 产物可得性（[文档](docs/deps-report.md)） |
 | `fetch <pkg,...> [--out D] [--force]` | 下载 bottle 交叉编译依赖 |
 | `fetch-deps <app> [--out D] [--force] [--dry-run] [--json]` | 一键下载应用全部依赖的鸿蒙产物 + manifest（[文档](docs/fetch-deps.md)） |
 | `stats` | 数据统计 |
@@ -184,7 +205,8 @@ python portgraph.py serve --port 8080
 portgraph/
 ├── README.md               本文档
 ├── docs/
-│   └── fetch-deps.md       依赖产物一键获取（agent 工具文档）
+│   ├── fetch-deps.md       依赖产物一键获取（agent 工具文档）
+│   └── deps-report.md      综合依赖分析：角色分类 + 版本范围（agent 工具文档）
 ├── portgraph.py            CLI 入口
 ├── port_graph/             Python 包
 │   ├── __init__.py         路径常量（PROJECT_ROOT/workspace/…）
@@ -192,9 +214,10 @@ portgraph/
 │   ├── harmonybrew.py      formula 解析 + bottle 直链构造/下载器
 │   ├── cmdpkgs.py          cmd-pkgs README 解析 + 产物直链
 │   ├── kb_seed.py          Qt 模块矩阵（解析 data/）+ 接口白名单 + KF 组件依赖
-│   ├── qt_scanner.py       工程预扫描（vendored）
+│   ├── qt_scanner.py       工程预扫描（vendored；find_package 详情/工具链/动态加载）
 │   ├── project_scanner.py  工程扫描入库（平台接口宏守卫分析/KF 递归/第三方对齐）
 │   ├── engine.py           递归可移植性判定 + artifact_info
+│   ├── deps_report.py      deps：综合依赖分析（角色分类/版本范围/传递闭包）
 │   ├── deps_fetch.py       fetch-deps：应用依赖闭包产物一键获取
 │   ├── cloner.py           git shallow clone
 │   ├── jobs.py             后台任务（进度条）
