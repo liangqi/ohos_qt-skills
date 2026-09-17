@@ -52,7 +52,7 @@ summary: >
 | **工作流** | `procedural/qt-app-harmonyos-migration.md` |
 | **必读页** | ① `golden-rules.md` ② `porting-workflow.md`（8 步决策树）③ `portgraph/docs/deps-report.md`（仓库工具，依赖角色/版本范围）+ `portgraph/docs/fetch-deps.md`（依赖闭包产物） |
 | **按需加载** | `api-mapping.md`、`code-patterns.md`、`window-model.md`、`lifecycle.md`、`project-structure.md`、`third-party-libs.md` |
-| **预期输出** | **第 0 步 portgraph 可行性评估**（analyze + deps + fetch-deps --dry-run：portable/blocked/uncertain + 依赖角色分类/版本满足性 + bottle 数/源码编译缺口）→ 工程创建 → 8 步迁移 → 编译验证 |
+| **预期输出** | **第 0 步 portgraph 可行性评估**（analyze + deps + fetch-deps --dry-run：portable/blocked/uncertain + 依赖角色分类/版本要求校验 + bottle 数/源码编译缺口）→ 工程创建 → 8 步迁移 → 编译验证 |
 
 > **第 0 步门禁（与 [P] 的 assess 对齐）**：接到应用移植任务先跑
 > `python portgraph/portgraph.py analyze <app>`、`deps <app>` 与

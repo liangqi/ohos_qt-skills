@@ -83,7 +83,8 @@ _FP_KW = {"REQUIRED", "CONFIG", "QUIET", "MODULE", "COMPONENTS",
           "GLOBAL", "BYPASS_PROVIDER", "REGISTRY_VIEW", "CMAKE_FIND_ROOT_PATH"}
 
 # 已知主机构建工具名（构建机运行，不部署到设备）。
-# 命中以下集合或匹配启发式后缀的 COMMAND/find_program token 记为构建工具。
+# 命中以下集合或命中特征后缀（*-config/*-scanner 等）的
+# COMMAND/find_program token 记为构建工具。
 KNOWN_HOST_TOOLS = {
     "cmake", "ninja", "make", "gmake", "mingw32-make", "ninja-build",
     "pkg-config", "pkgconf", "protoc", "grpc_cpp_plugin", "flex", "bison",
@@ -538,7 +539,7 @@ def _detect_pkg_manifests(root: Path) -> Dict:
 
 
 def _looks_like_host_tool(tok: str) -> bool:
-    """token 是否为已知主机构建工具名（或命中启发式后缀）。"""
+    """token 是否为已知主机构建工具名（或命中特征后缀）。"""
     t = tok.strip("\"'")
     if not t or t != t.strip() or "$" in t:
         return False
@@ -605,7 +606,7 @@ def _detect_toolchain(root: Path, info: Dict) -> Dict:
     """主机构建工具链要求：cmake 最低版本 / C++ 标准 / 工具引用 / 测试设施。
 
     工具引用来源：find_program 参数 + execute_process/add_custom_command
-    的 COMMAND 首 token（仅记已知工具名或命中启发式后缀，避免噪音）。
+    的 COMMAND 首 token（仅记已知工具名或命中特征后缀的工具，避免噪音）。
     """
     tools: Dict[str, List[str]] = {}
 

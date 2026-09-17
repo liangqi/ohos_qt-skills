@@ -389,7 +389,7 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
         names.append(c["name"])
     for v in pm.get("vcpkg", []):        # vcpkg 条目可为 str 或 {name, version}
         names.append(v["name"] if isinstance(v, dict) else v)
-    # 合并 include 启发式发现的（去重保序）
+    # 合并源码 #include 发现的第三方库（去重保序）
     for h in info.get("third_party_hints", []):
         if h["name"] not in names:
             names.append(h["name"])

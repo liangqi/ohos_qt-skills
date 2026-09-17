@@ -120,7 +120,7 @@ python portgraph.py deps flameshot
 | env | CI/脚本安装的环境清单（交叉核对信源） | `apt install libkeyutils-dev` |
 
 每个依赖附版本范围（find_package 最低版本 / pkg-config·meson·autotools
-约束 / conan 范围）与鸿蒙产物可得性、版本满足性检查（satisfied / conflict）。
+约束 / conan 范围）与鸿蒙产物获取途径、版本要求校验（satisfied / conflict）。
 18 类声明信号的覆盖全景图见 docs/deps-report.md。
 
 ### 获取交叉编译依赖（非鸿蒙平台）
@@ -178,7 +178,7 @@ python portgraph.py serve --port 8080
 | `clone <url> [--name N]` | shallow clone + 扫描入库 |
 | `scan <project>` | 扫描本地 Qt 工程 |
 | `analyze <app> [--summary]` | 可移植性分析；`--summary` 人读摘要 |
-| `deps <path\|app> [--json]` | 综合依赖分析：link/build-tool/runtime/test/vendored 分类 + 版本范围 + 产物可得性（[文档](docs/deps-report.md)） |
+| `deps <path\|app> [--json]` | 综合依赖分析：link/build-tool/runtime/test/vendored 分类 + 版本范围 + 产物获取途径（[文档](docs/deps-report.md)） |
 | `fetch <pkg,...> [--out D] [--force]` | 下载 bottle 交叉编译依赖 |
 | `fetch-deps <app> [--out D] [--force] [--dry-run] [--json]` | 一键下载应用全部依赖的鸿蒙产物 + manifest（[文档](docs/fetch-deps.md)） |
 | `stats` | 数据统计 |

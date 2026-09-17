@@ -753,7 +753,7 @@ AC_CHECK_LIB([m], [sqrt])
                            "ported", version="2.84.4")
             report = deps_report.analyze_dependencies(conn, root)
             link = {d["name"].lower(): d for d in report["link_deps"]}
-            # meson 版本约束 + 满足性检查（2.84.4 >= 2.36）
+            # meson 版本约束 + 校验（2.84.4 >= 2.36）
             self.assertEqual(link["glib-2.0"]["version_req"], ">= 2.36")
             self.assertEqual(link["glib-2.0"]["version_check"], "satisfied")
             # macOS 框架 → platform-iface

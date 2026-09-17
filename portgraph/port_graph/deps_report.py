@@ -12,10 +12,11 @@
   vendored   项目内自带源码（.gitmodules / 3rdparty 目录，随项目编译）
 
 每个依赖附：
-  - 版本范围（find_package 最低版本 / pkg-config 约束 / conan 范围）
+  - 版本要求（find_package 最低版本 / pkg-config·meson·autotools 约束 /
+    conan 范围）
   - 需求级别（REQUIRED / optional）
-  - 鸿蒙产物可得性（hb bottle / cmd-pkgs / Qt SDK 提供 / 系统自带 /
-    需源码移植）与版本满足性检查
+  - 鸿蒙产物获取途径（hb bottle / cmd-pkgs / Qt SDK 提供 / 系统自带 /
+    需源码移植）与版本要求校验（satisfied / conflict）
 
 用法：
 
@@ -260,8 +261,8 @@ def _runtime_closure(conn, node_id: str) -> List[Dict]:
 
 
 def _version_check(entry: Dict) -> str:
-    """多源约束（conan 范围 / pkg 约束 / find_package 最低版本）满足性：
-    同时存在时取最差结果（任一冲突即冲突）。"""
+    """多源版本约束（conan 范围 / pkg 约束 / find_package 最低版本）
+    是否满足：同时存在时取最差结果（任一冲突即冲突）。"""
     avail = entry.get("available_version")
     checks = []
     if entry.get("version_range"):
@@ -328,7 +329,7 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
     pkg_manifests = info.get("pkg_manifests", {})
     cmake_packages = info.get("cmake_packages", {})
 
-    # ---- Qt 版本要求（find_package(Qt5 5.15 ...) / .pro 启发）
+    # ---- Qt 版本要求（find_package(Qt5 5.15 ...) 声明 / .pro 文件推断）
     qt_min = None
     qt_optional_modules = set()
     for fp in fp_details:
@@ -411,7 +412,8 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                  evidence="vcpkg.json: %s" % v["name"]
                  + (" (>= %s)" % v["version"] if v.get("version") else ""))
 
-    # ---- 4) include 启发（源码直接 #include 三方头）
+    # ---- 4) 源码直接 #include 第三方库头文件（zlib/openssl/boost 等 16 类，
+    #          构建文件未声明时的隐性依赖来源）
     for h in info.get("third_party_hints", []):
         link.add(h["name"], required=False,
                  evidence="include: %s" % h["evidence"][0]
@@ -467,8 +469,8 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
             aliased = LIB_NAME_ALIASES.get(n.lower())
             e = link.add(aliased or n, evidence=ev)
             e.setdefault("ohos_note",
-                         "裸链接名（无 find_package/pkg-config 声明），"
-                         "产物可得性以名称对齐结果为准")
+                         "裸链接名（未用 find_package/pkg-config 声明），"
+                         "产物获取途径取决于名称匹配结果")
 
     # ---- 6c) macOS 框架（-framework X）
     for fw in info.get("macos_frameworks", []):
@@ -533,7 +535,7 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
         if entry["kind"] == "system-lib":
             entry["artifact"] = entry["artifact"] or {
                 "ready": True, "provided": True, "source": "ohos-system"}
-        # 版本满足性（见 _version_check）
+        # 版本要求校验（见 _version_check）
         entry["version_check"] = _version_check(entry)
         if conn is not None and node is not None and node["id"].startswith(("hb:", "cmdpkgs:")):
             for trans in _runtime_closure(conn, node["id"]):
@@ -671,7 +673,7 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
             "available_version": node["version"] if node else None,
             "evidence": env.get("evidence", [])[:2]})
 
-    # ---- 12) Qt 版本满足性
+    # ---- 12) Qt 版本校验
     qt_check = None
     if qt_major:
         avail = QT_OHOS_AVAILABLE.get(str(qt_major))

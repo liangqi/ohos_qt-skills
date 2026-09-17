@@ -24,7 +24,7 @@ link 又因被 mpfr 传递依赖而出现在 runtime）：
 
 | role | 含义 | 缺失后果 | 来源证据 |
 |---|---|---|---|
-| `link` | **编译产物依赖**：目标侧 headers + .so/.a，交叉编译/链接应用时必须存在 | 编译/链接失败 | `find_package`、`pkg_check_modules`、`target_link_libraries` 裸名/`-lfoo`、`find_library`、Conan/vcpkg 清单、`#include` 三方头、qmake `LIBS`/`PKGCONFIG`、meson `dependency()`、autotools `PKG_CHECK_MODULES`/`AC_CHECK_LIB`、KF 组件 |
+| `link` | **编译产物依赖**：目标侧 headers + .so/.a，交叉编译/链接应用时必须存在 | 编译/链接失败 | `find_package`、`pkg_check_modules`、`target_link_libraries` 裸名/`-lfoo`、`find_library`、Conan/vcpkg 清单、源码 `#include` 第三方库头文件、qmake `LIBS`/`PKGCONFIG`、meson `dependency()`、autotools `PKG_CHECK_MODULES`/`AC_CHECK_LIB`、KF 组件 |
 | `build-tool` | **编译器/构建工具依赖**：构建机运行，不部署到设备 | 构建无法进行（交叉编译产物不受影响） | `cmake_minimum_required`/`meson_version`、C++ 标准、`find_program`、`execute_process/add_custom_command COMMAND`、`find_package(ECM/gettext/OpenMP/…)` |
 | `runtime` | **运行时依赖**：设备侧 .so，不参与编译但缺了跑不起来 | 部署后 dlopen/链接失败 | link 依赖的传递闭包（hb runtime 边）、`dlopen`/`QLibrary`/`QPluginLoader` 字面量 |
 | `test` | 测试专用，不进发行包 | 测试无法构建 | `find_package(GTest/Catch2/…)`、`enable_testing` |
@@ -36,8 +36,8 @@ link 又因被 mpfr 传递依赖而出现在 runtime）：
 CMake/meson 内置模块）、`win32-system-lib`（user32/ddraw/Wtsapi32.lib 等
 Windows 专属）、`platform-iface`（X11/ALSA/D-Bus/`-framework` 等**直连平台
 栈**，鸿蒙不支持——是否真的编译由 analyze 的宏守卫证据判定）、`framework`
-（KDE Frameworks 组件，需源码交叉编译）、`raw-lib` 语义（裸链接名，无
-find_package/pkg-config 声明，产物可得性以名称对齐为准）。
+（KDE Frameworks 组件，需源码交叉编译）、`raw-lib` 语义（裸链接名：未用
+find_package/pkg-config 声明，产物获取途径取决于名称匹配结果）。
 
 ## 版本范围
 
@@ -130,7 +130,7 @@ flowchart TB
             p2["vcpkg.json（version>=）"]
         end
         subgraph CODE["源码"]
-            s1["#include 三方头启发（16 族）"]
+            s1["源码 #include 第三方库头文件<br/>（zlib/openssl/boost 等 16 类）"]
             s2["dlopen / QLibrary /<br/>QPluginLoader 字面量"]
         end
         subgraph REPO["仓库结构"]
@@ -140,7 +140,7 @@ flowchart TB
         ENV["CI / 安装脚本<br/>.github/.ci/顶层 *.sh<br/>apt / brew / pacman install"]
     end
 
-    CORE["② 分类与富化（deps_report）<br/>━━━━━━━━━━━━━━━━━━<br/>_DepBook 多源证据合并（同名去重）<br/>内置模块归类（Threads/OpenMP/iconv）<br/>平台判定（OHOS 系统库 / Win32 库 / X11·ALSA·D-Bus·-framework）<br/>名称对齐（lib 前缀 / -2.0 版本后缀 / swscale→ffmpeg 别名）<br/>多源版本约束取最差 → satisfied / conflict<br/>hb / cmd-pkgs 产物解析（bottle 直链 / 源码 URL）"]
+    CORE["② 分类与补全（deps_report）<br/>━━━━━━━━━━━━━━━━━━<br/>_DepBook 多源证据合并（同名去重）<br/>内置模块归类（Threads/OpenMP/iconv）<br/>平台判定（OHOS 系统库 / Win32 库 / X11·ALSA·D-Bus·-framework）<br/>名称匹配（lib 前缀 / -2.0 版本后缀 / swscale→ffmpeg 别名）<br/>多源版本约束取最差 → satisfied / conflict<br/>hb / cmd-pkgs 产物解析（bottle 直链 / 源码 URL）"]
 
     subgraph ROLES["③ 角色（报告分组）"]
         L["link 编译产物依赖<br/>目标侧 headers + .so/.a"]
@@ -183,11 +183,11 @@ flowchart TB
 读图要点：
 
 - **同一依赖可从多来源命中**（如 zlib 同时来自 `find_package` + qmake
-  `-lz` + CI `zlib1g-dev`）——`_DepBook` 按 名合并证据，多余来源不再
+  `-lz` + CI `zlib1g-dev`）——`_DepBook` 按名称合并证据，多余来源不再
   产生重复条目
-- **runtime 不是声明出来的**：由 link 依赖经 hb/cmd-pkgs 图的 runtime
-  边传递闭包推导（`needed_by` 给出引入链），加上源码 dlopen/QLibrary
-  字面量
+- **runtime 不由构建文件直接声明**：由 link 依赖经 hb/cmd-pkgs 图的
+  runtime 边传递闭包推导（`needed_by` 给出引入链），加上源码
+  dlopen/QLibrary 字面量
 - **vendored 的三种形态**：submodule（提交锁定在仓库）/ 目录（源码在
   仓库）/ FetchContent 类（configure 期网络拉取，GIT_TAG/VERSION 锁定）
 - **env 是核对层**：不直接入 link；CI 装了但构建文件未声明的库名触发
@@ -203,7 +203,7 @@ flowchart TB
   条件与 provided 节点），与 `fetch-deps` 口径一致
 - **动态加载只识别字符串字面量**；变量拼接（`QLibrary(name + ".so")`）
   无法静态确定，会缺报——运行时验证仍需以设备为准
-- 工具链检测只记**已知工具名或命中启发式后缀**（`*-config`/`*-scanner`/
+- 工具链检测只记**已知工具名或命中特征后缀**（`*-config`/`*-scanner`/
   `*-codegen`/`glib-*`）的 `COMMAND`/`find_program` token，避免把任意
   可执行名当依赖
 - `target_link_libraries` 排除项目内目标（add_library/add_executable）、
@@ -223,8 +223,8 @@ REQUIRED/OPTIONAL 语义的精确分类用 `deps` 报告。
 
 ## 已知限制
 
-- find_package 名称 → hb 包名对齐依赖 `kb_seed.resolve_package` 别名表 +
-  前缀/后缀启发，同名异义（如多精度库 MPC vs 音乐播放器 mpc）可能错配，
+- find_package 名称 → hb 包名的匹配依赖 `kb_seed.resolve_package` 别名表 +
+  前缀/后缀规则，同名异义（如多精度库 MPC vs 音乐播放器 mpc）可能错配，
   产物 URL 落地前应人工核对
 - Conan 范围检查为近似（取首个 `>=x`）；`<y` 上界不参与比较
 - `target_link_libraries` 裸名无法区分"外部库"与"由自定义 Find 模块提供

@@ -393,7 +393,7 @@ def main() -> None:
 
     p = sub.add_parser(
         "deps", help="综合依赖分析（link/build-tool/runtime/test/vendored "
-                     "分类 + 版本范围 + 产物可得性，见 docs/deps-report.md）")
+                     "分类 + 版本范围 + 产物获取途径，见 docs/deps-report.md）")
     p.add_argument("target", help="项目路径或已扫描应用名（如 tdesktop）")
     p.add_argument("--json", action="store_true",
                    help="输出完整报告 JSON（机器可读，供 agent 解析）")

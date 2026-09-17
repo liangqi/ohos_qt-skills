@@ -57,7 +57,7 @@ summary: >
 python portgraph/portgraph.py analyze <app>
 
 # ② 综合依赖分析：谁要编译产物（link）/谁是构建工具（build-tool）/
-#    谁只运行时用（runtime）/自带源码（vendored）+ 版本范围满足性
+#    谁只运行时用（runtime）/自带源码（vendored）+ 版本范围与要求校验
 python portgraph/portgraph.py deps <app>
 
 # ③ 依赖闭包预览：哪些有现成 bottle（.so 直下）、哪些要源码交叉编译（不写盘）
