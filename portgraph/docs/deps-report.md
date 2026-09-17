@@ -24,7 +24,7 @@ link 又因被 mpfr 传递依赖而出现在 runtime）：
 
 | role | 含义 | 缺失后果 | 来源证据 |
 |---|---|---|---|
-| `link` | **编译产物依赖**：目标侧 headers + .so/.a，交叉编译/链接应用时必须存在 | 编译/链接失败 | `find_package`、`pkg_check_modules`、`target_link_libraries` 裸名/`-lfoo`、`find_library`、Conan/vcpkg 清单、源码 `#include` 第三方库头文件、qmake `LIBS`/`PKGCONFIG`、meson `dependency()`、autotools `PKG_CHECK_MODULES`/`AC_CHECK_LIB`、KF 组件 |
+| `link` | **编译产物依赖**：目标侧 headers + .so/.a，交叉编译/链接应用时必须存在 | 编译/链接失败 | `find_package`、`pkg_check_modules`、`target_link_libraries` 裸名/`-lfoo`、`find_library`、Conan/vcpkg 清单、源码 `#include` 第三方库头文件、qmake `LIBS`/`PKGCONFIG`、meson `dependency()`、autotools `PKG_CHECK_MODULES`/`AC_CHECK_LIB`、自定义包装函数 `PACKAGE`/`LIBRARY` 声明（如 qTox `search_dependency`）、KF 组件 |
 | `build-tool` | **编译器/构建工具依赖**：构建机运行，不部署到设备 | 构建无法进行（交叉编译产物不受影响） | `cmake_minimum_required`/`meson_version`、C++ 标准、`find_program`、`execute_process/add_custom_command COMMAND`、`find_package(ECM/gettext/OpenMP/…)` |
 | `runtime` | **运行时依赖**：设备侧 .so，不参与编译但缺了跑不起来 | 部署后 dlopen/链接失败 | link 依赖的传递闭包（hb runtime 边）、`dlopen`/`QLibrary`/`QPluginLoader` 字面量 |
 | `test` | 测试专用，不进发行包 | 测试无法构建 | `find_package(GTest/Catch2/…)`、`enable_testing` |
@@ -49,6 +49,7 @@ find_package/pkg-config 声明，产物获取途径取决于名称匹配结果�
 | pkg-config 约束 | `version_req` | `pkg_check_modules(FF "libavcodec >= 58")` |
 | meson 约束 | `version_req` | `dependency('glib-2.0', version: '>= 2.36')` |
 | autotools 约束 | `version_req` | `PKG_CHECK_MODULES([F],[zlib >= 1.2])` |
+| 自定义包装函数约束 | `version_req` | `search_dependency(X PACKAGE y MINIMUM_VERSION ${V})`（`${V}` 经 `set()` 变量解析，qTox 实证） |
 | Conan 范围 | `version_range`（原样保留） | `zlib/[>=1.2 <2]` |
 | vcpkg 约束 | `version>=` | `vcpkg.json` dependencies |
 | Qt 版本 | `qt.min_version` | `find_package(Qt5 5.15 …)` / meson `qt_req` vs 鸿蒙可用 5.12/5.15/6.12 |
@@ -103,7 +104,7 @@ deps 报告从**构建系统声明、包管理清单、源码内嵌信号、外�
 
 ```mermaid
 flowchart TB
-    subgraph SRC["① 依赖声明来源（qt_scanner 检测器，18 类信号）"]
+    subgraph SRC["① 依赖声明来源（qt_scanner 检测器，19 类信号）"]
         subgraph CMAKE["CMake"]
             c1["find_package(名 版本 REQUIRED<br/>COMPONENTS/OPTIONAL/EXACT)"]
             c2["pkg_check_modules('foo >= 1.2')"]
@@ -111,6 +112,7 @@ flowchart TB
             c4["find_library(NAMES x y)"]
             c5["FetchContent / ExternalProject /<br/>CPM（URL + GIT_TAG 锁定）"]
             c6["cmake_minimum_required / CXX_STANDARD /<br/>find_program / COMMAND / enable_testing"]
+            c7["自定义包装函数<br/>search_dependency(NAME<br/>PACKAGE x LIBRARY y<br/>MINIMUM_VERSION v)"]
         end
         subgraph QMAKE["qmake"]
             q1["QT += / CONFIG += c++17"]
@@ -206,6 +208,13 @@ flowchart TB
 - 工具链检测只记**已知工具名或命中特征后缀**（`*-config`/`*-scanner`/
   `*-codegen`/`glib-*`）的 `COMMAND`/`find_program` token，避免把任意
   可执行名当依赖
+- CMake 依赖检测覆盖**项目自带 .cmake 模块**（`include()` 引入的
+  cmake/Modules/*.cmake——qBittorrent 的 CheckPackages.cmake 模式），
+  并解析 `set(var x)` 变量代入 find_package/pkg_check_modules 的版本位
+  （`${minBoostVersion}` → 1.76）
+- 自定义包装函数检测依赖 **PACKAGE/LIBRARY 关键字约定**（启发式）：
+  函数名须由项目 function()/macro() 定义、调用处带 `PACKAGE <名>` 才
+  识别；其他自定义包装形式不保证覆盖
 - `target_link_libraries` 排除项目内目标（add_library/add_executable）、
   `Foo::Bar` 导入目标、`${VAR}`/生成器表达式、路径与链接 flag，只留
   裸库名并按 `.lib/.so/.a` 归一

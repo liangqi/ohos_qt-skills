@@ -119,9 +119,9 @@ python portgraph.py deps flameshot
 | vendored | 项目内自带源码（.gitmodules / 3rdparty/ / FetchContent） | dep/spdlog、qtColorWidgets（GIT_TAG 锁定） |
 | env | CI/脚本安装的环境清单（交叉核对信源） | `apt install libkeyutils-dev` |
 
-每个依赖附版本范围（find_package 最低版本 / pkg-config·meson·autotools
+每个依赖附版本范围（find_package 最低版本 / pkg-config·meson·autotools·包装函数
 约束 / conan 范围）与鸿蒙产物获取途径、版本要求校验（satisfied / conflict）。
-18 类声明信号的覆盖全景图见 docs/deps-report.md。
+19 类声明信号的覆盖全景图见 docs/deps-report.md。
 
 ### 获取交叉编译依赖（非鸿蒙平台）
 

@@ -246,8 +246,10 @@ def scan_project(project_root) -> Dict:
             lang_stats[ext] = lang_stats.get(ext, 0) + 1
 
     info["pro_files"] = pro_files
-    info["cmake_files"] = [c for c in cmake_files
-                           if Path(c).name.lower() == "cmakelists.txt"]
+    # 项目自带 .cmake 模块（cmake/Modules 等）与 CMakeLists 一起参与依赖
+    # 提取——find_package 常集中在被 include() 的 .cmake 里（如 qBittorrent
+    # 的 CheckPackages.cmake）
+    info["cmake_files"] = cmake_files
     info["sources"] = sources
     info["binary_artifacts"] = binaries
     info["language_stats"] = lang_stats
@@ -289,6 +291,9 @@ def scan_project(project_root) -> Dict:
     info["raw_libs"] = raw_libs
     info["macos_frameworks"] = frameworks_m
     info["fetched_deps"] = _detect_fetched_deps(root, info["cmake_files"])
+    _cmake_vart = _collect_cmake_vars(root, info["cmake_files"])
+    info["wrapper_deps"] = _detect_wrapper_deps(root, info["cmake_files"],
+                                                _cmake_vart)
     if meson_files:
         _absorb_meson(root, info, meson_files)
     if autotools_files:
@@ -418,6 +423,11 @@ _FINDPKG_SKIP = {"ecm", "pkgconfig", "threads", "sharedmimeinfo",
                  "pkg_check_modules"}  # noqa: keep explicit
 
 
+# pkg_check_modules 专属关键字（IMPORTED_TARGET/GLOBAL 等），非模块名
+_PKGCHECK_KW = {"IMPORTED_TARGET", "GLOBAL", "STATIC", "SHARED", "MODULE",
+                "OPTIONAL", "SKIP_CMAKE_DIRS", "WITHOUT_CMAKE_PACKAGE"}
+
+
 def _detect_cmake_packages(root: Path, cmake_files: List[str]) -> Dict:
     """从 CMake 中提取第三方包：find_package(*) 和 pkg_check_modules。
 
@@ -428,6 +438,7 @@ def _detect_cmake_packages(root: Path, cmake_files: List[str]) -> Dict:
     findpkgs = set()
     pkgmods = set()
     pkg_details: Dict[str, Dict] = {}
+    vart = _collect_cmake_vars(root, cmake_files)
     skip_prefixes = ("qt", "kf")
     for rel in cmake_files:
         text = _read_text(root / rel)
@@ -440,11 +451,14 @@ def _detect_cmake_packages(root: Path, cmake_files: List[str]) -> Dict:
             findpkgs.add(name)
         for m in _PKGCHECK_RE.finditer(text):
             # pkg-config spec 可带版本约束："glib-2.0 >= 2.50" / glib-2.0>=2.50
-            specs = m.group(1).replace("\\\n", " ")
+            # 替换 set() 变量；无法解析的 ${宏参} 整体剔除，避免混入包名
+            specs = _subst_vars(m.group(1), vart).replace("\\\n", " ")
+            specs = re.sub(r"\$\{\w+\}", " ", specs)
             _absorb_pkg_spec(specs, pkg_details)
             for tok in _PKGCONF_NAME_RE.findall(specs):
                 tok = tok.lower()
                 if (tok.upper() in _CMAKE_KW or tok in _FINDPKG_SKIP
+                        or tok.upper() in _PKGCHECK_KW
                         or tok.startswith(("qt", "kf"))
                         or tok.replace(".", "").isdigit()):
                     continue
@@ -590,14 +604,86 @@ def _parse_findpkg_args(name: str, rest: str, rel: str,
             "file": rel, "line": line}
 
 
+# 自定义依赖包装函数：function/macro(...pkg_check_modules(${pkg} ${arg_PACKAGE})...)
+# 形式的间接声明，调用处 search_dependency(NAME PACKAGE <pkg名> ...) 提取
+_FUNC_DEF_RE = re.compile(r"^\s*(?:function|macro)\s*\(\s*(\w+)", re.M)
+_WRAP_PACKAGE_RE = re.compile(r"\bPACKAGE\s+\"?([A-Za-z0-9_.+-]+)\"?")
+_WRAP_LIBRARY_RE = re.compile(r"\bLIBRARY\s+\"?([A-Za-z0-9_.+-]+)\"?")
+_WRAP_MINVER_RE = re.compile(r"MINIMUM_VERSION\s+(?:\$\{(\w+)\}|\"?([\w.]+)\"?)")
+_WRAP_FRAMEWORK_RE = re.compile(r"\bFRAMEWORK\s+\"?([A-Za-z0-9_]+)\"?")
+
+
+def _detect_wrapper_deps(root: Path, cmake_files: List[str],
+                         vart: Dict[str, str]) -> List[Dict]:
+    """项目自定义包装函数（如 qTox 的 search_dependency）里的依赖声明。
+
+    识别条件：函数名由项目 function()/macro() 定义，且调用参数中带
+    PACKAGE <pkg-config 名> / LIBRARY <库名> / MINIMUM_VERSION <版本> /
+    FRAMEWORK <macOS 框架> 关键字。返回包装出的依赖清单。
+    """
+    texts = {rel: _read_text(root / rel) for rel in cmake_files}
+    funcs: set = set()
+    for text in texts.values():
+        for m in _FUNC_DEF_RE.finditer(text):
+            funcs.add(m.group(1))
+    if not funcs:
+        return []
+    out: List[Dict] = []
+    seen: set = set()
+    for rel, text in texts.items():
+        for fn in sorted(funcs):
+            for cm in re.finditer(r"\b%s\s*\(([^)]*)\)" % re.escape(fn), text):
+                args = _strip_cmake_comments(cm.group(1))
+                pm = _WRAP_PACKAGE_RE.search(args)
+                if not pm:
+                    continue
+                name = pm.group(1)
+                key = name.lower()
+                if key in seen:
+                    continue
+                seen.add(key)
+                vm = _WRAP_MINVER_RE.search(args)
+                version = None
+                if vm:
+                    version = (vart.get(vm.group(1)) if vm.group(1)
+                               else vm.group(2))
+                lm = _WRAP_LIBRARY_RE.search(args)
+                fm = _WRAP_FRAMEWORK_RE.search(args)
+                out.append({
+                    "name": name, "wrapper": fn,
+                    "library": lm.group(1) if lm else None,
+                    "framework": fm.group(1) if fm else None,
+                    "version": version, "evidence": [rel]})
+    return out
+
+
+def _collect_cmake_vars(root: Path, cmake_files: List[str]) -> Dict[str, str]:
+    """收集 set(<var> <字面量>) 定义的简单变量（版本号等），供
+    find_package(${var}) 的版本解析做近似替换（忽略 CMake 作用域）。"""
+    vart: Dict[str, str] = {}
+    for rel in cmake_files:
+        for m in re.finditer(r"^\s*set\s*\(\s*(\w+)\s+\"?([\w.]+)\"?\s*\)",
+                             _read_text(root / rel), re.M):
+            vart.setdefault(m.group(1), m.group(2))
+    return vart
+
+
+def _subst_vars(text: str, vart: Dict[str, str]) -> str:
+    """把 ${var} 替换为 set() 表中的字面量值；未知变量原样保留。"""
+    return re.sub(r"\$\{(\w+)\}",
+                  lambda m: vart.get(m.group(1), m.group(0)), text)
+
+
 def _detect_find_package_details(root: Path, info: Dict) -> List[Dict]:
     """提取全部 find_package 调用的完整参数（跨行），含 Qt/KF 调用。"""
+    vart = _collect_cmake_vars(root, info["cmake_files"])
     out: List[Dict] = []
     for rel in info["cmake_files"]:
         text = _read_text(root / rel)
         for m in _FINDPKG_FULL_RE.finditer(text):
             line = text.count("\n", 0, m.start()) + 1
-            out.append(_parse_findpkg_args(m.group(1), m.group(2) or "",
+            out.append(_parse_findpkg_args(m.group(1),
+                                           _subst_vars(m.group(2) or "", vart),
                                            rel, line))
     return out
 
@@ -767,6 +853,14 @@ def _detect_qmake_pkgconfig(root: Path, info: Dict) -> List[Dict]:
     return out
 
 
+_CMT_RE = re.compile(r"#[^\n]*")
+
+
+def _strip_cmake_comments(text: str) -> str:
+    """去掉 # 行注释（多行调用参数里的注释文字会污染裸名提取）。"""
+    return _CMT_RE.sub(" ", text)
+
+
 def _detect_cmake_raw_links(root: Path, cmake_files: List[str]):
     """CMake 中不经 find_package 声明的直接链接：
 
@@ -788,7 +882,8 @@ def _detect_cmake_raw_links(root: Path, cmake_files: List[str]):
             defined.add(m.group(1).lower())
     for rel, text in texts.items():
         for m in _TARGET_LINK_RE.finditer(text):
-            args = m.group(1).replace("\\\n", " ").replace('"', " ")
+            args = _strip_cmake_comments(m.group(1))
+            args = args.replace("\\\n", " ").replace('"', " ")
             for fw in _FRAMEWORK_RE.finditer(args):
                 frameworks.setdefault(fw.group(1), []).append(rel)
             # 框架段不参与裸名/链接 flag 提取
@@ -806,11 +901,24 @@ def _detect_cmake_raw_links(root: Path, cmake_files: List[str]):
                     continue
                 _add_raw_lib(raw, t, "target_link_libraries", rel)
         for m in _FINDLIB_RE.finditer(text):
-            for tok in m.group(1).replace("\\\n", " ").split():
+            toks = _strip_cmake_comments(m.group(1)).replace("\\\n", " ").split()
+            # 首参数是接收结果的变量名，无条件跳过；NAMES 后是库名候选，
+            # PATHS/HINTS/PATH_SUFFIXES/DOC 后是路径/描述（跳过）
+            skip_value_kw = {"PATHS", "HINTS", "PATH_SUFFIXES", "DOC",
+                             "VALIDATOR"}
+            in_skip = False
+            for i, tok in enumerate(toks):
+                if i == 0:
+                    continue
                 t = tok.strip('"')
-                if (not t or "$" in t or t.upper() in _FINDLIB_KW
-                        or (t == t.upper() and not any(c.islower() for c in t))):
-                    continue  # 接收变量名 / 关键字
+                up = t.upper()
+                if up in _FINDLIB_KW or up == "NAMES":
+                    in_skip = up in skip_value_kw
+                    continue
+                if in_skip or "$" in t:
+                    continue
+                if re.search(r"_(LIBRARY|LIBRARIES|LIB|LIBS)$", t):
+                    continue
                 _add_raw_lib(raw, t, "find_library", rel)
     for name in defined:      # 项目内目标不算外部依赖
         raw.pop(name, None)

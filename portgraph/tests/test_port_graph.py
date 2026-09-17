@@ -560,9 +560,9 @@ int main() {
             # OpenSSL 无 REQUIRED → optional
             self.assertIn("openssl", link)
             self.assertFalse(link["openssl"]["required"])
-            # pkg_check_modules 版本约束
-            self.assertIn("libavcodec", link)
-            self.assertEqual(link["libavcodec"]["version_req"], ">= 58")
+            # pkg_check_modules 版本约束（libavcodec 按别名归并为 ffmpeg）
+            self.assertIn("ffmpeg", link)
+            self.assertEqual(link["ffmpeg"]["version_req"], ">= 58")
             # qmake LIBS
             self.assertIn("baz", link)
             self.assertIn("m", link)
@@ -669,6 +669,12 @@ FetchContent_Declare(qhotkey
   GIT_REPOSITORY https://github.com/Skycoder42/QHotkey.git
   GIT_TAG v1.1.0
 )
+function(search_dependency pkg)
+  # 内部用 pkg_check_modules/find_library 间接查找
+endfunction()
+set(TOXCORE_MINIMUM_VERSION "0.2.20")
+search_dependency(TOXCORE PACKAGE libtoxcore LIBRARY toxcore
+  MINIMUM_VERSION ${TOXCORE_MINIMUM_VERSION})
 """
 
     MESON = """
@@ -722,6 +728,13 @@ AC_CHECK_LIB([m], [sqrt])
             self.assertEqual(fd["name"], "qhotkey")
             self.assertEqual(fd["how"], "FetchContent")
             self.assertEqual(fd["tag"], "v1.1.0")
+            # 自定义包装函数：PACKAGE 名 + set() 变量版本解析（带引号）
+            self.assertEqual(len(info["wrapper_deps"]), 1)
+            wdp = info["wrapper_deps"][0]
+            self.assertEqual(wdp["name"], "libtoxcore")
+            self.assertEqual(wdp["wrapper"], "search_dependency")
+            self.assertEqual(wdp["library"], "toxcore")
+            self.assertEqual(wdp["version"], "0.2.20")
             # qmake PKGCONFIG
             self.assertEqual([p["name"] for p in info["qmake_pkgconfig"]],
                              ["libqrencode"])
@@ -766,6 +779,8 @@ AC_CHECK_LIB([m], [sqrt])
             # FetchContent → vendored（含锁定 tag）
             vend = {v["name"]: v for v in report["vendored"]}
             self.assertEqual(vend["qhotkey"]["tag"], "v1.1.0")
+            # 自定义包装函数声明 → link（版本约束经 set() 变量解析）
+            self.assertEqual(link["libtoxcore"]["version_req"], ">= 0.2.20")
             # autotools 版本约束
             self.assertEqual(link["zlib"]["version_req"], ">= 1.2")
             # env 清单

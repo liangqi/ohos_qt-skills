@@ -72,11 +72,15 @@ WIN32_SYSTEM_LIBS = {
 LIB_NAME_ALIASES = {
     "swscale": "ffmpeg", "avcodec": "ffmpeg", "avformat": "ffmpeg",
     "avutil": "ffmpeg", "swresample": "ffmpeg", "postproc": "ffmpeg",
+    "libswscale": "ffmpeg", "libavcodec": "ffmpeg", "libavformat": "ffmpeg",
+    "libavutil": "ffmpeg", "libavdevice": "ffmpeg",
     "ssl": "openssl", "crypto": "openssl",
     "sqlite3": "sqlite", "curl": "curl", "gcrypt": "libgcrypt",
     "tag": "taglib", "mtp": "libmtp", "usb-1.0": "libusb",
     "magic": "libmagic", "exif": "libexif", "discid": "libdiscid",
     "chromaprint": "chromaprint", "mp3lame": "lame",
+    # pkg-config 名 → CMake find_package 名（同库双声明合并）
+    "libtorrent-rasterbar": "LibtorrentRasterbar",
 }
 
 # CMake 内置模块：非第三方包，按语义归类（kind + 说明）
@@ -401,7 +405,9 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
             e = link.add(pm["name"], kind="platform-iface", evidence=ev)
             e["ohos_note"] = INTERFACE_BOUND_PACKAGES[pm["name"]]
             continue
-        link.add(pm["name"], version_req=pm["version_req"], evidence=ev)
+        # 同库双声明（pkg-config 名 vs find_package 名）按别名合并
+        link.add(LIB_NAME_ALIASES.get(pm["name"], pm["name"]),
+                 version_req=pm["version_req"], evidence=ev)
 
     # ---- 3) Conan / vcpkg 清单（版本可为范围串）
     for c in pkg_manifests.get("conan", []):
@@ -520,6 +526,26 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                      evidence="PKG_CHECK_MODULES(%s%s) %s" % (
                          n, " %s" % ad["version_req"] if ad.get("version_req") else "",
                          ad["evidence"][0] if ad.get("evidence") else ""))
+
+    # ---- 6g) 自定义包装函数声明（如 qTox search_dependency 的
+    #          PACKAGE <pkg-config 名> [LIBRARY x] [MINIMUM_VERSION v]）
+    for wd in info.get("wrapper_deps", []):
+        n = wd["name"]
+        ev = "%s(PACKAGE %s%s%s)" % (
+            wd.get("wrapper", "wrapper"), n,
+            " %s" % wd["version"] if wd.get("version") else "",
+            " %s" % wd["evidence"][0] if wd.get("evidence") else "")
+        if n.lower() in INTERFACE_BOUND_PACKAGES:
+            e = link.add(n, kind="platform-iface", evidence=ev)
+            e["ohos_note"] = INTERFACE_BOUND_PACKAGES[n.lower()]
+            continue
+        aliased = LIB_NAME_ALIASES.get(n.lower())
+        e = link.add(aliased or n,
+                     version_req=(">= %s" % wd["version"]) if wd.get("version")
+                     else None,
+                     evidence=ev)
+        if aliased:
+            e.setdefault("ohos_note", "包装声明 %s 归并为包 %s" % (n, aliased))
 
     # ---- 7) 解析产物 + 版本检查 + 传递 runtime
     runtime_book: Dict[str, Dict] = {}
