@@ -6,6 +6,12 @@
 >
 > **当前版本**：v2.2.1（2026-08-29）｜ [变更日志](CHANGELOG.md) ｜ [能力规格](#能力规格)
 
+
+加入项目：
+邀请您成为 AtomGit ohos_qt-skills 项目开发者
+邀请链接: https://gitcode.com/invite/link/2e56b63b436047228fac
+
+
 ---
 
 ## 能力规格
