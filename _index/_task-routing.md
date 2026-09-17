@@ -50,12 +50,13 @@ summary: >
 | 项目 | 内容 |
 |------|------|
 | **工作流** | `procedural/qt-app-harmonyos-migration.md` |
-| **必读页** | ① `golden-rules.md` ② `porting-workflow.md`（8 步决策树）③ `portgraph/docs/fetch-deps.md`（仓库工具，依赖闭包） |
+| **必读页** | ① `golden-rules.md` ② `porting-workflow.md`（8 步决策树）③ `portgraph/docs/deps-report.md`（仓库工具，依赖角色/版本范围）+ `portgraph/docs/fetch-deps.md`（依赖闭包产物） |
 | **按需加载** | `api-mapping.md`、`code-patterns.md`、`window-model.md`、`lifecycle.md`、`project-structure.md`、`third-party-libs.md` |
-| **预期输出** | **第 0 步 portgraph 可行性评估**（analyze + fetch-deps --dry-run：portable/blocked/uncertain + bottle 数/源码编译缺口）→ 工程创建 → 8 步迁移 → 编译验证 |
+| **预期输出** | **第 0 步 portgraph 可行性评估**（analyze + deps + fetch-deps --dry-run：portable/blocked/uncertain + 依赖角色分类/版本要求校验 + bottle 数/源码编译缺口）→ 工程创建 → 8 步迁移 → 编译验证 |
 
 > **第 0 步门禁（与 [P] 的 assess 对齐）**：接到应用移植任务先跑
-> `python portgraph/portgraph.py analyze <app>` 与 `fetch-deps <app> --dry-run`。
+> `python portgraph/portgraph.py analyze <app>`、`deps <app>` 与
+> `fetch-deps <app> --dry-run`。
 > 依赖 ≥3 个三方库时禁止人工逐个判断可行性，以闭包分析输出为准；blocked 需研判
 > blockers 的 guard 证据（无条件 ohos-active 命中且核心路径才是硬阻塞，可选分支放行）；
 > unknowns 即源码编译缺口清单，要**明确逐项告知用户**。

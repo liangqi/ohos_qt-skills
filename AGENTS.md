@@ -60,7 +60,7 @@ skills/      → Agent skills（自动化脚本和工具）
 
 | 我想做... | 读哪些页 |
 |----------|---------|
-| 移植 Qt 应用到鸿蒙 | **第 0 步 portgraph 可行性评估**（`python portgraph/portgraph.py analyze <app>` + `fetch-deps <app> --dry-run`，见 `portgraph/docs/fetch-deps.md`）→ `procedural/qt-app-harmonyos-migration` + `semantic/qt-harmonyos-porting-workflow` + `qt-harmonyos-api-mapping` + `qt-harmonyos-code-patterns` |
+| 移植 Qt 应用到鸿蒙 | **第 0 步 portgraph 可行性评估**（`python portgraph/portgraph.py analyze <app>` + `deps <app>`（依赖角色/版本范围分类，见 `portgraph/docs/deps-report.md`）+ `fetch-deps <app> --dry-run`，见 `portgraph/docs/fetch-deps.md`）→ `procedural/qt-app-harmonyos-migration` + `semantic/qt-harmonyos-porting-workflow` + `qt-harmonyos-api-mapping` + `qt-harmonyos-code-patterns` |
 | 查 API 替换 | `semantic/qt-harmonyos-api-mapping` + `qt-harmonyos-code-patterns` |
 | 查某个 Qt 模块是否支持鸿蒙 | `semantic/qt-harmonyos-modules` |
 | 查鸿蒙平台限制 | `semantic/qt-harmonyos-platform-limits` |
@@ -71,7 +71,7 @@ skills/      → Agent skills（自动化脚本和工具）
 | 判断问题是否出在 Qt 鸿蒙框架层 | `golden-rules` + `qt-harmonyos-platform-limits` + `qt-harmonyos-api` + 先查 `problems/_lookup.md` |
 | Qt 应用行为异常的排查思路 | `qt-harmonyos-build-run-workflow` §构建失败排查四步法 + `problems/_lookup.md` |
 | 写个 demo/测试工程 | `procedural/demo-generation` |
-| 三方库/依赖/交叉编译 | `semantic/qt-harmonyos-third-party-libs` + **`portgraph fetch-deps`**（应用级依赖闭包，bottle 直下/源码编译缺口清单） |
+| 三方库/依赖/交叉编译 | `semantic/qt-harmonyos-third-party-libs` + **`portgraph deps`**（依赖角色分类：编译产物/构建工具/运行时/测试/自带 + 版本范围，见 `portgraph/docs/deps-report.md`）+ **`portgraph fetch-deps`**（应用级依赖闭包，bottle 直下/源码编译缺口清单） |
 | 遇到执行报错 | **先读 `problems/_lookup.md`**，按错误码/错误信息/症状搜索 |
 
 ## 读取约定
@@ -97,7 +97,7 @@ skills/      → Agent skills（自动化脚本和工具）
 |-------|------|----------|
 | `kb-init` | 初始化知识库环境（检测依赖、安装缺失组件、生成 ENV.local.md、验证环境） | 用户说"初始化"、"配置环境"、"第一次使用"、"ENV.local.md 不存在"时自动触发 |
 | `qt-app-porting` | Qt 应用鸿蒙化自动迁移（扫描→计划→受追踪修改→构建→装机→验证门禁→报告→知识蒸馏，统一 CLI `tools/qt-ohos-run.py`） | 用户说"迁移/移植/鸿蒙化这个 Qt 项目（要执行）"、"验证迁移结果"、"分析构建/运行日志"时触发 |
-| `portgraph`（仓库工具，非 skills/） | 可行性评估与依赖解决：`analyze` 可移植性判定（portable/blocked/uncertain）+ `fetch-deps` 应用级依赖闭包（bottle 直下 / 源码编译缺口清单） | 接到"移植/迁移/鸿蒙化某应用"或"评估某应用可行性"任务时**自动作为第 0 步执行**，产出评估结论后再进入迁移工作流；依赖 ≥3 个三方库时**禁止**人工逐个判断 |
+| `portgraph`（仓库工具，非 skills/） | 可行性评估与依赖解决：`analyze` 可移植性判定（portable/blocked/uncertain）+ `deps` 综合依赖分析（link/build-tool/runtime/test/vendored 角色分类 + 版本范围与要求校验）+ `fetch-deps` 应用级依赖闭包（bottle 直下 / 源码编译缺口清单） | 接到"移植/迁移/鸿蒙化某应用"或"评估某应用可行性"任务时**自动作为第 0 步执行**，产出评估结论后再进入迁移工作流；依赖 ≥3 个三方库时**禁止**人工逐个判断 |
 
 **首次使用**：如果用户是第一次使用本知识库，或 `ENV.local.md` 不存在，**必须**先执行 `skills/kb-init/SKILL.md` 完成初始化。
 
