@@ -93,10 +93,92 @@ flowchart TB
 - **输出层**：LLM 负责推理、tool 负责事实——每条结论可回溯到
   `文件:行号` 证据，同名异义（MPC vs mpc）等启发式错配留人工核对
 
+## 交付件长什么样
+
+**① deps 人读报告**（终端直接输出，qBittorrent 真实摘录）：
+
+```text
+=== 依赖分析: qbittorrent ===
+Qt: 6 (>= 6.6.0) | 鸿蒙可用: 6.12 ✓ 满足
+Qt 阻塞模块: dbus
+
+── 编译产物依赖 (link) 14 个：目标侧 headers+libs ──
+  • OpenSSL >= 3.0.2 ✓ (package)
+      产物: https://harmonybrew.atomgit.com/bottles/openssl@3-3.6.4.arm64_ohos.bottle.tar.gz
+      证据: find_package(OpenSSL 3.0.2 REQUIRED) cmake/Modules/CheckPackages.cmake:47
+  • LibtorrentRasterbar  (package)
+      无产物 → 需源码编译
+      证据: find_package(LibtorrentRasterbar) cmake/Modules/CheckPackages.cmake:6
+  • iphlpapi  [optional] (win32-system-lib)
+      Windows 系统库（鸿蒙不适用）
+
+── 编译器/工具链依赖 (build-tool)：CMake >= 3.16 ……
+── 运行时依赖 (runtime) 6 个：部署到 entry/libs/arm64-v8a/ ──
+  • xz v5.8.3 — 产物: …bottles/xz-5.8.3…（传递自 boost）
+── 环境依赖 (env, CI/脚本安装) 9 个：交叉核对信源 ──
+── 警告/提示 ──
+  [!] AppKit 直连平台栈：macOS AppKit，鸿蒙不适用
+```
+
+**② deps --json**（agent/工具消费，结构骨架）：
+
+```jsonc
+{
+  "project": {"name", "build_system", "version"},
+  "qt": {"major", "min_version", "check", "modules": [...]},
+  "toolchain": {"cmake_min", "cxx_standard", "tools": [...]},
+  "link_deps":   [{"name", "kind", "required", "min_version",
+                   "version_req", "version_check", "evidence": [...],
+                   "resolved_node", "artifact": {...}}],
+  "runtime_deps": [{"name", "version", "artifact", "needed_by": [...]}],
+  "test_deps": [...], "vendored": [...], "env_deps": [...],
+  "warnings": [{"level", "msg"}]
+}
+```
+
+**③ fetch-deps 落地产物**：
+
+```text
+workspace/ohos-libs/
+├── zlib/1.3.2/{include,lib,...}          # bottle 解压就绪
+├── openssl@3/3.6.4/...
+└── manifest-qbittorrent.json             # 每条目含 role/link|runtime/
+                                           # status/bottle_url/installed
+                                           # + toolchain.cmake 可直接复制
+```
+
+**④ analyze --summary**：verdict（portable/blocked/uncertain）+ 阻塞点
+（含宏守卫证据与高/中/低风险等级）+ 平台排除项（附鸿蒙替代接口）。
+
+## 前端网页（python portgraph.py serve → http://127.0.0.1:8000）
+
+```text
+┌────────────────────────────────────────────────────────────────┐
+│ 鸿蒙化可移植性图谱  [目标应用▾][布局▾][搜索][+添加分析][重新分析] ●blocked │
+├───────────────────────────────────────┬────────────────────────┤
+│                                       │ 阻塞点 3   [全部|高|中|低风险] │
+│        G6 依赖拓扑图                    │  • iface:win32（高风险）        │
+│   ●目标应用 → Qt模块(聚合，可展开)       │ 平台排除项（不编译）             │
+│        → 依赖包 → 传递依赖              │  • Cocoa → 鸿蒙替代接口列表     │
+│   节点色=移植状态：绿=已移植 红=阻塞      │ 待确认项（源码编译缺口）          │
+│   灰=未知 黄=待确认                     ├────────────────────────┤
+│   布局：横向层级 / 力导向 / 环形         │ 节点详情抽屉（点任意节点）        │
+│                                       │  证据 · 依赖 · bottle/源码直链  │
+└───────────────────────────────────────┴────────────────────────┘
+```
+
+- 顶栏"添加分析"：粘贴 GitHub 地址，后台 shallow clone + 扫描，
+  进度条可关闭随时刷新（REST `/api/jobs`）
+- 节点详情里的产物直链即 fetch-deps 用的同一份 bottle/源码 URL，
+  下载回写的 `artifact_local` 路径也在此展示
+- 网页呈现的是 **analyze 的可移植性图谱与产物链接**；deps 角色报告
+  目前以 CLI/JSON 交付（后续可挂进节点详情）
+
 ## 快速上手
 
 ```bash
 python portgraph.py deps <项目路径或已扫描应用名>          # 人读报告
 python portgraph.py deps <app> --json                     # 机器可读
 python portgraph.py fetch-deps <app> --dry-run            # 产物预览
+python portgraph.py serve                                 # 网页图谱
 ```
