@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>故障库 · 设计总览 — Qt for HarmonyOS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=ZCOOL+QingKe+HuangYou&family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A1220; --bg2:#0D1728;
+    --panel:rgba(15,27,46,.78); --panel2:rgba(19,33,55,.9);
+    --line:rgba(125,165,215,.22); --line2:rgba(125,165,215,.4);
+    --ink:#D9E4F5; --dim:#8FA3BF; --faint:#5D7191;
+    --qt:#4FC3F7;      /* Qt 问题 */
+    --sys:#FF7A6B;     /* 系统问题 */
+    --must:#FFB84D;    /* 鸿蒙必须适配 */
+    --app:#6BD98F;     /* 应用使用问题 / W 方案 */
+    --third:#B69CFF;   /* 三方库问题 */
+    --undet:#93A4BD;   /* 待定性 */
+    --tk:#6FA8FF;      /* T 跟踪单 */
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+    --sans:'Noto Sans SC',sans-serif;
+    --disp:'ZCOOL QingKe HuangYou','Noto Sans SC',sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--sans);
+    font-weight:300; line-height:1.7; overflow-x:hidden;
+  }
+  /* ── 蓝图底纹 ─────────────────────────── */
+  .grid-bg{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:
+      linear-gradient(rgba(79,195,247,.045) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(79,195,247,.045) 1px,transparent 1px),
+      linear-gradient(rgba(79,195,247,.025) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(79,195,247,.025) 1px,transparent 1px);
+    background-size:120px 120px,120px 120px,24px 24px,24px 24px;
+  }
+  .vignette{
+    position:fixed; inset:0; z-index:1; pointer-events:none;
+    background:radial-gradient(ellipse 90% 70% at 50% 20%,transparent 55%,rgba(4,9,18,.55) 100%);
+  }
+  .noise{
+    position:fixed; inset:0; z-index:1; pointer-events:none; opacity:.05;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
+  }
+  main,header,footer{position:relative;z-index:2}
+  .wrap{max-width:1200px;margin:0 auto;padding:0 32px}
+
+  /* ── 入场动效 ─────────────────────────── */
+  @keyframes rise{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+  .reveal{animation:rise .8s cubic-bezier(.22,1,.36,1) both}
+  .d1{animation-delay:.08s}.d2{animation-delay:.18s}.d3{animation-delay:.3s}
+  .d4{animation-delay:.42s}.d5{animation-delay:.54s}.d6{animation-delay:.66s}.d7{animation-delay:.78s}
+
+  /* ── 头部 ─────────────────────────── */
+  header{padding:76px 0 44px;border-bottom:1px solid var(--line)}
+  .kicker{
+    font-family:var(--mono);font-size:12px;letter-spacing:.32em;color:var(--qt);
+    text-transform:uppercase;margin-bottom:18px;
+  }
+  .kicker::before{content:"";display:inline-block;width:34px;height:1px;background:var(--qt);vertical-align:middle;margin-right:14px}
+  h1{
+    font-family:var(--disp);font-weight:400;font-size:clamp(44px,6.5vw,76px);
+    letter-spacing:.04em;line-height:1.12;
+  }
+  h1 em{font-style:normal;color:var(--qt);text-shadow:0 0 32px rgba(79,195,247,.35)}
+  .subtitle{margin-top:14px;color:var(--dim);font-size:16px;letter-spacing:.06em}
+  .subtitle b{color:var(--ink);font-weight:500}
+  /* 双库分工 */
+  .duality{
+    margin-top:34px;display:grid;grid-template-columns:1fr 44px 1fr;align-items:stretch;gap:0;
+  }
+  .du-card{
+    border:1px solid var(--line);background:var(--panel);padding:18px 22px;position:relative;
+  }
+  .du-card::before,.du-card::after{
+    content:"";position:absolute;width:9px;height:9px;border-color:var(--line2);border-style:solid;
+  }
+  .du-card::before{top:-1px;left:-1px;border-width:1px 0 0 1px}
+  .du-card::after{bottom:-1px;right:-1px;border-width:0 1px 1px 0}
+  .du-card .tag{font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--faint);display:block;margin-bottom:6px}
+  .du-card p{font-size:15px;color:var(--dim)}
+  .du-card p b{color:var(--ink);font-weight:500}
+  .du-card.focus{border-color:rgba(79,195,247,.45)}
+  .du-card.focus .tag{color:var(--qt)}
+  .du-mid{display:flex;align-items:center;justify-content:center;color:var(--faint);font-family:var(--mono);font-size:12px}
+  /* 统计条 */
+  .stats{
+    margin-top:26px;display:flex;flex-wrap:wrap;gap:12px;
+  }
+  .stat{
+    border:1px solid var(--line);background:var(--panel);padding:12px 20px;min-width:130px;
+  }
+  .stat .num{font-family:var(--mono);font-size:30px;font-weight:600;line-height:1.1}
+  .stat .lbl{font-size:12px;color:var(--dim);letter-spacing:.1em}
+  .stat.s .num{color:var(--qt)}.stat.c .num{color:var(--must)}
+  .stat.w .num{color:var(--app)}.stat.t .num{color:var(--tk)}
+  .stat.meta{flex:1;min-width:260px;display:flex;flex-direction:column;justify-content:center}
+  .stat.meta .lbl{margin-bottom:6px}
+
+  /* ── 章节 ─────────────────────────── */
+  section{padding:72px 0 12px}
+  .sec-head{display:flex;align-items:baseline;gap:22px;margin-bottom:10px}
+  .sec-no{
+    font-family:var(--mono);font-size:13px;color:var(--qt);letter-spacing:.2em;
+    border:1px solid rgba(79,195,247,.35);padding:4px 10px;
+  }
+  .sec-head h2{font-family:var(--disp);font-weight:400;font-size:32px;letter-spacing:.05em}
+  .sec-sub{color:var(--dim);font-size:14px;margin-bottom:30px;max-width:860px}
+  .sec-sub b{color:var(--ink);font-weight:500}
+  .hairline{height:1px;background:linear-gradient(90deg,var(--line2),transparent);margin-bottom:34px}
+
+  /* ── 通用面板 ─────────────────────────── */
+  .panel{
+    border:1px solid var(--line);background:var(--panel);padding:24px;position:relative;
+  }
+  .panel::before{
+    content:attr(data-tag);position:absolute;top:-9px;left:16px;
+    font-family:var(--mono);font-size:10px;letter-spacing:.24em;color:var(--faint);
+    background:var(--bg);padding:0 8px;
+  }
+  .mono{font-family:var(--mono)}
+  .chip{
+    display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.06em;
+    border:1px solid;padding:2px 9px;border-radius:2px;
+  }
+  .c-qt{color:var(--qt);border-color:rgba(79,195,247,.5);background:rgba(79,195,247,.07)}
+  .c-sys{color:var(--sys);border-color:rgba(255,122,107,.5);background:rgba(255,122,107,.07)}
+  .c-must{color:var(--must);border-color:rgba(255,184,77,.5);background:rgba(255,184,77,.07)}
+  .c-app{color:var(--app);border-color:rgba(107,217,143,.5);background:rgba(107,217,143,.07)}
+  .c-third{color:var(--third);border-color:rgba(182,156,255,.5);background:rgba(182,156,255,.07)}
+  .c-undet{color:var(--undet);border-color:rgba(147,164,189,.5);background:rgba(147,164,189,.07)}
+  .c-tk{color:var(--tk);border-color:rgba(111,168,255,.5);background:rgba(111,168,255,.07)}
+
+  /* ── 01 图模型 SVG ─────────────────────────── */
+  .graph-caption{
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;
+    font-family:var(--mono);font-size:12px;color:var(--dim);margin-bottom:14px;letter-spacing:.04em;
+  }
+  .graph-caption b{color:var(--ink);font-weight:600}
+  .svgbox{border:1px solid var(--line);background:linear-gradient(180deg,rgba(13,23,40,.85),rgba(10,18,32,.6));padding:18px 8px 8px;overflow-x:auto}
+  svg.graph{width:100%;min-width:1080px;height:auto;display:block}
+  .col-h{font-family:var(--mono);font-size:11px;fill:var(--faint);letter-spacing:.22em}
+  .node rect.box{fill:#0F1B2D;stroke:var(--line2);stroke-width:1;rx:5}
+  .node .strip{rx:2}
+  .node.s .box{stroke:rgba(79,195,247,.4)}
+  .node.s .strip{fill:var(--qt)}
+  .node.c .box{stroke:rgba(255,184,77,.35)}
+  .node.w .box{stroke:rgba(107,217,143,.4)}
+  .node.w .strip{fill:var(--app)}
+  .node.t .box{stroke:rgba(111,168,255,.4);stroke-dasharray:none}
+  .node.t .strip{fill:var(--tk)}
+  .nid{font-family:var(--mono);font-size:11px;font-weight:600;fill:var(--faint);letter-spacing:.08em}
+  .ntitle{font-family:var(--sans);font-size:13.5px;font-weight:500;fill:var(--ink)}
+  .nsub{font-family:var(--sans);font-size:11px;fill:var(--dim)}
+  .nchip{font-family:var(--mono);font-size:10.5px;letter-spacing:.03em}
+  .edge{fill:none;stroke-width:1.4;stroke-dasharray:5 5;animation:flow 26s linear infinite}
+  @keyframes flow{to{stroke-dashoffset:-520}}
+  .e-causes{stroke:rgba(79,195,247,.55)}
+  .e-targets{stroke:rgba(107,217,143,.55)}
+  .e-tracks{stroke:rgba(111,168,255,.6)}
+  .elabel{font-family:var(--mono);font-size:10px;fill:var(--faint);letter-spacing:.06em}
+  .legend{
+    display:flex;flex-wrap:wrap;gap:26px;margin-top:16px;padding:0 10px;
+    font-family:var(--mono);font-size:11.5px;color:var(--dim);
+  }
+  .legend i{display:inline-block;width:26px;height:0;border-top:1.6px dashed;vertical-align:middle;margin-right:8px}
+  .lg-c{border-color:var(--qt)} .lg-t{border-color:var(--app)} .lg-k{border-color:var(--tk)}
+
+  /* ── 02 处置派生 ─────────────────────────── */
+  .derive-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:22px}
+  .rule{display:flex;gap:14px;align-items:baseline;padding:9px 0;border-bottom:1px dashed var(--line)}
+  .rule:last-child{border-bottom:none}
+  .rule .n{font-family:var(--mono);font-size:11px;color:var(--faint);min-width:26px}
+  .rule .cond{font-family:var(--mono);font-size:12.5px;color:var(--dim);flex:1}
+  .rule .cond b{color:var(--ink);font-weight:600}
+  .dist-bar{display:flex;height:40px;border:1px solid var(--line);overflow:hidden;margin-top:14px}
+  .dist-bar div{
+    display:flex;align-items:center;justify-content:center;font-family:var(--mono);
+    font-size:11px;letter-spacing:.05em;white-space:nowrap;overflow:hidden;
+  }
+  .dist-note{font-size:12px;color:var(--faint);margin-top:10px;font-family:var(--mono)}
+
+  /* ── 03 状态机 ─────────────────────────── */
+  .lane{margin-bottom:26px}
+  .lane-title{display:flex;align-items:baseline;gap:14px;margin-bottom:14px}
+  .lane-title .ename{font-family:var(--mono);font-size:15px;font-weight:600}
+  .lane-title .edesc{font-size:12.5px;color:var(--dim)}
+  .lane-title .c-cnt{font-size:11px;color:var(--faint);font-family:var(--mono);margin-left:auto}
+  .track{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+  .st{
+    font-family:var(--mono);font-size:12px;padding:7px 13px;border:1px solid var(--line2);
+    background:var(--panel2);color:var(--ink);letter-spacing:.02em;position:relative;
+  }
+  .st.hot{border-color:rgba(79,195,247,.55);color:var(--qt)}
+  .st.end{border-color:rgba(107,217,143,.5);color:var(--app)}
+  .st.branch{border-style:dashed;color:var(--must);border-color:rgba(255,184,77,.45)}
+  .arrow{color:var(--faint);font-family:var(--mono);font-size:13px;padding:0 2px}
+  .lane-note{font-size:12px;color:var(--faint);margin-top:10px;padding-left:2px}
+  .lane-note b{color:var(--must);font-weight:500}
+
+  /* ── 04 真源与演进 ─────────────────────────── */
+  .pipe{display:grid;grid-template-columns:1fr 34px 1.05fr 34px 1fr;gap:0;align-items:stretch}
+  .pipe-arrow{display:flex;align-items:center;justify-content:center;color:var(--faint);font-family:var(--mono);font-size:16px}
+  .src-stack{display:flex;flex-direction:column;gap:10px}
+  .file-card{
+    border:1px solid var(--line);background:var(--panel2);padding:10px 14px;
+    font-family:var(--mono);font-size:12px;
+  }
+  .file-card .fn{color:var(--qt);font-weight:600}
+  .file-card .fd{color:var(--dim);font-size:11px;margin-top:2px;font-family:var(--sans)}
+  .tool-card{border:1px solid rgba(79,195,247,.4);background:var(--panel2);padding:18px;height:100%}
+  .tool-card .tn{font-family:var(--mono);font-size:13px;color:var(--qt);font-weight:600;margin-bottom:10px}
+  .cmd{display:flex;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line);align-items:baseline}
+  .cmd:last-child{border-bottom:none}
+  .cmd .c{font-family:var(--mono);font-size:11.5px;color:var(--ink);white-space:nowrap;font-weight:600}
+  .cmd .m{font-size:11.5px;color:var(--dim)}
+  .derived-stack{display:flex;flex-direction:column;gap:10px}
+  .loop{
+    margin-top:26px;border:1px dashed rgba(255,184,77,.4);background:rgba(255,184,77,.04);
+    padding:18px 22px;
+  }
+  .loop-title{font-family:var(--mono);font-size:11px;letter-spacing:.24em;color:var(--must);margin-bottom:12px}
+  .loop-flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12.5px;color:var(--dim)}
+  .loop-flow b{color:var(--ink);font-weight:500}
+  .loop-flow .mono{font-size:11.5px}
+
+  /* ── 05 证据门禁 ─────────────────────────── */
+  .ev-grid{display:grid;grid-template-columns:1.25fr 1fr;gap:22px}
+  table.ev{width:100%;border-collapse:collapse;font-size:12.5px}
+  table.ev th{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;color:var(--faint);
+    text-align:left;padding:8px 10px;border-bottom:1px solid var(--line2);font-weight:400;
+  }
+  table.ev td{padding:9px 10px;border-bottom:1px dashed var(--line);color:var(--dim);vertical-align:top}
+  table.ev td.k{font-family:var(--mono);color:var(--qt);font-weight:600;white-space:nowrap}
+  table.ev td.k.alt{color:var(--must)}
+  table.ev tr:last-child td{border-bottom:none}
+  .rules-list .rule .cond{font-size:12px}
+  .rules-list .rule .cond .warn{color:var(--must)}
+  .principles{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+  .pc{
+    font-size:12px;border:1px solid var(--line);padding:5px 12px;color:var(--dim);background:var(--panel2);
+  }
+  .pc b{color:var(--ink);font-weight:500}
+  .hard-callout{
+    margin-top:20px;border-left:3px solid var(--qt);background:rgba(79,195,247,.06);
+    padding:16px 20px;font-size:13px;color:var(--dim);
+  }
+  .hard-callout b{color:var(--qt);font-weight:600}
+  .hard-callout .hc-t{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--qt);margin-bottom:8px}
+
+  /* ── 06 协作流程 ─────────────────────────── */
+  .collab-flow{display:grid;grid-template-columns:1fr 30px 1.5fr 30px 1fr;gap:0;align-items:stretch}
+  .draft-card{border:1px dashed var(--line2);background:var(--panel);padding:16px;display:flex;flex-direction:column;justify-content:center}
+  .draft-card .dn{font-family:var(--mono);font-size:12px;color:var(--must);font-weight:600}
+  .draft-card p{font-size:12px;color:var(--dim);margin-top:6px}
+  .gate{border:1px solid rgba(79,195,247,.4);background:var(--panel2);padding:18px}
+  .gate ol{list-style:none;counter-reset:g}
+  .gate li{
+    counter-increment:g;display:flex;gap:12px;padding:7px 0;font-size:12.5px;color:var(--dim);
+    border-bottom:1px dashed var(--line);align-items:baseline;
+  }
+  .gate li:last-child{border-bottom:none}
+  .gate li::before{
+    content:counter(g,decimal-leading-zero);font-family:var(--mono);font-size:10.5px;color:var(--qt);
+    border:1px solid rgba(79,195,247,.4);min-width:24px;text-align:center;padding:1px 0;
+  }
+  .gate li b{color:var(--ink);font-weight:500}
+  .promote-card{border:1px solid rgba(107,217,143,.45);background:rgba(107,217,143,.05);padding:16px;display:flex;flex-direction:column;justify-content:center}
+  .promote-card .pn{font-family:var(--mono);font-size:12px;color:var(--app);font-weight:600}
+  .promote-card p{font-size:12px;color:var(--dim);margin-top:6px}
+  .draft-states{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;font-family:var(--mono);font-size:11.5px}
+  .draft-states .ds{padding:4px 10px;border:1px solid var(--line)}
+  .ds.a{color:var(--must)} .ds.b{color:var(--app)} .ds.r{color:var(--sys);border-style:dashed}
+
+  /* ── footer ─────────────────────────── */
+  footer{margin-top:84px;border-top:1px solid var(--line);padding:36px 0 56px}
+  .paths{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-bottom:26px}
+  .path-card .pt{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--faint);margin-bottom:10px}
+  .path-card p{font-size:13px;color:var(--dim)}
+  .path-card p b{color:var(--ink);font-weight:500;font-family:var(--mono);font-size:12px}
+  .foot-line{
+    display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px;
+    font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.06em;
+  }
+  .foot-line .cmdref{color:var(--qt)}
+
+  @media (max-width:960px){
+    .duality,.derive-grid,.ev-grid,.paths{grid-template-columns:1fr}
+    .du-mid{padding:6px 0}
+    .pipe,.collab-flow{grid-template-columns:1fr}
+    .pipe-arrow,.collab-flow .pipe-arrow{transform:rotate(90deg);padding:8px 0;justify-content:center}
+  }
+</style>
+</head>
+<body>
+<div class="grid-bg"></div><div class="vignette"></div><div class="noise"></div>
+
+<header>
+  <div class="wrap">
+    <div class="kicker reveal d1">QT FOR HARMONYOS · KNOWLEDGE BASE — FAULTS</div>
+    <h1 class="reveal d2">故障库<em>设计总览</em></h1>
+    <p class="subtitle reveal d3"><b>S 症状 × C 根因 × W 方案 × T 跟踪单</b> —— 四实体问题跟踪图 · 单一真源自动演进 · 机器门禁</p>
+
+    <div class="duality reveal d4">
+      <div class="du-card">
+        <span class="tag">problems/ — 错误知识库</span>
+        <p>回答：<b>“这个报错怎么解”</b>。错误原文 → 原因 → 解决步骤。</p>
+      </div>
+      <div class="du-mid">×refs×</div>
+      <div class="du-card focus">
+        <span class="tag">faults/ — 故障库（本设计）</span>
+        <p>回答：<b>“归谁 · 是缺陷还是规格 · 修没修 · 根治前怎么绕”</b>。</p>
+      </div>
+    </div>
+
+    <div class="stats reveal d5">
+      <div class="stat s"><div class="num">17</div><div class="lbl">症状 S</div></div>
+      <div class="stat c"><div class="num">18</div><div class="lbl">根因 C · defect 11 / limitation 4 / undetermined 3</div></div>
+      <div class="stat w"><div class="num">15</div><div class="lbl">方案 W · adopted 13 / proposed 2</div></div>
+      <div class="stat t"><div class="num">5</div><div class="lbl">跟踪单 T · 全部在跟</div></div>
+      <div class="stat meta">
+        <div class="lbl">数据快照 2026-09-15 · 历史导入批次 1 后</div>
+        <div class="dist-bar">
+          <div style="flex:6;background:rgba(79,195,247,.28);color:var(--qt)">Qt 6</div>
+          <div style="flex:4;background:rgba(255,184,77,.25);color:var(--must)">适配 4</div>
+          <div style="flex:3;background:rgba(147,164,189,.22);color:var(--undet)">待定 3</div>
+          <div style="flex:2;background:rgba(255,122,107,.25);color:var(--sys)">系统 2</div>
+          <div style="flex:2;background:rgba(107,217,143,.22);color:var(--app)">应用 2</div>
+          <div style="flex:1;background:rgba(182,156,255,.25);color:var(--third)">1</div>
+        </div>
+        <div class="dist-note">链路闭环（18 根因）：根治 1 · 临时了结 6 · 未闭环 11（缺单 7 · 缺方案 2 · 双缺 2）</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- 01 图模型 -->
+  <section id="graph" class="reveal d1">
+    <div class="sec-head"><span class="sec-no">01</span><h2>四实体图模型</h2></div>
+    <p class="sec-sub">问题的本质是<b>图</b>：一个应用层表现可指向多个根因（<span class="mono">all_of</span> 叠加致病 / <span class="mono">any_of</span> 任一即可）；根因之上挂<b>临时方案</b>与<b>上游跟踪单</b>。下面是真实数据子集（4 条因果链）：</p>
+    <div class="hairline"></div>
+
+    <div class="graph-caption">
+      <span>症状 S ──causes──▶ 根因 C ◀──targets── 方案 W ／ ◀──tracks── 跟踪单 T</span>
+      <span>示例：<b>S-0005 一图多因（all_of）</b> · C 节点按处置分类着色</span>
+    </div>
+
+    <div class="svgbox">
+    <svg class="graph" viewBox="0 0 1180 700" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L8,4 L0,8 z" fill="#7FA6D4"/>
+        </marker>
+      </defs>
+
+      <text class="col-h" x="20" y="16">SYMPTOMS — 应用层表现</text>
+      <text class="col-h" x="445" y="16">CAUSES — 定性 · 责任领域</text>
+      <text class="col-h" x="905" y="16">WORKAROUNDS / TICKETS</text>
+
+      <!-- edges -->
+      <path class="edge e-causes" d="M270,109 C340,109 375,96 445,96" marker-end="url(#arr)"/>
+      <path class="edge e-causes" d="M270,109 C340,109 375,224 445,224" marker-end="url(#arr)"/>
+      <path class="edge e-causes" d="M270,265 C340,265 375,376 445,376" marker-end="url(#arr)"/>
+      <path class="edge e-causes" d="M270,421 C340,421 375,528 445,528" marker-end="url(#arr)"/>
+      <path class="edge e-causes" d="M270,577 C340,577 375,656 445,656" marker-end="url(#arr)"/>
+      <path class="edge e-targets" d="M905,97 C820,97 800,96 725,96" marker-end="url(#arr)"/>
+      <path class="edge e-tracks"  d="M905,217 C820,217 800,224 725,224" marker-end="url(#arr)"/>
+      <path class="edge e-targets" d="M905,369 C820,369 800,376 725,376" marker-end="url(#arr)"/>
+      <path class="edge e-targets" d="M905,521 C820,521 800,528 725,528" marker-end="url(#arr)"/>
+      <path class="edge e-targets" d="M905,649 C820,649 800,656 725,656" marker-end="url(#arr)"/>
+
+      <text class="elabel" x="346" y="150">causes·all_of</text>
+      <text class="elabel" x="352" y="314">causes</text>
+      <text class="elabel" x="352" y="466">causes</text>
+      <text class="elabel" x="352" y="610">causes</text>
+      <text class="elabel" x="800" y="84">targets</text>
+      <text class="elabel" x="806" y="206">tracks</text>
+      <text class="elabel" x="800" y="356">targets</text>
+      <text class="elabel" x="800" y="508">targets</text>
+      <text class="elabel" x="800" y="636">targets</text>
+
+      <!-- S nodes -->
+      <g class="node s" transform="translate(20,66)">
+        <rect class="box" width="250" height="86" rx="5"/><rect class="strip" width="3" height="86"/>
+        <text class="nid" x="14" y="22">S-0005</text>
+        <text class="ntitle" x="14" y="44">Qt6 构建连锁崩溃</text>
+        <text class="nsub" x="14" y="66">-isystem × cmath · 904 处报错</text>
+      </g>
+      <g class="node s" transform="translate(20,222)">
+        <rect class="box" width="250" height="86" rx="5"/><rect class="strip" width="3" height="86"/>
+        <text class="nid" x="14" y="22">S-0002</text>
+        <text class="ntitle" x="14" y="44">拼音输入异常</text>
+        <text class="nsub" x="14" y="66">键盘收起 + 字母污染</text>
+      </g>
+      <g class="node s" transform="translate(20,378)">
+        <rect class="box" width="250" height="86" rx="5"/><rect class="strip" width="3" height="86"/>
+        <text class="nid" x="14" y="22">S-0017</text>
+        <text class="ntitle" x="14" y="44">Qt3D RGBA8 纹理纯黑</text>
+        <text class="nsub" x="14" y="66">光照正常 · RGB8 正常 · 无 GL 错</text>
+      </g>
+      <g class="node s" transform="translate(20,534)">
+        <rect class="box" width="250" height="86" rx="5"/><rect class="strip" width="3" height="86"/>
+        <text class="nid" x="14" y="22">S-0007</text>
+        <text class="ntitle" x="14" y="44">chmod / symlink 失败</text>
+        <text class="nsub" x="14" y="66">QFile::link 返回 false</text>
+      </g>
+
+      <!-- C nodes -->
+      <g class="node c" transform="translate(445,46)">
+        <rect class="box" width="280" height="100" rx="5"/><rect width="3" height="100" rx="2" fill="#4FC3F7"/>
+        <text class="nid" x="14" y="22">C-0005 · defect/qt-port</text>
+        <text class="ntitle" x="14" y="44">Qt cmake 注入 -isystem</text>
+        <text class="nsub" x="14" y="64">第三方 include 进系统头搜索路径</text>
+        <text class="nchip" x="14" y="86" fill="#4FC3F7">● 处置 → Qt 问题</text>
+      </g>
+      <g class="node c" transform="translate(445,174)">
+        <rect class="box" width="280" height="100" rx="5"/><rect width="3" height="100" rx="2" fill="#FF7A6B"/>
+        <text class="nid" x="14" y="22">C-0006 · defect/ohos-ndk</text>
+        <text class="ntitle" x="14" y="44">libcxx-ohos &lt;cmath&gt; 缺 include</text>
+        <text class="nsub" x="14" y="64">__promote 依赖 std::isnan 未引入</text>
+        <text class="nchip" x="14" y="86" fill="#FF7A6B">● 处置 → 系统问题</text>
+      </g>
+      <g class="node c" transform="translate(445,326)">
+        <rect class="box" width="280" height="100" rx="5"/><rect width="3" height="100" rx="2" fill="#4FC3F7"/>
+        <text class="nid" x="14" y="22">C-0002 · defect/qt-port</text>
+        <text class="ntitle" x="14" y="44">IME reset Detach/Attach</text>
+        <text class="nsub" x="14" y="64">隐藏输入法时未先分离编辑区</text>
+        <text class="nchip" x="14" y="86" fill="#4FC3F7">● 处置 → Qt 问题</text>
+      </g>
+      <g class="node c" transform="translate(445,478)">
+        <rect class="box" width="280" height="100" rx="5"/><rect width="3" height="100" rx="2" fill="#B69CFF"/>
+        <text class="nid" x="14" y="22">C-0018 · defect/third-party</text>
+        <text class="ntitle" x="14" y="44">ZINK RGBA8 mipmap 失败</text>
+        <text class="nsub" x="14" y="64">vkCmdBlitImage 对带 alpha 格式失效</text>
+        <text class="nchip" x="14" y="86" fill="#B69CFF">● 处置 → 三方库问题</text>
+      </g>
+      <g class="node c" transform="translate(445,606)">
+        <rect class="box" width="280" height="100" rx="5"/><rect width="3" height="100" rx="2" fill="#FFB84D"/>
+        <text class="nid" x="14" y="22">C-0008 · limitation/ohos-runtime</text>
+        <text class="ntitle" x="14" y="44">沙箱禁运行时 chmod/symlink</text>
+        <text class="nsub" x="14" y="64">打包契约承担 · 非运行时 API</text>
+        <text class="nchip" x="14" y="86" fill="#FFB84D">● 处置 → 鸿蒙必须适配</text>
+      </g>
+
+      <!-- W/T nodes -->
+      <g class="node w" transform="translate(905,54)">
+        <rect class="box" width="255" height="86" rx="5"/><rect class="strip" width="3" height="86"/>
+        <text class="nid" x="14" y="22">W-0004 · adopted</text>
+        <text class="ntitle" x="14" y="44">构建脚本剥离 -isystem</text>
+        <text class="nsub" x="14" y="66">retire_when：Qt 侧修复到达</text>
+      </g>
+      <g class="node t" transform="translate(905,174)">
+        <rect class="box" width="255" height="86" rx="5"/><rect class="strip" width="3" height="86"/>
+        <text class="nid" x="14" y="22">T-0004 · qt-bug · submitted</text>
+        <text class="ntitle" x="14" y="44">QTBUG-146621</text>
+        <text class="nsub" x="14" y="66">平台行为记录 · fix_version 待 released</text>
+      </g>
+      <g class="node w" transform="translate(905,326)">
+        <rect class="box" width="255" height="86" rx="5"/><rect class="strip" width="3" height="86"/>
+        <text class="nid" x="14" y="22">W-0001 · adopted</text>
+        <text class="ntitle" x="14" y="44">reset 前先 Detach/Attach</text>
+        <text class="nsub" x="14" y="66">探针日志验证 · 真机复测通过</text>
+      </g>
+      <g class="node w" transform="translate(905,478)">
+        <rect class="box" width="255" height="86" rx="5"/><rect class="strip" width="3" height="86"/>
+        <text class="nid" x="14" y="22">W-0015 · adopted</text>
+        <text class="ntitle" x="14" y="44">alpha-PNG 关 mipmap</text>
+        <text class="nsub" x="14" y="66">代价：远处纹理混叠</text>
+      </g>
+      <g class="node w" transform="translate(905,606)">
+        <rect class="box" width="255" height="86" rx="5"/><rect class="strip" width="3" height="86"/>
+        <text class="nid" x="14" y="22">W-0006 · adopted</text>
+        <text class="ntitle" x="14" y="44">权限交平台打包契约</text>
+        <text class="nsub" x="14" y="66">不作运行时业务成功条件</text>
+      </g>
+    </svg>
+    </div>
+
+    <div class="legend">
+      <span><i class="lg-c"></i>causes（S→C，多因 all_of / any_of）</span>
+      <span><i class="lg-t"></i>targets（W→C，方案挂靠根因）</span>
+      <span><i class="lg-k"></i>tracks（T→C，上游单挂靠根因）</span>
+      <span><i style="border-color:var(--third)"></i>depends_on（C→C，跨根因阻塞，仅实证可连）</span>
+      <span>⬥ 闭环：defect（外部责任）= W(adopted) + T(在跟) 才算临时了结；limitation/应用 = W；缺口向上传播至症状</span>
+    </div>
+  </section>
+
+  <!-- 02 定性与处置派生 -->
+  <section id="disposition" class="reveal d1">
+    <div class="sec-head"><span class="sec-no">02</span><h2>定性分水岭 × 处置分类派生</h2></div>
+    <p class="sec-sub"><b>nature（是缺陷还是规格）</b>是根因的第一定性：defect 会修、limitation 规格如此只能绕；<b>disposition（处置分类）</b>回答开发者视角"我该怎么办"——由 nature × responsible <b>自动派生，不入真源、无双写</b>。</p>
+    <div class="hairline"></div>
+
+    <div class="derive-grid">
+      <div class="panel" data-tag="DERIVATION RULES — faults-build.py 自动计算">
+        <div class="rule"><span class="n">R1</span><span class="cond"><b>responsible = app</b> → 应用使用问题（应用误用，非框架问题）</span><span class="chip c-app">app-usage</span></div>
+        <div class="rule"><span class="n">R2</span><span class="cond"><b>nature = limitation</b> → 鸿蒙必须适配（改自己的代码，无上游修复可等）</span><span class="chip c-must">must-adapt</span></div>
+        <div class="rule"><span class="n">R3</span><span class="cond">defect × <b>qt-port / qt-upstream</b> → Qt 问题（等修复 / 本地补丁 / 提 QTBUG）</span><span class="chip c-qt">qt-defect</span></div>
+        <div class="rule"><span class="n">R4</span><span class="cond">defect × <b>ohos-runtime / ohos-ndk / ohos-toolchain</b> → 系统问题（等版本 / 提华为侧单）</span><span class="chip c-sys">system-defect</span></div>
+        <div class="rule"><span class="n">R5</span><span class="cond">defect × <b>third-party</b> → 三方库问题（等三方版本 / 换库）</span><span class="chip c-third">third-party</span></div>
+        <div class="rule"><span class="n">R6</span><span class="cond">其余（nature = undetermined）→ 待定性；<b>上游定性后自动落入 R1–R5</b>（CID 不变）</span><span class="chip c-undet">undetermined</span></div>
+      </div>
+      <div class="panel" data-tag="NATURE 分水岭">
+        <div class="rule"><span class="n">D</span><span class="cond"><b>defect（11）</b> —— 会修：跟 fix_version / 上游单 / 复核计划</span></div>
+        <div class="rule"><span class="n">L</span><span class="cond"><b>limitation（4）</b> —— 规格如此：给替代方案 + evolution 演进观察</span></div>
+        <div class="rule"><span class="n">U</span><span class="cond"><b>undetermined（3）</b> —— 等上游定性：同一状态机，双语义解读</span></div>
+        <div class="dist-note">// 改判路径：C-0004 undetermined →（华为定性）→ limitation 或 defect，CID 与历史不变</div>
+        <div class="dist-note">// 处置分布（18 根因）：Qt 6 · 适配 4 · 待定 3 · 系统 2 · 应用 2 · 三方 1</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 状态机 -->
+  <section id="states" class="reveal d1">
+    <div class="sec-head"><span class="sec-no">03</span><h2>三类实体 · 各一套状态机</h2></div>
+    <p class="sec-sub">状态即事实的记录：<b>修复到达（T released）自动提示推进 C；验证通过才退役 W；回归复现退回 open 而 CID 不变</b>。</p>
+    <div class="hairline"></div>
+
+    <div class="panel" data-tag="STATE MACHINES">
+      <div class="lane">
+        <div class="lane-title"><span class="ename" style="color:var(--must)">C</span><span class="edesc">根因 · 生命周期</span><span class="c-cnt">regression → open（FID 不变）</span></div>
+        <div class="track">
+          <span class="st">open</span><span class="arrow">→</span>
+          <span class="st">diagnosed</span><span class="arrow">→</span>
+          <span class="st">workaround</span><span class="arrow">→</span>
+          <span class="st">reported</span><span class="arrow">→</span>
+          <span class="st hot">fix-confirmed</span><span class="arrow">→</span>
+          <span class="st hot">verified</span><span class="arrow">→</span>
+          <span class="st end">closed</span>
+        </div>
+        <div class="lane-note">limitation 旁路：<span class="mono">diagnosed → watching（演进观察）→ wontfix（规格稳定终态）</span>；<b>verified 后须完成退役动作</b>（撤 workaround / 关联页注记 / 移入已了结）才 closed</div>
+      </div>
+      <div class="lane">
+        <div class="lane-title"><span class="ename" style="color:var(--app)">W</span><span class="edesc">临时方案 / 替代方案 · 可用性独立于流转状态</span></div>
+        <div class="track">
+          <span class="st">proposed</span><span class="arrow">→</span>
+          <span class="st">tested</span><span class="arrow">→</span>
+          <span class="st hot">adopted</span><span class="arrow">→</span>
+          <span class="st end">retired</span>
+        </div>
+        <div class="lane-note">每条 W 必填 <span class="mono">retire_when</span>（退役条件）——修复到达并验证后退役，撤除绕过代码</div>
+      </div>
+      <div class="lane">
+        <div class="lane-title"><span class="ename" style="color:var(--tk)">T</span><span class="edesc">跟踪单 · 修复版本的权威来源（fix_version）</span></div>
+        <div class="track">
+          <span class="st">draft</span><span class="arrow">→</span>
+          <span class="st">submitted</span><span class="arrow">→</span>
+          <span class="st">accepted</span><span class="arrow">→</span>
+          <span class="st">fixed</span><span class="arrow">→</span>
+          <span class="st hot">released</span><span class="arrow">→</span>
+          <span class="st end">closed</span>
+          <span class="st branch" style="margin-left:10px">dup / wontfix</span>
+        </div>
+        <div class="lane-note">tracker ∈ qt-bug（QTBUG-xxx）/ ohos-issue / gitee / partner / forum；一个 C 可挂多张单（Qt 侧 + 华为侧）</div>
+      </div>
+
+      <div class="loop" style="margin-top:18px">
+        <div class="loop-title">CHAIN CLOSURE — 链路完备性（闭环规则）</div>
+        <div class="loop-flow">
+          <span><b>defect（外部责任）临时了结 = W(adopted) 且 T(在跟)</b></span>
+          <span class="arrow">｜</span>
+          <span>limitation / 应用问题 = W(adopted)</span>
+          <span class="arrow">｜</span>
+          <span>undetermined = W（定性后 T 转硬要求）</span>
+          <span class="arrow">｜</span>
+          <span><b>缺口向上传播</b>：缺单 / 缺方案 / 双缺</span>
+          <span class="arrow">｜</span>
+          <span class="mono">S=resolved 而链有缺 → ERROR</span>
+        </div>
+        <div class="loop-flow" style="margin-top:10px">
+          <span>当前分布：根治 1 · 临时了结 6 · <b>未闭环 11（缺单 7 · 缺方案 2 · 双缺 2）</b></span>
+          <span class="arrow">｜</span>
+          <span class="mono">review → 未闭环（待补齐）清单</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 真源与自动演进 -->
+  <section id="pipeline" class="reveal d1">
+    <div class="sec-head"><span class="sec-no">04</span><h2>单一真源 → 派生物 · 自动演进</h2></div>
+    <p class="sec-sub">真源只有 <b>_data/*.yaml 与根因页</b>；全量图与登记表全部<b>机器重建</b>——反查索引、聚合概览、视图计数自动派生，<b>没有双向同步，就没有漂移</b>。</p>
+    <div class="hairline"></div>
+
+    <div class="pipe">
+      <div class="src-stack">
+        <div class="file-card"><div class="fn">_data/symptoms.yaml</div><div class="fd">S 记录 + causes 边</div></div>
+        <div class="file-card"><div class="fn">_data/workarounds.yaml</div><div class="fd">W 记录 + targets 边 + retire_when</div></div>
+        <div class="file-card"><div class="fn">_data/tickets.yaml</div><div class="fd">T 记录 + tracks 边 + fix_version</div></div>
+        <div class="file-card"><div class="fn">C-xxxx-slug.md × 18</div><div class="fd">根因页：frontmatter 全字段 + depends_on 边 + 深档案正文</div></div>
+      </div>
+      <div class="pipe-arrow">▶</div>
+      <div class="tool-card">
+        <div class="tn">tools/faults-build.py</div>
+        <div class="cmd"><span class="c">build</span><span class="m">校验真源 → 重建 _graph.yaml + _registry.md（ERROR 拒绝生成）</span></div>
+        <div class="cmd"><span class="c">check</span><span class="m">一致性门禁：ID/枚举/边目标/必填字段/日期/refs/证据规则，exit 1 = 有 ERROR</span></div>
+        <div class="cmd"><span class="c">review</span><span class="m">复核到期扫描 + 状态推进 lint + 待审草稿清单</span></div>
+        <div class="cmd"><span class="c">lint</span><span class="m">T released → C 待推进 fix-confirmed；S mitigated 无 adopted W ……</span></div>
+      </div>
+      <div class="pipe-arrow">▶</div>
+      <div class="derived-stack">
+        <div class="file-card" style="border-color:rgba(79,195,247,.4)"><div class="fn">_graph.yaml</div><div class="fd">机读全量图：节点 + 边 + 聚合 + manifests 反查 —— AI 单文件一次加载（yaml_lite）</div></div>
+        <div class="file-card" style="border-color:rgba(79,195,247,.4)"><div class="fn">_registry.md</div><div class="fd">登记总表：症状索引（主入口）· 按处置分类 · 版本基线 · 复核到期 · 待处理提醒</div></div>
+      </div>
+    </div>
+
+    <div class="loop">
+      <div class="loop-title">VERSION-DRIVEN EVOLUTION — 版本驱动的自动演进闭环</div>
+      <div class="loop-flow">
+        <b>Qt OHOS SDK / HarmonyOS SDK 更新</b><span class="arrow">→</span>
+        <span>按<b>版本基线</b>复查（升级检查清单）</span><span class="arrow">→</span>
+        <span class="mono">T: released（fix_version 落定）</span><span class="arrow">→</span>
+        <span class="mono">lint 提示 C 推进 fix-confirmed</span><span class="arrow">→</span>
+        <span>真机复验</span><span class="arrow">→</span>
+        <span class="mono">W: retired + S: resolved</span><span class="arrow">→</span>
+        <span>回归复现则 C 退回 open，CID 不变</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 证据门禁 -->
+  <section id="evidence" class="reveal d1">
+    <div class="sec-head"><span class="sec-no">05</span><h2>问题确认 · 证据门禁</h2></div>
+    <p class="sec-sub">没有证据的转述/猜测，<b>不得定性为 Qt 框架问题</b>——由 C 页必填字段 <span class="mono">evidence_type</span> 声明，check 机器强制。</p>
+    <div class="hairline"></div>
+
+    <div class="ev-grid">
+      <div class="panel" data-tag="EVIDENCE TYPES">
+        <table class="ev">
+          <tr><th>TYPE</th><th>形态</th><th>适用</th></tr>
+          <tr><td class="k">demo</td><td>复现 demo（最小 ohos 工程，七原则）</td><td>运行时行为异常首选</td></tr>
+          <tr><td class="k">logs</td><td>调试日志+栈：hilog / cppcrash·jscrash / 探针 / 构建错误原文</td><td>无 demo 时必须</td></tr>
+          <tr><td class="k">both</td><td>demo + 日志</td><td>最强证据</td></tr>
+          <tr><td class="k alt">source</td><td>源码 file:line 引用链</td><td>仅静态可判定类（Qt 侧 defect 用之收 WARN）</td></tr>
+          <tr><td class="k alt">docs</td><td>官方文档 / 规格链接</td><td>limitation 专用</td></tr>
+        </table>
+        <div class="hard-callout">
+          <div class="hc-t">QT 框架侧 DEMO 硬性要求</div>
+          复现逻辑集中在<b>单个 main.cpp</b>（ohos 工程仅 QAbility 胶水壳，可直接粘贴进 qt-bug）+
+          <b>复现步骤编号到操作级</b>（每步预期 + expected vs actual）——<b>无步骤视为未完成</b>。
+        </div>
+      </div>
+      <div>
+        <div class="panel rules-list" data-tag="MACHINE RULES — check 强制">
+          <div class="rule"><span class="n">E1</span><span class="cond">defect 的 evidence_type <span class="warn">禁止 docs</span>（不得仅凭文档定性缺陷）</span></div>
+          <div class="rule"><span class="n">E2</span><span class="cond">limitation 限定 <span class="mono">docs / source / logs</span></span></div>
+          <div class="rule"><span class="n">E3</span><span class="cond">在跟上游单的 defect/undetermined <span class="warn">必须 demo/logs/both</span> —— 对齐 qt-bug-report 可复现性 HARD 闸门：无可复现材料的单据不提交</span></div>
+        </div>
+        <div class="panel" style="margin-top:22px" data-tag="DEMO 编写七原则">
+          <div class="principles">
+            <span class="pc"><b>①</b> 最小化</span>
+            <span class="pc"><b>②</b> 自包含可构建</span>
+            <span class="pc"><b>③</b> 确定性优先</span>
+            <span class="pc"><b>④</b> 对照性</span>
+            <span class="pc"><b>⑤</b> 纯净根因</span>
+            <span class="pc"><b>⑥</b> 携带诊断输出</span>
+            <span class="pc"><b>⑦</b> 版本留痕</span>
+          </div>
+          <p style="font-size:12px;color:var(--faint);margin-top:14px">无 demo 降级通道：日志 + 栈 + 采集环境三件套，C 页注明"依据日志定性"。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 协作流程 -->
+  <section id="collab" class="reveal d1">
+    <div class="sec-head"><span class="sec-no">06</span><h2>协作草稿 → 主编门禁 → 合入</h2></div>
+    <p class="sec-sub">协作者按<b>提交清单</b>投草稿（格式宽松、不占编号）；主编六步门禁全留痕——<b>复现 demo 必测，未复现不合入</b>。</p>
+    <div class="hairline"></div>
+
+    <div class="collab-flow">
+      <div class="draft-card">
+        <div class="dn">faults/_drafts/</div>
+        <p>协作者提交清单（必填）：<br>① 现象原文（日志不转述）<br>② 环境三件套<br>③ 证据：复现 demo 或 日志+栈<br>④ 查重声明<br><span style="color:var(--faint)">limitation 类可用官方文档链接替代 demo</span></p>
+      </div>
+      <div class="pipe-arrow">▶</div>
+      <div class="gate">
+        <ol>
+          <li><b>查重</b> —— 已有 S/C 则转为对现有节点补充，不重复建档</li>
+          <li><b>复现测试</b> —— defect/undetermined 类必测 demo；limitation 类核验文档链接；<b>未复现不合入</b></li>
+          <li><b>人工核验</b> —— 证据链 / nature 定性 / responsible 归层 / 事实（宁缺勿造）/ 脱敏</li>
+          <li><b>复现留痕</b> —— 主编复现结果登记 C 页"版本验证记录"首行</li>
+          <li><b>promote</b> —— 拆分为 S/C/W/T 真源记录，编号由主编分配，删除草稿</li>
+          <li><b>build 门禁</b> —— ERROR 清零 + 关联页 refs 回填</li>
+        </ol>
+      </div>
+      <div class="pipe-arrow">▶</div>
+      <div class="promote-card">
+        <div class="pn">PROMOTED → 真源</div>
+        <p>S/C/W/T 各归其位，<span class="mono">build</span> 重建全图与登记表；review 列出待审草稿，rejected 草稿保留防重复投稿。</p>
+      </div>
+    </div>
+
+    <div class="draft-states">
+      <span class="ds a">draft 新投</span><span class="arrow">→</span>
+      <span class="ds a">in-review 审核中</span><span class="arrow">→</span>
+      <span class="ds b">promoted 已合入（删文件）</span>
+      <span class="ds r">returned 退回</span>
+      <span class="ds r">rejected 不收（保留）</span>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="paths">
+      <div class="path-card">
+        <div class="pt">AI 读取路径</div>
+        <p><b>_graph.yaml</b> 单文件机读全量图（节点·边·聚合·反查）→ 按需加载 C 页深档案；表现 → 根因 → 定性 → 方案一次路由完成。</p>
+      </div>
+      <div class="path-card">
+        <div class="pt">人类读取路径</div>
+        <p><b>_registry.md</b> §症状索引（表现→根因）→ 根因页（定性 / 责任领域 / 方案 / 跟踪单 / 复核计划）；升级前查 §按版本基线。</p>
+      </div>
+    </div>
+    <div class="foot-line">
+      <span>TRUE SOURCE: _data/*.yaml + C-XXXX pages · DERIVED: _graph.yaml / _registry.md — REBUILT BY TOOL</span>
+      <span class="cmdref">python tools/faults-build.py build | check | review</span>
+      <span>SNAPSHOT 2026-09-15 · S17 / C18 / W15 / T5 · batch-1 imported</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

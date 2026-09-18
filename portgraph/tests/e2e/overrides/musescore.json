@@ -1,0 +1,34 @@
+{
+ "reclassify": [
+  {"dep": "pkg-unknown:alsa", "from": "matched", "to": "resolution-gap", "reason": "真别名缺口：hb-core/Formula/a/alsa-lib.rb 与 cmd-pkgs alsa-lib 1.2.12 均存在，ALIASES 缺 alsa→alsa-lib；find_package(ALSA REQUIRED) 位于项目自身 src/framework/midi/CMakeLists.txt:85（非内嵌三方）"},
+  {"dep": "pkg-unknown:sndfile", "from": "matched", "to": "resolution-gap", "reason": "真别名缺口：hb-core/Formula/lib/libsndfile.rb 存在，ALIASES 缺 sndfile→libsndfile；项目 SetupSndFile.cmake:72 find_package(SndFile) 在 .cmake 文件中未被 portgraph 扫描，本次命中纯靠内嵌 fluidsynth 的 find_package(SndFile) 巧合"},
+  {"dep": "pkg-unknown:tinyxml", "from": "matched", "to": "resolution-gap", "reason": "真别名缺口：hb-core/Formula/t/tinyxml2.rb 与 cmd-pkgs tinyxml2 10.0.0 存在，ALIASES 缺 tinyxml→tinyxml2；src/framework/global/CMakeLists.txt:28 find_package(TinyXml REQUIRED) 为项目必需依赖，实际用 pkg-config tinyxml2"},
+  {"dep": "pkg-unknown:pulseaudio", "from": "matched", "to": "unknown-ok", "reason": "hb/cmd-pkgs 确无 pulseaudio 库包（仅 pulseaudio-ctl/pulsemixer 控制工具，非同名库）；PulseAudio 直连已由 unsupported-interface 阻塞项单独覆盖"},
+  {"dep": "pkg-unknown:fluidsynth", "from": "resolution-gap", "to": "unknown-ok", "reason": "hb/cmd-pkgs 确无 fluidsynth；且系内嵌 thirdparty 自带源码构建，find_package(FluidSynth) 实为 fluidsynth-2.3.3/CMakeLists.txt:851 注释行（'# Exported targets for cmake: find_package(FluidSynth)'）被正则误匹配"},
+  {"dep": "pkg-unknown:instpatch", "from": "resolution-gap", "to": "unknown-ok", "reason": "hb/cmd-pkgs 确无 libinstpatch；来自内嵌 fluidsynth 的可选 MIDI 补丁支持"},
+  {"dep": "pkg-unknown:lash", "from": "resolution-gap", "to": "unknown-ok", "reason": "hb/cmd-pkgs 确无 lash（LASH 音频会话管理已停止维护）；来自内嵌 fluidsynth 可选驱动"},
+  {"dep": "pkg-unknown:midishare", "from": "resolution-gap", "to": "unknown-ok", "reason": "hb/cmd-pkgs 确无 midishare（macOS 专属 MIDI 框架）；来自内嵌 fluidsynth 平台分支"},
+  {"dep": "pkg-unknown:oboe", "from": "resolution-gap", "to": "unknown-ok", "reason": "hb/cmd-pkgs 确无 oboe formula；来自内嵌 fluidsynth 的 enable-oboe 选项分支（Android/OHOS 音频驱动，fluidsynth-2.3.3/CMakeLists.txt:676）"},
+  {"dep": "pkg-unknown:openmp", "from": "resolution-gap", "to": "unknown-ok", "reason": "编译器运行时（CMake OpenMP 模块）非三方包，应与 Threads 一样跳过；来自内嵌 fluidsynth"},
+  {"dep": "pkg-unknown:opensles", "from": "resolution-gap", "to": "unknown-ok", "reason": "NDK 原生音频 API（OHOS NDK 自带头文件）非 bottle 包；来自内嵌 fluidsynth Android 分支"},
+  {"dep": "pkg-unknown:pipewire", "from": "resolution-gap", "to": "unknown-ok", "reason": "hb/cmd-pkgs 确无 pipewire；来自内嵌 fluidsynth 可选音频服务器驱动"},
+  {"dep": "pkg-unknown:pyside", "from": "resolution-gap", "to": "unknown-ok", "reason": "hb/cmd-pkgs 确无 pyside；来自内嵌 KDDockWidgets/python 绑定（默认不构建）"},
+  {"dep": "pkg-unknown:python3", "from": "resolution-gap", "to": "unknown-ok", "reason": "宿主构建工具（内嵌 KDDockWidgets python 绑定的 find_package(Python3)）；python@3.14 bottle 虽存在但映射为目标侧运行时依赖无意义"},
+  {"dep": "pkg-unknown:shiboken", "from": "resolution-gap", "to": "unknown-ok", "reason": "hb/cmd-pkgs 确无 shiboken；来自内嵌 KDDockWidgets/python 绑定（默认不构建）"},
+  {"dep": "pkg-unknown:systemd", "from": "resolution-gap", "to": "unknown-ok", "reason": "hb/cmd-pkgs 确无 systemd（Linux 服务管理器非移植目标包）；systemd 接口已由 unsupported-interface 阻塞项覆盖"},
+  {"dep": "pkg-unknown:glib2", "from": "resolution-gap", "to": "resolution-gap", "reason": "真别名缺口：hb-core/Formula/g/glib.rb 与 cmd-pkgs glib 2.88.0 存在，ALIASES 缺 glib2→glib（来自内嵌 fluidsynth 的 GLib2 find_package）"},
+  {"dep": "pkg-unknown:dbus1", "from": "resolution-gap", "to": "resolution-gap", "reason": "真别名缺口：hb-core/Formula/d/dbus.rb 与 cmd-pkgs dbus 1.14.10 存在，ALIASES 缺 dbus1→dbus（来自内嵌 fluidsynth）"},
+  {"dep": "pkg-unknown:png", "from": "resolution-gap", "to": "resolution-gap", "reason": "真别名缺口：find_package(PNG) 名 png 未映射到 libpng（hb Formula/lib/libpng.rb、cmd-pkgs libpng 1.6.43）；且图中同时存在已解析的 libpng 节点→同库双节点（来自内嵌 freetype）"},
+  {"dep": "pkg-unknown:ogg", "from": "resolution-gap", "to": "resolution-gap", "reason": "真别名缺口：hb-core/Formula/lib/libogg.rb 与 cmd-pkgs libogg 存在，ALIASES 缺 ogg→libogg（来自内嵌 flac 的 find_package(Ogg REQUIRED)）"},
+  {"dep": "pkg-unknown:brotlidec", "from": "resolution-gap", "to": "resolution-gap", "reason": "真别名缺口：hb-core/Formula/b/brotli.rb 与 cmd-pkgs brotli 存在，ALIASES 缺 brotlidec→brotli（来自内嵌 freetype 可选依赖）"},
+  {"dep": "pkg-unknown:iconv", "from": "resolution-gap", "to": "resolution-gap", "reason": "真别名缺口：hb-core/Formula/lib/libiconv.rb 与 cmd-pkgs libiconv 1.17 存在，ALIASES 缺 iconv→libiconv（musl 虽内置 iconv，但 libiconv bottle 确实存在；来自内嵌 flac/freetype）"},
+  {"dep": "pkg-unknown:intl", "from": "resolution-gap", "to": "resolution-gap", "reason": "真别名缺口：libintl 属 gettext（hb-core/Formula/g/gettext.rb、cmd-pkgs gettext 0.22.5 存在），ALIASES 缺 intl→gettext（来自内嵌 flac）"},
+  {"dep": "util-linux", "from": "false-positive", "to": "false-positive", "reason": "维持误报：全仓仅内嵌 google_crashpad_client/util/misc/uuid.cc:34 include <uuid/uuid.h>（libuuid→util-linux include 启发式），无任何构建文件 find_package/pkg_check/link 引用，CI 依赖清单亦未声明——内嵌三方代码 include 污染应用 depth-1"},
+  {"dep": "openssl@3", "from": "matched", "to": "matched", "reason": "检出证据为内嵌 freetype md5.h 与 google_crashpad_client 的 openssl include；CI runtime 段声明 libssl-dev，判 matched 合理（但证据源在内嵌代码，同 util-linux 问题）"}
+ ],
+ "notes": [
+  "oracle 由仓库内文件人工整理（README 无依赖段、指向外部 wiki）：CI buildscripts/ci/linux/setup.sh apt 三段清单 + 顶层 CMakeLists.txt MUE_COMPILE_USE_SYSTEM_* 系统库开关 + buildscripts/cmake 与 src/framework/*/cmake 的 Setup/Find 模块；X11/xcb/GL/vulkan 等 Qt 桌面平台运行时依赖未逐条列入。",
+  "25 个初始 ★ 终判：10 个真别名缺口（ALIASES 缺 alsa→alsa-lib、sndfile→libsndfile、tinyxml→tinyxml2、glib2→glib、dbus1→dbus、png→libpng、ogg→libogg、brotlidec→brotli、iconv→libiconv、intl→gettext，formula 均在 hb-core）；12 个 unknown-ok（确无 bottle 或属内嵌三方/编译器运行时）；openssl@3 经 oracle 补录 libssl-dev 消解为 matched；util-linux 维持误报（内嵌 crashpad include 污染）。",
+  "结构性发现：depth-1 中约 2/3 包名来自 src/framework/*/thirdparty/ 内嵌三方代码（fluidsynth/freetype/flac/KDDockWidgets）自己的 find_package（且 fluidsynth 一项来自注释行误匹配）；portgraph 应跳过 thirdparty 内嵌路径、剥离 CMake 注释后再匹配。另 portgraph 只扫 CMakeLists.txt 不扫 .cmake（SetupSndFile/SetupFlac/SetupOpusEnc/FindJack 等），sndfile/harfbuzz 当前能对上纯靠内嵌代码巧合。"
+ ]
+}

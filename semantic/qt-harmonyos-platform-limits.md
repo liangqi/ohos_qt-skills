@@ -7,7 +7,7 @@ created: 2026-06-02
 updated: 2026-08-15
 status: active
 audience: public
-refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-api]
+refs: [fault-C-0001, fault-C-0007, fault-C-0008, fault-C-0012, fault-C-0018, semantic-qt-harmonyos-overview, semantic-qt-harmonyos-api]
 summary: >
   HarmonyOS 平台限制的 Qt/QPA/QML adapter：记录 QFile/QStandardPaths/QPluginLoader/QTimeZone、
   字体、XComponent、ZINK 与 Qt.platform 的可观察症状、Qt workaround 和 QTBUG；平台状态与原因由 common 维护。

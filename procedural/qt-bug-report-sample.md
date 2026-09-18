@@ -7,7 +7,7 @@ created: 2026-08-01
 updated: 2026-08-01
 status: active
 audience: public
-refs: [procedural-qt-bug-report-generation, procedural-framework-issue-analysis]
+refs: [fault-C-0010, procedural-qt-bug-report-generation, procedural-framework-issue-analysis]
 summary: >
   样例（形态 A）：Qt5.15 鸿蒙应用触发 onAcceptWant 时 @ohos.deviceInfo 裸 eval 被 ArkTS 运行时拒致崩溃；
   triage 结论 Qt 框架（陈旧胶水模板未 eager-import 注册模块），已 Qt 侧修复。

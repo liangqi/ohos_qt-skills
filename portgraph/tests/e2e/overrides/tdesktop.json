@@ -1,0 +1,51 @@
+{
+ "reclassify": [
+  {
+   "oracle": "openal",
+   "from": "readme-stale",
+   "to": "missed-dep",
+   "reason": "Telegram/CMakeLists.txt:100 target_link_libraries(Telegram … desktop-app::external_openal)（词边界 grep 匹配不到前缀目标名）→ portgraph 漏检"
+  },
+  {
+   "oracle": "webrtc",
+   "from": "readme-stale",
+   "to": "missed-dep",
+   "reason": "Telegram/cmake/lib_tgcalls.cmake:212、td_ui.cmake:739 target_link_libraries(… desktop-app::external_webrtc) → portgraph 漏检"
+  },
+  {
+   "oracle": "xxhash",
+   "from": "readme-stale",
+   "to": "missed-dep",
+   "reason": "Telegram/CMakeLists.txt:101 target_link_libraries(… desktop-app::external_xxhash)，且 .gitmodules 声明 ThirdParty/xxHash 子模块 → portgraph 漏检"
+  },
+  {
+   "oracle": "qr-code-generator",
+   "from": "readme-stale",
+   "to": "missed-dep",
+   "reason": "Telegram/CMakeLists.txt:96 target_link_libraries(… desktop-app::external_qr_code_generator) → portgraph 漏检"
+  },
+  {
+   "oracle": "ada",
+   "from": "readme-stale",
+   "to": "missed-dep",
+   "reason": "Telegram/cmake/td_iv.cmake:175 target_link_libraries(td_iv … desktop-app::external_ada) → portgraph 漏检"
+  },
+  {
+   "oracle": "crashpad",
+   "from": "readme-stale",
+   "to": "missed-dep",
+   "reason": "Telegram/CMakeLists.txt:2349 find_program(CRASHPAD_HANDLER crashpad_handler)（macOS 段）+ :97 external_crash_reports → 漏检（主集成在缺失 cmake/ 子模块）"
+  },
+  {
+   "oracle": "breakpad",
+   "from": "readme-stale",
+   "to": "missed-dep",
+   "reason": "Telegram/CMakeLists.txt:2381 target_link_frameworks(Telegram PRIVATE Breakpad)（macstore 段）；Linux 侧经缺失子模块的 external_crash_reports 集成 → 漏检"
+  }
+ ],
+ "notes": [
+  "核心发现：tdesktop 的外部依赖几乎全部以 desktop-app::external_* 前缀目标名经 target_link_libraries 集成，真正的 find_package 位于未初始化的 cmake/（cmake_helpers）子模块——portgraph 的 CMake 包检测对此类工程接近失明，openssl/zlib/ffmpeg 仅靠 include 启发式检出；建议扫描器增加 target_link_libraries 目标名解析（剥 external_/lib_/命名空间前缀）并提取 .gitmodules 子模块依赖",
+  "opus/hunspell/liblzma/gsl/range-v3/lzma-sdk 的『README过时』并非 README 过时：均为 vendored 子模块（.gitmodules 声明）或经缺失的 cmake_helpers/外部 Libraries 目录集成，仓库内构建文件确无裸名引用，属当前扫描范围之外",
+  "harness 取证 grep 的词边界（\\b）无法匹配 external_zlib/external_openal 等下划线连写目标名，曾致 zlib 被误判 ★误报（实际 SourceFiles/_other/packer.h:18 有 #include <zlib.h>，且 4 处 target_link_libraries 链接 external_zlib）；建议 grep 变体增加剥前缀形式（external_/lib_）"
+ ]
+}

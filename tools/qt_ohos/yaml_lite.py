@@ -167,8 +167,13 @@ def _parse_list(lines, idx: int, indent: int):
             sub_indent = cur + 2
             synthetic = [" " * sub_indent + item]
             j = idx + 1
+            # collect the item's body: everything indented >= sub_indent,
+            # stopping only at a *sibling* item ("- " at this list's own
+            # indent). Deeper "- " lines belong to nested lists under the
+            # item's keys and must be kept.
             while j < len(lines) and _indent_of(lines[j]) >= sub_indent \
-                    and not lines[j].lstrip().startswith("- "):
+                    and not (lines[j].lstrip().startswith("- ")
+                             and _indent_of(lines[j]) == indent):
                 synthetic.append(lines[j])
                 j += 1
             value, _ = _parse_map(synthetic, 0, sub_indent)

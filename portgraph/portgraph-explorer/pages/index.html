@@ -390,1077 +390,631 @@
         background-color: currentColor;
       }
     </style>
+    
 </head>
-<body class="h-screen overflow-hidden font-sans antialiased">
-    <main class="explorer-app" data-viewport-mode="app-shell">
-      <style id="critical-layout">
-        .explorer-app {
-          --drawer-w: 580px;
-          display: flex; flex-direction: column; height: 100vh; min-height: 0;
-        }
-        .explorer-topbar {
-          flex: 0 0 auto; min-height: 52px; display: flex; align-items: center;
-          gap: 12px; padding: 0 16px;
-          border-bottom: 1px solid var(--border);
-          background: color-mix(in srgb, var(--muted) 88%, transparent);
-          backdrop-filter: saturate(180%) blur(20px);
-        }
-        .legend-bar {
-          flex: 0 0 auto; min-height: 38px; display: flex; align-items: center;
-          gap: 16px; padding: 0 16px;
-          border-bottom: 1px solid var(--border); background: var(--card);
-        }
-        .explorer-workspace { flex: 1 1 auto; min-height: 0; display: flex; }
-        .graph-pane { flex: 1 1 auto; min-width: 0; position: relative; background: var(--background); }
-        .side-panel {
-          flex: 0 0 368px; min-width: 280px; min-height: 0;
-          border-left: 1px solid var(--border); background: var(--card);
-          overflow-y: auto;
-        }
-        .detail-drawer {
-          flex: 0 0 var(--drawer-w); min-width: 0; overflow: hidden;
-          background: var(--card); visibility: hidden;
-          transition: flex-basis 350ms cubic-bezier(0.32, 0.72, 0, 1), visibility 0s 350ms;
-        }
-        .detail-drawer.open {
-          visibility: visible;
-          transition: flex-basis 350ms cubic-bezier(0.32, 0.72, 0, 1);
-        }
-        .detail-drawer:not(.open) { flex-basis: 0; }
-        .drawer-panel {
-          width: var(--drawer-w); height: 100%;
-          border-left: 1px solid var(--border);
-          display: flex; flex-direction: column; min-height: 0;
-        }
-        .graph-hud {
-          position: absolute; left: 16px; bottom: 16px;
-          display: flex; align-items: center; gap: 6px;
-          background: var(--card); border: 1px solid var(--border);
-          border-radius: var(--radius-lg); padding: 4px;
-          box-shadow: var(--shadow-sm);
-        }
-        .graph-hint {
-          position: absolute; right: 16px; bottom: 18px;
-          font-size: 11px; color: var(--muted-foreground);
-          letter-spacing: 0.01em;
-        }
-        .legend-dot { width: 9px; height: 9px; border-radius: 999px; display: inline-block; flex: none; }
-        .legend-combo { width: 15px; height: 11px; border-radius: 5px; border: 1.5px dashed var(--primary); flex: none; }
-        @media (max-width: 1280px) {
-          .explorer-app { --drawer-w: 460px; }
-        }
-        @media (max-width: 900px) {
-          .explorer-workspace { flex-direction: column; }
-          .side-panel { flex: none; width: 100%; max-height: 45%; border-left: none; border-top: 1px solid var(--border); }
-          .explorer-topbar { flex-wrap: wrap; padding: 8px 16px; gap: 8px; }
-          .graph-hint { display: none; }
-          .detail-drawer { flex: none; width: 100%; max-height: 55%; }
-          .detail-drawer:not(.open) { display: none; }
-          .drawer-panel { width: 100%; border-left: none; border-top: 1px solid var(--border); }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
-        }
-      </style>
+<body>
+  <div class="explorer-app" data-viewport-mode="app-shell">
 
-      <header class="explorer-topbar">
-        <div class="flex items-center gap-3 min-w-0">
-          <span class="brand-mark" aria-hidden="true"></span>
-          <div class="min-w-0">
-            <h1 class="text-[15px] leading-tight font-semibold text-foreground truncate">鸿蒙化可移植性图谱</h1>
-            <p class="text-[11px] leading-tight text-muted-foreground truncate">Qt 应用 × HarmonyOS 依赖拓扑分析</p>
-          </div>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div class="brand-title">
+          <h1>鸿蒙化可移植性图谱</h1>
+          <p>Qt 应用 × HarmonyOS 依赖拓扑分析</p>
         </div>
+      </div>
+      <div class="controls">
+        <label>目标应用
+          <span class="select-wrap">
+            <select id="app-select">
+              <option value="tdesktop" selected>tdesktop 5.3.2</option>
+              <option value="krdc">krdc 23.08</option>
+              <option value="filelight">filelight 23.08</option>
+              <option value="musescore">MuseScore 4.5</option>
+            </select>
+            <i class="chev" data-icon aria-hidden="true"></i>
+          </span>
+        </label>
+        <label>布局
+          <span class="select-wrap">
+            <select id="layout-select">
+              <option value="dagre" selected>横向层级</option>
+              <option value="force">力导向</option>
+              <option value="circular">环形</option>
+            </select>
+            <i class="chev" data-icon aria-hidden="true"></i>
+          </span>
+        </label>
+        <input id="search-input" type="search" placeholder="搜索节点名，回车定位">
+        <button id="add-app-btn" class="btn secondary" data-dom-id="add-app-btn" type="button">添加分析</button>
+        <button id="reload-btn" class="btn primary" type="button">重新分析</button>
+        <span id="verdict-badge" class="badge bad">存在阻塞点</span>
+      </div>
+    </header>
 
-        <div class="flex items-center gap-2 flex-1 min-w-0 justify-end flex-wrap">
-          <label class="control-group">
-            <span class="control-label">目标应用</span>
-            <span class="select-wrap">
-              <select id="app-select" class="control-select">
-                <option>tdesktop 5.3.2</option>
-                <option>krdc 23.08</option>
-                <option>filelight 23.08</option>
-                <option>MuseScore 4.5</option>
-              </select>
-              <i data-lucide="chevron-down" class="select-chevron"></i>
-            </span>
-          </label>
-          <label class="control-group">
-            <span class="control-label">深度</span>
-            <span class="select-wrap">
-              <select id="depth-select" class="control-select">
-                <option>1 跳</option>
-                <option selected>2 跳</option>
-                <option>3 跳</option>
-              </select>
-              <i data-lucide="chevron-down" class="select-chevron"></i>
-            </span>
-          </label>
-          <label class="control-group">
-            <span class="control-label">布局</span>
-            <span class="select-wrap">
-              <select id="layout-select" class="control-select">
-                <option selected>横向层级</option>
-                <option>力导向</option>
-                <option>环形</option>
-              </select>
-              <i data-lucide="chevron-down" class="select-chevron"></i>
-            </span>
-          </label>
+    <div class="legend">
+      <span class="legend-item"><i class="dot dot-app"></i>目标应用</span>
+      <span class="legend-item"><i class="dot dot-ok"></i>已移植</span>
+      <span class="legend-item"><i class="dot dot-bad"></i>阻塞</span>
+      <span class="legend-item"><i class="dot dot-unknown"></i>未知</span>
+      <span class="legend-item"><i class="dot dot-uncertain"></i>待确认</span>
+      <span class="legend-item combo-legend"><i class="combo-chip"></i>Qt 模块聚合（点击展开/收起）</span>
+      <span id="graph-stats" class="graph-stats">10 节点 / 9 边</span>
+    </div>
 
-          <div class="search-box">
-            <i data-lucide="search" class="w-[15px] h-[15px] text-muted-foreground flex-none"></i>
-            <input type="search" id="search-input" class="search-input" placeholder="搜索节点名，回车定位">
-          </div>
+    <main class="layout">
+      <div id="graph-container">
+        <svg class="topo" viewBox="0 0 1110 800" preserveAspectRatio="xMidYMid meet" role="img" aria-label="tdesktop 依赖拓扑：Qt 模块聚合（展开态）与外部依赖">
+          <defs>
+            <pattern id="dotgrid" width="22" height="22" patternUnits="userSpaceOnUse">
+              <circle class="dot-grid-dot" cx="2" cy="2" r="1.5"></circle>
+            </pattern>
+            <marker id="arrow-strong" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path class="mk-strong" d="M0 0 L10 5 L0 10 Z"></path>
+            </marker>
+            <marker id="arrow-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path class="mk-muted" d="M0 0 L10 5 L0 10 Z"></path>
+            </marker>
+          </defs>
 
-          <button id="add-app-btn" class="btn-secondary" data-dom-id="add-app-btn">
-            <span data-icon class="w-[15px] h-[15px]" style="mask-image:url('../assets/icons/dl_builtin_apple/circle-plus.svg'); -webkit-mask-image:url('../assets/icons/dl_builtin_apple/circle-plus.svg');"></span>
-            <span>添加分析</span>
-          </button>
-          <button id="reload-btn" class="btn-primary">
-            <i data-lucide="refresh-cw" class="w-[15px] h-[15px] flex-none"></i>
-            <span>重新分析</span>
-          </button>
+          <rect x="0" y="0" width="1110" height="800" fill="url(#dotgrid)" aria-hidden="true"></rect>
 
-          <span id="verdict-badge" class="verdict-badge verdict-bad">存在阻塞点</span>
+          <!-- Qt 模块聚合（展开态：真实应用点击聚合圈后的状态） -->
+          <circle class="combo-ring" cx="400" cy="400" r="165"></circle>
+          <text class="lbl-combo" x="400" y="212" text-anchor="middle">Qt 模块聚合</text>
+          <text class="lbl-combo-sub" x="400" y="229" text-anchor="middle"><tspan class="t-ok">3</tspan> 支持 · <tspan class="t-bad">1</tspan> 阻塞</text>
 
-          <div class="flex items-center gap-1 ml-1">
-            <button class="icon-btn" aria-label="帮助">
-              <span data-icon class="w-[17px] h-[17px]" style="mask-image:url('../assets/icons/dl_builtin_apple/circle-question-mark.svg'); -webkit-mask-image:url('../assets/icons/dl_builtin_apple/circle-question-mark.svg');"></span>
-            </button>
-            <button class="icon-btn" aria-label="账户">
-              <span data-icon class="w-[17px] h-[17px]" style="mask-image:url('../assets/icons/dl_builtin_apple/user.svg'); -webkit-mask-image:url('../assets/icons/dl_builtin_apple/user.svg');"></span>
-            </button>
-          </div>
-        </div>
-      </header>
+          <!-- 依赖边：tdesktop → Qt 模块（uses-module） -->
+          <path class="edge-strong" d="M 140 384 C 185 350 260 310 345 273" marker-end="url(#arrow-strong)"></path>
+          <path class="edge-strong" d="M 145 395 C 230 375 330 355 424 332" marker-end="url(#arrow-strong)"></path>
+          <path class="edge-strong" d="M 146 402 C 205 410 260 425 314 433" marker-end="url(#arrow-strong)"></path>
+          <path class="edge-strong" d="M 143 412 C 220 450 320 490 413 510" marker-end="url(#arrow-strong)"></path>
 
-      <div class="legend-bar">
-        <span class="flex items-center gap-2 text-[11px] text-muted-foreground whitespace-nowrap">
-          <span class="legend-dot" style="background:var(--primary)"></span>目标应用
-        </span>
-        <span class="flex items-center gap-2 text-[11px] text-muted-foreground whitespace-nowrap">
-          <span class="legend-dot" style="background:var(--state-success)"></span>已移植
-        </span>
-        <span class="flex items-center gap-2 text-[11px] text-muted-foreground whitespace-nowrap">
-          <span class="legend-dot" style="background:var(--state-error)"></span>阻塞
-        </span>
-        <span class="flex items-center gap-2 text-[11px] text-muted-foreground whitespace-nowrap">
-          <span class="legend-dot" style="background:var(--muted-foreground)"></span>未知
-        </span>
-        <span class="flex items-center gap-2 text-[11px] text-muted-foreground whitespace-nowrap">
-          <span class="legend-dot" style="background:var(--chart-3)"></span>待确认
-        </span>
-        <span class="flex items-center gap-2 text-[11px] text-muted-foreground whitespace-nowrap">
-          <span class="legend-combo"></span>Qt 模块聚合（点击展开/收起）
-        </span>
-        <span id="graph-stats" class="ml-auto text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">32 节点 / 41 边</span>
+          <!-- 依赖边：tdesktop → 外部依赖（runtime；libsecret 为平台条件边） -->
+          <path class="edge-muted" d="M 143 388 C 170 210 330 85 716 129" marker-end="url(#arrow-muted)"></path>
+          <path class="edge-muted" d="M 144 391 C 200 190 480 88 825 264" marker-end="url(#arrow-muted)"></path>
+          <path class="edge-muted" d="M 146 398 C 290 390 500 396 690 400" marker-end="url(#arrow-muted)"></path>
+          <path class="edge-muted edge-dash" d="M 145 405 C 285 590 530 660 840 523" marker-end="url(#arrow-muted)"></path>
+          <path class="edge-muted" d="M 144 409 C 320 660 640 715 940 647" marker-end="url(#arrow-muted)"></path>
+
+          <!-- 目标应用节点 -->
+          <g class="gnode">
+            <circle class="n-app" cx="120" cy="400" r="26"></circle>
+            <text class="lbl-app-name" x="120" y="452" text-anchor="middle">tdesktop</text>
+            <text class="lbl-app-meta" x="120" y="466" text-anchor="middle">v5.3.2 · app</text>
+          </g>
+
+          <!-- Qt 模块节点（聚合内） -->
+          <g class="gnode">
+            <circle class="n-success" cx="355" cy="268" r="11"></circle>
+            <text class="lbl-node" x="355" y="296" text-anchor="middle">qtbase</text>
+          </g>
+          <g class="gnode">
+            <circle class="n-success" cx="435" cy="330" r="11"></circle>
+            <text class="lbl-node" x="435" y="358" text-anchor="middle">qt5compat</text>
+          </g>
+          <g class="gnode">
+            <circle class="n-success" cx="325" cy="435" r="11"></circle>
+            <text class="lbl-node" x="325" y="463" text-anchor="middle">qtsvg</text>
+          </g>
+          <g class="gnode">
+            <circle class="n-error" cx="425" cy="515" r="13"></circle>
+            <text class="lbl-node-strong" x="425" y="545" text-anchor="middle">qtwebengine</text>
+          </g>
+
+          <!-- 外部依赖节点 -->
+          <g class="gnode">
+            <circle class="n-success" cx="725" cy="125" r="10"></circle>
+            <text class="lbl-node" x="725" y="153" text-anchor="middle">zlib</text>
+          </g>
+          <g class="gnode">
+            <circle class="n-success" cx="835" cy="262" r="10"></circle>
+            <text class="lbl-node" x="835" y="290" text-anchor="middle">openssl@3</text>
+          </g>
+          <g class="gnode">
+            <circle class="n-success" cx="700" cy="400" r="10"></circle>
+            <text class="lbl-node" x="700" y="428" text-anchor="middle">ffmpeg</text>
+          </g>
+          <g class="gnode">
+            <circle class="n-success" cx="850" cy="525" r="10"></circle>
+            <text class="lbl-node" x="850" y="553" text-anchor="middle">libsecret</text>
+          </g>
+          <g class="gnode">
+            <circle class="n-uncertain" cx="950" cy="650" r="10"></circle>
+            <text class="lbl-node-strong" x="950" y="678" text-anchor="middle">libexif</text>
+          </g>
+        </svg>
       </div>
 
-      <div class="explorer-workspace">
-        <section class="graph-pane" id="graph-container">
-          <svg id="topo-svg" class="w-full h-full block" viewBox="0 0 980 600" preserveAspectRatio="xMidYMid meet" role="img" aria-label="tdesktop 依赖拓扑图">
-            <defs>
-              <pattern id="dot-grid" width="22" height="22" patternUnits="userSpaceOnUse">
-                <circle cx="1.5" cy="1.5" r="1.5" fill="var(--border)"></circle>
-              </pattern>
-              <marker id="arrow-head" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-                <path d="M 0 0 L 8 4 L 0 8 z" fill="var(--border)"></path>
-              </marker>
-            </defs>
-
-            <rect x="0" y="0" width="980" height="600" fill="url(#dot-grid)"></rect>
-
-            <g id="graph-viewport">
-              <g fill="none" stroke="var(--border)" stroke-width="1.2" opacity="0.85" marker-end="url(#arrow-head)">
-                <path class="qt-edge" d="M 118 300 C 170 240 205 230 258 222"></path>
-                <path class="qt-edge" d="M 118 300 C 170 270 205 272 258 282"></path>
-                <path class="qt-edge" d="M 118 300 C 170 310 205 330 258 344"></path>
-                <path class="qt-edge" d="M 118 300 C 170 350 205 372 258 388"></path>
-                <path d="M 118 300 C 260 150 420 130 588 132"></path>
-                <path d="M 118 300 C 260 230 420 238 588 252"></path>
-                <path d="M 118 300 C 260 330 420 348 588 368"></path>
-                <path d="M 118 300 C 280 240 470 206 728 196"></path>
-                <path d="M 118 300 C 300 300 520 318 728 322" stroke-dasharray="4 4"></path>
-              </g>
-
-              <g stroke="var(--brand-200)" stroke-width="1.4" opacity="0.9" fill="none" marker-end="url(#arrow-head)">
-                <path class="qt-edge" d="M 118 300 C 170 240 205 230 258 222"></path>
-                <path class="qt-edge" d="M 118 300 C 170 270 205 272 258 282"></path>
-                <path class="qt-edge" d="M 118 300 C 170 310 205 330 258 344"></path>
-                <path class="qt-edge" d="M 118 300 C 170 350 205 372 258 388"></path>
-              </g>
-
-              <g class="gnode" data-node="qt-combo">
-                <circle cx="350" cy="300" r="158" fill="var(--primary)" opacity="0.04" stroke="var(--primary)" stroke-width="1.4" stroke-dasharray="5 4" stroke-opacity="0.55"></circle>
-                <text x="350" y="138" text-anchor="middle" font-size="12" font-weight="600" fill="var(--primary)" font-family="var(--font-sans)">Qt 模块聚合</text>
-                <text x="350" y="152" text-anchor="middle" font-size="10" fill="var(--muted-foreground)" font-family="var(--font-sans)">3 支持 · 1 阻塞 · 点击展开</text>
-                <g id="qt-combo-badge">
-                  <rect x="284" y="272" width="132" height="58" rx="14" fill="var(--muted)" stroke="var(--primary)" stroke-width="1.4" stroke-dasharray="5 4"></rect>
-                  <text x="350" y="296" text-anchor="middle" font-size="12" font-weight="600" fill="var(--primary)" font-family="var(--font-sans)">Qt 模块聚合</text>
-                  <text x="350" y="313" text-anchor="middle" font-size="10" fill="var(--muted-foreground)" font-family="var(--font-sans)">3 支持 / 1 阻塞 · 点击展开</text>
-                </g>
-              </g>
-
-              <g id="qt-module-nodes" font-family="var(--font-mono)" font-size="9.5" fill="var(--muted-foreground)" text-anchor="middle">
-                <g class="gnode" data-node="qtbase" data-name="qtbase">
-                  <circle cx="270" cy="220" r="11" fill="var(--state-success)" stroke="var(--card)" stroke-width="2"></circle>
-                  <text x="270" y="245" fill="var(--text-600)">qtbase</text>
-                </g>
-                <g class="gnode" data-node="qt5compat" data-name="qt5compat">
-                  <circle cx="330" cy="282" r="11" fill="var(--state-success)" stroke="var(--card)" stroke-width="2"></circle>
-                  <text x="330" y="307" fill="var(--text-600)">qt5compat</text>
-                </g>
-                <g class="gnode" data-node="qtsvg" data-name="qtsvg">
-                  <circle cx="270" cy="342" r="11" fill="var(--state-success)" stroke="var(--card)" stroke-width="2"></circle>
-                  <text x="270" y="367" fill="var(--text-600)">qtsvg</text>
-                </g>
-                <g class="gnode" data-node="qtwebengine" data-name="qtwebengine">
-                  <circle cx="362" cy="390" r="13" fill="var(--state-error)" stroke="var(--card)" stroke-width="2"></circle>
-                  <text x="362" y="416" fill="var(--text-700)">qtwebengine</text>
-                </g>
-              </g>
-
-              <g font-family="var(--font-mono)" font-size="9.5" fill="var(--muted-foreground)" text-anchor="middle">
-                <g class="gnode" data-node="zlib" data-name="zlib">
-                  <circle cx="600" cy="130" r="10" fill="var(--state-success)" stroke="var(--card)" stroke-width="2"></circle>
-                  <text x="600" y="155" fill="var(--text-600)">zlib</text>
-                </g>
-                <g class="gnode" data-node="openssl@3" data-name="openssl@3">
-                  <circle cx="600" cy="250" r="10" fill="var(--state-success)" stroke="var(--card)" stroke-width="2"></circle>
-                  <text x="600" y="275" fill="var(--text-600)">openssl@3</text>
-                </g>
-                <g class="gnode" data-node="ffmpeg" data-name="ffmpeg">
-                  <circle cx="600" cy="370" r="10" fill="var(--state-success)" stroke="var(--card)" stroke-width="2"></circle>
-                  <text x="600" y="395" fill="var(--text-600)">ffmpeg</text>
-                </g>
-                <g class="gnode" data-node="libsecret" data-name="libsecret">
-                  <circle cx="740" cy="194" r="10" fill="var(--state-success)" stroke="var(--card)" stroke-width="2"></circle>
-                  <text x="740" y="219" fill="var(--text-600)">libsecret</text>
-                </g>
-                <g class="gnode" data-node="libexif" data-name="libexif">
-                  <circle cx="740" cy="320" r="10" fill="var(--chart-3)" stroke="var(--card)" stroke-width="2"></circle>
-                  <text x="740" y="345" fill="var(--text-700)">libexif</text>
-                </g>
-              </g>
-
-              <g class="gnode" data-node="tdesktop" data-name="tdesktop">
-                <circle cx="104" cy="300" r="27" fill="var(--primary)" stroke="var(--brand-600)" stroke-width="3"></circle>
-                <text x="104" y="297" text-anchor="middle" font-size="13" fill="var(--primary-foreground)" font-family="var(--font-mono)" font-weight="700">TD</text>
-                <text x="104" y="348" text-anchor="middle" font-size="11" font-weight="600" fill="var(--foreground)" font-family="var(--font-sans)">tdesktop</text>
-                <text x="104" y="362" text-anchor="middle" font-size="9" fill="var(--muted-foreground)" font-family="var(--font-sans)">v5.3.2 · app</text>
-              </g>
-            </g>
-          </svg>
-
-          <div class="graph-hud" aria-label="缩放控制">
-            <button class="hud-btn" id="zoom-in" aria-label="放大"><i data-lucide="plus" class="w-[14px] h-[14px]"></i></button>
-            <button class="hud-btn" id="zoom-out" aria-label="缩小"><i data-lucide="minus" class="w-[14px] h-[14px]"></i></button>
-            <button class="hud-btn" id="zoom-fit" aria-label="适应视图"><i data-lucide="scan" class="w-[14px] h-[14px]"></i></button>
+      <aside class="side-panel">
+        <section id="blocker-panel" class="panel">
+          <h2>阻塞点 <span id="blocker-count" class="count">2</span></h2>
+          <div class="filter-row" id="risk-filter">
+            <button class="filter-btn active" type="button" data-risk="all">全部</button>
+            <button class="filter-btn" type="button" data-risk="high">高风险</button>
+            <button class="filter-btn" type="button" data-risk="medium">中风险</button>
+            <button class="filter-btn" type="button" data-risk="low">低风险</button>
           </div>
-          <span class="graph-hint">拖拽平移 · 滚轮缩放 · 点击节点查看详情</span>
+          <ul id="blocker-list">
+            <li class="risk-high">
+              <div class="b-kind">不支持的平台接口 <span class="risk-chip risk-high">高风险</span></div>
+              <div class="b-node">app:tdesktop</div>
+              <div class="b-reason">使用鸿蒙不支持的平台接口 macOS Cocoa / AppKit，4 处无条件编译命中将参与鸿蒙构建，212 处文件级命中已被平台排除。</div>
+              <div class="b-path">app:tdesktop → 平台接口 → macOS Cocoa / AppKit</div>
+            </li>
+            <li class="risk-medium">
+              <div class="b-kind">不支持的 Qt 模块 <span class="risk-chip risk-medium">中风险</span></div>
+              <div class="b-node">qt-module:qtwebengine</div>
+              <div class="b-reason">Qt WebEngine 依赖 Chromium，鸿蒙无官方移植记录，建议改用系统 WebView 能力。</div>
+              <div class="b-guard">guard: uses-module</div>
+              <div class="b-alt">鸿蒙可替代: <span class="alt-chip st-convertible">OHOS WebView</span></div>
+              <div class="b-path">app:tdesktop → qt-module:qtwebengine</div>
+            </li>
+          </ul>
+          <h2>平台排除项（不编译）<span id="excluded-count" class="count">3</span></h2>
+          <p class="panel-hint">被非鸿蒙平台条件编译守卫包裹，鸿蒙构建时不参与编译；列出其功能类别的鸿蒙替代接口。</p>
+          <ul id="excluded-list" class="excluded">
+            <li class="excluded-item">
+              <div class="b-kind">X11（窗口系统）</div>
+              <div class="b-node">guard: #ifdef Q_OS_LINUX</div>
+              <div class="b-reason">位于 platform/unix 路径，仅在 Linux/X11 构建启用，鸿蒙构建不参与编译。</div>
+              <div class="b-alt">鸿蒙可替代: <span class="alt-chip st-supported">OHOS WindowManager</span></div>
+            </li>
+            <li class="excluded-item">
+              <div class="b-kind">ALSA（音频）</div>
+              <div class="b-node">guard: #ifdef Q_OS_LINUX</div>
+              <div class="b-reason">音频后端仅在 Linux 条件编译，鸿蒙走系统音频框架。</div>
+              <div class="b-alt">鸿蒙可替代: <span class="alt-chip st-supported">OHOS AudioFramework</span></div>
+            </li>
+            <li class="excluded-item">
+              <div class="b-kind">Win32 / GDI（窗口绘制）</div>
+              <div class="b-node">guard: #ifdef Q_OS_WIN</div>
+              <div class="b-reason">Windows 专属实现文件，鸿蒙构建不参与编译。</div>
+              <div class="b-alt">鸿蒙可替代: <span class="no-alt">无同类别替代，需自行实现</span></div>
+            </li>
+          </ul>
+          <h2>待确认项 <span id="unknown-count" class="count">1</span></h2>
+          <ul id="unknown-list" class="secondary">
+            <li class="unknown">
+              <div class="b-kind">未知包（无移植记录）</div>
+              <div class="b-node">libexif</div>
+              <div class="b-reason">Harmonybrew 与 cmd-pkgs 均无该包记录，需人工确认移植来源。</div>
+            </li>
+          </ul>
         </section>
 
-        <aside class="side-panel" data-scroll-region="primary">
-          <section class="panel" id="blocker-panel">
-            <h2 class="panel-title">阻塞点 <span class="count-chip">2</span></h2>
-            <p class="panel-hint">点击任一阻塞点，在右侧大窗口查看完整证据与处置建议。</p>
-            <div class="filter-row">
-              <button class="filter-btn active" data-risk="all">全部</button>
-              <button class="filter-btn" data-risk="high">高风险</button>
-              <button class="filter-btn" data-risk="medium">中风险</button>
-              <button class="filter-btn" data-risk="low">低风险</button>
-            </div>
-
-            <ul class="blocker-list">
-              <li class="blocker-card risk-high" data-blocker="b1">
-                <div class="b-head">
-                  <div class="b-kind">不支持的平台接口</div>
-                  <span class="risk-chip risk-high">高风险</span>
-                </div>
-                <div class="b-node">app:tdesktop</div>
-                <p class="b-reason line-clamp-3">鸿蒙不支持的平台接口 macOS Cocoa / AppKit，命中 4 处无条件编译（212 处为文件级排除）。</p>
-                <div class="b-footer">
-                  <span class="b-guard">guard: #ifdef Q_OS_MACOS</span>
-                  <span class="view-link">查看详情 <i data-lucide="arrow-right" class="w-3 h-3 inline"></i></span>
-                </div>
-              </li>
-              <li class="blocker-card risk-medium" data-blocker="b2">
-                <div class="b-head">
-                  <div class="b-kind">不支持的 Qt 模块</div>
-                  <span class="risk-chip risk-medium">中风险</span>
-                </div>
-                <div class="b-node">qt-module:qtwebengine</div>
-                <p class="b-reason line-clamp-3">Qt WebEngine 依赖 Chromium，鸿蒙无官方支持记录，建议改用系统 WebView 能力。</p>
-                <div class="b-footer">
-                  <span class="b-guard">uses-module</span>
-                  <span class="view-link">查看详情 <i data-lucide="arrow-right" class="w-3 h-3 inline"></i></span>
-                </div>
-              </li>
-            </ul>
-
-            <h2 class="panel-title mt-4">平台排除项（不编译） <span class="count-chip">3</span></h2>
-            <ul class="excluded-list">
-              <li class="excluded-card">
-                <div class="b-kind">X11（窗口系统）</div>
-                <p class="b-reason line-clamp-2">位于 platform/unix 路径，仅在 Linux/X11 构建启用，鸿蒙构建不参与编译。</p>
-              </li>
-              <li class="excluded-card">
-                <div class="b-kind">ALSA（音频）</div>
-                <p class="b-reason line-clamp-2">音频后端仅在 Linux 条件编译，鸿蒙走系统音频框架。</p>
-              </li>
-              <li class="excluded-card">
-                <div class="b-kind">Win32 / GDI（窗口绘制）</div>
-                <p class="b-reason line-clamp-2">Windows 专属实现文件，鸿蒙构建不参与编译。</p>
-              </li>
-            </ul>
-
-            <h2 class="panel-title mt-4">待确认项 <span class="count-chip">1</span></h2>
-            <ul class="blocker-list">
-              <li class="blocker-card risk-unknown" data-blocker="b3">
-                <div class="b-head">
-                  <div class="b-kind">未知包（无移植记录）</div>
-                </div>
-                <div class="b-node">libexif</div>
-                <p class="b-reason line-clamp-2">Harmonybrew 与 cmd-pkgs 均无该包记录，需人工确认移植来源。</p>
-              </li>
-            </ul>
-          </section>
-        </aside>
-
-        <aside id="detail-drawer" class="detail-drawer open" role="region" aria-label="阻塞点详情">
-          <div class="drawer-panel" data-scroll-region="drawer">
-            <header class="drawer-head">
-              <div class="min-w-0">
-                <div class="drawer-eyebrow">阻塞点详情 · 1 / 3</div>
-                <h2 class="drawer-title" id="drawer-title">不支持的平台接口</h2>
-                <div class="drawer-node" id="drawer-node">app:tdesktop</div>
-              </div>
-              <button id="drawer-close" class="icon-btn" aria-label="关闭详情面板"><i data-lucide="x" class="w-4 h-4"></i></button>
-            </header>
-
-            <div class="drawer-body">
-              <div class="drawer-kpis">
-                <div class="kpi-cell">
-                  <span class="kpi-label">风险等级</span>
-                  <span class="kpi-value" id="kpi-risk">高风险</span>
-                  <span class="kpi-sub" id="kpi-risk-sub">需优先处置</span>
-                </div>
-                <div class="kpi-cell">
-                  <span class="kpi-label">无条件命中</span>
-                  <span class="kpi-value" id="kpi-hits">4 处</span>
-                  <span class="kpi-sub" id="kpi-hits-sub">会参与鸿蒙编译</span>
-                </div>
-                <div class="kpi-cell">
-                  <span class="kpi-label">文件级排除</span>
-                  <span class="kpi-value" id="kpi-excl">212 处</span>
-                  <span class="kpi-sub" id="kpi-excl-sub">平台专属文件</span>
-                </div>
-                <div class="kpi-cell">
-                  <span class="kpi-label">受影响依赖</span>
-                  <span class="kpi-value" id="kpi-deps">1 个</span>
-                  <span class="kpi-sub" id="kpi-deps-sub">递归展开</span>
-                </div>
-              </div>
-
-              <section class="drawer-section">
-                <h3 class="drawer-sub">阻塞说明</h3>
-                <p class="drawer-desc" id="drawer-desc">
-                  app:tdesktop 使用了鸿蒙不支持的平台接口 macOS Cocoa / AppKit。扫描其全部源文件后，
-                  共发现 4 处无条件编译的调用点（不依赖任何平台宏守卫，鸿蒙构建时会真实编译），
-                  另有 212 处命中位于 macOS 专属文件中，被文件级排除，不构成阻塞。
-                  该接口类别在鸿蒙没有同类别替代接口，需要自行实现一层移植封装。
-                </p>
-              </section>
-
-              <section class="drawer-section">
-                <h3 class="drawer-sub">宏守卫证据</h3>
-                <pre class="code-block" id="code-block">#ifdef Q_OS_MACOS
-  platformWindow-&gt;setLevel(NSFloatingWindowLevel);
-#endif</pre>
-                <p class="drawer-note" id="code-note">守卫判定：unconditional — 该命中点无宏守卫包裹，鸿蒙构建时会编译。</p>
-              </section>
-
-              <section class="drawer-section">
-                <h3 class="drawer-sub">鸿蒙替代方案</h3>
-                <div class="alt-row">
-                  <span class="alt-chip no-alt" id="alt-chip">无同类别替代，需自行实现</span>
-                </div>
-                <p class="drawer-note" id="alt-note">建议使用 OHOS 窗口框架 / ArkUI 能力自行封装等价的窗口层级控制。</p>
-              </section>
-
-              <section class="drawer-section">
-                <h3 class="drawer-sub">依赖路径</h3>
-                <div class="path-breadcrumb">
-                  <span class="path-node" id="path-seg-0">app:tdesktop</span>
-                  <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-muted-foreground flex-none"></i>
-                  <span class="path-node" id="path-seg-1">平台接口</span>
-                  <i data-lucide="chevron-right" id="path-sep-1" class="w-3.5 h-3.5 text-muted-foreground flex-none"></i>
-                  <span class="path-node path-blocked" id="path-seg-2">macOS Cocoa / AppKit</span>
-                </div>
-              </section>
-
-              <section class="drawer-section">
-                <h3 class="drawer-sub">接口证据</h3>
-                <div class="evidence-table" id="ev-0">
-                  <div class="et-row et-head">
-                    <span>接口</span><span>判定</span><span>命中</span><span>说明</span>
-                  </div>
-                  <div class="et-row">
-                    <span class="font-mono">Cocoa / AppKit</span>
-                    <span class="badge-cell st-bad">不支持</span>
-                    <span>4 处无条件</span>
-                    <span class="text-muted-foreground">鸿蒙构建会编译</span>
-                  </div>
-                  <div class="et-row">
-                    <span class="font-mono">NSWindow / NSView</span>
-                    <span class="badge-cell st-bad">不支持</span>
-                    <span>2 处</span>
-                    <span class="text-muted-foreground">随 Cocoa 一并阻塞</span>
-                  </div>
-                  <div class="et-row">
-                    <span class="font-mono">Q_OS_MACOS 宏守卫</span>
-                    <span class="badge-cell st-warn">平台排除</span>
-                    <span>212 处文件级</span>
-                    <span class="text-muted-foreground">不参与鸿蒙编译</span>
-                  </div>
-                </div>
-                <div class="evidence-table" id="ev-1" style="display:none">
-                  <div class="et-row et-head">
-                    <span>接口</span><span>判定</span><span>命中</span><span>说明</span>
-                  </div>
-                  <div class="et-row">
-                    <span class="font-mono">Qt6::WebEngineCore</span>
-                    <span class="badge-cell st-bad">不支持</span>
-                    <span>模块级</span>
-                    <span class="text-muted-foreground">无鸿蒙移植记录</span>
-                  </div>
-                  <div class="et-row">
-                    <span class="font-mono">Qt6::WebEngineWidgets</span>
-                    <span class="badge-cell st-bad">不支持</span>
-                    <span>随核心</span>
-                    <span class="text-muted-foreground">无鸿蒙移植记录</span>
-                  </div>
-                  <div class="et-row">
-                    <span class="font-mono">OHOS WebView</span>
-                    <span class="badge-cell st-warn">可替代</span>
-                    <span>系统能力</span>
-                    <span class="text-muted-foreground">覆盖内嵌浏览器场景</span>
-                  </div>
-                </div>
-                <div class="evidence-table" id="ev-2" style="display:none">
-                  <div class="et-row et-head">
-                    <span>接口</span><span>判定</span><span>命中</span><span>说明</span>
-                  </div>
-                  <div class="et-row">
-                    <span class="font-mono">libexif</span>
-                    <span class="badge-cell st-warn">未知</span>
-                    <span>1 处依赖</span>
-                    <span class="text-muted-foreground">两个产物源均无记录</span>
-                  </div>
-                  <div class="et-row">
-                    <span class="font-mono">源码交叉编译</span>
-                    <span class="badge-cell st-warn">可行</span>
-                    <span>需验证</span>
-                    <span class="text-muted-foreground">体积小，依赖少</span>
-                  </div>
-                  <div class="et-row">
-                    <span class="font-mono">系统媒体库</span>
-                    <span class="badge-cell st-warn">部分替代</span>
-                    <span>需评估</span>
-                    <span class="text-muted-foreground">EXIF 解析能力待确认</span>
-                  </div>
-                </div>
-              </section>
-
-              <section class="drawer-section">
-                <h3 class="drawer-sub">相关依赖</h3>
-                <div id="deps-0">
-                  <div class="kv dep"><span>→ qtwebengine</span><small>uses-module · blocked · 无鸿蒙产物</small></div>
-                  <div class="kv dep"><span>→ libexif</span><small>runtime · uncertain · 待确认</small></div>
-                  <div class="kv dep"><span>→ ffmpeg</span><small>runtime · ported · 有鸿蒙产物</small></div>
-                </div>
-                <div id="deps-1" class="empty" style="display:none">该模块为叶子阻塞，无下游依赖展开。</div>
-                <div id="deps-2" class="empty" style="display:none">无下游依赖记录，建议确认上游源码可独立交叉编译。</div>
-              </section>
-            </div>
-
-            <footer class="drawer-foot">
-              <button class="btn-secondary" id="drawer-prev">上一个</button>
-              <button class="btn-primary" id="drawer-next">下一个 <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></button>
-            </footer>
+        <section id="detail-panel" class="panel hidden">
+          <div class="detail-head">
+            <h2 id="detail-name"></h2>
+            <button id="detail-close" class="btn ghost" type="button" aria-label="关闭详情">×</button>
           </div>
-        </aside>
-      </div>
+          <div id="detail-body"></div>
+        </section>
+      </aside>
+    </main>
+  </div>
 
-      <div id="clone-modal" class="modal-backdrop" hidden>
-        <div class="modal-card">
-          <h2 class="modal-title">添加分析目标</h2>
-          <p class="modal-hint">输入 GitHub 仓库地址，后端将 shallow clone 到 workspace/ 并自动扫描分析。任务在后台运行，可随时关闭或刷新查询。</p>
-          <div class="relative">
-            <input id="clone-url" type="url" class="modal-input" placeholder="https://github.com/owner/repo">
-            <span data-icon class="modal-input-icon" style="mask-image:url('../assets/icons/dl_builtin_apple/external-link.svg'); -webkit-mask-image:url('../assets/icons/dl_builtin_apple/external-link.svg');"></span>
-          </div>
-          <div id="clone-progress" class="progress" hidden>
-            <div class="progress-track"><div id="clone-fill" class="progress-fill" style="width:0%"></div></div>
-            <div class="progress-meta"><span id="clone-pct" class="font-semibold text-primary tabular-nums">0%</span><span id="clone-msg" class="truncate">等待任务启动…</span></div>
-          </div>
-          <div class="modal-actions">
-            <button id="clone-cancel" class="btn-secondary">取消</button>
-            <button id="clone-bg" class="btn-secondary" hidden>后台运行</button>
-            <button id="clone-submit" class="btn-primary">克隆并分析</button>
-          </div>
-          <p id="clone-status" class="clone-status"></p>
+  <div id="clone-modal" class="modal hidden">
+    <div class="modal-card">
+      <h2>添加分析目标</h2>
+      <p class="panel-hint">输入 GitHub 仓库地址，后端将 shallow clone 到
+        <code>workspace/</code> 并自动扫描分析。任务在后台运行，可随时关闭或刷新查询。</p>
+      <input id="clone-url" type="url" placeholder="https://github.com/owner/repo">
+      <div id="clone-progress" class="progress hidden">
+        <div class="progress-bar"><div id="clone-fill" class="progress-fill"></div></div>
+        <div class="progress-meta">
+          <span id="clone-pct">0%</span><span id="clone-msg">等待任务启动…</span>
         </div>
       </div>
+      <div class="modal-actions">
+        <button id="clone-cancel" class="btn ghost" type="button">取消</button>
+        <button id="clone-bg" class="btn ghost hidden" type="button">后台运行</button>
+        <button id="clone-submit" class="btn primary" type="button">克隆并分析</button>
+      </div>
+      <p id="clone-status" class="clone-status"></p>
+    </div>
+  </div>
 
-      <button id="job-chip" class="job-chip" hidden aria-label="查看任务进度">
-        <span class="job-chip-fill"></span>
-        <span id="job-chip-text" class="tabular-nums">0%</span>
-      </button>
+  <button id="job-chip" class="job-chip hidden" type="button" title="点击查看进度">
+    <span class="job-chip-fill" aria-hidden="true"></span><span id="job-chip-text">0%</span>
+  </button>
 
-      <style>
-        .brand-mark {
-          width: 30px; height: 30px; border-radius: 9px; flex: none;
-          background: radial-gradient(circle at 32% 30%, var(--brand-300), var(--primary) 58%, var(--brand-600));
-          box-shadow: 0 1px 3px -1px rgba(0, 0, 0, 0.12);
-        }
-        .control-group { display: inline-flex; align-items: center; gap: 6px; }
-        .control-label { font-size: 11px; color: var(--muted-foreground); white-space: nowrap; }
-        .select-wrap { position: relative; display: inline-flex; align-items: center; }
-        .control-select {
-          appearance: none; -webkit-appearance: none;
-          height: 30px; padding: 0 26px 0 10px;
-          font-size: 12px; color: var(--foreground);
-          background: var(--card); border: 1px solid var(--border);
-          border-radius: var(--radius-md); outline: none; cursor: pointer;
-        }
-        .control-select:focus-visible { border-color: var(--ring); box-shadow: 0 0 0 3px var(--brand-200); }
-        .select-chevron { position: absolute; right: 8px; width: 13px; height: 13px; color: var(--muted-foreground); pointer-events: none; }
-        .search-box {
-          display: flex; align-items: center; gap: 7px;
-          height: 30px; padding: 0 10px; min-width: 180px; width: 220px;
-          background: var(--card); border: 1px solid var(--border);
-          border-radius: var(--radius-md);
-        }
-        .search-box:focus-within { border-color: var(--ring); box-shadow: 0 0 0 3px var(--brand-200); }
-        .search-input { flex: 1 1 auto; min-width: 0; height: 100%; background: transparent; border: none; outline: none; font-size: 12px; color: var(--foreground); }
-        .search-input::placeholder { color: var(--muted-foreground); }
-        .btn-primary, .btn-secondary {
-          display: inline-flex; align-items: center; gap: 6px;
-          height: 30px; padding: 0 14px;
-          font-size: 12px; font-weight: 500; white-space: nowrap;
-          border-radius: 999px; cursor: pointer;
-          transition: opacity 180ms cubic-bezier(0.32, 0.72, 0, 1), transform 150ms cubic-bezier(0.32, 0.72, 0, 1);
-        }
-        .btn-primary { background: var(--primary); color: var(--primary-foreground); border: 1px solid var(--primary); }
-        .btn-secondary { background: var(--card); color: var(--foreground); border: 1px solid var(--border); }
-        .btn-primary:hover { opacity: 0.88; }
-        .btn-secondary:hover { background: var(--muted); }
-        .btn-primary:active, .btn-secondary:active { transform: scale(0.97); }
-        .btn-primary:focus-visible, .btn-secondary:focus-visible { box-shadow: 0 0 0 3px var(--brand-200); outline: none; }
-        .verdict-badge {
-          height: 26px; padding: 0 12px; display: inline-flex; align-items: center;
-          font-size: 11px; font-weight: 500; white-space: nowrap;
-          border-radius: 999px; border: 1px solid;
-        }
-        .verdict-bad { color: var(--state-error); border-color: var(--state-error); background: var(--state-error-surface); }
-        .icon-btn {
-          width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;
-          border-radius: 999px; color: var(--muted-foreground); cursor: pointer;
-          background: transparent; border: none;
-          transition: background 150ms cubic-bezier(0.32, 0.72, 0, 1);
-        }
-        .icon-btn:hover { background: var(--background-300); }
-        .icon-btn:focus-visible { box-shadow: 0 0 0 3px var(--brand-200); outline: none; }
-        .hud-btn {
-          width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
-          border-radius: 10px; color: var(--text-600); cursor: pointer;
-          background: transparent; border: none;
-          transition: background 150ms cubic-bezier(0.32, 0.72, 0, 1);
-        }
-        .hud-btn:hover { background: var(--muted); }
-        .panel { padding: 14px 16px; }
-        .panel-title { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--foreground); margin-bottom: 10px; }
-        .count-chip {
-          font-size: 10px; font-weight: 500; color: var(--muted-foreground);
-          background: var(--muted); padding: 1px 7px; border-radius: 999px;
-        }
-        .filter-row { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
-        .filter-btn {
-          height: 24px; padding: 0 11px; font-size: 11px; white-space: nowrap;
-          border-radius: 999px; cursor: pointer;
-          background: var(--card); color: var(--muted-foreground);
-          border: 1px solid var(--border);
-          transition: background 150ms cubic-bezier(0.32, 0.72, 0, 1), color 150ms cubic-bezier(0.32, 0.72, 0, 1);
-        }
-        .filter-btn:hover { border-color: var(--text-400); color: var(--foreground); }
-        .filter-btn.active { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
-        .blocker-list, .excluded-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
-        .blocker-card, .excluded-card {
-          background: var(--card); border: 1px solid var(--border);
-          border-left-width: 3px; border-radius: var(--radius-md);
-          padding: 10px 12px; cursor: pointer;
-          transition: transform 150ms cubic-bezier(0.32, 0.72, 0, 1), box-shadow 150ms cubic-bezier(0.32, 0.72, 0, 1);
-        }
-        .blocker-card:hover, .excluded-card:hover { transform: translateX(3px); box-shadow: var(--shadow-md); }
-        .blocker-card.risk-high { border-left-color: var(--state-error); }
-        .blocker-card.risk-medium { border-left-color: var(--chart-3); }
-        .blocker-card.risk-unknown { border-left-color: var(--muted-foreground); }
-        .excluded-card { border-left-color: var(--text-400); }
-        .b-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-        .b-kind { font-size: 11px; color: var(--muted-foreground); }
-        .b-node { font-size: 12px; font-weight: 600; color: var(--foreground); margin: 3px 0; word-break: break-all; font-family: var(--font-mono); }
-        .b-reason { font-size: 11px; color: var(--muted-foreground); line-height: 1.55; }
-        .b-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
-        .risk-chip {
-          display: inline-block; padding: 1px 7px; border-radius: 999px;
-          font-size: 9.5px; font-weight: 600; white-space: nowrap;
-        }
-        .risk-chip.risk-high { background: var(--state-error-surface); color: var(--state-error); }
-        .risk-chip.risk-medium { background: color-mix(in srgb, var(--chart-3) 16%, var(--card)); color: var(--chart-3); }
-        .b-guard {
-          font-size: 10px; font-family: var(--font-mono);
-          color: var(--muted-foreground); background: var(--muted);
-          padding: 1px 7px; border-radius: 6px; display: inline-block;
-          max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        }
-        .view-link {
-          display: inline-flex; align-items: center; gap: 3px;
-          font-size: 10.5px; font-weight: 500; color: var(--primary);
-          white-space: nowrap; flex: none;
-        }
-        .panel-hint { font-size: 11px; color: var(--muted-foreground); line-height: 1.55; margin: -4px 0 10px; }
+  <style id="critical-layout">
+      /* =============================================================
+         全出血 app-shell 布局（critical layout）
+         零 max-width / 零居中容器 / 零水平留白；
+         Tailwind CDN 加载失败时本区块独立承载全部结构性布局。
+         ============================================================= */
+      :root { --ease: cubic-bezier(0.32, 0.72, 0, 1); }
 
-        .drawer-head {
-          flex: 0 0 auto; display: flex; align-items: flex-start; justify-content: space-between;
-          gap: 12px; padding: 18px 22px 14px;
-          border-bottom: 1px solid var(--border);
-        }
-        .drawer-eyebrow { font-size: 11px; color: var(--muted-foreground); letter-spacing: 0.02em; }
-        .drawer-title { font-size: 19px; font-weight: 600; color: var(--foreground); margin: 2px 0; line-height: 1.25; }
-        .drawer-node { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-600); word-break: break-all; }
-        .drawer-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 16px 22px 24px; }
-        .drawer-kpis {
-          display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 10px; margin-bottom: 18px;
-        }
-        .kpi-cell {
-          background: var(--muted); border: 1px solid var(--border);
-          border-radius: var(--radius-md); padding: 10px 12px; min-width: 0;
-        }
-        .kpi-label { display: block; font-size: 10.5px; color: var(--muted-foreground); }
-        .kpi-value { display: block; font-size: 19px; font-weight: 600; color: var(--foreground); margin: 3px 0 1px; font-family: var(--font-mono); letter-spacing: -0.02em; }
-        .kpi-sub { display: block; font-size: 10px; color: var(--muted-foreground); }
-        .drawer-section { margin-bottom: 20px; }
-        .drawer-sub { font-size: 12px; font-weight: 600; color: var(--foreground); margin-bottom: 8px; }
-        .drawer-desc { font-size: 13px; color: var(--text-600); line-height: 1.7; }
-        .code-block {
-          font-family: var(--font-mono); font-size: 12px; line-height: 1.7;
-          color: var(--foreground); background: var(--muted);
-          border: 1px solid var(--border); border-radius: var(--radius-md);
-          padding: 12px 14px; overflow-x: auto; white-space: pre;
-        }
-        .drawer-note { font-size: 11px; color: var(--muted-foreground); line-height: 1.6; margin-top: 8px; }
-        .alt-row { display: flex; flex-wrap: wrap; gap: 6px; }
-        .alt-chip {
-          display: inline-block; padding: 2px 10px; border-radius: 999px;
-          font-size: 11px; white-space: nowrap;
-          border: 1px solid; background: transparent;
-        }
-        .alt-chip.st-supported { color: var(--state-success); border-color: var(--state-success); background: var(--state-success-surface); }
-        .alt-chip.st-convertible { color: var(--chart-3); border-color: var(--chart-3); background: color-mix(in srgb, var(--chart-3) 14%, var(--card)); }
-        .alt-chip.no-alt { color: var(--state-error); border-color: var(--state-error); background: var(--state-error-surface); }
-        .path-breadcrumb { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-        .path-node {
-          display: inline-flex; align-items: center;
-          font-size: 11.5px; font-family: var(--font-mono);
-          color: var(--foreground); background: var(--muted);
-          border: 1px solid var(--border); border-radius: 999px;
-          padding: 3px 10px; white-space: nowrap;
-        }
-        .path-node.path-blocked { color: var(--state-error); border-color: var(--state-error); background: var(--state-error-surface); }
-        .evidence-table {
-          border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden;
-        }
-        .et-row {
-          display: grid; grid-template-columns: 1.2fr 0.7fr 0.9fr 1.2fr;
-          gap: 8px; align-items: center;
-          padding: 8px 12px; font-size: 11px; min-width: 0;
-        }
-        .et-row + .et-row { border-top: 1px solid var(--border); }
-        .et-row span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .et-head { background: var(--muted); font-size: 10.5px; font-weight: 600; color: var(--muted-foreground); }
-        .badge-cell {
-          display: inline-block; padding: 1px 8px; border-radius: 999px;
-          font-size: 10px; font-weight: 600; text-align: center;
-        }
-        .badge-cell.st-bad { color: var(--state-error); background: var(--state-error-surface); }
-        .badge-cell.st-warn { color: var(--chart-3); background: color-mix(in srgb, var(--chart-3) 14%, var(--card)); }
-        .kv {
-          display: flex; flex-direction: column; gap: 2px;
-          background: var(--muted); border-radius: var(--radius-md);
-          padding: 7px 10px; margin-bottom: 6px; font-size: 12px; color: var(--foreground);
-        }
-        .kv small { color: var(--muted-foreground); font-size: 10.5px; }
-        .kv.dep { border-left: 2px solid var(--primary); }
-        .empty { color: var(--muted-foreground); font-size: 11px; padding: 4px 0; }
-        .drawer-foot {
-          flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
-          gap: 10px; padding: 12px 22px;
-          border-top: 1px solid var(--border); background: var(--card);
-        }
+      *, *::before, *::after { box-sizing: border-box; }
 
-        .graph-pane svg { cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
-        .graph-pane svg.panning { cursor: grabbing; }
-        .gnode { cursor: pointer; }
-        .gnode > circle { transition: stroke 150ms cubic-bezier(0.32, 0.72, 0, 1), stroke-width 150ms cubic-bezier(0.32, 0.72, 0, 1); }
-        .gnode:hover > circle { stroke: var(--primary); stroke-width: 2.5; }
-        .gnode.selected > circle { stroke: var(--primary); stroke-width: 3; }
-        #qt-combo-badge { display: none; }
-        #topo-svg.qt-collapsed #qt-module-nodes,
-        #topo-svg.qt-collapsed .qt-edge { display: none; }
-        #topo-svg.qt-collapsed #qt-combo-badge { display: block; }
+      html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+      body {
+        background: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-sans);
+        font-size: 13px;
+        line-height: 1.45;
+        -webkit-font-smoothing: antialiased;
+      }
 
-        .modal-backdrop {
-          position: fixed; inset: 0; z-index: 50;
-          background: rgba(0, 0, 0, 0.38); backdrop-filter: blur(8px);
-          display: flex; align-items: center; justify-content: center;
+      .hidden { display: none !important; }
+
+      .explorer-app {
+        width: 100%;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* ---------------- 顶栏 ---------------- */
+      .topbar {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        min-height: 52px;
+        padding: 6px 16px;
+        background: color-mix(in srgb, var(--muted) 88%, transparent);
+        -webkit-backdrop-filter: saturate(180%) blur(20px);
+        backdrop-filter: saturate(180%) blur(20px);
+        border-bottom: 1px solid var(--border);
+      }
+      .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+      .brand-mark {
+        width: 28px; height: 28px; flex: 0 0 auto;
+        border-radius: 9px;
+        background: radial-gradient(circle at 32% 30%, var(--brand-300), var(--primary) 58%, var(--brand-600));
+        box-shadow: var(--shadow-sm);
+      }
+      .brand-title h1 { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.25; color: var(--foreground); white-space: nowrap; }
+      .brand-title p { margin: 1px 0 0; font-size: 11px; line-height: 1.3; color: var(--muted-foreground); white-space: nowrap; }
+
+      .controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; }
+      .controls label {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 11px; color: var(--muted-foreground); white-space: nowrap;
+      }
+      .select-wrap { position: relative; display: inline-flex; }
+      select {
+        appearance: none; -webkit-appearance: none;
+        height: 30px; padding: 0 26px 0 10px;
+        font-family: var(--font-sans); font-size: 12px; line-height: 1;
+        color: var(--foreground);
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: border-color .16s var(--ease), box-shadow .16s var(--ease);
+      }
+      select:hover { border-color: var(--muted-foreground); }
+      select:focus-visible { outline: none; border-color: var(--ring); box-shadow: 0 0 0 3px var(--brand-200); }
+      .chev {
+        position: absolute; right: 8px; top: 50%;
+        width: 13px; height: 13px;
+        transform: translateY(-50%);
+        color: var(--muted-foreground);
+        pointer-events: none;
+        -webkit-mask-image: url("../assets/icons/dl_builtin_apple/chevron-down.svg");
+        mask-image: url("../assets/icons/dl_builtin_apple/chevron-down.svg");
+      }
+
+      input[type="search"] {
+        width: 220px; height: 30px; padding: 0 10px;
+        font-family: var(--font-sans); font-size: 12px; line-height: 1;
+        color: var(--foreground);
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        outline: none;
+        transition: border-color .16s var(--ease), box-shadow .16s var(--ease);
+      }
+      input[type="search"]::placeholder { color: var(--muted-foreground); }
+      input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }
+      input[type="search"]:hover { border-color: var(--input); }
+      input[type="search"]:focus-visible { border-color: var(--ring); box-shadow: 0 0 0 3px var(--brand-200); }
+
+      /* ---------------- 按钮（30px 胶囊） ---------------- */
+      .btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        height: 30px; padding: 0 14px;
+        font-family: var(--font-sans); font-size: 12px; font-weight: 500; line-height: 1;
+        white-space: nowrap; cursor: pointer;
+        transition: background-color .16s var(--ease), border-color .16s var(--ease),
+                    color .16s var(--ease), opacity .16s var(--ease),
+                    transform .16s var(--ease), box-shadow .16s var(--ease);
+      }
+      .btn.secondary { background: var(--card); border: 1px solid var(--border); color: var(--foreground); }
+      .btn.secondary:hover { background: var(--muted); }
+      .btn.primary { background: var(--primary); border: 1px solid var(--primary); color: var(--primary-foreground); }
+      .btn.primary:hover { opacity: .88; }
+      .btn.ghost { background: transparent; border: 1px solid transparent; color: var(--muted-foreground); }
+      .btn.ghost:hover { background: var(--muted); color: var(--foreground); }
+      .btn:active { transform: scale(0.97); }
+      .btn:focus-visible { outline: none; border-color: var(--ring); box-shadow: 0 0 0 3px var(--brand-200); }
+
+      .badge {
+        display: inline-flex; align-items: center;
+        height: 26px; padding: 0 12px;
+        border-radius: 999px;
+        font-size: 11px; font-weight: 500; line-height: 1; white-space: nowrap;
+      }
+      .badge.bad { color: var(--state-error); border: 1px solid var(--state-error); background: var(--state-error-surface); }
+
+      /* ---------------- 图例条 ---------------- */
+      .legend {
+        flex: 0 0 auto;
+        display: flex; align-items: center; flex-wrap: wrap;
+        gap: 6px 16px;
+        min-height: 38px;
+        padding: 4px 16px;
+        background: var(--card);
+        border-bottom: 1px solid var(--border);
+        font-size: 11px; color: var(--muted-foreground);
+      }
+      .legend-item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+      .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+      .dot-app { background: var(--primary); }
+      .dot-ok { background: var(--state-success); }
+      .dot-bad { background: var(--state-error); }
+      .dot-unknown { background: var(--muted-foreground); }
+      .dot-uncertain { background: var(--chart-3); }
+      .combo-chip {
+        width: 15px; height: 11px; flex: 0 0 auto;
+        border-radius: 5px;
+        border: 1.5px dashed var(--primary);
+      }
+      .graph-stats {
+        margin-left: auto;
+        font-family: var(--font-mono); font-size: 11px;
+        font-variant-numeric: tabular-nums;
+        color: var(--muted-foreground); white-space: nowrap;
+      }
+
+      /* ---------------- 工作区（图布 + 侧栏） ---------------- */
+      .layout { flex: 1 1 auto; min-height: 0; display: flex; }
+      #graph-container { flex: 1 1 auto; min-width: 0; position: relative; background: var(--background); }
+      .topo {
+        position: absolute; inset: 0;
+        width: 100%; height: 100%;
+        display: block;
+        cursor: grab;
+      }
+
+      /* ---------------- 侧栏 ---------------- */
+      .side-panel {
+        flex: 0 0 330px;
+        width: 330px; min-width: 280px;
+        display: flex; flex-direction: column;
+        background: var(--card);
+        border-left: 1px solid var(--border);
+        overflow-y: auto;
+      }
+      .side-panel::-webkit-scrollbar { width: 8px; }
+      .side-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+
+      .panel { padding: 14px 16px; }
+      .panel h2 {
+        display: flex; align-items: center; gap: 6px;
+        margin: 16px 0 8px;
+        font-size: 13px; font-weight: 600; line-height: 1.3;
+        color: var(--foreground);
+      }
+      .panel h2:first-child { margin-top: 0; }
+      .count {
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: var(--muted);
+        color: var(--muted-foreground);
+        font-size: 10px; font-weight: 500; line-height: 1.3;
+      }
+      .panel-hint { margin: -2px 0 10px; font-size: 11px; line-height: 1.55; color: var(--muted-foreground); }
+
+      .filter-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 10px; }
+      .filter-btn {
+        height: 24px; padding: 0 12px;
+        border-radius: 999px;
+        font-family: var(--font-sans); font-size: 11px; line-height: 1;
+        color: var(--muted-foreground);
+        background: var(--card);
+        border: 1px solid var(--border);
+        cursor: pointer;
+        transition: background-color .16s var(--ease), border-color .16s var(--ease),
+                    color .16s var(--ease), transform .16s var(--ease), box-shadow .16s var(--ease);
+      }
+      .filter-btn:hover { border-color: var(--muted-foreground); color: var(--foreground); }
+      .filter-btn:active { transform: scale(0.97); }
+      .filter-btn:focus-visible { outline: none; border-color: var(--ring); box-shadow: 0 0 0 3px var(--brand-200); }
+      .filter-btn.active { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+
+      #blocker-list, #unknown-list, #excluded-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+      #blocker-list li, #unknown-list li, .excluded-item {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-left-width: 3px;
+        border-radius: var(--radius-md);
+        padding: 10px 12px;
+        transition: transform .16s var(--ease), box-shadow .16s var(--ease), border-color .16s var(--ease);
+      }
+      #blocker-list li, #unknown-list li { cursor: pointer; }
+      #blocker-list li:hover, #unknown-list li:hover, .excluded-item:hover {
+        transform: translateX(3px);
+        box-shadow: var(--shadow-md);
+      }
+      #blocker-list li.risk-high { border-left-color: var(--state-error); }
+      #blocker-list li.risk-medium { border-left-color: var(--chart-3); }
+      #unknown-list li.unknown { border-left-color: var(--muted-foreground); }
+      .excluded-item { border-left-color: var(--text-400); }
+
+      .b-kind { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11px; line-height: 1.5; color: var(--muted-foreground); }
+      .b-node { margin: 3px 0 2px; font-family: var(--font-mono); font-size: 12px; font-weight: 600; line-height: 1.45; color: var(--foreground); word-break: break-all; }
+      .b-reason { font-size: 11px; line-height: 1.55; color: var(--muted-foreground); }
+      .b-guard {
+        display: inline-block; margin-top: 5px; padding: 2px 8px;
+        border-radius: 6px;
+        font-family: var(--font-mono); font-size: 10px; line-height: 1.4;
+        color: var(--muted-foreground); background: var(--muted);
+      }
+      .b-alt { margin-top: 6px; font-size: 11px; line-height: 1.6; color: var(--muted-foreground); }
+      .b-path {
+        margin-top: 6px; padding-top: 6px;
+        border-top: 1px dashed var(--border);
+        font-family: var(--font-mono); font-size: 10px; line-height: 1.5;
+        color: var(--primary); word-break: break-all;
+      }
+
+      .risk-chip {
+        display: inline-flex; align-items: center;
+        height: 16px; padding: 0 7px;
+        border-radius: 999px;
+        font-size: 10px; font-weight: 600; line-height: 1;
+      }
+      .risk-chip.risk-high { background: var(--state-error-surface); color: var(--state-error); }
+      .risk-chip.risk-medium { background: color-mix(in srgb, var(--chart-3) 16%, var(--card)); color: var(--chart-3); }
+
+      .alt-chip {
+        display: inline-flex; align-items: center;
+        height: 18px; padding: 0 8px; margin: 2px 4px 0 0;
+        border-radius: 999px;
+        font-size: 10px; line-height: 1;
+        background: var(--muted); color: var(--muted-foreground);
+        border: 1px solid var(--border);
+      }
+      .alt-chip.st-supported { background: var(--state-success-surface); color: var(--state-success); border-color: var(--state-success); }
+      .alt-chip.st-convertible { background: color-mix(in srgb, var(--chart-3) 14%, var(--card)); color: var(--chart-3); border-color: var(--chart-3); }
+      .no-alt {
+        display: inline-block; padding: 2px 8px; border-radius: 999px;
+        background: var(--state-error-surface); color: var(--state-error);
+        font-size: 10px; line-height: 1.4;
+      }
+
+      /* ---------------- 节点详情（默认隐藏） ---------------- */
+      .detail-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .detail-head h2 { margin: 0; }
+      #detail-close { width: 26px; height: 26px; padding: 0; font-size: 15px; }
+
+      /* ---------------- 添加分析弹窗（默认隐藏） ---------------- */
+      .modal {
+        position: fixed; inset: 0; z-index: 50;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(0, 0, 0, 0.38);
+        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(8px);
+      }
+      .modal-card {
+        width: min(460px, 92vw);
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 22px 24px;
+        box-shadow: var(--shadow-2xl);
+      }
+      .modal-card h2 { margin: 0 0 8px; font-size: 15px; font-weight: 600; line-height: 1.3; color: var(--foreground); }
+      .modal-card .panel-hint { margin-bottom: 12px; }
+      .modal-card code { font-family: var(--font-mono); font-size: 10.5px; color: var(--primary); }
+      #clone-url {
+        width: 100%; height: 38px; padding: 0 12px;
+        font-family: var(--font-mono); font-size: 12px; line-height: 1;
+        color: var(--foreground);
+        background: var(--background);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        outline: none;
+        transition: border-color .16s var(--ease), box-shadow .16s var(--ease);
+      }
+      #clone-url::placeholder { color: var(--muted-foreground); }
+      #clone-url:focus { border-color: var(--ring); box-shadow: 0 0 0 3px var(--brand-200); }
+      .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+      .clone-status { margin: 10px 0 0; min-height: 16px; font-size: 11px; line-height: 1.5; color: var(--muted-foreground); word-break: break-all; }
+
+      .progress { margin-top: 14px; }
+      .progress-bar { height: 6px; border-radius: 999px; background: var(--muted); overflow: hidden; }
+      .progress-fill { height: 100%; width: 0%; border-radius: 999px; background: var(--primary); transition: width .4s var(--ease); }
+      .progress-meta { display: flex; align-items: baseline; gap: 10px; margin-top: 6px; font-size: 11px; color: var(--muted-foreground); }
+      #clone-pct { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--primary); min-width: 34px; }
+      #clone-msg { font-size: 11px; line-height: 1.5; }
+
+      /* ---------------- 后台任务悬浮 chip（默认隐藏） ---------------- */
+      .job-chip {
+        position: fixed; right: 18px; bottom: 18px; z-index: 60;
+        display: inline-flex; align-items: center; gap: 8px;
+        height: 32px; padding: 0 14px;
+        border-radius: 999px;
+        background: var(--card); color: var(--foreground);
+        border: 1px solid var(--primary);
+        box-shadow: var(--shadow-lg);
+        font-family: var(--font-sans); font-size: 12px; line-height: 1;
+        cursor: pointer;
+        transition: background-color .16s var(--ease), transform .16s var(--ease), box-shadow .16s var(--ease);
+      }
+      .job-chip:hover { background: var(--muted); }
+      .job-chip:active { transform: scale(0.97); }
+      .job-chip:focus-visible { outline: none; border-color: var(--ring); box-shadow: var(--shadow-lg), 0 0 0 3px var(--brand-200); }
+      .job-chip-fill {
+        position: relative; width: 26px; height: 6px;
+        border-radius: 999px; background: var(--muted); overflow: hidden;
+      }
+      .job-chip-fill::after {
+        content: ""; position: absolute; inset: 0; width: 40%;
+        border-radius: 999px; background: var(--primary);
+        animation: chip-slide 1.1s linear infinite;
+      }
+      @keyframes chip-slide {
+        from { transform: translateX(-100%); }
+        to { transform: translateX(260%); }
+      }
+
+      /* ---------------- 拓扑图（所有颜色经 CSS 类引用语义 token） ---------------- */
+      .dot-grid-dot { fill: var(--border); }
+      .combo-ring {
+        fill: var(--primary); fill-opacity: 0.04;
+        stroke: var(--primary); stroke-width: 1.4;
+        stroke-dasharray: 5 4; stroke-opacity: 0.55;
+      }
+      .edge-strong { fill: none; stroke: var(--primary); stroke-width: 1.4; opacity: 0.9; }
+      .edge-muted { fill: none; stroke: var(--border); stroke-width: 1.2; opacity: 0.85; }
+      .edge-dash { stroke-dasharray: 4 4; }
+      .mk-strong { fill: var(--primary); }
+      .mk-muted { fill: var(--border); }
+      .n-app { fill: var(--primary); stroke: var(--brand-600); stroke-width: 3; }
+      .n-success { fill: var(--state-success); stroke: var(--card); stroke-width: 2; }
+      .n-error { fill: var(--state-error); }
+      .n-uncertain { fill: var(--chart-3); }
+      .gnode { cursor: pointer; }
+      .gnode circle { transition: stroke .15s var(--ease), stroke-width .15s var(--ease); }
+      .gnode:hover circle { stroke: var(--primary); stroke-width: 2.5; }
+      .lbl-app-name { font-family: var(--font-mono); font-size: 11px; font-weight: 600; fill: var(--foreground); }
+      .lbl-app-meta { font-family: var(--font-mono); font-size: 9px; fill: var(--muted-foreground); }
+      .lbl-node { font-family: var(--font-mono); font-size: 10px; font-weight: 600; fill: var(--foreground); }
+      .lbl-node-strong { font-family: var(--font-mono); font-size: 10px; font-weight: 600; fill: var(--text-700); }
+      .lbl-combo { font-family: var(--font-sans); font-size: 12px; font-weight: 600; fill: var(--primary); }
+      .lbl-combo-sub { font-family: var(--font-sans); font-size: 10px; fill: var(--muted-foreground); }
+      .t-ok { fill: var(--state-success); }
+      .t-bad { fill: var(--state-error); }
+
+      /* ---------------- 响应式降级（真实应用行为） ---------------- */
+      @media (max-width: 900px) {
+        .layout { flex-direction: column; }
+        .side-panel {
+          width: 100%; min-width: 0; flex: 0 0 auto;
+          max-height: 40%;
+          border-left: none; border-top: 1px solid var(--border);
         }
-        .modal-card {
-          width: min(460px, 92vw); background: var(--card);
-          border: 1px solid var(--border); border-radius: var(--radius-lg);
-          padding: 22px 24px; box-shadow: var(--shadow-2xl);
+        input[type="search"] { width: 160px; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          transition-duration: 0.01ms !important;
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
         }
-        .modal-title { font-size: 17px; font-weight: 600; color: var(--foreground); margin-bottom: 6px; }
-        .modal-hint { font-size: 12px; color: var(--muted-foreground); line-height: 1.6; margin-bottom: 14px; }
-        .modal-input {
-          width: 100%; height: 38px; padding: 0 38px 0 12px;
-          font-size: 13px; color: var(--foreground); font-family: var(--font-mono);
-          background: var(--muted); border: 1px solid var(--border);
-          border-radius: var(--radius-md); outline: none;
-        }
-        .modal-input:focus { border-color: var(--ring); box-shadow: 0 0 0 3px var(--brand-200); background: var(--card); }
-        .modal-input-icon { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--muted-foreground); pointer-events: none; }
-        .progress { margin-top: 12px; }
-        .progress-track { height: 6px; background: var(--muted); border-radius: 999px; overflow: hidden; }
-        .progress-fill { height: 100%; width: 0%; background: var(--primary); border-radius: 999px; }
-        .progress-meta { display: flex; gap: 10px; margin-top: 6px; font-size: 11px; color: var(--muted-foreground); min-width: 0; }
-        .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
-        .clone-status { margin-top: 10px; font-size: 12px; color: var(--state-error); min-height: 16px; word-break: break-all; }
-        .job-chip {
-          position: fixed; right: 18px; bottom: 18px; z-index: 60;
-          display: flex; align-items: center; gap: 8px;
-          height: 36px; padding: 0 14px; border-radius: 999px; cursor: pointer;
-          background: var(--card); color: var(--foreground);
-          border: 1px solid var(--primary); box-shadow: var(--shadow-lg);
-          font-size: 12px;
-        }
-        .job-chip-fill {
-          width: 26px; height: 5px; border-radius: 999px; background: var(--muted);
-          position: relative; overflow: hidden;
-        }
-        .job-chip-fill::after {
-          content: ""; position: absolute; inset: 0; width: 40%;
-          background: var(--primary); border-radius: 999px;
-          animation: chip-slide 1.1s linear infinite;
-        }
-        @keyframes chip-slide {
-          from { transform: translateX(-100%); }
-          to { transform: translateX(260%); }
-        }
-        [hidden] { display: none !important; }
-      </style>
+      }
+    </style>
 
-      <script>
-        (function () {
-          /* ---- 添加分析弹窗 ---- */
-          var modal = document.getElementById('clone-modal');
-          var jobChip = document.getElementById('job-chip');
-          function openModal() { modal.hidden = false; }
-          function closeModal() { modal.hidden = true; }
-          document.getElementById('add-app-btn').addEventListener('click', openModal);
-          document.getElementById('clone-cancel').addEventListener('click', closeModal);
-          document.getElementById('job-chip').addEventListener('click', function () {
-            jobChip.hidden = true;
-            openModal();
-          });
-          modal.addEventListener('click', function (evt) {
-            if (evt.target === modal) closeModal();
-          });
-          var submit = document.getElementById('clone-submit');
-          submit.addEventListener('click', function () {
-            var url = document.getElementById('clone-url').value.trim();
-            var status = document.getElementById('clone-status');
-            if (!/^https?:\/\//.test(url)) {
-              status.textContent = '请输入 http(s) git 地址';
-              return;
-            }
-            status.textContent = '';
-            document.getElementById('clone-progress').hidden = false;
-            var pct = 0;
-            var timer = setInterval(function () {
-              pct = Math.min(pct + 7 + Math.round(Math.random() * 8), 96);
-              document.getElementById('clone-fill').style.width = pct + '%';
-              document.getElementById('clone-pct').textContent = pct + '%';
-              document.getElementById('clone-msg').textContent = pct < 30 ? '正在 shallow clone…' : (pct < 70 ? '正在扫描源码与宏守卫…' : '正在递归推导可移植性…');
-            }, 600);
-            setTimeout(function () {
-              clearInterval(timer);
-              document.getElementById('clone-fill').style.width = '100%';
-              document.getElementById('clone-pct').textContent = '100%';
-              document.getElementById('clone-msg').textContent = '分析完成';
-              setTimeout(closeModal, 800);
-            }, 5200);
-          });
-
-          /* ---- 详情面板数据 ---- */
-          var drawer = document.getElementById('detail-drawer');
-          var svg = document.getElementById('topo-svg');
-          var entries = [
-            {
-              graphNode: 'tdesktop',
-              title: '不支持的平台接口',
-              node: 'app:tdesktop',
-              eyebrow: '阻塞点详情 · 1 / 3',
-              risk: '高风险', riskSub: '需优先处置',
-              hits: '4 处', hitsSub: '会参与鸿蒙编译',
-              excl: '212 处', exclSub: '平台专属文件',
-              deps: '1 个', depsSub: '递归展开',
-              desc: 'app:tdesktop 使用了鸿蒙不支持的平台接口 macOS Cocoa / AppKit。扫描其全部源文件后，共发现 4 处无条件编译的调用点（不依赖任何平台宏守卫，鸿蒙构建时会真实编译），另有 212 处命中位于 macOS 专属文件中，被文件级排除，不构成阻塞。该接口类别在鸿蒙没有同类别替代接口，需要自行实现一层移植封装。',
-              code: '#ifdef Q_OS_MACOS\n  platformWindow->setLevel(NSFloatingWindowLevel);\n#endif',
-              codeNote: '守卫判定：unconditional — 该命中点无宏守卫包裹，鸿蒙构建时会编译。',
-              altChip: 'no-alt', altText: '无同类别替代，需自行实现',
-              altNote: '建议使用 OHOS 窗口框架 / ArkUI 能力自行封装等价的窗口层级控制。',
-              path: ['app:tdesktop', '平台接口', 'macOS Cocoa / AppKit']
-            },
-            {
-              graphNode: 'qtwebengine',
-              title: '不支持的 Qt 模块',
-              node: 'qt-module:qtwebengine',
-              eyebrow: '阻塞点详情 · 2 / 3',
-              risk: '中风险', riskSub: '需评估替代路径',
-              hits: '1 个', hitsSub: '模块依赖',
-              excl: '0 处', exclSub: '无文件排除',
-              deps: '2 个', depsSub: '下游依赖',
-              desc: 'qtwebengine 模块依赖 Chromium 渲染内核，鸿蒙官方无该模块的移植记录，属于硬阻塞中的模块级缺失。应用内嵌浏览器能力建议改用鸿蒙系统 WebView 组件（OHOS WebView）替换，业务层对浏览器内核的直接调用需要做接口适配。',
-              code: 'target_link_libraries(app PRIVATE\n  Qt6::WebEngineCore\n)',
-              codeNote: '模块判定：blocked — Qt 模块支持矩阵中无鸿蒙支持记录。',
-              altChip: 'st-supported', altText: 'OHOS WebView',
-              altNote: '系统级 WebView 覆盖多数内嵌浏览器场景，需评估 JSBridge 与下载能力差异。',
-              path: ['app:tdesktop', 'qtwebengine']
-            },
-            {
-              graphNode: 'libexif',
-              title: '未知包（无移植记录）',
-              node: 'libexif',
-              eyebrow: '待确认项 · 3 / 3',
-              risk: '待确认', riskSub: '无移植记录',
-              hits: '1 个', hitsSub: '包依赖',
-              excl: '—', exclSub: '无排除记录',
-              deps: '0 个', depsSub: '无下游依赖',
-              desc: 'Harmonybrew（4741 个 formula）与 cmd-pkgs（1248 个预编译包）均无 libexif 的移植记录。无硬阻塞证据，但移植路径未知：需人工确认上游源码可交叉编译，或评估鸿蒙系统媒体能力是否可替代。',
-              code: 'find_package(libexif REQUIRED)\ntarget_link_libraries(app PRIVATE libexif)',
-              codeNote: '依赖判定：unknown — 两个产物源均无该包记录。',
-              altChip: 'st-convertible', altText: '需自行交叉编译',
-              altNote: '源码体积小，可直接交叉编译；确认 EXIF 解析能否由系统媒体库替代。',
-              path: ['app:tdesktop', 'libexif']
-            }
-          ];
-          var entryByNode = { tdesktop: 0, qtwebengine: 1, libexif: 2 };
-          var idx = 0;
-
-          function selectNode(name) {
-            svg.querySelectorAll('.gnode.selected').forEach(function (n) {
-              n.classList.remove('selected');
-            });
-            if (!name) return;
-            var g = svg.querySelector('.gnode[data-node="' + name + '"]');
-            if (g) g.classList.add('selected');
-          }
-
-          function renderEntry(i) {
-            idx = i;
-            var b = entries[i];
-            document.getElementById('drawer-title').textContent = b.title;
-            document.getElementById('drawer-node').textContent = b.node;
-            document.querySelector('.drawer-eyebrow').textContent = b.eyebrow;
-            var riskEl = document.getElementById('kpi-risk');
-            riskEl.textContent = b.risk;
-            riskEl.style.color = (b.risk === '高风险') ? 'var(--state-error)' : 'var(--chart-3)';
-            document.getElementById('kpi-risk-sub').textContent = b.riskSub;
-            document.getElementById('kpi-hits').textContent = b.hits;
-            document.getElementById('kpi-hits-sub').textContent = b.hitsSub;
-            document.getElementById('kpi-excl').textContent = b.excl;
-            document.getElementById('kpi-excl-sub').textContent = b.exclSub;
-            document.getElementById('kpi-deps').textContent = b.deps;
-            document.getElementById('kpi-deps-sub').textContent = b.depsSub;
-            document.getElementById('drawer-desc').textContent = b.desc;
-            document.getElementById('code-block').textContent = b.code;
-            document.getElementById('code-note').textContent = b.codeNote;
-            var chip = document.getElementById('alt-chip');
-            chip.className = 'alt-chip ' + b.altChip;
-            chip.textContent = b.altText;
-            document.getElementById('alt-note').textContent = b.altNote;
-            for (var s = 0; s < 3; s += 1) {
-              var seg = document.getElementById('path-seg-' + s);
-              if (b.path[s]) {
-                seg.style.display = '';
-                seg.textContent = b.path[s];
-                seg.className = 'path-node' + (s === b.path.length - 1 ? ' path-blocked' : '');
-              } else {
-                seg.style.display = 'none';
-              }
-            }
-            document.getElementById('path-sep-1').style.display = b.path[2] ? '' : 'none';
-            for (var t = 0; t < 3; t += 1) {
-              document.getElementById('ev-' + t).style.display = (t === i) ? '' : 'none';
-              document.getElementById('deps-' + t).style.display = (t === i) ? '' : 'none';
-            }
-            selectNode(b.graphNode);
-          }
-
-          /* ---- 图谱平移 / 缩放 ---- */
-          var viewport = document.getElementById('graph-viewport');
-          var view = { x: 0, y: 0, k: 1 };
-          function applyView() {
-            viewport.setAttribute('transform',
-              'translate(' + view.x + ' ' + view.y + ') scale(' + view.k + ')');
-          }
-          function toUser(cx, cy) {
-            var pt = svg.createSVGPoint();
-            pt.x = cx; pt.y = cy;
-            var m = svg.getScreenCTM();
-            return m ? pt.matrixTransform(m.inverse()) : { x: 490, y: 300 };
-          }
-          function zoomAt(px, py, factor) {
-            var k2 = Math.min(4, Math.max(0.4, view.k * factor));
-            if (k2 === view.k) return;
-            view.x = px - (px - view.x) * (k2 / view.k);
-            view.y = py - (py - view.y) * (k2 / view.k);
-            view.k = k2;
-            applyView();
-          }
-          function centerOn(cx, cy, k) {
-            view.k = k;
-            view.x = 490 - cx * k;
-            view.y = 300 - cy * k;
-            applyView();
-          }
-
-          svg.addEventListener('wheel', function (e) {
-            e.preventDefault();
-            var p = toUser(e.clientX, e.clientY);
-            zoomAt(p.x, p.y, e.deltaY < 0 ? 1.15 : 1 / 1.15);
-          }, { passive: false });
-
-          var drag = null;
-          svg.addEventListener('pointerdown', function (e) {
-            var g = e.target && e.target.closest ? e.target.closest('.gnode') : null;
-            drag = { sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y, moved: false, gnode: g };
-            svg.classList.add('panning');
-            try { svg.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-          });
-          svg.addEventListener('pointermove', function (e) {
-            if (!drag) return;
-            var dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
-            if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
-            var p0 = toUser(drag.sx, drag.sy);
-            var p1 = toUser(e.clientX, e.clientY);
-            view.x = drag.vx + (p1.x - p0.x);
-            view.y = drag.vy + (p1.y - p0.y);
-            applyView();
-          });
-          svg.addEventListener('pointerup', function (e) {
-            if (!drag) return;
-            svg.classList.remove('panning');
-            var wasDrag = drag.moved;
-            var g = drag.gnode;
-            drag = null;
-            if (wasDrag || !g) return;
-            handleNodeClick(g);
-          });
-          svg.addEventListener('pointercancel', function () {
-            drag = null;
-            svg.classList.remove('panning');
-          });
-
-          function handleNodeClick(g) {
-            var name = g.getAttribute('data-node');
-            if (name === 'qt-combo') {
-              svg.classList.toggle('qt-collapsed');
-              return;
-            }
-            selectNode(name);
-            if (entryByNode[name] !== undefined) {
-              renderEntry(entryByNode[name]);
-              drawer.classList.add('open');
-            }
-          }
-
-          /* ---- 缩放 HUD ---- */
-          function svgCenter() {
-            var r = svg.getBoundingClientRect();
-            return toUser(r.left + r.width / 2, r.top + r.height / 2);
-          }
-          document.getElementById('zoom-in').addEventListener('click', function () {
-            var c = svgCenter(); zoomAt(c.x, c.y, 1.25);
-          });
-          document.getElementById('zoom-out').addEventListener('click', function () {
-            var c = svgCenter(); zoomAt(c.x, c.y, 1 / 1.25);
-          });
-          document.getElementById('zoom-fit').addEventListener('click', function () {
-            view = { x: 0, y: 0, k: 1 };
-            applyView();
-          });
-
-          /* ---- 搜索定位 ---- */
-          document.getElementById('search-input').addEventListener('keydown', function (e) {
-            if (e.key !== 'Enter') return;
-            var q = e.target.value.trim().toLowerCase();
-            if (!q) return;
-            var list = svg.querySelectorAll('.gnode[data-name]');
-            var hit = null;
-            for (var i = 0; i < list.length; i += 1) {
-              if ((list[i].getAttribute('data-name') || '').toLowerCase().indexOf(q) !== -1) {
-                hit = list[i];
-                break;
-              }
-            }
-            if (!hit) return;
-            var name = hit.getAttribute('data-node');
-            var c = hit.querySelector('circle');
-            selectNode(name);
-            centerOn(parseFloat(c.getAttribute('cx')), parseFloat(c.getAttribute('cy')), 1.5);
-            if (entryByNode[name] !== undefined) {
-              renderEntry(entryByNode[name]);
-              drawer.classList.add('open');
-            }
-          });
-
-          /* ---- 侧栏卡片与面板控制 ---- */
-          var cardMap = { b1: 0, b2: 1, b3: 2 };
-          document.querySelectorAll('.blocker-card[data-blocker]').forEach(function (card) {
-            card.addEventListener('click', function () {
-              var key = cardMap[card.getAttribute('data-blocker')];
-              renderEntry(key !== undefined ? key : 0);
-              drawer.classList.add('open');
-            });
-          });
-          document.getElementById('drawer-close').addEventListener('click', function () {
-            drawer.classList.remove('open');
-          });
-          document.getElementById('drawer-next').addEventListener('click', function () {
-            renderEntry((idx + 1) % entries.length);
-          });
-          document.getElementById('drawer-prev').addEventListener('click', function () {
-            renderEntry((idx - 1 + entries.length) % entries.length);
-          });
-
-          renderEntry(0);
-        })();
-      </script>
-    </main>
-    <script>lucide.createIcons();</script>
+  <script>lucide.createIcons();</script>
 </body>
 </html>

@@ -21,7 +21,7 @@ symptoms: "运行时加载 .so 插件失败，dlopen 返回 EINVAL，路径在 /
 
 # ====== 问题详情 ======
 environment: "Qt 5.12/5.15 for HarmonyOS, 真机"
-refs: [semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-third-party-libs, semantic-qt-harmonyos-golden-rules]
+refs: [fault-C-0012, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-third-party-libs, semantic-qt-harmonyos-golden-rules]
 related_problems: [problem-runtime-qpa-plugin-not-found]
 ---
 

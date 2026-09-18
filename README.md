@@ -15,7 +15,7 @@
 
 ### 功能清单
 
-本知识库覆盖 **12 类公开任务**（路由码见 `_index/_task-routing.md`）：
+本知识库覆盖 **13 类公开任务**（路由码见 `_index/_task-routing.md`）：
 
 | 路由码 | 任务 | 入口页 | 预期输出 |
 |------|------|--------|---------|
@@ -32,6 +32,7 @@
 | [N] | 工具链 | `ohos-common-kb-public/semantic/deveco-mcp-capabilities` + `ohos-common-kb-public/procedural/deveco-cli-usage-rules` | 安装/配置 或 headless 编译配方 |
 | [P] | 自动迁移（执行层） | `skills/qt-app-porting` + `tools/qt-ohos-run.py` | 风险报告 → 计划 → 受追踪修改 → 编译/打包/装机/启动 → G0-G12 门禁判定 → 报告 + 知识草稿 |
 | [Q] | Demo 生成 | `procedural/demo-generation`（Qt+CEF/WebEngine demo 见 §3.3 + `qt-cef-ohos-dev-guide`） | 需求 → 设计 → 工程 → 代码 → 编译 → 文档 |
+| [R] | 故障跟踪 | `faults/_registry` §症状索引 + `_graph.yaml`（机读图）→ 根因页；`tools/faults-build.py`（build/check/review） | 定性（缺陷/限制）+ 责任领域 + 临时方案/替代方案 + 跟踪单与修复版本或演进 |
 
 **捆绑工具**：`skills/kb-init/` —— 环境探测（DevEco/SDK/Qt 源码）→ 引导安装缺失依赖 → 生成 `ENV.local.md` → 校验环境。Qt+CEF demo 嫁接脚本随 CEF 组件包分发，不在本知识库（见 `procedural/qt-cef-ohos-dev-guide.md` §2.3）。
 
@@ -120,6 +121,7 @@ ohos_qt-skills/
 ├── procedural/             # 程序知识：应用迁移工作流、Demo 生成、编译配方
 ├── episodic/               # 情景知识：实际移植项目复盘（SARibbon/Coin3D/退出死锁 等）
 ├── problems/               # 错误库：实际编译/部署/运行时报错与解决方案（一错一文件）
+├── faults/                 # 故障库（图模型）：症状/根因/临时方案/跟踪单，真源 _data/ + C 页，派生物自动生成
 ├── ohos-common-kb-public/  # 内嵌的 HarmonyOS 平台通用知识（ArkTS、ArkUI、NAPI 等）
 ├── skills/                 # Agent skills（自动化脚本和工具）
 │   └── kb-init/            # 初始化 skill：环境检测、依赖安装、ENV.local.md 生成
@@ -132,6 +134,7 @@ ohos_qt-skills/
 | `procedural/` | 我怎么做？ | 应用迁移工作流、落地编译配方（Playbook A/B）、Demo 生成 |
 | `episodic/` | 发生过什么？ | 真实迁移复盘、bug 根因记录 |
 | `problems/` | 遇到这个报错怎么办？ | 编译失败、dlopen 拒绝、签名不匹配（速查优先） |
+| `faults/` | 这个问题修了吗？归谁？怎么绕？ | 症状→根因→方案/跟踪单图：IME 异常、退出死锁、XComponent 弃用（defect 跟修复版本 / limitation 给替代方案） |
 | `ohos-common-kb-public/` | HarmonyOS 平台通用知识 | ArkTS、ArkUI、NAPI、Stage 模型、DevEco 工具链 |
 | `skills/` | Agent 自动化脚本 | 初始化环境、配置路径 |
 
@@ -165,6 +168,8 @@ AI 的处理顺序是固定的，你不用记：
 ### 错误库怎么用
 
 遇到编译/部署/运行时报错，第一步查 `problems/_lookup.md`：按错误码、错误信息关键字或症状检索，命中就读对应问题文件拿方案。`problems/` 记的是真实踩过的坑（CMake find_package 失败、dlopen 拒绝可写路径、QPA 插件未部署、签名不匹配 等），不是 Qt 官方文档里的平台限制——后者在 `semantic/qt-harmonyos-platform-limits.md`。
+
+**故障库（faults/）**：问题被组织成**四实体图**——症状（S，应用层表现）→ 根因（C，分 `defect` 会修 / `limitation` 规格如此两类）→ 临时方案/替代方案（W，含验证与退役条件）与上游跟踪单（T，QTBUG/华为单号/修复版本号）。真源在 `faults/_data/*.yaml` 与根因页；`_graph.yaml`（机读全量图）与 `_registry.md`（登记总表，症状索引主入口）由 `python tools/faults-build.py build` **自动重建**，`check` 做一致性门禁、`review` 扫复核到期与状态推进。升级 Qt/OHOS 版本前用"按版本基线"视图做方案退役检查。与 `problems/` 经 refs 双向关联。**协作者提交新问题走 `_drafts/` 草稿通道**（提交清单见 `faults/_drafts/_template.md`，缺陷类必附复现 demo），主编复现测试 + 人工核验后才合入。
 
 ---
 

@@ -8,7 +8,7 @@ updated: 2026-07-23
 status: solved
 severity: critical
 audience: public
-refs: [problem-runtime-crash-libqohos-libqt5core-version-mismatch, procedural-demo-generation, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-build-run-workflow]
+refs: [fault-C-0010, problem-runtime-crash-libqohos-libqt5core-version-mismatch, procedural-demo-generation, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-build-run-workflow]
 summary: >
   Qt5 鸿蒙应用运行崩:Napi::Error "global expression doesn't start with known module path: '@ohos.deviceInfo'"。
   根因:libqohos(515 代际) 启动时 jsState.eval("@ohos.deviceInfo") 做裸全局表达式 eval,ArkTS 运行时拒绝裸 @ohos.* eval

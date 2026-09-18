@@ -1,0 +1,865 @@
+{
+ "schema": "portgraph-e2e-report/1",
+ "app": {
+  "key": "keepassxc",
+  "app_id": "app:keepassxc",
+  "name": "keepassxc",
+  "url": "https://github.com/keepassxreboot/keepassxc",
+  "tier": "B",
+  "build_system": "?",
+  "sources": "?",
+  "repo_path": "./portgraph\\workspace\\keepassxc"
+ },
+ "generated_at": "2026-09-18T02:44:26Z",
+ "verdict": "blocked",
+ "blockers": [
+  {
+   "kind": "unsupported-interface",
+   "node": "app:keepassxc",
+   "reason": "使用鸿蒙不支持的平台接口 macOS Cocoa/AppKit（os-api）macOS 专属 UI/系统框架；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (16 处无条件 / 0 处鸿蒙可编译 / 1 处宏守卫排除 / 0 处文件级排除) | src/thirdparty/ykcore/ykcore_osx.c:36[unconditional] #include <IOKit/hid/IOHIDLib.h>; src/thirdparty/ykcore/ykcore_osx.c:37[unconditional] #include <IOKit/hid/IOHIDKeys.h>; src/thirdparty/ykcore/ykcore_osx.c:38[unconditional] #include <IOKit/hid/IOHIDUsageTables.h>］"
+  },
+  {
+   "kind": "unsupported-interface",
+   "node": "app:keepassxc",
+   "reason": "使用鸿蒙不支持的平台接口 D-Bus IPC（ipc）鸿蒙无 D-Bus（Qt D-Bus 模块 Out of scope）；需改用系统服务/IPC；同类鸿蒙替代接口: 鸿蒙 IPC/系统服务能力［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (24 处无条件 / 2 处鸿蒙可编译 / 16 处宏守卫排除 / 0 处文件级排除) | tests/util/FdoSecretsProxy.cpp:22[unconditional] const QString& service, const QString& path, const QDBusConnection& connection, ; tests/util/FdoSecretsProxy.h:23[platform-excluded] #include <QtDBus>; tests/util/FdoSecretsProxy.h:96[platform-excluded] const QDBusConnection& connection,］"
+  },
+  {
+   "kind": "unsupported-interface",
+   "node": "app:keepassxc",
+   "reason": "使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (12 处无条件 / 0 处鸿蒙可编译 / 17 处宏守卫排除 / 11 处文件级排除) | src/main.cpp:49[platform-excluded] #include <windows.h>; src/thirdparty/ykcore/ykbzero.h:35[platform-excluded] #include <windows.h>; src/thirdparty/ykcore/ykcore_windows.c:37[unconditional] #include <windows.h>］"
+  },
+  {
+   "kind": "unsupported-interface",
+   "node": "app:keepassxc",
+   "reason": "使用鸿蒙不支持的平台接口 X11/Xlib 直连（display）鸿蒙无 X11 显示服务；Qt 应用应走 QPA，直连 X11 代码不可移植；同类鸿蒙替代接口: 鸿蒙 WindowStage/XComponent［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (5 处无条件 / 2 处鸿蒙可编译 / 2 处宏守卫排除 / 0 处文件级排除) | src/gui/osutils/nixutils/NixUtils.cpp:45[ohos-active] #include <X11/XKBlib.h>; src/gui/osutils/nixutils/NixUtils.cpp:46[ohos-active] #include <xcb/xproto.h>; src/gui/osutils/nixutils/X11Funcs.cpp:23[unconditional] #include <X11/Xutil.h>］"
+  },
+  {
+   "kind": "unsupported-module",
+   "node": "qtmod:dbus",
+   "reason": "Qt for HarmonyOS 模块适配表: 不支持 - 鸿蒙无 D-Bus"
+  }
+ ],
+ "unknowns": [
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:botan",
+   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:openmp",
+   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:pcsc",
+   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:x11",
+   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:xkbcommon",
+   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
+  }
+ ],
+ "platform_excluded": [],
+ "closure": {
+  "size": 42,
+  "summary": {
+   "target": 1,
+   "provided": 5,
+   "need_port": 5,
+   "would_download": 30,
+   "cmd_only": 1
+  },
+  "need_port": [
+   {
+    "id": "pkg-unknown:botan",
+    "name": "botan",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:openmp",
+    "name": "openmp",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:pcsc",
+    "name": "pcsc",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:x11",
+    "name": "x11",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:xkbcommon",
+    "name": "xkbcommon",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   }
+  ],
+  "cmd_only": [
+   {
+    "id": "hb:ca-certificates",
+    "name": "ca-certificates",
+    "artifact_cmd": "brew install ca-certificates"
+   }
+  ],
+  "would_download": [
+   "minizip",
+   "qrencode",
+   "readline",
+   "zlib",
+   "libqrencode",
+   "libusb",
+   "libxi",
+   "libxkbcommon",
+   "libxtst",
+   "zlib-ng-compat",
+   "libpng",
+   "libx11",
+   "libxext",
+   "libxfixes",
+   "xorgproto",
+   "libxcb",
+   "xkeyboard-config",
+   "python@3.14",
+   "libxau",
+   "libxdmcp",
+   "mpdecimal",
+   "openssl@3",
+   "sqlite",
+   "xz",
+   "zstd",
+   "gettext",
+   "util-linux",
+   "musl-compat",
+   "lz4",
+   "libunistring"
+  ]
+ },
+ "direct_deps": [
+  {
+   "id": "pkg-unknown:botan",
+   "name": "botan",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "cmdpkgs:libqrencode",
+   "name": "libqrencode",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:libusb",
+   "name": "libusb",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:libxi",
+   "name": "libxi",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:libxkbcommon",
+   "name": "libxkbcommon",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:libxtst",
+   "name": "libxtst",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:minizip",
+   "name": "minizip",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:openmp",
+   "name": "openmp",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:pcsc",
+   "name": "pcsc",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "hb:qrencode",
+   "name": "qrencode",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:readline",
+   "name": "readline",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:x11",
+   "name": "x11",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:xkbcommon",
+   "name": "xkbcommon",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "hb:zlib",
+   "name": "zlib",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:concurrent",
+   "name": "Qt Concurrent",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:dbus",
+   "name": "Qt D-Bus",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "blocked",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:network",
+   "name": "Qt Network",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:svg",
+   "name": "Qt SVG",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:widgets",
+   "name": "Qt Widgets",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  }
+ ],
+ "oracle": {
+  "app": "keepassxc",
+  "source": "INSTALL.md",
+  "source_note": "agent 复核定稿：删除散文链接残留 set-up-build-environment；asciidoctor 依原文（build tools must exist within your PATH + KPXC_FEATURE_DOCS）改判 build；本版 INSTALL.md 仅声明 qt/botan/zlib 三个库，无 libgcrypt/argon2/libsodium/ykpers；vcpkg/xvfb-run 为 prose 提及的工具/测试辅助，不入 oracle",
+  "reviewed": true,
+  "deps": [
+   {
+    "name": "cmake",
+    "display": "cmake (>= 3.16.0)",
+    "type": "build",
+    "raw": "cmake (>= 3.16.0)"
+   },
+   {
+    "name": "make",
+    "display": "make (>= 4.2) or ninja (>= 1.10)",
+    "type": "build",
+    "raw": "make (>= 4.2) or ninja (>= 1.10)"
+   },
+   {
+    "name": "g++",
+    "display": "g++ (>= 9.3.0) or clang++ (>= 10.0)",
+    "type": "build",
+    "raw": "g++ (>= 9.3.0) or clang++ (>= 10.0)"
+   },
+   {
+    "name": "asciidoctor",
+    "display": "asciidoctor (>= 2.0)",
+    "type": "build",
+    "raw": "asciidoctor (>= 2.0)"
+   },
+   {
+    "name": "qt",
+    "display": "qt (>= 5.12.0)",
+    "type": "runtime",
+    "raw": "qt (>= 5.12.0)"
+   },
+   {
+    "name": "botan",
+    "display": "botan (>= 2.12.0 or >= 3.0.0)",
+    "type": "runtime",
+    "raw": "botan (>= 2.12.0 or >= 3.0.0)"
+   },
+   {
+    "name": "zlib",
+    "display": "zlib (>= 1.2.0)",
+    "type": "runtime",
+    "raw": "zlib (>= 1.2.0)"
+   }
+  ]
+ },
+ "diffs": [
+  {
+   "class": "build-only",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "cmake",
+   "oracle_type": "build",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "构建工具，fetch-deps 不收 build 边"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "build-only",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "make",
+   "oracle_type": "build",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "构建工具，fetch-deps 不收 build 边"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "build-only",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "g++",
+   "oracle_type": "build",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "构建工具，fetch-deps 不收 build 边"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "build-only",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "asciidoctor",
+   "oracle_type": "build",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "构建工具，fetch-deps 不收 build 边"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "qt",
+   "oracle_type": "runtime",
+   "pg_id": "qtmod:concurrent",
+   "pg_name": "Qt Concurrent",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "botan",
+   "oracle_type": "runtime",
+   "pg_id": "pkg-unknown:botan",
+   "pg_name": "botan",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "⚠ 匹配到幽灵节点（pkg-unknown）——名字未解析到已知鸿蒙包，实为解析缺口，需复核"
+   },
+   "agent_note": "复核⚠注记：hb-core Formula 与 cmd-pkgs 均确无 botan 包（find_package(Botan REQUIRED)，CMakeLists.txt:511），pkg-unknown/need_port 定性正确——检出与状态均准确，非解析缺口，需自行交叉编译属实"
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "zlib",
+   "oracle_type": "runtime",
+   "pg_id": "hb:zlib",
+   "pg_name": "zlib",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "cmdpkgs:libqrencode",
+   "pg_name": "libqrencode",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
+    "grep": [
+     {
+      "file": "vcpkg.json",
+      "line": 8,
+      "strong": false,
+      "text": "\"libqrencode\","
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:libusb",
+   "pg_name": "libusb",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
+    "grep": [
+     {
+      "file": "vcpkg.json",
+      "line": 12,
+      "strong": false,
+      "text": "\"name\": \"libusb\","
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:libxi",
+   "pg_name": "libxi",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
+    "grep": [
+     {
+      "file": "vcpkg.json",
+      "line": 16,
+      "strong": false,
+      "text": "\"name\": \"libxi\","
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:libxkbcommon",
+   "pg_name": "libxkbcommon",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
+    "grep": [
+     {
+      "file": "vcpkg.json",
+      "line": 24,
+      "strong": false,
+      "text": "\"name\": \"libxkbcommon\","
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:libxtst",
+   "pg_name": "libxtst",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
+    "grep": [
+     {
+      "file": "vcpkg.json",
+      "line": 20,
+      "strong": false,
+      "text": "\"name\": \"libxtst\","
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:minizip",
+   "pg_name": "minizip",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
+    "grep": [
+     {
+      "file": "CMakeLists.txt",
+      "line": 528,
+      "strong": true,
+      "text": "find_package(Minizip REQUIRED)"
+     },
+     {
+      "file": "vcpkg.json",
+      "line": 7,
+      "strong": false,
+      "text": "\"minizip\","
+     },
+     {
+      "file": "cmake/FindMinizip.cmake",
+      "line": 5,
+      "strong": true,
+      "text": "find_library(MINIZIP_LIBRARIES NAMES minizip libminizip)"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:openmp",
+   "pg_name": "openmp",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
+   },
+   "agent_note": "CMakeLists.txt:259 find_package(OpenMP)（无 REQUIRED，命中后仅追加 OpenMP_C(_XX)_FLAGS）是 CMake 内置编译器特性探测而非三方包；OHOS clang 工具链自带 OpenMP runtime，hb-core/cmd-pkgs 亦无 openmp/libgomp 包（hb 的 libomp 为宿主用途 keg_only）→ pkg-unknown 可接受，非 ALIASES 缺口"
+  },
+  {
+   "class": "resolution-gap",
+   "side": "pg",
+   "by_design": false,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:pcsc",
+   "pg_name": "pcsc",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
+   },
+   "agent_note": "终判为真别名缺口：CMakeLists.txt:532 find_package(PCSC REQUIRED)（YubiKey 硬件密钥支持），cmd-pkgs 清单存在 pcsc-lite 2.4.0（hb-core 无）→ kb_seed.ALIASES 待补 pcsc→pcsc-lite（cmdpkgs 源）"
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:qrencode",
+   "pg_name": "qrencode",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
+    "grep": [
+     {
+      "file": "cmake/FindQREncode.cmake",
+      "line": 19,
+      "strong": true,
+      "text": "find_library(QRENCODE_LIBRARY_RELEASE qrencode)"
+     },
+     {
+      "file": "cmake/FindQREncode.cmake",
+      "line": 23,
+      "strong": true,
+      "text": "find_library(QRENCODE_LIBRARY qrencode)"
+     },
+     {
+      "file": "src/qrcode/CMakeLists.txt",
+      "line": 20,
+      "strong": true,
+      "text": "find_package(QREncode REQUIRED)"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:readline",
+   "pg_name": "readline",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
+    "grep": [
+     {
+      "file": "vcpkg.json",
+      "line": 9,
+      "strong": false,
+      "text": "\"readline\","
+     },
+     {
+      "file": "cmake/FindReadline.cmake",
+      "line": 9,
+      "strong": true,
+      "text": "#     find_package(Readline [REQUIRED] [QUIET])"
+     },
+     {
+      "file": "cmake/FindReadline.cmake",
+      "line": 10,
+      "strong": true,
+      "text": "#     target_link_libraries(<target> PRIVATE Readline::readline)"
+     },
+     {
+      "file": "cmake/FindReadline.cmake",
+      "line": 35,
+      "strong": true,
+      "text": "pkg_check_modules(Readline IMPORTED_TARGET readline)"
+     },
+     {
+      "file": "src/cli/CMakeLists.txt",
+      "line": 54,
+      "strong": true,
+      "text": "find_package(Readline MODULE)"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "resolution-gap",
+   "side": "pg",
+   "by_design": false,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:x11",
+   "pg_name": "x11",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
+   },
+   "agent_note": "终判为真别名缺口：src/autotype/CMakeLists.txt:22 find_package(X11 REQUIRED COMPONENTS Xi XTest)，hb-core 存在 Formula/lib/libx11.rb（其 COMPONENTS Xi/XTest 已分别解析为 hb:libxi/hb:libxtst）→ kb_seed.ALIASES 待补 x11→libx11"
+  },
+  {
+   "class": "resolution-gap",
+   "side": "pg",
+   "by_design": false,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:xkbcommon",
+   "pg_name": "xkbcommon",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
+   },
+   "agent_note": "终判为真别名缺口：src/autotype/CMakeLists.txt:16 pkg_check_modules(Xkbcommon REQUIRED IMPORTED_TARGET xkbcommon) 的 pkg-config 模块名（无 lib 前缀）应解析到 hb:libxkbcommon（vcpkg.json:24 的 libxkbcommon 已正确入图，当前重复成两节点）→ kb_seed.ALIASES 待补 xkbcommon→libxkbcommon"
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:dbus",
+   "pg_name": "Qt D-Bus",
+   "pg_kind": "qt-module",
+   "pg_status": "blocked",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt 模块粒度：README 通常只写 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:network",
+   "pg_name": "Qt Network",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt 模块粒度：README 通常只写 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:svg",
+   "pg_name": "Qt SVG",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt 模块粒度：README 通常只写 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:widgets",
+   "pg_name": "Qt Widgets",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt 模块粒度：README 通常只写 'Qt'"
+   },
+   "agent_note": null
+  }
+ ],
+ "metrics": {
+  "oracle_runtime": 3,
+  "oracle_optional": 0,
+  "matched": 3,
+  "matched_optional": 0,
+  "recall": "100%",
+  "precision": "27%",
+  "bug_candidates": 3,
+  "bug_by_class": {
+   "false-positive": 0,
+   "missed-dep": 0,
+   "resolution-gap": 3
+  },
+  "class_counts": {
+   "build-only": 4,
+   "matched": 3,
+   "qt-granularity": 4,
+   "readme-omitted": 8,
+   "resolution-gap": 3,
+   "unknown-ok": 1
+  }
+ },
+ "agent_notes": [
+  "oracle 复核：删除散文链接残留 set-up-build-environment；asciidoctor 依原文改判 build（文档构建工具）；本版 INSTALL.md 仅声明 qt/botan/zlib 三个运行时库，无 libgcrypt/argon2/libsodium/ykpers；vcpkg/xvfb-run 为 prose 提及的工具/测试辅助，不入 oracle",
+  "4 个 resolution-gap 终判：xkbcommon/x11/pcsc 为真别名缺口（kb_seed.ALIASES 待补 xkbcommon→libxkbcommon、x11→libx11、pcsc→pcsc-lite），openmp 为 CMake 内置编译器特性改判 unknown-ok；botan 匹配的幽灵节点经查确无鸿蒙包，need_port 定性正确",
+  "召回率 60%→100% 完全来自 oracle 分母修正（误将构建工具/链接残留计入 runtime），portgraph 检出无变化；precision 维持 27% 反映 INSTALL.md 依赖声明极简（8 个 README 漏列项均经 grep 取证为真实构建引用，portgraph 正确）"
+ ]
+}

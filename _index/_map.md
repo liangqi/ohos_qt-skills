@@ -20,7 +20,7 @@ description: >
 - [qt-harmonyos-code-patterns](../semantic/qt-harmonyos-code-patterns.md) — HarmonyOS 平台能力的 Qt adapter 代码速查：14 组 Before/After，覆盖子进程、Want、 独立对话框→tagged子窗口、关闭事件处理、文件权限守卫、参数解析、 平台构建配置、深色模式、拖放、等宽字体、浮窗、分享数据、Qt6→Qt5 shim移植(不改原src)、 数据库文件路径。
 - [qt-harmonyos-golden-rules](../semantic/qt-harmonyos-golden-rules.md) — Qt 鸿蒙化铁律速查：35 条黄金规则覆盖构建部署、窗口管理、API/枚举路径、 平台限制对 Qt 的影响、生命周期 adapter、跨平台守卫。每条含严重度（🔴🟠🟡🟢）、"为什么"和出处。 Agent 执行任何 Qt for HarmonyOS 任务前应先扫描此页。
 - [qt-harmonyos-lifecycle](../semantic/qt-harmonyos-lifecycle.md) — Stage/UIAbility 生命周期的 Qt adapter：平台回调到 Qt main/event loop 的桥接、启动其他应用 (显式/隐式Want)、被其他应用启动(module.json5 skills)、多实例管理、 3级关闭拦截(WindowStageClose/AbilityClose/InternalClose)、 应用接续(跨设备迁移)、分享(ShareKit)、无UI子进程、argv组装规则、主题管理。
-- [qt-harmonyos-modules](../semantic/qt-harmonyos-modules.md) — Qt 5.12/5.15 鸿蒙模块适配状态速查：核心模块(QtCore/GUI/Widgets/QML/Quick/ Network/SQL)全部完成；**QtMultimedia 未包含在 SDK 中**（需自行编译）； 不支持的模块(QtWebEngine/D-Bus/RemoteObjects/SerialBus)； 部分支持的模块(QtPDF/QtQuickTimeline 仅5.15)。
+- [qt-harmonyos-modules](../semantic/qt-harmonyos-modules.md) — Qt 5.12/5.15 鸿蒙模块适配状态速查（对照 wiki 矩阵 2026-09-18 刷新）：核心模块全部 Completed；QtMultimedia wiki Completed 但官方 Qt5 SDK 未含、Qt-full 全量构建已含；不支持(QtWebEngine/D-Bus/RemoteObjects/SerialBus/VirtualKeyboard 等)；仅 5.15：QtPDF/QuickTimeline/Lottie/Quick3D；仅 5.12：QtXmlPatterns。
 - [qt-harmonyos-overview](../semantic/qt-harmonyos-overview.md) — Qt for HarmonyOS 总览：鸿蒙系统简介、Qt 鸿蒙化架构（QPA 插件机制）、 适配进展（Qt 5.12.12/5.15.16，适配率约90%）、 支持设备（手机/平板/PC/2in1）、源码获取方式（Gerrit tqtc-qt5）。
 - [qt-harmonyos-platform-limits](../semantic/qt-harmonyos-platform-limits.md) — HarmonyOS 平台限制的 Qt/QPA/QML adapter：记录 QFile/QStandardPaths/QPluginLoader/QTimeZone、 字体、XComponent、ZINK 与 Qt.platform 的可观察症状、Qt workaround 和 QTBUG；平台状态与原因由 common 维护。
 - [qt-harmonyos-porting-workflow](../semantic/qt-harmonyos-porting-workflow.md) — 面向 Qt 应用的 HarmonyOS 移植编排：将公共库中的生命周期、窗口模型与平台限制 落到 Qt/QPA、QtOhosExtras、构建系统和模块验收的 8 步适配流程。
@@ -72,6 +72,12 @@ _（本域无活跃页）_
 
 - [_lookup](../problems/_lookup.md) — 错误速查表（41 条）
 
+## faults
+
+- [_index](../faults/_index.md) — 故障库规范（四实体图模型）：症状 S × 根因 C（defect/limitation）× 临时方案 W × 跟踪单 T；三类状态机、单一真源与派生物、录入复核规则、tools/faults-build.py 用法。
+- [_registry](../faults/_registry.md) — 故障登记总表（派生物，build 自动重建）：症状索引（主入口）、按处置分类（鸿蒙必须适配/Qt 问题/系统问题/应用使用问题）、缺陷/限制/方案/跟踪单清单、关系速览、按版本基线升级检查、复核到期。
+- [_graph.yaml](../faults/_graph.yaml) — 机读全量故障图（派生物：节点+边+聚合+反查索引，单文件一次加载）。真源在 `_data/*.yaml` + C 页。
+
 
 ---
 
@@ -83,6 +89,7 @@ _（本域无活跃页）_
 | 某件事怎么操作 | procedural |
 | 某个项目经验 | episodic |
 | 遇到某个错误怎么办 | problems → _lookup.md |
+| 某个问题修了没/未解决清单/临时方案 | faults → _registry.md |
 | Qt 鸿蒙化的某个方面 | semantic → qt-harmonyos-* |
 | 某个 Qt 模块是否在鸿蒙支持 | semantic → qt-harmonyos-modules |
 | 鸿蒙平台有什么限制 | semantic → qt-harmonyos-platform-limits |

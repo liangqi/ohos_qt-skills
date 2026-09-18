@@ -84,6 +84,10 @@ description: >
 
 详见 [_lookup](../problems/_lookup.md)。
 
+### faults（55 记录：17 症状 S + 18 根因 C + 15 方案 W + 5 跟踪单 T）
+
+详见 [_registry](../faults/_registry.md)（症状索引主入口 + 按处置分类）与 [_graph.yaml](../faults/_graph.yaml)（机读全量图）。真源 `_data/*.yaml` + C 页；派生物由 `tools/faults-build.py` 重建。根因：defect 11 / limitation 4 / undetermined 3；处置：Qt 问题 6 · 鸿蒙必须适配 4 · 待定性 3 · 系统问题 2 · 应用使用问题 2 · 三方库 1。
+
 ---
 
 ## 二、来源覆盖率（派生）
@@ -94,5 +98,6 @@ description: >
 | procedural | 14 | 见各页 frontmatter refs |
 | episodic | 8 | 项目经验，无外部来源 |
 | preference | 0 | 个人偏好 |
+| faults | 55 | 问题跟踪图（17 症状 + 18 根因 + 15 方案 + 5 跟踪单，同 problems 不计入活跃页） |
 | **合计活跃** | **47** | |
 

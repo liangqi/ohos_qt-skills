@@ -56,10 +56,14 @@ summary: >
 # ① 可移植性判定（portable / blocked / uncertain + 阻断原因）
 python portgraph/portgraph.py analyze <app>
 
-# ② 依赖闭包预览：哪些有现成 bottle（.so 直下）、哪些要源码交叉编译（不写盘）
+# ② 综合依赖分析：谁要编译产物（link）/谁是构建工具（build-tool）/
+#    谁只运行时用（runtime）/自带源码（vendored）+ 版本范围与要求校验
+python portgraph/portgraph.py deps <app>
+
+# ③ 依赖闭包预览：哪些有现成 bottle（.so 直下）、哪些要源码交叉编译（不写盘）
 python portgraph/portgraph.py fetch-deps <app> --dry-run
 
-# ③ 确认可行后执行下载（产物落 portgraph/workspace/ohos-libs/，跨应用共享缓存）
+# ④ 确认可行后执行下载（产物落 portgraph/workspace/ohos-libs/，跨应用共享缓存）
 python portgraph/portgraph.py fetch-deps <app> --json   # 集成参数（CMAKE_PREFIX_PATH 等）
 ```
 
@@ -68,11 +72,12 @@ python portgraph/portgraph.py fetch-deps <app> --json   # 集成参数（CMAKE_P
 | 闭包结果 | 动作 |
 |----------|------|
 | `analyze` = blocked | **不是自动终止**——看 blockers 的 guard 证据：`ohos-active` 且**无条件命中**（如 `#include <X11/Xlib.h>` 无任何守卫）且在核心路径才是硬阻塞；宏守卫排除/文件级排除的大多是可选分支（tdesktop 实证：analyze 判 6 个 blockers 全在可选分支/vendored 代码，研判后放行，移植成功）。确属核心不可替代 → 止于评估出报告 |
+| `deps` 版本 conflict | 鸿蒙产物版本低于项目要求（如要求 >=9.9 只有 1.3.2）：确认能否用现有版本（min_version 常是保守声明）或源码编译新版 |
 | bottle 覆盖大部分依赖 | 优先 bottle 直下（跳过源码交叉编译），缺口走源码路径 |
 | unknowns（pkg-unknown 依赖）清单 | 即「源码编译缺口清单」：逐项查 [[fetch-ohos-third-party-lib]]（单库 bottle）与 [[qt-harmonyos-third-party-libs]]（源码交叉编译）；**解决不了的缺口必须明确报告用户**，不得静默裁剪 |
 | bottle 解压后 NTFS symlink 损坏（0 字节/EACCES） | 删损坏链接，复制真实版本文件（tdesktop 实测修复 202 个） |
 
-工具文档：`portgraph/docs/fetch-deps.md`。
+工具文档：`portgraph/docs/deps-report.md`（依赖角色/版本范围）、`portgraph/docs/fetch-deps.md`（产物获取）。
 
 ### ⚠️ 陷阱：Qt5 声明但实为 Qt6 代码
 

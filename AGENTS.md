@@ -29,6 +29,7 @@ semantic/    → 语义知识：技术概念、API 参考、平台限制、模�
 procedural/  → 程序知识：工作流（应用迁移、问题分析、修复验证、Demo 生成）
 episodic/    → 情景知识：实际移植项目复盘
 problems/    → 错误知识库：实际编译/部署/运行时报错与解决方案
+faults/      → 故障库（图模型 S 症状/C 根因/W 临时方案/T 跟踪单）：真源 _data/ + C 页，_graph.yaml/_registry.md 由 tools/faults-build.py 自动重建
 ohos-common-kb-public/ → 内嵌的 HarmonyOS 平台通用知识（ArkTS、ArkUI、NAPI、Stage 模型等）
 skills/      → Agent skills（自动化脚本和工具）
 ```
@@ -60,7 +61,7 @@ skills/      → Agent skills（自动化脚本和工具）
 
 | 我想做... | 读哪些页 |
 |----------|---------|
-| 移植 Qt 应用到鸿蒙 | **第 0 步 portgraph 可行性评估**（`python portgraph/portgraph.py analyze <app>` + `fetch-deps <app> --dry-run`，见 `portgraph/docs/fetch-deps.md`）→ `procedural/qt-app-harmonyos-migration` + `semantic/qt-harmonyos-porting-workflow` + `qt-harmonyos-api-mapping` + `qt-harmonyos-code-patterns` |
+| 移植 Qt 应用到鸿蒙 | **第 0 步 portgraph 可行性评估**（`python portgraph/portgraph.py analyze <app>` + `deps <app>`（依赖角色/版本范围分类，见 `portgraph/docs/deps-report.md`）+ `fetch-deps <app> --dry-run`，见 `portgraph/docs/fetch-deps.md`）→ `procedural/qt-app-harmonyos-migration` + `semantic/qt-harmonyos-porting-workflow` + `qt-harmonyos-api-mapping` + `qt-harmonyos-code-patterns` |
 | 查 API 替换 | `semantic/qt-harmonyos-api-mapping` + `qt-harmonyos-code-patterns` |
 | 查某个 Qt 模块是否支持鸿蒙 | `semantic/qt-harmonyos-modules` |
 | 查鸿蒙平台限制 | `semantic/qt-harmonyos-platform-limits` |
@@ -71,8 +72,9 @@ skills/      → Agent skills（自动化脚本和工具）
 | 判断问题是否出在 Qt 鸿蒙框架层 | `golden-rules` + `qt-harmonyos-platform-limits` + `qt-harmonyos-api` + 先查 `problems/_lookup.md` |
 | Qt 应用行为异常的排查思路 | `qt-harmonyos-build-run-workflow` §构建失败排查四步法 + `problems/_lookup.md` |
 | 写个 demo/测试工程 | `procedural/demo-generation` |
-| 三方库/依赖/交叉编译 | `semantic/qt-harmonyos-third-party-libs` + **`portgraph fetch-deps`**（应用级依赖闭包，bottle 直下/源码编译缺口清单） |
+| 三方库/依赖/交叉编译 | `semantic/qt-harmonyos-third-party-libs` + **`portgraph deps`**（依赖角色分类：编译产物/构建工具/运行时/测试/自带 + 版本范围，见 `portgraph/docs/deps-report.md`）+ **`portgraph fetch-deps`**（应用级依赖闭包，bottle 直下/源码编译缺口清单） |
 | 遇到执行报错 | **先读 `problems/_lookup.md`**，按错误码/错误信息/症状搜索 |
+| 查某问题是否已修/未解决清单/临时方案 | `faults/_registry.md` §症状索引（表现→根因）→ 根因页（定性/责任领域/临时方案或替代方案/复核计划） |
 
 ## 读取约定
 
@@ -80,6 +82,7 @@ skills/      → Agent skills（自动化脚本和工具）
 - **refs**：交叉引用的其他知识页 id，沿其追踪深度上下文
 - **tags**：经 `_index/_tags.md` 按主题聚合浏览
 - **problems/ 记录的是实际执行报错**（编译失败、部署失败、运行时崩溃），不是 Qt 文档中的平台限制——后者在 `semantic/qt-harmonyos-platform-limits.md`
+- **faults/ 是症状×根因图**（S 应用层表现 → C 根因，C 分 defect 会修 / limitation 规格限制→替代方案）：报错解法查 `problems/`；问题"归谁、是缺陷还是规格、修没修、根治前怎么绕"按表现查 `faults/_registry.md` §症状索引或 `_graph.yaml`（机读全量图），两者经 refs 双向关联
 
 ## 路径变量
 
@@ -97,7 +100,8 @@ skills/      → Agent skills（自动化脚本和工具）
 |-------|------|----------|
 | `kb-init` | 初始化知识库环境（检测依赖、安装缺失组件、生成 ENV.local.md、验证环境） | 用户说"初始化"、"配置环境"、"第一次使用"、"ENV.local.md 不存在"时自动触发 |
 | `qt-app-porting` | Qt 应用鸿蒙化自动迁移（扫描→计划→受追踪修改→构建→装机→验证门禁→报告→知识蒸馏，统一 CLI `tools/qt-ohos-run.py`） | 用户说"迁移/移植/鸿蒙化这个 Qt 项目（要执行）"、"验证迁移结果"、"分析构建/运行日志"时触发 |
-| `portgraph`（仓库工具，非 skills/） | 可行性评估与依赖解决：`analyze` 可移植性判定（portable/blocked/uncertain）+ `fetch-deps` 应用级依赖闭包（bottle 直下 / 源码编译缺口清单） | 接到"移植/迁移/鸿蒙化某应用"或"评估某应用可行性"任务时**自动作为第 0 步执行**，产出评估结论后再进入迁移工作流；依赖 ≥3 个三方库时**禁止**人工逐个判断 |
+| `qt-sdk-forge` | Qt 本地 SDK 工程平面（**所有 Qt SDK 编译与临时测试版本统一入口**）：编译 Qt 源码（全量/增量 install，5.12/5.15 源码编译、6.12 预构建登记）、应用与追踪修改补丁（接收其他 agent 的修改方案工单）、发布维护本地 SDK 多版本（SV0-SV8 门禁 + 补丁溯源 manifest + ENV 同步）、定期跟踪上游演进并联动 faults review，统一 CLI `tools/qt-sdk-run.py`（Python，Windows 编译差距已闭合） | 用户说"编译/重编 Qt"、"给 Qt 打补丁/应用修改方案"、"出/切换 SDK 版本或临时测试版本"、"检查上游更新"、"维护本地 SDK"时触发 |
+| `portgraph`（仓库工具，非 skills/） | 可行性评估与依赖解决：`analyze` 可移植性判定（portable/blocked/uncertain）+ `deps` 综合依赖分析（link/build-tool/runtime/test/vendored 角色分类 + 版本范围与要求校验）+ `fetch-deps` 应用级依赖闭包（bottle 直下 / 源码编译缺口清单） | 接到"移植/迁移/鸿蒙化某应用"或"评估某应用可行性"任务时**自动作为第 0 步执行**，产出评估结论后再进入迁移工作流；依赖 ≥3 个三方库时**禁止**人工逐个判断 |
 
 **首次使用**：如果用户是第一次使用本知识库，或 `ENV.local.md` 不存在，**必须**先执行 `skills/kb-init/SKILL.md` 完成初始化。
 
@@ -109,6 +113,24 @@ skills/      → Agent skills（自动化脚本和工具）
   QOH 模式），再沿命中条目的 `refs` 读 problems/ 知识页。
 - 每次自动修改都被追踪（`.qt-ohos/changes.json` + patches/）；禁止盲目扩写
   `Q_OS_LINUX` 守卫——鸿蒙下 `Q_OS_OHOS` 隐含 `Q_OS_LINUX`。
+- 修改故障库真源（`faults/_data/*.yaml` 或 C 页）后必须跑
+  `python tools/faults-build.py build` 重建派生物（`_graph.yaml`/`_registry.md`），
+  ERROR 必须清零；复核用 `review` 子命令扫到期与状态推进。
+- 协作者草稿（`faults/_drafts/draft-*.md`）合入前必须走主编门禁（`faults/_index.md`
+  §六·协作草稿模式）：**复现 demo 必测**（defect/undetermined 类；未复现不合入）、
+  人工核验（证据链/定性/归层/事实/脱敏）、复现结果登记进 C 页"版本验证记录"
+  第一行，然后才 promote 拆分合入。
+- **问题确认证据门禁**（`faults/_index.md` §六·证据标准）：定性 Qt 框架侧问题
+  （defect 且 qt-port/qt-upstream）必须持有复现 demo 或调试日志+栈（C 页
+  `evidence_type`，静态可判定类 source 例外+警告），纯转述/猜测不受理；提上游单
+  （qt-bug/ohos-issue/partner）的 defect 必须 demo/logs/both 级证据——check 机器强制。
+  Qt 侧问题的 demo 硬性要求：**复现逻辑集中在单个 main.cpp**（ohos 工程仅胶水壳）
+  且**写明编号复现步骤**（到操作级 + 每步预期）——无步骤视为未完成。
+- **链路完备性（闭环规则）**（`faults/_index.md` §四·闭环规则）：defect（外部责任）
+  的"临时解决"必须**同时**有采用中方案（W adopted）与在跟单（T）——缺一即未闭环
+  （missing-ticket / missing-workaround / both-missing，工具派生 chain_state/gaps）；
+  limitation 与应用问题必须有采用中方案；**缺口向上传播**——S 宣称 resolved 而链有缺
+  → ERROR。`review` 子命令输出"未闭环（待补齐）"清单，缺什么补什么。
 
 ## 待办与进度同步
 

@@ -8,7 +8,7 @@ updated: 2026-09-12
 status: solved
 severity: high
 audience: public
-refs: [episodic-projects-tdesktop-harmonyos-porting, problem-build-qt612-ohos-plugin-rebuild]
+refs: [fault-C-0002, fault-C-0003, episodic-projects-tdesktop-harmonyos-porting, problem-build-qt612-ohos-plugin-rebuild]
 summary: >
   Qt 6.12-beta3 ohos 平台插件 QOhosInputContext::reset() 里 Detach/Attach 输入法
   控制器，在拼音组合中途把软键盘收起（handlePanelHiding），且 commit() 把 pending

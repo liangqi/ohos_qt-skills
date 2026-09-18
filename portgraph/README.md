@@ -7,6 +7,9 @@ KDE Frameworks 组件、第三方库）与平台接口使用（Win32/Cocoa/X11/A
 **独立项目**：无外部知识库依赖。Qt 模块支持矩阵 vendored 在 `data/`，
 工程预扫描器 vendored 在 `port_graph/qt_scanner.py`。
 
+> 给别人讲清楚这个模块？先看 **[OVERVIEW.md](OVERVIEW.md)**（一页纸：
+> 解决什么问题 + 架构图），再回本文档查 CLI 细节。
+
 ---
 
 ## 架构
@@ -101,6 +104,28 @@ blockers: 2
       源码下载: https://ffmpeg.org/releases/ffmpeg-9.0.1.tar.xz
 ```
 
+### 综合依赖分析（角色分类 + 版本范围）
+
+```bash
+# 路径或已扫描应用名皆可；--json 输出机器可读报告
+python portgraph.py deps flameshot
+```
+
+按角色回答"这个项目到底依赖什么"（详见 docs/deps-report.md）：
+
+| 角色 | 含义 | 示例 |
+|---|---|---|
+| link | 项目期望获取到编译产物的依赖（目标侧 headers+libs） | `find_package(ZLIB 1.2 REQUIRED)`、`target_link_libraries` 裸名、`find_library`、meson `dependency()`、autotools `PKG_CHECK_MODULES` |
+| build-tool | 编译器/构建工具依赖（构建机运行，不部署） | cmake≥3.16 / C++17 / protoc / ECM / meson≥0.53 |
+| runtime | 运行时依赖（设备侧 .so：传递闭包 + dlopen/QLibrary） | ffmpeg 的 14 个传递依赖 |
+| test | 测试专用，不进发行包 | GTest / Catch2 |
+| vendored | 项目内自带源码（.gitmodules / 3rdparty/ / FetchContent） | dep/spdlog、qtColorWidgets（GIT_TAG 锁定） |
+| env | CI/脚本安装的环境清单（交叉核对信源） | `apt install libkeyutils-dev` |
+
+每个依赖附版本范围（find_package 最低版本 / pkg-config·meson·autotools·包装函数
+约束 / conan 范围）与鸿蒙产物获取途径、版本要求校验（satisfied / conflict）。
+19 类声明信号的覆盖全景图见 docs/deps-report.md。
+
 ### 获取交叉编译依赖（非鸿蒙平台）
 
 `brew install` 只能在鸿蒙设备执行；在其他平台上用 `fetch` 直接下载
@@ -156,6 +181,7 @@ python portgraph.py serve --port 8080
 | `clone <url> [--name N]` | shallow clone + 扫描入库 |
 | `scan <project>` | 扫描本地 Qt 工程 |
 | `analyze <app> [--summary]` | 可移植性分析；`--summary` 人读摘要 |
+| `deps <path\|app> [--json]` | 综合依赖分析：link/build-tool/runtime/test/vendored 分类 + 版本范围 + 产物获取途径（[文档](docs/deps-report.md)） |
 | `fetch <pkg,...> [--out D] [--force]` | 下载 bottle 交叉编译依赖 |
 | `fetch-deps <app> [--out D] [--force] [--dry-run] [--json]` | 一键下载应用全部依赖的鸿蒙产物 + manifest（[文档](docs/fetch-deps.md)） |
 | `stats` | 数据统计 |
@@ -184,7 +210,8 @@ python portgraph.py serve --port 8080
 portgraph/
 ├── README.md               本文档
 ├── docs/
-│   └── fetch-deps.md       依赖产物一键获取（agent 工具文档）
+│   ├── fetch-deps.md       依赖产物一键获取（agent 工具文档）
+│   └── deps-report.md      综合依赖分析：角色分类 + 版本范围（agent 工具文档）
 ├── portgraph.py            CLI 入口
 ├── port_graph/             Python 包
 │   ├── __init__.py         路径常量（PROJECT_ROOT/workspace/…）
@@ -192,9 +219,10 @@ portgraph/
 │   ├── harmonybrew.py      formula 解析 + bottle 直链构造/下载器
 │   ├── cmdpkgs.py          cmd-pkgs README 解析 + 产物直链
 │   ├── kb_seed.py          Qt 模块矩阵（解析 data/）+ 接口白名单 + KF 组件依赖
-│   ├── qt_scanner.py       工程预扫描（vendored）
+│   ├── qt_scanner.py       工程预扫描（vendored；find_package 详情/工具链/动态加载）
 │   ├── project_scanner.py  工程扫描入库（平台接口宏守卫分析/KF 递归/第三方对齐）
 │   ├── engine.py           递归可移植性判定 + artifact_info
+│   ├── deps_report.py      deps：综合依赖分析（角色分类/版本范围/传递闭包）
 │   ├── deps_fetch.py       fetch-deps：应用依赖闭包产物一键获取
 │   ├── cloner.py           git shallow clone
 │   ├── jobs.py             后台任务（进度条）
@@ -224,7 +252,7 @@ portgraph/
 
 ```bash
 cd portgraph
-python -m unittest discover -s tests -v    # 28 项：解析器/引擎/守卫/闭包/提取
+python -m unittest discover -s tests -v    # 35 项：解析器/引擎/守卫/闭包/提取/全形式依赖声明
 ```
 
 ## 已知限制

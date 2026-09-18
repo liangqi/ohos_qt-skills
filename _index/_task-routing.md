@@ -36,7 +36,9 @@ summary: >
     ├─ "三方库/依赖/交叉编译" ────────────→ [M] 三方库
     ├─ "DevEco/MCP/工具链" ──────────────→ [N] 工具链
     ├─ "Qt+CEF demo / WebEngine 迁移 demo" ─→ [Q] Demo 生成（+ qt-cef-ohos-dev-guide）
-    └─ "写个demo/生成测试工程/渲染demo" ──→ [Q] Demo 生成
+    ├─ "写个demo/生成测试工程/渲染demo" ──→ [Q] Demo 生成
+    ├─ "某问题修了吗/未解决问题/临时方案" ─→ [R] 故障跟踪
+    └─ "编译Qt/打补丁/出SDK版本/上游演进" → [S] SDK 工程
 ```
 
 ---
@@ -50,12 +52,13 @@ summary: >
 | 项目 | 内容 |
 |------|------|
 | **工作流** | `procedural/qt-app-harmonyos-migration.md` |
-| **必读页** | ① `golden-rules.md` ② `porting-workflow.md`（8 步决策树）③ `portgraph/docs/fetch-deps.md`（仓库工具，依赖闭包） |
+| **必读页** | ① `golden-rules.md` ② `porting-workflow.md`（8 步决策树）③ `portgraph/docs/deps-report.md`（仓库工具，依赖角色/版本范围）+ `portgraph/docs/fetch-deps.md`（依赖闭包产物） |
 | **按需加载** | `api-mapping.md`、`code-patterns.md`、`window-model.md`、`lifecycle.md`、`project-structure.md`、`third-party-libs.md` |
-| **预期输出** | **第 0 步 portgraph 可行性评估**（analyze + fetch-deps --dry-run：portable/blocked/uncertain + bottle 数/源码编译缺口）→ 工程创建 → 8 步迁移 → 编译验证 |
+| **预期输出** | **第 0 步 portgraph 可行性评估**（analyze + deps + fetch-deps --dry-run：portable/blocked/uncertain + 依赖角色分类/版本要求校验 + bottle 数/源码编译缺口）→ 工程创建 → 8 步迁移 → 编译验证 |
 
 > **第 0 步门禁（与 [P] 的 assess 对齐）**：接到应用移植任务先跑
-> `python portgraph/portgraph.py analyze <app>` 与 `fetch-deps <app> --dry-run`。
+> `python portgraph/portgraph.py analyze <app>`、`deps <app>` 与
+> `fetch-deps <app> --dry-run`。
 > 依赖 ≥3 个三方库时禁止人工逐个判断可行性，以闭包分析输出为准；blocked 需研判
 > blockers 的 guard 证据（无条件 ohos-active 命中且核心路径才是硬阻塞，可选分支放行）；
 > unknowns 即源码编译缺口清单，要**明确逐项告知用户**。
@@ -190,6 +193,32 @@ summary: >
 | **按需加载** | `project-structure.md`（鸿蒙工程）、`build.md`（编译配置）；`qt-cef-ohos-dev-guide.md`（Qt+CEF / WebEngine 迁移 demo——鸿蒙无 WebEngine，用 CEF；嫁接脚本随 CEF 组件包分发，不在本知识库，用法见 dev-guide §2.3/§5） |
 | **预期输出** | 需求理解 → 技术设计 → 工程创建 → 代码编写 → 编译验证 → 文档沉淀；Qt+CEF demo 按 `qt-cef-ohos-dev-guide.md` §2.3 嫁接流程 |
 
+### [R] 故障跟踪
+
+**触发词**：修了吗、已解决、未解决、已知问题、known issue、临时方案、workaround、跟进状态、新版本是否修复、故障状态
+
+| 项目 | 内容 |
+|------|------|
+| **必读页** | ① `faults/_registry.md` §症状索引（按表现→根因）② `faults/_graph.yaml`（机读全量图，一次加载） |
+| **按需加载** | 命中的根因 C 页（defect：修复版本/临时方案 W；limitation：替代方案 W/演进）；`faults/_index.md`（四实体图模型与状态机）；对应 `problems/` 页（解法细节）；`procedural/framework-fix-verification.md`（要验证修复时） |
+| **工具** | `python tools/faults-build.py review`（复核到期扫描+状态推进）；修改真源后 `build` 重建派生物 |
+| **预期输出** | 定性（缺陷待修 / 规格限制）+ 责任领域 + 临时方案或替代方案（W，含退役条件）+ 跟踪单状态与修复版本（T.fix_version）或演进/复核计划 |
+
+### [S] SDK 工程（Execution Plane）
+
+**触发词**：编译 Qt、重编 Qt、打补丁、应用修改方案、出 SDK 版本、发布 SDK、切换/回滚 SDK 版本、上游演进、检查上游更新、维护本地 SDK
+
+| 项目 | 内容 |
+|------|------|
+| **工作流** | `skills/qt-sdk-forge/SKILL.md`（统一 CLI `tools/qt-sdk-run.py` 已实现：init/env/src-clone/status/patch-*/configure/build/install/verify/smoke-mark/release/release-list/use/diff/upstream-check/forge/resume，Python 原生跨平台） |
+| **必读页** | ① `semantic/qt-harmonyos-build.md`（configure 参数/增量编译三坑）② `procedural/framework-issue-analysis.md` §4.3-4.5（patch 生成与清理铁律）③ `skills/qt-sdk-forge/SKILL.md` |
+| **按需加载** | `procedural/framework-fix-verification.md`（修复验证）、`problems/_lookup.md`（编译报错）、`faults/_registry.md`（补丁关联根因）、`skills/kb-init/references/qt-compile-guide.md`（编译故障排除） |
+| **预期输出** | 修改方案评审 → 补丁应用（登记溯源）→ 编译 install → SV0-SV8 门禁判定 → 版本发布（manifest+SHA256）→ ENV.local.md 同步；定期产出上游《演进报告》+ 补丁 superseded 复核 + faults review 联动 |
+
+> 与 [P] 的关系：[P]（qt-app-porting）不重编 Qt 框架——需要重编验证/带补丁出版本时转入本路由；
+> 本路由产出的 SDK 版本被 [P] 消费（`qt_sdk_prefix` 配置项）。
+> "新版本是否修复了某问题"（[R]）需要重编验证走 SDK 时，也路由到此处。
+
 ---
 
 ## 模糊请求处理
@@ -209,3 +238,4 @@ summary: >
 | "鸿蒙和 Android 有什么区别" | [D] 平台限制 + [G] 生命周期 | 加载 platform-limits + lifecycle |
 | "帮我看看这个代码怎么改" | [B] API 替换 | 加载 api-mapping + code-patterns |
 | "鸿蒙上能用什么数据库" | [C] 模块 + [M] 三方库 | 先查 Qt SQL 模块，再查 SQLite 三方库 |
+| "这个问题在鸿蒙是已知问题吗/修了吗" | [R] 故障跟踪（+ [E]/[D] 判定） | 先查 `faults/_registry.md`，再查 `problems/_lookup.md` |

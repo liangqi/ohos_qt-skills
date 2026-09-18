@@ -1,0 +1,33 @@
+{
+  "_comment": "portgraph E2E 依赖对账测试语料。oracle_files 按优先级依次尝试提取依赖段落。",
+  "projects": [
+    {
+      "name": "tdesktop",
+      "url": "https://github.com/telegramdesktop/tdesktop",
+      "tier": "C",
+      "oracle_files": ["README.md"],
+      "notes": "Telegram Desktop，CMake，依赖树庞大；workspace 已有克隆"
+    },
+    {
+      "name": "musescore",
+      "url": "https://github.com/musescore/MuseScore",
+      "tier": "C",
+      "oracle_files": ["INSTALL.md", "README.md"],
+      "notes": "MuseScore，CMake 大型应用；workspace 已有克隆"
+    },
+    {
+      "name": "keepassxc",
+      "url": "https://github.com/keepassxreboot/keepassxc",
+      "tier": "B",
+      "oracle_files": ["INSTALL.md", "README.md"],
+      "notes": "KeePassXC，CMake，INSTALL.md 依赖清单规范；需新克隆"
+    },
+    {
+      "name": "qbittorrent",
+      "url": "https://github.com/qbittorrent/qBittorrent",
+      "tier": "B",
+      "oracle_files": ["README.md", "INSTALL"],
+      "notes": "qBittorrent，CMake/qmake，README 有 Dependencies 段；需新克隆"
+    }
+  ]
+}

@@ -8,7 +8,7 @@ updated: 2026-08-14
 status: solved
 severity: critical
 audience: public
-refs: [procedural-qt-ohos-run-test, semantic-qt-harmonyos-platform-limits]
+refs: [fault-C-0013, procedural-qt-ohos-run-test, semantic-qt-harmonyos-platform-limits]
 summary: >
   OHOS 沙箱环境下 QDir::currentPath()/applicationDirPath() 返回只读路径，
   应用写配置文件/日志时失败并调用 exit(1) 导致 SIGABRT 崩溃。

@@ -45,16 +45,19 @@ _URL_VER_RE = re.compile(r"-(.+?)-ohos-aarch64\.tar\.gz$")
 def dependency_closure(conn, app_id: str) -> List[Dict]:
     """BFS 收集应用依赖闭包（含 app 自身），按发现序返回节点列表。
 
+    每个节点附 _depth（距 app 的跳数）：1=应用直接声明（link 语义），
+    ≥2=传递依赖（runtime 语义）。
     provided 节点（Qt 模块）不展开——其依赖由 Qt SDK 自带。
     """
     result: List[Dict] = []
-    visited = {app_id}
-    queue = [app_id]
+    visited = {app_id: 0}
+    queue = [(app_id, 0)]
     while queue:
-        nid = queue.pop(0)
+        nid, depth = queue.pop(0)
         node = db.get_node(conn, nid)
         if node is None:
             continue
+        node["_depth"] = depth
         result.append(node)
         if node["kind"] in PROVIDED_KINDS:
             continue
@@ -62,8 +65,8 @@ def dependency_closure(conn, app_id: str) -> List[Dict]:
             if e.get("platform_cond") in SKIP_PLATFORM_CONDS:
                 continue
             if e["dst"] not in visited:
-                visited.add(e["dst"])
-                queue.append(e["dst"])
+                visited[e["dst"]] = depth + 1
+                queue.append((e["dst"], depth + 1))
     return result
 
 
@@ -231,47 +234,54 @@ def fetch_app_deps(conn, app_id: str, out_dir: Path,
     installed_by_name: Dict[str, str] = {}
     for node in nodes:
         name = node["name"]
+        depth = node.get("_depth", 0)
         art = engine.artifact_info(node)
         entry = {"id": node["id"], "name": name, "kind": node["kind"],
                  "version": node.get("version"),
                  "port_status": node.get("port_status")}
         if node["id"] == app_id:
             entry["status"] = "target"
+            entry["role"] = "target"
         elif node["kind"] in PROVIDED_KINDS:
             entry["status"] = "provided"
+            entry["role"] = "provided"
             entry["note"] = "由 Qt SDK / 鸿蒙框架提供，随 Qt for HarmonyOS 部署"
-        elif name.lower() in installed_by_name:
-            entry["status"] = "covered"
-            entry["installed"] = installed_by_name[name.lower()]
-        elif name.lower() in downloadable:
-            src = downloadable[name.lower()]
-            entry["version"] = src.get("version") or entry["version"]
-            if dry_run:
-                entry["status"] = "would_download"
-                entry["artifact_url"] = src["artifact_url"]
-                # 预填目标路径，使同名节点在 dry-run 下也能正确标记 covered
-                installed_by_name[name.lower()] = str(
-                    out_dir / src["name"] / (src.get("version") or "unknown"))
-            else:
-                entry.update(_fetch_one(conn, src, out_dir, force))
-                if entry.get("installed"):
-                    installed_by_name[name.lower()] = entry["installed"]
-                    if entry["status"] in ("downloaded", "already_local"):
-                        _mark_local(conn, name, entry["installed"])
-        elif art.get("artifact_local") and Path(art["artifact_local"]).is_dir():
-            entry["status"] = "already_local"
-            entry["installed"] = art["artifact_local"]
-            installed_by_name[name.lower()] = art["artifact_local"]
-        elif art.get("artifact_cmd"):
-            entry["status"] = "cmd_only"
-            entry["artifact_cmd"] = art["artifact_cmd"]
-            entry["note"] = ("无直链（formula 未能解析版本号）："
-                             "在鸿蒙设备执行该命令，或补版本号构造 bottle URL")
         else:
-            entry["status"] = "need_port"
-            entry["source_url"] = art.get("source_url")
-            entry["repo_url"] = art.get("repo_url")
-            entry["homepage"] = art.get("homepage")
+            # depth 1 = 应用直接声明（link：需要 headers+libs 参与编译链接）
+            # depth ≥2 = 传递依赖（runtime：bottle 不捆绑，设备侧仍需其 .so）
+            entry["role"] = "link" if depth == 1 else "runtime"
+            if name.lower() in installed_by_name:
+                entry["status"] = "covered"
+                entry["installed"] = installed_by_name[name.lower()]
+            elif name.lower() in downloadable:
+                src = downloadable[name.lower()]
+                entry["version"] = src.get("version") or entry["version"]
+                if dry_run:
+                    entry["status"] = "would_download"
+                    entry["artifact_url"] = src["artifact_url"]
+                    # 预填目标路径，使同名节点在 dry-run 下也能正确标记 covered
+                    installed_by_name[name.lower()] = str(
+                        out_dir / src["name"] / (src.get("version") or "unknown"))
+                else:
+                    entry.update(_fetch_one(conn, src, out_dir, force))
+                    if entry.get("installed"):
+                        installed_by_name[name.lower()] = entry["installed"]
+                        if entry["status"] in ("downloaded", "already_local"):
+                            _mark_local(conn, name, entry["installed"])
+            elif art.get("artifact_local") and Path(art["artifact_local"]).is_dir():
+                entry["status"] = "already_local"
+                entry["installed"] = art["artifact_local"]
+                installed_by_name[name.lower()] = art["artifact_local"]
+            elif art.get("artifact_cmd"):
+                entry["status"] = "cmd_only"
+                entry["artifact_cmd"] = art["artifact_cmd"]
+                entry["note"] = ("无直链（formula 未能解析版本号）："
+                                 "在鸿蒙设备执行该命令，或补版本号构造 bottle URL")
+            else:
+                entry["status"] = "need_port"
+                entry["source_url"] = art.get("source_url")
+                entry["repo_url"] = art.get("repo_url")
+                entry["homepage"] = art.get("homepage")
         entries.append(entry)
         if progress:
             progress(entry)
@@ -284,6 +294,7 @@ def fetch_app_deps(conn, app_id: str, out_dir: Path,
         "out_dir": str(out_dir),
         "closure_size": len(nodes),
         "summary": dict(Counter(e["status"] for e in entries)),
+        "roles": dict(Counter(e.get("role", "?") for e in entries)),
         "deps": entries,
         "toolchain": {
             "cmake_prefix_path": ";".join(installed_dirs),

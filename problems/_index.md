@@ -7,5 +7,6 @@ description: >
 # problems
 
 错误速查入口：[_lookup](_lookup.md)。Qt 平台已知限制在 semantic/qt-harmonyos-platform-limits.md。
+平台/框架根因、需跨版本持续跟踪的问题，另行登记到 [faults/_registry](../faults/_registry.md)（故障库）。
 
 _（本域无活跃页）_

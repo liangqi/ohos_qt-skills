@@ -1,0 +1,26 @@
+{
+ "app": "musescore",
+ "source": "buildscripts/ci/linux/setup.sh + CMakeLists.txt + buildscripts/cmake/（人工整理）",
+ "source_note": "README 无依赖段（指向外部 wiki），oracle 依仓库内文件人工整理：CI setup.sh apt 清单（standard/runtime/ffmpeg 三段）+ 顶层 CMakeLists.txt 系统库开关（MUE_COMPILE_USE_SYSTEM_*）+ buildscripts/cmake 与 src/framework/*/cmake 的 Setup/Find 模块。CI runtime 段的 X11/xcb/GL/vulkan 等 Qt 桌面平台运行时依赖未逐条列入（非应用级依赖，鸿蒙口径无意义）。",
+ "reviewed": true,
+ "deps": [
+  {"name": "qt", "display": "qt", "type": "runtime", "raw": "Qt 6.2.4（CI setup.sh GET QT 段下载 Qt624_gcc64）"},
+  {"name": "alsa", "display": "alsa", "type": "runtime", "raw": "libasound2-dev（CI apt_packages_standard；src/framework/midi/CMakeLists.txt:85 find_package(ALSA REQUIRED)）"},
+  {"name": "freetype", "display": "freetype", "type": "runtime", "raw": "libfreetype6-dev（CI standard；MUE_COMPILE_USE_SYSTEM_FREETYPE 系统库开关）"},
+  {"name": "jack", "display": "jack", "type": "runtime", "raw": "libjack-dev（CI standard；src/framework/audio/CMakeLists.txt:284 find_package(Jack REQUIRED)）"},
+  {"name": "pulseaudio", "display": "pulseaudio", "type": "runtime", "raw": "libpulse-dev（CI standard；Linux 音频服务，音频后端可选直连）"},
+  {"name": "sndfile", "display": "sndfile", "type": "runtime", "raw": "libsndfile1-dev（CI standard；buildscripts/cmake/SetupSndFile.cmake find_package(SndFile)，未找到 FATAL_ERROR）"},
+  {"name": "openssl", "display": "openssl", "type": "runtime", "raw": "libssl-dev（CI apt_packages_runtime：编译可不装、运行需要）"},
+  {"name": "tinyxml", "display": "tinyxml", "type": "runtime", "raw": "src/framework/global/CMakeLists.txt:28 find_package(TinyXml REQUIRED)；FindTinyXml.cmake 实际 pkg_check_modules(tinyxml2)"},
+  {"name": "ffmpeg", "display": "ffmpeg", "type": "optional", "raw": "CI apt_packages_ffmpeg（ffmpeg/libavcodec/libavformat/libswscale）；videoexport 模块默认 OFF（MUE_BUILD_VIDEOEXPORT_MODULE）"},
+  {"name": "harfbuzz", "display": "harfbuzz", "type": "optional", "raw": "MUE_COMPILE_USE_SYSTEM_HARFBUZZ 系统库开关（默认内嵌源码编译）"},
+  {"name": "flac", "display": "flac", "type": "optional", "raw": "MUE_COMPILE_USE_SYSTEM_FLAC 系统库开关（默认内嵌源码编译）"},
+  {"name": "opus", "display": "opus", "type": "optional", "raw": "MUE_COMPILE_USE_SYSTEM_OPUS；SetupOpus.cmake pkg_check_modules(opus)"},
+  {"name": "libopusenc", "display": "libopusenc", "type": "optional", "raw": "MUE_COMPILE_USE_SYSTEM_OPUSENC；SetupOpusEnc.cmake pkg_check_modules(libopusenc)"},
+  {"name": "fontconfig", "display": "fontconfig", "type": "optional", "raw": "libfontconfig1-dev（CI standard；构建文件无直接引用，系 Qt 平台传递依赖）"},
+  {"name": "mesa-gl", "display": "mesa-gl", "type": "optional", "raw": "libgl1-mesa-dev（CI standard；Qt 桌面 GL 平台依赖）"},
+  {"name": "nss", "display": "nss", "type": "optional", "raw": "libnss3-dev（CI standard；构建文件无引用，疑似历史遗留）"},
+  {"name": "portmidi", "display": "portmidi", "type": "optional", "raw": "libportmidi-dev（CI standard；构建文件无引用，MU3 时代遗留）"},
+  {"name": "dbus", "display": "dbus", "type": "optional", "raw": "libdbus-1-3（CI runtime 段：编译可不装、运行需要；Qt D-Bus 模块运行时）"}
+ ]
+}
