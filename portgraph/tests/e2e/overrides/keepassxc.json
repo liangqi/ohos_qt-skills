@@ -4,25 +4,7 @@
    "dep": "pkg-unknown:openmp",
    "from": "resolution-gap",
    "to": "unknown-ok",
-   "reason": "CMakeLists.txt:259 find_package(OpenMP)（无 REQUIRED，命中后仅追加 OpenMP_C(_XX)_FLAGS）是 CMake 内置编译器特性探测而非三方包；OHOS clang 工具链自带 OpenMP runtime，hb-core/cmd-pkgs 亦无 openmp/libgomp 包（hb 的 libomp 为宿主用途 keg_only）→ pkg-unknown 可接受，非 ALIASES 缺口"
-  },
-  {
-   "dep": "pkg-unknown:xkbcommon",
-   "from": "resolution-gap",
-   "to": "resolution-gap",
-   "reason": "终判为真别名缺口：src/autotype/CMakeLists.txt:16 pkg_check_modules(Xkbcommon REQUIRED IMPORTED_TARGET xkbcommon) 的 pkg-config 模块名（无 lib 前缀）应解析到 hb:libxkbcommon（vcpkg.json:24 的 libxkbcommon 已正确入图，当前重复成两节点）→ kb_seed.ALIASES 待补 xkbcommon→libxkbcommon"
-  },
-  {
-   "dep": "pkg-unknown:x11",
-   "from": "resolution-gap",
-   "to": "resolution-gap",
-   "reason": "终判为真别名缺口：src/autotype/CMakeLists.txt:22 find_package(X11 REQUIRED COMPONENTS Xi XTest)，hb-core 存在 Formula/lib/libx11.rb（其 COMPONENTS Xi/XTest 已分别解析为 hb:libxi/hb:libxtst）→ kb_seed.ALIASES 待补 x11→libx11"
-  },
-  {
-   "dep": "pkg-unknown:pcsc",
-   "from": "resolution-gap",
-   "to": "resolution-gap",
-   "reason": "终判为真别名缺口：CMakeLists.txt:532 find_package(PCSC REQUIRED)（YubiKey 硬件密钥支持），cmd-pkgs 清单存在 pcsc-lite 2.4.0（hb-core 无）→ kb_seed.ALIASES 待补 pcsc→pcsc-lite（cmdpkgs 源）"
+   "reason": "CMakeLists.txt:259 find_package(OpenMP)（无 REQUIRED，命中后仅追加 OpenMP_C(_XX)_FLAGS）是 CMake 内置编译器特性探测而非三方包；OHOS clang 工具链自带 OpenMP runtime，hb-core/cmd-pkgs 亦无 openmp/libgomp 包（hb 的 libomp 为宿主用途 keg_only）→ pkg-unknown 可接受，非 ALIASES 缺口；fetch-deps 已按 CMake 内置分类标 provided"
   },
   {
    "oracle": "botan",
@@ -33,7 +15,7 @@
  ],
  "notes": [
   "oracle 复核：删除散文链接残留 set-up-build-environment；asciidoctor 依原文改判 build（文档构建工具）；本版 INSTALL.md 仅声明 qt/botan/zlib 三个运行时库，无 libgcrypt/argon2/libsodium/ykpers；vcpkg/xvfb-run 为 prose 提及的工具/测试辅助，不入 oracle",
-  "4 个 resolution-gap 终判：xkbcommon/x11/pcsc 为真别名缺口（kb_seed.ALIASES 待补 xkbcommon→libxkbcommon、x11→libx11、pcsc→pcsc-lite），openmp 为 CMake 内置编译器特性改判 unknown-ok；botan 匹配的幽灵节点经查确无鸿蒙包，need_port 定性正确",
+  "4 个 resolution-gap 终判：xkbcommon/x11/pcsc 三项别名缺口已补入 kb_seed.PKG_ALIASES（xkbcommon→libxkbcommon、x11→libx11、pcsc→pcsc-lite、libpcsclite→pcsc-lite），扫描期直接解析到真实包节点不再产生幽灵；openmp 为 CMake 内置编译器特性改判 unknown-ok（fetch-deps 亦按内置分类标 provided）；botan 匹配的幽灵节点经查确无鸿蒙包，need_port 定性正确",
   "召回率 60%→100% 完全来自 oracle 分母修正（误将构建工具/链接残留计入 runtime），portgraph 检出无变化；precision 维持 27% 反映 INSTALL.md 依赖声明极简（8 个 README 漏列项均经 grep 取证为真实构建引用，portgraph 正确）"
  ]
 }

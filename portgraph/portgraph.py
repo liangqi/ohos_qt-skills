@@ -45,7 +45,8 @@ def _resolve_app(conn, name: str) -> str:
         ("app:%" + name.lower() + "%",)).fetchone()
     if row:
         return row["id"]
-    print("[portgraph] app not found: %s (先运行 scan)" % name)
+    print("[portgraph] 应用不存在: %s（先 scan/clone 入库；若想传项目路径，"
+          "请检查路径是否存在）" % name)
     sys.exit(1)
 
 
@@ -288,10 +289,18 @@ def cmd_fetch_deps(args) -> None:
                 print("[%d/%d] %s 命令获取: %s"
                       % (done["n"], total, e["name"], e["artifact_cmd"]))
             elif st == "need_port":
-                print("[%d/%d] %s 需自行移植（源码: %s）"
-                      % (done["n"], total, e["name"],
-                         e.get("repo_url") or e.get("source_url")
-                         or e.get("homepage") or "?"))
+                src = (e.get("repo_url") or e.get("source_url")
+                       or e.get("homepage"))
+                if src:
+                    print("[%d/%d] %s 需自行移植（源码: %s）"
+                          % (done["n"], total, e["name"], src))
+                elif e.get("note"):
+                    print("[%d/%d] %s %s"
+                          % (done["n"], total, e["name"], e["note"]))
+                else:
+                    print("[%d/%d] %s 需自行移植（未入库，无源码链接："
+                          "请确认依赖名是否正确，或手动检索源码）"
+                          % (done["n"], total, e["name"]))
 
         m = deps_fetch.fetch_app_deps(
             conn, app_id, out, force=getattr(args, "force", False),
@@ -430,6 +439,13 @@ def main() -> None:
     p.add_argument("--port", type=int, default=8000)
     p.add_argument("--host", default="127.0.0.1")
     p.set_defaults(func=cmd_serve)
+
+    # --compact 后置支持：全局 --compact 必须写在子命令前，用户习惯写在
+    # 子命令后（如 `deps X --json --compact`），为所有子命令补上该旗标
+    # （argparse 子解析器不会覆盖主解析器已写入的命名空间值，两处位置均生效）
+    for p in sub.choices.values():
+        p.add_argument("--compact", action="store_true",
+                       help="输出紧凑 JSON（与全局 --compact 等效）")
 
     args = parser.parse_args()
     if not getattr(args, "func", None):

@@ -33,6 +33,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from . import db, engine, kb_seed, project_scanner, qt_scanner
+from .kb_seed import PKG_ALIASES as LIB_NAME_ALIASES
 
 # OHOS 系统自带库（NDK sysroot / 系统镜像）：链接无需自带产物
 # （KB: semantic/qt-harmonyos-third-party-libs §系统库直链）
@@ -66,22 +67,12 @@ WIN32_SYSTEM_LIBS = {
     "psapi", "version", "iphlpapi", "powrprof", "setupapi", "strmiids",
     "avifil32", "mfplat", "mfuuid", "strmbase", "strmbasd", "wtsapi32",
     "windowsapp", "delayimp", "opengl32", "glu32", "wintrust", "shcore",
+    "winscard",
 }
 
-# -l 链接名 → 常见包名对齐（hb 包名口径）
-LIB_NAME_ALIASES = {
-    "swscale": "ffmpeg", "avcodec": "ffmpeg", "avformat": "ffmpeg",
-    "avutil": "ffmpeg", "swresample": "ffmpeg", "postproc": "ffmpeg",
-    "libswscale": "ffmpeg", "libavcodec": "ffmpeg", "libavformat": "ffmpeg",
-    "libavutil": "ffmpeg", "libavdevice": "ffmpeg",
-    "ssl": "openssl", "crypto": "openssl",
-    "sqlite3": "sqlite", "curl": "curl", "gcrypt": "libgcrypt",
-    "tag": "taglib", "mtp": "libmtp", "usb-1.0": "libusb",
-    "magic": "libmagic", "exif": "libexif", "discid": "libdiscid",
-    "chromaprint": "chromaprint", "mp3lame": "lame",
-    # pkg-config 名 → CMake find_package 名（同库双声明合并）
-    "libtorrent-rasterbar": "LibtorrentRasterbar",
-}
+# -l 链接名 → 常见包名对齐（hb 包名口径）：见 kb_seed.PKG_ALIASES
+# （deps_report 与 project_scanner 共享同一张表，保证 deps 与
+#   fetch-deps/analyze 的名称解析口径一致）
 
 # CMake 内置模块：非第三方包，按语义归类（kind + 说明）
 CMAKE_BUILTIN_PACKAGES = {
@@ -108,6 +99,8 @@ INTERFACE_BOUND_PACKAGES = {
     "coreaudio": "macOS CoreAudio：鸿蒙不可用",
     "wayland": "Wayland 直连：鸿蒙窗口模型非 Wayland 协议",
     "systemd": "systemd：鸿蒙无 systemd",
+    "network": "macOS Network 框架（裸链接名形态）：通常位于 APPLE "
+              "平台块，鸿蒙不适用",
 }
 
 # find_package 命中的主机侧构建工具（原 _FINDPKG_SKIP 静默丢弃，现归入
@@ -199,7 +192,9 @@ def _resolve(conn, name: str) -> Optional[Dict]:
     """包名（find_package/pkg-config/include 线索）→ 已入库包节点。
 
     近似对齐依次尝试：原名 / 补 lib 前缀（xkbcommon→libxkbcommon）/
-    去 lib 前缀 / 去 pkg-config 版本后缀（glib-2.0→glib）及其组合。
+    去 lib 前缀 / 去 pkg-config 版本后缀（glib-2.0→glib）及其组合；
+    仍未命中时按共享别名表（kb_seed.PKG_ALIASES，pcsc→pcsc-lite 等）
+    兜底——与扫描期（project_scanner）口径一致。
     """
     if conn is None:
         return None
@@ -218,6 +213,9 @@ def _resolve(conn, name: str) -> Optional[Dict]:
         node = kb_seed.resolve_package(conn, cand)
         if node:
             return node
+    alias = LIB_NAME_ALIASES.get(name)
+    if alias and alias.lower() not in cands:
+        return kb_seed.resolve_package(conn, alias.lower())
     return None
 
 
@@ -243,11 +241,12 @@ def _runtime_closure(conn, node_id: str) -> List[Dict]:
     与 deps_fetch.dependency_closure 口径一致：bottle 不捆绑依赖，
     目标侧链接/运行仍需其依赖的 .so。
     """
+    from collections import deque
     out: List[Dict] = []
     visited = {node_id}
-    queue = [node_id]
+    queue = deque([node_id])
     while queue:
-        nid = queue.pop(0)
+        nid = queue.popleft()
         if nid != node_id:
             node = db.get_node(conn, nid)
             if node:
@@ -266,13 +265,20 @@ def _runtime_closure(conn, node_id: str) -> List[Dict]:
 
 def _version_check(entry: Dict) -> str:
     """多源版本约束（conan 范围 / pkg 约束 / find_package 最低版本）
-    是否满足：同时存在时取最差结果（任一冲突即冲突）。"""
+    是否满足：同时存在时取最差结果（任一冲突即冲突）。
+
+    version_req_from 存在时，version_req 来自另一个库名（别名归并，如
+    libavcodec >= 58 → ffmpeg），约束的是库主版本而非包版本，口径
+    不可比 → 按未知处理（不产生虚假 conflict）。
+    """
     avail = entry.get("available_version")
+    cross = bool(entry.get("version_req_from"))
     checks = []
     if entry.get("version_range"):
         checks.append(_check_req(_range_to_req(entry["version_range"]), avail))
     if entry.get("version_req"):
-        checks.append(_check_req(entry["version_req"], avail))
+        checks.append("unknown" if cross
+                      else _check_req(entry["version_req"], avail))
     if entry.get("min_version"):
         checks.append(_check_min(entry["min_version"], avail))
     if "conflict" in checks:
@@ -285,6 +291,39 @@ def _version_check(entry: Dict) -> str:
 
 
 # ---------------------------------------------------------------- 主分析
+
+def _merge_link_entries(base: Dict, entry: Dict) -> None:
+    """把同库异名条目 entry 合入 base（7b 阶段调用）。
+
+    - REQUIRED 优先；版本信息取最先出现的明确值（与 _DepBook 口径一致）
+    - kind 更具体的覆盖（system-lib/platform-iface/framework 优先于 package）
+    - base 无产物而 entry 有（跨源 hb/cmdpkgs 互补）时采用 entry 的解析结果
+    """
+    base["required"] = base["required"] or entry["required"]
+    for f in ("min_version", "version_req", "version_range"):
+        base[f] = base.get(f) or entry.get(f)
+    if not base.get("version_req") and entry.get("version_req") \
+            and entry.get("version_req_from"):
+        base["version_req_from"] = entry["version_req_from"]
+    if entry["kind"] not in ("package", base["kind"]):
+        # kind 更具体的覆盖（system-lib/platform-iface/framework 优先）
+        if base["kind"] == "package":
+            base["kind"] = entry["kind"]
+    if entry.get("ohos_note") and not base.get("ohos_note"):
+        base["ohos_note"] = entry["ohos_note"]
+    base["evidence"] = (base.get("evidence", [])
+                        + [e for e in entry.get("evidence", [])
+                           if e not in base.get("evidence", [])])
+    base_art = base.get("artifact") or {}
+    ent_art = entry.get("artifact") or {}
+    if ent_art.get("ready") and not base_art.get("ready"):
+        # base 无产物而 entry 解析到有产物的节点（如 vcpkg 名未解析而
+        # find_package 名解析到 bottle）：采用 entry 的解析结果
+        for f in ("resolved_node", "port_status", "available_version",
+                  "artifact"):
+            if entry.get(f) is not None:
+                base[f] = entry[f]
+
 
 class _DepBook:
     """同名依赖的多源证据合并（find_package/pkg/conan/include/qmake）。"""
@@ -405,9 +444,13 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
             e = link.add(pm["name"], kind="platform-iface", evidence=ev)
             e["ohos_note"] = INTERFACE_BOUND_PACKAGES[pm["name"]]
             continue
-        # 同库双声明（pkg-config 名 vs find_package 名）按别名合并
-        link.add(LIB_NAME_ALIASES.get(pm["name"], pm["name"]),
-                 version_req=pm["version_req"], evidence=ev)
+        # 同库双声明（pkg-config 名 vs find_package 名）按别名合并。
+        # 版本约束挂在被归并的原名下（version_req_from）：libavcodec 的
+        # “>= 58”是库主版本口径，与 ffmpeg 包版本不可直接比较。
+        aliased = LIB_NAME_ALIASES.get(pm["name"], pm["name"])
+        e = link.add(aliased, version_req=pm["version_req"], evidence=ev)
+        if pm["version_req"] and aliased != pm["name"]:
+            e["version_req_from"] = pm["name"]
 
     # ---- 3) Conan / vcpkg 清单（版本可为范围串）
     for c in pkg_manifests.get("conan", []):
@@ -555,6 +598,7 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                                          "platform-iface")
         node = None if skip_resolve else _resolve(conn, entry["name"])
         entry["resolved_node"] = node["id"] if node else None
+        entry["_resolved_name"] = node["name"] if node else None
         entry["port_status"] = node["port_status"] if node else None
         entry["available_version"] = node["version"] if node else None
         entry["artifact"] = _artifact_of(node)
@@ -576,28 +620,43 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                 if entry["name"].lower() not in r["needed_by"]:
                     r["needed_by"].append(entry["name"].lower())
 
-    # ---- 7b) 同库异名合并（resolved_node 相同，如 xkbcommon/libxkbcommon）
-    merged: Dict[str, Dict] = {}
+    # ---- 7b) 同库异名合并：先按 resolved_node（如 xkbcommon/libxkbcommon），
+    #          再按解析节点的规范化名（去 lib 前缀/@变体，如 hb:qrencode 与
+    #          cmdpkgs:libqrencode 同为 qrencode，避免同一库出现多条矛盾条目）
+    def _canon_pkg_name(n: str) -> str:
+        n = (n or "").lower()
+        if n.startswith("lib"):
+            n = n[3:]
+        at = n.find("@")
+        return n[:at] if at > 0 else n
+
+    by_key: Dict[str, Dict] = {}
     for entry in link_list:
-        key = entry.get("resolved_node") or entry["name"].lower()
-        base = merged.get(key)
-        if base is None:
-            merged[key] = entry
+        keys = []
+        if entry.get("resolved_node"):
+            keys.append(entry["resolved_node"])
+            if entry.get("_resolved_name"):
+                keys.append(_canon_pkg_name(entry["_resolved_name"]))
+        else:
+            keys.append(entry["name"].lower())
+        for key in keys:
+            base = by_key.get(key)
+            if base is not None and base is not entry:
+                _merge_link_entries(base, entry)
+                break
+        else:
+            for key in keys:
+                by_key[key] = entry
             continue
-        base["required"] = base["required"] or entry["required"]
-        for f in ("min_version", "version_req", "version_range"):
-            base[f] = base.get(f) or entry.get(f)
-        if entry["kind"] not in ("package", base["kind"]):
-            # kind 更具体的覆盖（system-lib/platform-iface/framework 优先）
-            if base["kind"] == "package":
-                base["kind"] = entry["kind"]
-        if entry.get("ohos_note") and not base.get("ohos_note"):
-            base["ohos_note"] = entry["ohos_note"]
-        base["evidence"] = (base.get("evidence", [])
-                            + [e for e in entry.get("evidence", [])
-                               if e not in base.get("evidence", [])])
-        base["version_check"] = _version_check(base)
-    link_list = sorted(merged.values(), key=lambda d: d["name"].lower())
+    merged_ids = set()
+    for base in by_key.values():
+        merged_ids.add(id(base))
+    link_list = sorted((e for e in link_list if id(e) in merged_ids),
+                       key=lambda d: d["name"].lower())
+    for entry in link_list:
+        entry.pop("_resolved_name", None)
+        # 合并可能改变了版本字段，重算校验
+        entry["version_check"] = _version_check(entry)
 
     # ---- 8) dlopen/QLibrary/QPluginLoader 运行时动态加载
     dynamic_loads = []
@@ -711,6 +770,15 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
 
     # ---- 13) 汇总与警告
     for entry in link_list:
+        if entry.get("version_req_from"):
+            warnings.append({
+                "level": "info",
+                "msg": "%s 的版本约束 %s 来自 %s 的库版本口径（别名归并），"
+                       "与 %s 包版本（%s）不可直接比较，需人工确认"
+                       % (entry["name"], entry.get("version_req"),
+                          entry["version_req_from"], entry["name"],
+                          entry.get("available_version") or "?")})
+    for entry in link_list:
         if entry["kind"] in ("system-lib", "win32-system-lib"):
             continue
         if entry.get("version_check") == "conflict":
@@ -798,7 +866,10 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
             "link": len(link_list),
             "runtime": len(runtime_book),
             "dynamic_loads": len(dynamic_loads),
-            "build_tools": len(build_tools) + len(tools),
+            "build_tools": (len(toolchain["tools"])
+                            + (1 if toolchain["cmake_min"] else 0)
+                            + (1 if toolchain["cxx_standard"] else 0)
+                            + 1),
             "test": len(test_deps),
             "vendored": len(vendored),
             "env": len(env_deps),

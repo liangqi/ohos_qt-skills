@@ -401,10 +401,26 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
             continue
         seen.add(name)
         node = kb_seed.resolve_package(conn, name)
+        alias_used = None
+        if node is None:
+            # 直接名未解析时按别名表重试（libavcodec → ffmpeg 等），
+            # 避免同库异名产生 pkg-unknown 幽灵节点（fetch-deps 会误报
+            # need_port，而别名指向的 bottle 实际存在）
+            aliases = kb_seed.PKG_ALIASES.get(name.lower())
+            if isinstance(aliases, str):
+                aliases = [aliases]
+            for alias in aliases or []:
+                node = kb_seed.resolve_package(conn, alias.lower())
+                if node:
+                    alias_used = alias
+                    break
         if node:
             db.upsert_edge(conn, app_id, node["id"], "runtime")
-            linked.append({"hint": name, "node": node["id"],
-                           "status": node["port_status"]})
+            item = {"hint": name, "node": node["id"],
+                    "status": node["port_status"]}
+            if alias_used:
+                item["alias"] = alias_used
+            linked.append(item)
         else:
             ghost_id = "pkg-unknown:%s" % normalize_app_name(name)
             db.upsert_node(

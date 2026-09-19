@@ -392,6 +392,13 @@ def name_variants(disp_or_name: str, node: Optional[Dict] = None) -> List[str]:
         if ":" in nid:
             tail = nid.split(":", 1)[1]
             out.append(tail)
+        # 反向别名：构建文件里用的是别名形态（find_package(X11) /
+        # pkg_check_modules(xkbcommon)），而扫描期已归并到目标包节点
+        # （libx11 / libxkbcommon）——把别名原名也加入 grep 变体
+        node_nm = (node["name"] or "").lower()
+        for alias_key, alias_target in kb_seed.PKG_ALIASES.items():
+            if alias_target.lower() == node_nm:
+                out.append(alias_key)
     return list(dict.fromkeys(v for v in out if v and len(v) >= 3))
 
 

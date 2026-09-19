@@ -223,6 +223,30 @@ ALIASES: Dict[str, List[str]] = {
 }
 
 
+# 库名/pkg-config 名 → 鸿蒙包名对齐（hb 包名口径）。
+# deps_report 用于同库双声明合并；project_scanner 用于扫描期解析（消除
+# libavcodec→ffmpeg 这类幽灵节点），两处共享同一张表。
+PKG_ALIASES: Dict[str, str] = {
+    "swscale": "ffmpeg", "avcodec": "ffmpeg", "avformat": "ffmpeg",
+    "avutil": "ffmpeg", "swresample": "ffmpeg", "postproc": "ffmpeg",
+    "libswscale": "ffmpeg", "libavcodec": "ffmpeg", "libavformat": "ffmpeg",
+    "libavutil": "ffmpeg", "libavdevice": "ffmpeg",
+    "ssl": "openssl", "crypto": "openssl",
+    "sqlite3": "sqlite", "curl": "curl", "gcrypt": "libgcrypt",
+    "tag": "taglib", "mtp": "libmtp", "usb-1.0": "libusb",
+    "magic": "libmagic", "exif": "libexif", "discid": "libdiscid",
+    "chromaprint": "chromaprint", "mp3lame": "lame",
+    # pkg-config 模块名无 lib 前缀 → hb 包名（e2e keepassxc 复核确认的缺口）
+    "xkbcommon": "libxkbcommon", "x11": "libx11",
+    # PC/SC 智能卡栈：find_package(PCSC)/pkg-config libpcsclite/find_library
+    # pcsclite → pcsc-lite
+    "pcsc": "pcsc-lite", "libpcsclite": "pcsc-lite",
+    "pcsclite": "pcsc-lite",
+    # pkg-config 名 → CMake find_package 名（同库双声明合并）
+    "libtorrent-rasterbar": "LibtorrentRasterbar",
+}
+
+
 def resolve_package(conn, hint_name: str) -> Optional[Dict]:
     """第三方库线索 -> 已入库的包节点（hb 优先，ported 优先）。"""
     candidates = ALIASES.get(hint_name.lower(), [hint_name])
