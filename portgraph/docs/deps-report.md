@@ -56,7 +56,9 @@ find_package/pkg-config 声明，产物获取途径取决于名称匹配结果�
 
 `version_check` 取值：`satisfied`（满足）/ `conflict`（冲突，进 warnings）/
 `any`（无约束）/ `unknown`（无可用版本可比，含 conan 范围仅近似取首个
-`>=x` 检查）。
+`>=x` 检查；以及**别名归并后的跨名版本约束**——`libavcodec >= 58` 的库
+主版本口径与 ffmpeg 包版本不可比，此时条目携带 `version_req_from`
+指出的束库名，并以 info 警告提示需人工确认）。
 
 ## 报告结构（--json）
 
@@ -70,7 +72,8 @@ find_package/pkg-config 声明，产物获取途径取决于名称匹配结果�
                 "has_testing"},
   "link_deps": [{
       "name", "kind", "required", "min_version", "version_req",
-      "version_range", "version_check", "components", "evidence": [...],
+      "version_req_from", "version_range", "version_check",
+      "components", "evidence": [...],
       "resolved_node", "port_status", "available_version",
       "artifact": {"ready", "provided", "source", "repo_url", ...},
       "ohos_note"}],
@@ -197,14 +200,26 @@ flowchart TB
 
 ## 依赖闭包与扫描口径
 
+- **性能口径**：deps 报告内所有 runtime 闭包 BFS 共享同一份节点/出边缓存
+  （`_GraphCache`），图查询总量 O(V+E)；此前每个 link 依赖独立查库，
+  200 依赖 × 深链图实测 24 万次 SQL 查询
+
 - **版本信息来自构建文件原文**：`find_package` 参数、pkg-config spec、
   meson `version:`、autotools `PKG_CHECK_MODULES`、Conan/vcpkg 清单、
   `.gitmodules`；`deps` 传路径时自动入库（幂等重扫），传应用名时用
   `scan` 记录的 `root_<app_id>` meta 回溯项目路径
+- **同名合并**：除按 resolved_node 合并（xkbcommon/libxkbcommon）外，
+  还按解析节点的规范化名（去 lib 前缀/@变体）合并——hb:qrencode 与
+  cmdpkgs:libqrencode 归并为单条 qrencode 条目，多源证据保留，产物取
+  有 bottle 的一侧；base 无产物而合并项有产物时采用合并项的解析结果
 - **runtime 传递闭包**沿 hb/cmd-pkgs 图的 `runtime` 边递归（跳过 macos
   条件与 provided 节点），与 `fetch-deps` 口径一致
 - **动态加载只识别字符串字面量**；变量拼接（`QLibrary(name + ".so")`）
   无法静态确定，会缺报——运行时验证仍需以设备为准
+- **扫描期别名解析**：pkg-config/find_package 库名直接名未命中时按
+  `kb_seed.PKG_ALIASES`（libavcodec→ffmpeg、xkbcommon→libxkbcommon、
+  pcsc→pcsc-lite 等）重试，同库异名不再产生 pkg-unknown 幽灵节点——
+  analyze / fetch-deps / deps 三个命令的名称解析口径因此一致
 - 工具链检测只记**已知工具名或命中特征后缀**（`*-config`/`*-scanner`/
   `*-codegen`/`glib-*`）的 `COMMAND`/`find_program` token，避免把任意
   可执行名当依赖
@@ -226,11 +241,20 @@ flowchart TB
 - `link`：应用的直接依赖（depth 1，编译/链接需要）
 - `runtime`：传递依赖（depth ≥2，设备侧 .so）
 - `provided`：Qt 模块；`target`：应用自身
+- `test`：测试框架（GTest/Catch2/…），不进发行包，仅当需在鸿蒙设备
+  跑测试时才处理（status 仍随产物可用性走，bottle 存在时保留下载信息）
+- `build-tool`：CMake 内置编译器特性（OpenMP，随 NDK 提供，status=
+  provided）或主机构建工具包（ECM 等无产物的幽灵节点，构建机安装即可）
 
 manifest 顶层新增 `roles` 计数。深度判定是**图口径**的近似；带版本范围/
 REQUIRED/OPTIONAL 语义的精确分类用 `deps` 报告。
 
 ## 已知限制
+
+- **libav* 版本约束不可比**：`pkg_check_modules("libavcodec >= 58")` 的版本号是
+  **库主版本号**（58 ≈ ffmpeg 4.x），与 ffmpeg 发布版本（如 7.1）不同量纲。
+  跨名归并到 ffmpeg 后此类约束携带 `version_req_from`（约束来源库名），
+  `version_check` 记 `unknown` 而非误报 `conflict`
 
 - find_package 名称 → hb 包名的匹配依赖 `kb_seed.resolve_package` 别名表 +
   前缀/后缀规则，同名异义（如多精度库 MPC vs 音乐播放器 mpc）可能错配，

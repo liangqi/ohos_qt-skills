@@ -27,12 +27,12 @@ import json
 import re
 import tarfile
 import shutil
-from collections import Counter
+from collections import Counter, deque
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
-from . import db, engine, harmonybrew
+from . import db, deps_report, engine, harmonybrew
 
 RECURSE_TYPES = ("runtime", "uses-module")
 SKIP_PLATFORM_CONDS = ("macos",)
@@ -51,9 +51,9 @@ def dependency_closure(conn, app_id: str) -> List[Dict]:
     """
     result: List[Dict] = []
     visited = {app_id: 0}
-    queue = [(app_id, 0)]
+    queue = deque([(app_id, 0)])
     while queue:
-        nid, depth = queue.pop(0)
+        nid, depth = queue.popleft()
         node = db.get_node(conn, nid)
         if node is None:
             continue
@@ -208,6 +208,52 @@ def _mark_local(conn, name: str, installed: str) -> None:
     conn.commit()
 
 
+def _norm_key(name: str) -> str:
+    """同名包去重键：小写 + 去 lib 前缀（hb:qrencode 与 cmdpkgs:libqrencode
+    同为 qrencode；xkbcommon 幽灵节点与 libxkbcommon 同键）。"""
+    n = (name or "").lower()
+    if n.startswith("lib") and len(n) > 5:
+        n = n[3:]
+    return n
+
+
+def _classify_special(entry: Dict, name_lower: str, node: Dict,
+                      depth: int) -> None:
+    """非目标侧产物需求的依赖分类（与 deps 报告口径对齐）。
+
+    - CMake 内置/编译器特性（Threads/OpenMP/iconv/dl）→ status=provided，
+      随 OHOS NDK/SDK 自带，不再显示“需自行移植（源码: ?）”
+    - 测试框架（GTest/Catch2/…）→ role=test，不进发行包
+      （status 仍随产物可用性走，bottle 存在时保留 would_download 信息）
+    - 主机构建工具包（ECM 等 find_package 构建工具且无产物的幽灵节点）
+      → role=build-tool，构建机安装即可；有真实产物的（如 gettext
+      同时是运行时库）不重分类，避免误伤传递依赖场景
+    """
+    spec = deps_report.CMAKE_BUILTIN_PACKAGES.get(name_lower)
+    if spec:
+        entry["status"] = "provided"
+        entry["role"] = ("build-tool" if spec["kind"] == "build-tool"
+                         else "provided")
+        entry["note"] = "非外部产物依赖：" + spec["note"]
+        return
+    if name_lower in deps_report.TEST_FRAMEWORKS:
+        entry["role"] = "test"
+        entry["note"] = ("测试框架，不进发行包；"
+                         "仅当需要在鸿蒙设备上跑测试时才处理")
+        # 无产物的幽灵节点直接标 test（无需鸿蒙产物，此前误报 need_port）；
+        # bottle 存在时 status 随产物可用性走（保留下载信息）
+        if not (node and (node.get("artifact_url")
+                          or node.get("artifact_cmd"))):
+            entry["status"] = "test"
+        return
+    if (depth == 1 and name_lower in deps_report.BUILD_TOOL_FINDPKG
+            and not (node.get("artifact_url") or node.get("artifact_cmd"))):
+        entry["role"] = "build-tool"
+        entry["note"] = ("主机构建工具（%s）：构建机安装即可，"
+                         "不部署到设备"
+                         % deps_report.BUILD_TOOL_FINDPKG[name_lower])
+
+
 def fetch_app_deps(conn, app_id: str, out_dir: Path,
                    force: bool = False, dry_run: bool = False,
                    progress: Optional[Callable[[Dict], None]] = None) -> Dict:
@@ -224,11 +270,12 @@ def fetch_app_deps(conn, app_id: str, out_dir: Path,
 
     nodes = dependency_closure(conn, app_id)
 
-    # 预扫描：同名包任一节点有产物直链即视为可下载（hb/cmdpkgs 跨源互补）
+    # 预扫描：同名包任一节点有产物直链即视为可下载（hb/cmdpkgs 跨源互补；
+    # 去重键用规范化名，qrencode/libqrencode 这类同库异名不会重复下载）
     downloadable = {}
     for n in nodes:
         if n.get("artifact_url"):
-            downloadable.setdefault(n["name"].lower(), n)
+            downloadable.setdefault(_norm_key(n["name"]), n)
 
     entries: List[Dict] = []
     installed_by_name: Dict[str, str] = {}
@@ -250,38 +297,42 @@ def fetch_app_deps(conn, app_id: str, out_dir: Path,
             # depth 1 = 应用直接声明（link：需要 headers+libs 参与编译链接）
             # depth ≥2 = 传递依赖（runtime：bottle 不捆绑，设备侧仍需其 .so）
             entry["role"] = "link" if depth == 1 else "runtime"
-            if name.lower() in installed_by_name:
-                entry["status"] = "covered"
-                entry["installed"] = installed_by_name[name.lower()]
-            elif name.lower() in downloadable:
-                src = downloadable[name.lower()]
-                entry["version"] = src.get("version") or entry["version"]
-                if dry_run:
-                    entry["status"] = "would_download"
-                    entry["artifact_url"] = src["artifact_url"]
-                    # 预填目标路径，使同名节点在 dry-run 下也能正确标记 covered
-                    installed_by_name[name.lower()] = str(
-                        out_dir / src["name"] / (src.get("version") or "unknown"))
+            key = _norm_key(name)
+            # 内置模块/测试框架/构建工具的语义分类（可能直接定 status）
+            _classify_special(entry, name.lower(), node, depth)
+            if not entry.get("status"):
+                if key in installed_by_name:
+                    entry["status"] = "covered"
+                    entry["installed"] = installed_by_name[key]
+                elif key in downloadable:
+                    src = downloadable[key]
+                    entry["version"] = src.get("version") or entry["version"]
+                    if dry_run:
+                        entry["status"] = "would_download"
+                        entry["artifact_url"] = src["artifact_url"]
+                        # 预填目标路径，使同名节点在 dry-run 下也能正确标记 covered
+                        installed_by_name[key] = str(
+                            out_dir / src["name"] / (src.get("version") or "unknown"))
+                    else:
+                        entry.update(_fetch_one(conn, src, out_dir, force))
+                        if entry.get("installed"):
+                            installed_by_name[key] = entry["installed"]
+                            if entry["status"] in ("downloaded", "already_local"):
+                                _mark_local(conn, name, entry["installed"])
+                elif art.get("artifact_local") and Path(art["artifact_local"]).is_dir():
+                    entry["status"] = "already_local"
+                    entry["installed"] = art["artifact_local"]
+                    installed_by_name[key] = art["artifact_local"]
+                elif art.get("artifact_cmd"):
+                    entry["status"] = "cmd_only"
+                    entry["artifact_cmd"] = art["artifact_cmd"]
+                    entry["note"] = ("无直链（formula 未能解析版本号）："
+                                     "在鸿蒙设备执行该命令，或补版本号构造 bottle URL")
                 else:
-                    entry.update(_fetch_one(conn, src, out_dir, force))
-                    if entry.get("installed"):
-                        installed_by_name[name.lower()] = entry["installed"]
-                        if entry["status"] in ("downloaded", "already_local"):
-                            _mark_local(conn, name, entry["installed"])
-            elif art.get("artifact_local") and Path(art["artifact_local"]).is_dir():
-                entry["status"] = "already_local"
-                entry["installed"] = art["artifact_local"]
-                installed_by_name[name.lower()] = art["artifact_local"]
-            elif art.get("artifact_cmd"):
-                entry["status"] = "cmd_only"
-                entry["artifact_cmd"] = art["artifact_cmd"]
-                entry["note"] = ("无直链（formula 未能解析版本号）："
-                                 "在鸿蒙设备执行该命令，或补版本号构造 bottle URL")
-            else:
-                entry["status"] = "need_port"
-                entry["source_url"] = art.get("source_url")
-                entry["repo_url"] = art.get("repo_url")
-                entry["homepage"] = art.get("homepage")
+                    entry["status"] = "need_port"
+                    entry["source_url"] = art.get("source_url")
+                    entry["repo_url"] = art.get("repo_url")
+                    entry["homepage"] = art.get("homepage")
         entries.append(entry)
         if progress:
             progress(entry)

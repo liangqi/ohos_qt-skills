@@ -1,22 +1,22 @@
 # keepassxc 依赖对账报告（portgraph E2E）
 
-> 生成时间: 2026-09-18T02:44:26Z | 语料: corpus.json#keepassxc | 构建系统: ? | 源文件: ?
+> 生成时间: 2026-09-19T11:31:09Z | 语料: corpus.json#keepassxc | 构建系统: cmake | 源文件: 884
 > Oracle: INSTALL.md（复核: 已复核，7 条；来源: agent 复核定稿：删除散文链接残留 set-up-build-environment；asciidoctor 依原文（build tools must exist within your PATH + KPXC_FEATURE_DOCS）改判 build；本版 INSTALL.md 仅声明 qt/botan/zlib 三个库，无 libgcrypt/argon2/libsodium/ykpers；vcpkg/xvfb-run 为 prose 提及的工具/测试辅助，不入 oracle）
 
 ## 1. 结论速览
 
 | 指标 | 值 |
 |---|---|
-| 可移植性 verdict | **blocked**（阻塞 5 / 未知 5 / 平台排除 0） |
+| 可移植性 verdict | **blocked**（阻塞 5 / 未知 2 / 平台排除 0） |
 | 检出召回率 | 100%（3/3 README 运行时依赖） |
-| 检出精确率 | 27% |
-| Bug 候选 | **3**（resolution-gap=3） |
-| 依赖闭包 | 42 项（cmd_only 1, need_port 5, provided 5, target 1, would_download 30） |
+| 检出精确率 | 23% |
+| Bug 候选 | **0**（无） |
+| 依赖闭包 | 40 项（cmd_only 1, covered 1, need_port 1, provided 6, target 1, would_download 30） |
 
 **Agent 复核说明**：
 
 - oracle 复核：删除散文链接残留 set-up-build-environment；asciidoctor 依原文改判 build（文档构建工具）；本版 INSTALL.md 仅声明 qt/botan/zlib 三个运行时库，无 libgcrypt/argon2/libsodium/ykpers；vcpkg/xvfb-run 为 prose 提及的工具/测试辅助，不入 oracle
-- 4 个 resolution-gap 终判：xkbcommon/x11/pcsc 为真别名缺口（kb_seed.ALIASES 待补 xkbcommon→libxkbcommon、x11→libx11、pcsc→pcsc-lite），openmp 为 CMake 内置编译器特性改判 unknown-ok；botan 匹配的幽灵节点经查确无鸿蒙包，need_port 定性正确
+- 4 个 resolution-gap 终判：xkbcommon/x11/pcsc 三项别名缺口已补入 kb_seed.PKG_ALIASES（xkbcommon→libxkbcommon、x11→libx11、pcsc→pcsc-lite、libpcsclite→pcsc-lite），扫描期直接解析到真实包节点不再产生幽灵；openmp 为 CMake 内置编译器特性改判 unknown-ok（fetch-deps 亦按内置分类标 provided）；botan 匹配的幽灵节点经查确无鸿蒙包，need_port 定性正确
 - 召回率 60%→100% 完全来自 oracle 分母修正（误将构建工具/链接残留计入 runtime），portgraph 检出无变化；precision 维持 27% 反映 INSTALL.md 依赖声明极简（8 个 README 漏列项均经 grep 取证为真实构建引用，portgraph 正确）
 
 ## 2. 可移植性判定（analyze）
@@ -29,26 +29,22 @@
 | unsupported-interface | app:keepassxc | 使用鸿蒙不支持的平台接口 X11/Xlib 直连（display）鸿蒙无 X11 显示服务；Qt 应用应走 QPA，直连 X11 代码不可移植；同类鸿蒙替代接口: 鸿蒙 WindowStage/XComponent［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (5 处无条件 / 2 处鸿 |
 | unsupported-module | qtmod:dbus | Qt for HarmonyOS 模块适配表: 不支持 - 鸿蒙无 D-Bus |
 
-未确认项 5 个：
+未确认项 2 个：
 - [unknown-package] pkg-unknown:botan: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
 - [unknown-package] pkg-unknown:openmp: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
-- [unknown-package] pkg-unknown:pcsc: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
-- [unknown-package] pkg-unknown:x11: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
-- [unknown-package] pkg-unknown:xkbcommon: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
 
 ## 3. 差异归因明细（oracle × portgraph 直接依赖）
 
 | 归类 | README 侧 | portgraph 侧 | 类型/深度 | 证据/说明 |
 |---|---|---|---|---|
-| ★解析缺口 | — | pcsc | package d1 | pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口） 【agent: 终判为真别名缺口：CMakeLists.txt:532 find_package(PCSC REQUIRED)（YubiKey 硬件密钥支持），cmd-pkgs 清单存在 pcsc-lite 2.4.0（hb-core 无）→ kb_seed.ALIASES 待补 pcsc→p |
-| ★解析缺口 | — | x11 | package d1 | pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口） 【agent: 终判为真别名缺口：src/autotype/CMakeLists.txt:22 find_package(X11 REQUIRED COMPONENTS Xi XTest)，hb-core 存在 Formula/lib/libx11.rb（其 COMPONENTS Xi/XTe |
-| ★解析缺口 | — | xkbcommon | package d1 | pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口） 【agent: 终判为真别名缺口：src/autotype/CMakeLists.txt:16 pkg_check_modules(Xkbcommon REQUIRED IMPORTED_TARGET xkbcommon) 的 pkg-config 模块名（无 lib 前缀）应解析到 hb:l |
 | README漏列 | — | libqrencode | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | README漏列 | — | libusb | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
+| README漏列 | — | libx11 | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | README漏列 | — | libxi | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | README漏列 | — | libxkbcommon | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | README漏列 | — | libxtst | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | README漏列 | — | minizip | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
+| README漏列 | — | pcsc-lite | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | README漏列 | — | qrencode | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | README漏列 | — | readline | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | 构建工具 | cmake | — | build | 构建工具，fetch-deps 不收 build 边 |
@@ -64,19 +60,15 @@
 | 一致 | zlib | zlib | package d1 |  |
 | 未知包(正常) | — | openmp | package d1 | pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口） 【agent: CMakeLists.txt:259 find_package(OpenMP)（无 REQUIRED，命中后仅追加 OpenMP_C(_XX)_FLAGS）是 CMake 内置编译器特性探测而非三方包；OHOS clang 工具链自带 OpenMP runtime，hb-cor |
 
-归类统计：构建工具×4，一致×3，粒度折叠×4，README漏列×8，★解析缺口×3，未知包(正常)×1
+归类统计：构建工具×4，一致×3，粒度折叠×4，README漏列×10，未知包(正常)×1
 
 ## 4. 依赖闭包概览（fetch-deps --dry-run）
 
-- 闭包总数 42 项：cmd_only 1，need_port 5，provided 5，target 1，would_download 30
-- 可直下 bottle：minizip、qrencode、readline、zlib、libqrencode、libusb、libxi、libxkbcommon、libxtst、zlib-ng-compat、libpng、libx11、libxext、libxfixes、xorgproto、libxcb、xkeyboard-config、python@3.14、libxau、libxdmcp、mpdecimal、openssl@3、sqlite、xz、zstd、gettext、util-linux、musl-compat、lz4、libunistring
+- 闭包总数 40 项：cmd_only 1，covered 1，need_port 1，provided 6，target 1，would_download 30
+- 可直下 bottle：minizip、pcsc-lite、qrencode、readline、libx11、zlib、libxkbcommon、libusb、libxi、libxtst、zlib-ng-compat、libpng、libxcb、xorgproto、xkeyboard-config、libxext、libxfixes、python@3.14、libxau、libxdmcp、mpdecimal、openssl@3、sqlite、xz、zstd、gettext、util-linux、musl-compat、lz4、libunistring
 - 仅命令获取（cmd_only）：ca-certificates
-- 需自行移植（need_port）：botan、openmp、pcsc、x11、xkbcommon
+- 需自行移植（need_port）：botan
   - botan: ?
-  - openmp: ?
-  - pcsc: ?
-  - x11: ?
-  - xkbcommon: ?
 
 ## 5. 直接依赖全量清单（portgraph depth-1）
 
@@ -85,16 +77,15 @@
 | botan | package | runtime | unknown | 1 |
 | libqrencode | package | runtime | ported | 1 |
 | libusb | package | runtime | ported | 1 |
+| libx11 | package | runtime | ported | 1 |
 | libxi | package | runtime | ported | 1 |
 | libxkbcommon | package | runtime | ported | 1 |
 | libxtst | package | runtime | ported | 1 |
 | minizip | package | runtime | ported | 1 |
 | openmp | package | runtime | unknown | 1 |
-| pcsc | package | runtime | unknown | 1 |
+| pcsc-lite | package | runtime | ported | 1 |
 | qrencode | package | runtime | ported | 1 |
 | readline | package | runtime | ported | 1 |
-| x11 | package | runtime | unknown | 1 |
-| xkbcommon | package | runtime | unknown | 1 |
 | zlib | package | runtime | ported | 1 |
 | Qt Concurrent | qt-module | uses-module | ported | 1 |
 | Qt D-Bus | qt-module | uses-module | blocked | 1 |
@@ -107,4 +98,4 @@
 - 对比口径：portgraph 直接依赖（depth-1 边）vs README/INSTALL 声明依赖；闭包仅做产物概览。
 - 归因证据：对未匹配项自动 grep 克隆仓库构建文件（find_package/pkg_check_modules/target_link_libraries/vcpkg 等）。
 - ★ 类（missed-dep / resolution-gap / false-positive）为 bug 候选，需人工确认；其余为预期差异。
-- agent 可读报告：`./portgraph\tests\e2e\reports\keepassxc.report.json`
+- agent 可读报告：`/root/harmony-workspace/worker1/portgraph/tests/e2e/reports/keepassxc.report.json`

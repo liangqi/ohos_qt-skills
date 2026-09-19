@@ -33,6 +33,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from . import db, engine, kb_seed, project_scanner, qt_scanner
+from .kb_seed import PKG_ALIASES as LIB_NAME_ALIASES
 
 # OHOS 系统自带库（NDK sysroot / 系统镜像）：链接无需自带产物
 # （KB: semantic/qt-harmonyos-third-party-libs §系统库直链）
@@ -66,22 +67,16 @@ WIN32_SYSTEM_LIBS = {
     "psapi", "version", "iphlpapi", "powrprof", "setupapi", "strmiids",
     "avifil32", "mfplat", "mfuuid", "strmbase", "strmbasd", "wtsapi32",
     "windowsapp", "delayimp", "opengl32", "glu32", "wintrust", "shcore",
+    "winscard",
 }
 
-# -l 链接名 → 常见包名对齐（hb 包名口径）
-LIB_NAME_ALIASES = {
-    "swscale": "ffmpeg", "avcodec": "ffmpeg", "avformat": "ffmpeg",
-    "avutil": "ffmpeg", "swresample": "ffmpeg", "postproc": "ffmpeg",
-    "libswscale": "ffmpeg", "libavcodec": "ffmpeg", "libavformat": "ffmpeg",
-    "libavutil": "ffmpeg", "libavdevice": "ffmpeg",
-    "ssl": "openssl", "crypto": "openssl",
-    "sqlite3": "sqlite", "curl": "curl", "gcrypt": "libgcrypt",
-    "tag": "taglib", "mtp": "libmtp", "usb-1.0": "libusb",
-    "magic": "libmagic", "exif": "libexif", "discid": "libdiscid",
-    "chromaprint": "chromaprint", "mp3lame": "lame",
-    # pkg-config 名 → CMake find_package 名（同库双声明合并）
-    "libtorrent-rasterbar": "LibtorrentRasterbar",
-}
+# -l 链接名 → 常见包名对齐（hb 包名口径）：见 kb_seed.PKG_ALIASES
+# （deps_report 与 project_scanner 共享同一张表，保证 deps 与
+#   fetch-deps/analyze 的名称解析口径一致）
+
+# libav* 系列的 pkg-config 版本号是库主版本号（libavcodec 58 ≈
+# ffmpeg 4.x），与 ffmpeg 发布版本不同量纲：跨名归并到 ffmpeg 后该
+# 约束不可直接比较——由 version_req_from 机制统一处理（worker1 方案）
 
 # CMake 内置模块：非第三方包，按语义归类（kind + 说明）
 CMAKE_BUILTIN_PACKAGES = {
@@ -108,6 +103,8 @@ INTERFACE_BOUND_PACKAGES = {
     "coreaudio": "macOS CoreAudio：鸿蒙不可用",
     "wayland": "Wayland 直连：鸿蒙窗口模型非 Wayland 协议",
     "systemd": "systemd：鸿蒙无 systemd",
+    "network": "macOS Network 框架（裸链接名形态）：通常位于 APPLE "
+              "平台块，鸿蒙不适用",
 }
 
 # find_package 命中的主机侧构建工具（原 _FINDPKG_SKIP 静默丢弃，现归入
@@ -195,15 +192,21 @@ def _check_req(version_req: Optional[str], available: Optional[str]) -> str:
 
 # ---------------------------------------------------------------- 产物解析
 
-def _resolve(conn, name: str) -> Optional[Dict]:
+def _resolve(conn, name: str, cache: Optional[Dict] = None) -> Optional[Dict]:
     """包名（find_package/pkg-config/include 线索）→ 已入库包节点。
 
     近似对齐依次尝试：原名 / 补 lib 前缀（xkbcommon→libxkbcommon）/
-    去 lib 前缀 / 去 pkg-config 版本后缀（glib-2.0→glib）及其组合。
+    去 lib 前缀 / 去 pkg-config 版本后缀（glib-2.0→glib）及其组合；
+    仍未命中时按共享别名表（kb_seed.PKG_ALIASES，pcsc→pcsc-lite 等）
+    兜底——与扫描期（project_scanner）口径一致。
+    cache: 单次分析内的解析结果缓存（含 None 未命中；分析期间图不变）。
     """
     if conn is None:
         return None
-    name = name.lower()
+    key = name.lower()
+    if cache is not None and key in cache:
+        return cache[key]
+    name = key
     stripped = re.sub(r"-\d+(\.\d+)*$", "", name)
     cands = [name]
     if not name.startswith("lib"):
@@ -214,11 +217,18 @@ def _resolve(conn, name: str) -> Optional[Dict]:
         cands.append(stripped)
         if not stripped.startswith("lib"):
             cands.append("lib" + stripped)
+    node = None
     for cand in cands:
         node = kb_seed.resolve_package(conn, cand)
         if node:
-            return node
-    return None
+            break
+    else:
+        alias = LIB_NAME_ALIASES.get(name)
+        if alias and alias.lower() not in cands:
+            node = kb_seed.resolve_package(conn, alias.lower())
+    if cache is not None:
+        cache[key] = node
+    return node
 
 
 def _artifact_of(node: Optional[Dict]) -> Optional[Dict]:
@@ -237,27 +247,57 @@ def _artifact_of(node: Optional[Dict]) -> Optional[Dict]:
             "repo_url": art.get("repo_url")}
 
 
-def _runtime_closure(conn, node_id: str) -> List[Dict]:
+class _GraphCache:
+    """单次分析内的图查询缓存（节点 / 出边）。
+
+    deps 报告对每个 link 依赖各做一次 runtime 闭包 BFS，同一节点会被
+    反复查库（200 个依赖 × 深链图实测 24 万次 SQL 查询）。分析期间
+    图不变，共享缓存把总查询量压回 O(V+E)。
+    """
+
+    def __init__(self, conn):
+        self.conn = conn
+        self._nodes: Dict = {}
+        self._edges: Dict = {}
+
+    def node(self, node_id: str) -> Optional[Dict]:
+        if node_id not in self._nodes:
+            self._nodes[node_id] = db.get_node(self.conn, node_id)
+        return self._nodes[node_id]
+
+    def out_edges(self, node_id: str, etypes) -> List[Dict]:
+        key = (node_id, etypes)
+        if key not in self._edges:
+            self._edges[key] = db.out_edges(self.conn, node_id, etypes)
+        return self._edges[key]
+
+
+def _runtime_closure(conn, node_id: str,
+                     cache: Optional[_GraphCache] = None) -> List[Dict]:
     """一个包节点的传递 runtime 依赖（BFS；跳过 provided 与 macos 条件）。
 
     与 deps_fetch.dependency_closure 口径一致：bottle 不捆绑依赖，
     目标侧链接/运行仍需其依赖的 .so。
+    cache: 跨依赖共享的节点/出边缓存（见 _GraphCache）。
     """
+    from collections import deque
+    if cache is None:
+        cache = _GraphCache(conn)
     out: List[Dict] = []
     visited = {node_id}
-    queue = [node_id]
+    queue = deque([node_id])
     while queue:
-        nid = queue.pop(0)
+        nid = queue.popleft()
         if nid != node_id:
-            node = db.get_node(conn, nid)
+            node = cache.node(nid)
             if node:
                 out.append(node)
-        for e in db.out_edges(conn, nid, RECURSE_TYPES):
+        for e in cache.out_edges(nid, RECURSE_TYPES):
             if e.get("platform_cond") in SKIP_PLATFORM_CONDS:
                 continue
             if e["dst"] not in visited:
                 visited.add(e["dst"])
-                nd = db.get_node(conn, e["dst"])
+                nd = cache.node(e["dst"])
                 if nd is None or nd["kind"] in PROVIDED_KINDS:
                     continue
                 queue.append(e["dst"])
@@ -266,13 +306,20 @@ def _runtime_closure(conn, node_id: str) -> List[Dict]:
 
 def _version_check(entry: Dict) -> str:
     """多源版本约束（conan 范围 / pkg 约束 / find_package 最低版本）
-    是否满足：同时存在时取最差结果（任一冲突即冲突）。"""
+    是否满足：同时存在时取最差结果（任一冲突即冲突）。
+
+    version_req_from 存在时，version_req 来自另一个库名（别名归并，如
+    libavcodec >= 58 → ffmpeg），约束的是库主版本而非包版本，口径
+    不可比 → 按未知处理（不产生虚假 conflict）。
+    """
     avail = entry.get("available_version")
+    cross = bool(entry.get("version_req_from"))
     checks = []
     if entry.get("version_range"):
         checks.append(_check_req(_range_to_req(entry["version_range"]), avail))
     if entry.get("version_req"):
-        checks.append(_check_req(entry["version_req"], avail))
+        checks.append("unknown" if cross
+                      else _check_req(entry["version_req"], avail))
     if entry.get("min_version"):
         checks.append(_check_min(entry["min_version"], avail))
     if "conflict" in checks:
@@ -285,6 +332,39 @@ def _version_check(entry: Dict) -> str:
 
 
 # ---------------------------------------------------------------- 主分析
+
+def _merge_link_entries(base: Dict, entry: Dict) -> None:
+    """把同库异名条目 entry 合入 base（7b 阶段调用）。
+
+    - REQUIRED 优先；版本信息取最先出现的明确值（与 _DepBook 口径一致）
+    - kind 更具体的覆盖（system-lib/platform-iface/framework 优先于 package）
+    - base 无产物而 entry 有（跨源 hb/cmdpkgs 互补）时采用 entry 的解析结果
+    """
+    base["required"] = base["required"] or entry["required"]
+    for f in ("min_version", "version_req", "version_range"):
+        base[f] = base.get(f) or entry.get(f)
+    if not base.get("version_req") and entry.get("version_req") \
+            and entry.get("version_req_from"):
+        base["version_req_from"] = entry["version_req_from"]
+    if entry["kind"] not in ("package", base["kind"]):
+        # kind 更具体的覆盖（system-lib/platform-iface/framework 优先）
+        if base["kind"] == "package":
+            base["kind"] = entry["kind"]
+    if entry.get("ohos_note") and not base.get("ohos_note"):
+        base["ohos_note"] = entry["ohos_note"]
+    base["evidence"] = (base.get("evidence", [])
+                        + [e for e in entry.get("evidence", [])
+                           if e not in base.get("evidence", [])])
+    base_art = base.get("artifact") or {}
+    ent_art = entry.get("artifact") or {}
+    if ent_art.get("ready") and not base_art.get("ready"):
+        # base 无产物而 entry 解析到有产物的节点（如 vcpkg 名未解析而
+        # find_package 名解析到 bottle）：采用 entry 的解析结果
+        for f in ("resolved_node", "port_status", "available_version",
+                  "artifact"):
+            if entry.get(f) is not None:
+                base[f] = entry[f]
+
 
 class _DepBook:
     """同名依赖的多源证据合并（find_package/pkg/conan/include/qmake）。"""
@@ -405,9 +485,13 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
             e = link.add(pm["name"], kind="platform-iface", evidence=ev)
             e["ohos_note"] = INTERFACE_BOUND_PACKAGES[pm["name"]]
             continue
-        # 同库双声明（pkg-config 名 vs find_package 名）按别名合并
-        link.add(LIB_NAME_ALIASES.get(pm["name"], pm["name"]),
-                 version_req=pm["version_req"], evidence=ev)
+        # 同库双声明（pkg-config 名 vs find_package 名）按别名合并。
+        # 版本约束挂在被归并的原名下（version_req_from）：libavcodec 的
+        # “>= 58”是库主版本口径，与 ffmpeg 包版本不可直接比较。
+        aliased = LIB_NAME_ALIASES.get(pm["name"], pm["name"])
+        e = link.add(aliased, version_req=pm["version_req"], evidence=ev)
+        if pm["version_req"] and aliased != pm["name"]:
+            e["version_req_from"] = pm["name"]
 
     # ---- 3) Conan / vcpkg 清单（版本可为范围串）
     for c in pkg_manifests.get("conan", []):
@@ -549,12 +633,16 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
 
     # ---- 7) 解析产物 + 版本检查 + 传递 runtime
     runtime_book: Dict[str, Dict] = {}
+    graph_cache = _GraphCache(conn) if conn is not None else None
+    resolve_cache: Dict[str, Optional[Dict]] = {}
     link_list = link.values()
     for entry in link_list:
         skip_resolve = entry["kind"] in ("system-lib", "win32-system-lib",
                                          "platform-iface")
-        node = None if skip_resolve else _resolve(conn, entry["name"])
+        node = None if skip_resolve else _resolve(conn, entry["name"],
+                                                  resolve_cache)
         entry["resolved_node"] = node["id"] if node else None
+        entry["_resolved_name"] = node["name"] if node else None
         entry["port_status"] = node["port_status"] if node else None
         entry["available_version"] = node["version"] if node else None
         entry["artifact"] = _artifact_of(node)
@@ -564,7 +652,7 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
         # 版本要求校验（见 _version_check）
         entry["version_check"] = _version_check(entry)
         if conn is not None and node is not None and node["id"].startswith(("hb:", "cmdpkgs:")):
-            for trans in _runtime_closure(conn, node["id"]):
+            for trans in _runtime_closure(conn, node["id"], graph_cache):
                 r = runtime_book.get(trans["name"].lower())
                 if r is None:
                     r = {"name": trans["name"], "kind": trans["kind"],
@@ -576,35 +664,51 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                 if entry["name"].lower() not in r["needed_by"]:
                     r["needed_by"].append(entry["name"].lower())
 
-    # ---- 7b) 同库异名合并（resolved_node 相同，如 xkbcommon/libxkbcommon）
-    merged: Dict[str, Dict] = {}
+    # ---- 7b) 同库异名合并：先按 resolved_node（如 xkbcommon/libxkbcommon），
+    #          再按解析节点的规范化名（去 lib 前缀/@变体，如 hb:qrencode 与
+    #          cmdpkgs:libqrencode 同为 qrencode，避免同一库出现多条矛盾条目）
+    def _canon_pkg_name(n: str) -> str:
+        n = (n or "").lower()
+        if n.startswith("lib"):
+            n = n[3:]
+        at = n.find("@")
+        return n[:at] if at > 0 else n
+
+    by_key: Dict[str, Dict] = {}
     for entry in link_list:
-        key = entry.get("resolved_node") or entry["name"].lower()
-        base = merged.get(key)
-        if base is None:
-            merged[key] = entry
+        keys = []
+        if entry.get("resolved_node"):
+            keys.append(entry["resolved_node"])
+            if entry.get("_resolved_name"):
+                keys.append(_canon_pkg_name(entry["_resolved_name"]))
+        else:
+            keys.append(entry["name"].lower())
+        for key in keys:
+            base = by_key.get(key)
+            if base is not None and base is not entry:
+                _merge_link_entries(base, entry)
+                break
+        else:
+            for key in keys:
+                by_key[key] = entry
             continue
-        base["required"] = base["required"] or entry["required"]
-        for f in ("min_version", "version_req", "version_range"):
-            base[f] = base.get(f) or entry.get(f)
-        if entry["kind"] not in ("package", base["kind"]):
-            # kind 更具体的覆盖（system-lib/platform-iface/framework 优先）
-            if base["kind"] == "package":
-                base["kind"] = entry["kind"]
-        if entry.get("ohos_note") and not base.get("ohos_note"):
-            base["ohos_note"] = entry["ohos_note"]
-        base["evidence"] = (base.get("evidence", [])
-                            + [e for e in entry.get("evidence", [])
-                               if e not in base.get("evidence", [])])
-        base["version_check"] = _version_check(base)
-    link_list = sorted(merged.values(), key=lambda d: d["name"].lower())
+    merged_ids = set()
+    for base in by_key.values():
+        merged_ids.add(id(base))
+    link_list = sorted((e for e in link_list if id(e) in merged_ids),
+                       key=lambda d: d["name"].lower())
+    for entry in link_list:
+        entry.pop("_resolved_name", None)
+        # 合并可能改变了版本字段，重算校验
+        entry["version_check"] = _version_check(entry)
 
     # ---- 8) dlopen/QLibrary/QPluginLoader 运行时动态加载
     dynamic_loads = []
     for dl in info.get("dynamic_loads", []):
         raw = dl["name"]
         cand = re.sub(r"^lib", "", re.sub(r"\.(so|dll|dylib).*$", "", raw))
-        node = _resolve(conn, cand) or _resolve(conn, raw)
+        node = (_resolve(conn, cand, resolve_cache)
+                or _resolve(conn, raw, resolve_cache))
         dynamic_loads.append({
             "name": raw, "resolved_node": node["id"] if node else None,
             "artifact": _artifact_of(node),
@@ -693,7 +797,8 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
         cand = re.sub(r"-dev$", "", raw_name)
         if cand.startswith("lib") and len(cand) > 3:
             cand = cand[3:]
-        node = _resolve(conn, cand) or _resolve(conn, raw_name)
+        node = (_resolve(conn, cand, resolve_cache)
+                or _resolve(conn, raw_name, resolve_cache))
         env_deps.append({
             "name": raw_name, "resolved_node": node["id"] if node else None,
             "available_version": node["version"] if node else None,
@@ -710,6 +815,15 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
             qt_check = "unknown"
 
     # ---- 13) 汇总与警告
+    for entry in link_list:
+        if entry.get("version_req_from"):
+            warnings.append({
+                "level": "info",
+                "msg": "%s 的版本约束 %s 来自 %s 的库版本口径（别名归并），"
+                       "与 %s 包版本（%s）不可直接比较，需人工确认"
+                       % (entry["name"], entry.get("version_req"),
+                          entry["version_req_from"], entry["name"],
+                          entry.get("available_version") or "?")})
     for entry in link_list:
         if entry["kind"] in ("system-lib", "win32-system-lib"):
             continue
@@ -798,7 +912,13 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
             "link": len(link_list),
             "runtime": len(runtime_book),
             "dynamic_loads": len(dynamic_loads),
-            "build_tools": len(build_tools) + len(tools),
+            # 与文本报告一致：tools 列表 + CMake 最低版本/C++ 标准/编译器
+            # 三个固定行（此前按 len(build_tools)+len(tools) 计，tools 已含
+            # build_tools 条目，存在重复计数且漏掉固定行）
+            "build_tools": (len(toolchain["tools"])
+                            + (1 if toolchain["cmake_min"] else 0)
+                            + (1 if toolchain["cxx_standard"] else 0)
+                            + 1),
             "test": len(test_deps),
             "vendored": len(vendored),
             "env": len(env_deps),
@@ -862,10 +982,15 @@ def render_text(report: Dict) -> str:
             return "框架提供"
         return "无产物 → 需源码编译"
 
+    # 分组排序：真正的外部包优先，其后 framework/系统库/平台接口
+    _kind_rank = {"package": 0, "framework": 1, "system-lib": 2,
+                  "win32-system-lib": 3, "platform-iface": 4}
     lines.append("")
     lines.append("── 编译产物依赖 (link) %d 个：目标侧 headers+libs，"
                  "交叉编译/链接时必须存在 ──" % len(report["link_deps"]))
-    for e in report["link_deps"]:
+    for e in sorted(report["link_deps"],
+                    key=lambda d: (_kind_rank.get(d.get("kind"), 0),
+                                   d["name"].lower())):
         req = "" if e["required"] else " [optional]"
         vc = {"satisfied": " ✓", "conflict": " ✗版本冲突",
               "unknown": ""}.get(e.get("version_check"), "")

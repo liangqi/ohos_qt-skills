@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import io
+import re
 import sys
 import tarfile
 import tempfile
@@ -30,7 +31,9 @@ class TestFormulaParser(unittest.TestCase):
             self.skipTest("hb-core sparse checkout not present")
         info = harmonybrew.parse_formula(CURL_RB)
         self.assertEqual(info["name"], "curl")
-        self.assertEqual(info["version"], "8.21.0")
+        # 上游 formula 随时会演进（8.21.0 -> 8.22.0 -> …），
+        # 只验证版本号形态，不锁具体版本
+        self.assertRegex(info["version"], r"^8\.\d+(\.\d+)?(_\d+)?$")
         self.assertTrue(info["ohos_bottle"])
         self.assertTrue(info["keg_only_macos"])
         deps = {d[0]: (d[1], d[2]) for d in info["deps"]}
@@ -387,10 +390,17 @@ class TestDepsFetch(unittest.TestCase):
 
     def test_dry_run_classification(self):
         conn = self._conn()
+        db.upsert_node(conn, "pkg-unknown:gtest", "package", "gtest",
+                       "scan", "unknown")
+        db.upsert_edge(conn, "app:demo", "pkg-unknown:gtest", "runtime")
         with tempfile.TemporaryDirectory() as tmp:
             m = deps_fetch.fetch_app_deps(conn, "app:demo", Path(tmp),
                                           dry_run=True)
             by_id = {e["id"]: e for e in m["deps"]}
+            # 测试框架不再误报 need_port（需自行移植）
+            self.assertEqual(by_id["pkg-unknown:gtest"]["status"], "test")
+            self.assertEqual(by_id["pkg-unknown:gtest"]["role"], "test")
+            self.assertEqual(m["summary"].get("test"), 1)
             self.assertEqual(by_id["app:demo"]["status"], "target")
             self.assertEqual(by_id["qtmod:core"]["status"], "provided")
             self.assertEqual(by_id["hb:pkga"]["status"], "would_download")
@@ -621,6 +631,73 @@ int main() {
                                 for w in report["warnings"]))
             conn.close()
 
+    def test_alias_version_scheme_not_false_conflict(self):
+        """别名归并后的版本约束（libavcodec >= 58 → ffmpeg）是库主版本
+        口径，与包版本不可比：应判 unknown 而非虚假 conflict。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\n"
+                "project(Foo)\n"
+                'pkg_check_modules(FF REQUIRED "libavcodec >= 58")\n',
+                encoding="utf-8")
+            conn = self._conn()
+            db.upsert_node(conn, "hb:ffmpeg", "package", "ffmpeg",
+                           "harmonybrew", "ported", version="9.0.2")
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            self.assertIn("ffmpeg", link)
+            self.assertEqual(link["ffmpeg"]["version_req"], ">= 58")
+            self.assertEqual(link["ffmpeg"]["version_check"], "unknown")
+            # 不产生版本冲突警告，改以 info 说明版本口径不可比
+            self.assertFalse(any(
+                w["level"] == "warn" and "版本冲突" in w["msg"]
+                for w in report["warnings"]))
+            self.assertTrue(any(
+                w["level"] == "info" and "libavcodec" in w["msg"]
+                for w in report["warnings"]))
+            conn.close()
+
+    def test_cross_source_same_lib_merged(self):
+        """同一库跨源异名（hb:qrencode / cmdpkgs:libqrencode）合并为单条
+        link 条目，不再出现同库多条矛盾条目。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\n"
+                "project(Foo)\n"
+                "find_package(QREncode REQUIRED)\n"
+                "find_package(libqrencode REQUIRED)\n", encoding="utf-8")
+            conn = self._conn()
+            db.upsert_node(conn, "hb:qrencode", "package", "qrencode",
+                           "harmonybrew", "ported", version="4.1.1",
+                           links={"artifact_url": "https://x/qrencode.bottle.tar.gz"})
+            db.upsert_node(conn, "cmdpkgs:libqrencode", "package", "libqrencode",
+                           "cmdpkgs", "ported", version="4.1.1",
+                           links={"artifact_url": "https://x/libqrencode.tar.gz"})
+            report = deps_report.analyze_dependencies(conn, root)
+            names = [d["name"].lower() for d in report["link_deps"]]
+            self.assertEqual(names.count("libqrencode") + names.count("qrencode"),
+                             1)
+            entry = next(d for d in report["link_deps"]
+                         if d["name"].lower() in ("libqrencode", "qrencode"))
+            self.assertTrue((entry.get("artifact") or {}).get("ready"))
+            # 两个声明的证据都保留
+            self.assertEqual(len(entry["evidence"]), 2)
+            conn.close()
+
+    def test_build_tools_count_matches_display(self):
+        """counts.build_tools 与渲染展示项一致（工具数 + CMake/C++/编译器）。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            conn = self._conn()
+            report = deps_report.analyze_dependencies(conn, root)
+            t = report["toolchain"]
+            expected = (len(t["tools"]) + (1 if t["cmake_min"] else 0)
+                        + (1 if t["cxx_standard"] else 0) + 1)
+            self.assertEqual(report["counts"]["build_tools"], expected)
+            conn.close()
+
     def test_no_conn_still_classifies(self):
         """无 DB（conn=None）时纯扫描仍产出角色分类，只是产物为空。"""
         with tempfile.TemporaryDirectory() as tmp:
@@ -631,6 +708,54 @@ int main() {
             self.assertEqual(link["zlib"]["version_check"], "unknown")
             self.assertEqual(report["counts"]["test"], 1)
             self.assertTrue(report["counts"]["vendored"] >= 2)
+
+    def test_build_tools_count_matches_display(self):
+        """build_tools 计数与文本报告展示一致：tools 列表 + CMake/C++/编译器
+        固定行（修复 tools 已含 build_tools 条目的重复计数）。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            conn = self._conn()
+            report = deps_report.analyze_dependencies(conn, root)
+            t = report["toolchain"]
+            expected = len(t["tools"]) + (1 if t["cmake_min"] else 0) \
+                + (1 if t["cxx_standard"] else 0) + 1
+            self.assertEqual(report["counts"]["build_tools"], expected)
+            conn.close()
+
+    def test_libav_version_not_false_conflict(self):
+        """libavcodec >= 58 是库主版本号（≈ffmpeg 4.x），与 ffmpeg 发布
+        版本不同量纲：不得误报 conflict，应记 unknown 并附说明。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            conn = self._conn()
+            db.upsert_node(conn, "hb:ffmpeg", "package", "ffmpeg",
+                           "harmonybrew", "ported", version="7.1")
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            self.assertEqual(link["ffmpeg"]["version_req"], ">= 58")
+            # 合并实现：采用 worker1 的通用 version_req_from 口径
+            # （替换原 worker2 的 libav-major 专用标记）
+            self.assertEqual(link["ffmpeg"]["version_req_from"],
+                             "libavcodec")
+            self.assertEqual(link["ffmpeg"]["version_check"], "unknown")
+            self.assertFalse(any(w["msg"].startswith("ffmpeg 版本冲突")
+                                 for w in report["warnings"]))
+            conn.close()
+
+    def test_runtime_closure_cache_shared(self):
+        """共享图缓存下闭包结果与去重口径不变：两个 link 依赖指向同一传递
+        依赖时 needed_by 合并双方，环图不死循环。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            conn = self._conn()
+            # zlib → zstd → zlib（环）+ openssl → zstd（共享传递依赖）
+            db.upsert_edge(conn, "hb:zstd", "hb:zlib", "runtime")
+            db.upsert_edge(conn, "hb:openssl@3", "hb:zstd", "runtime")
+            report = deps_report.analyze_dependencies(conn, root)
+            rt = {d["name"].lower(): d for d in report["runtime_deps"]}
+            self.assertIn("zstd", rt)
+            self.assertIn("zlib", set(rt["zstd"]["needed_by"]))
+            conn.close()
 
     def test_manifest_roles(self):
         """fetch-deps manifest：depth 决定 role（link/runtime/provided）。"""
@@ -648,6 +773,90 @@ int main() {
             self.assertEqual(m["roles"].get("link"), 1)
             self.assertEqual(m["roles"].get("runtime"), 1)
         conn.close()
+
+    def test_fetch_cross_source_dedup(self):
+        """同库异名跨源去重（规范化名：去 lib 前缀）：只下载一次。"""
+        conn = self._conn()
+        db.upsert_node(conn, "app:demo", "app", "demo", "scan", "unknown")
+        db.upsert_node(conn, "hb:qrencode", "package", "qrencode",
+                       "harmonybrew", "ported", version="4.1.1",
+                       links={"artifact_url": "https://x/qrencode.bottle.tar.gz"})
+        db.upsert_node(conn, "cmdpkgs:libqrencode", "package", "libqrencode",
+                       "cmdpkgs", "ported", version="4.1.1",
+                       links={"artifact_url": "https://x/libqrencode.tar.gz"})
+        # 幽灵节点 xkbcommon 与 libxkbcommon 同库异名：产物应补位而非 need_port
+        db.upsert_node(conn, "pkg-unknown:xkbcommon", "package", "xkbcommon",
+                       "scan", "unknown")
+        db.upsert_node(conn, "hb:libxkbcommon", "package", "libxkbcommon",
+                       "harmonybrew", "ported", version="1.13.2",
+                       links={"artifact_url": "https://x/libxkbcommon.tar.gz"})
+        for dst in ("hb:qrencode", "cmdpkgs:libqrencode",
+                    "pkg-unknown:xkbcommon", "hb:libxkbcommon"):
+            db.upsert_edge(conn, "app:demo", dst, "runtime")
+        with tempfile.TemporaryDirectory() as tmp:
+            m = deps_fetch.fetch_app_deps(conn, "app:demo", Path(tmp),
+                                          dry_run=True)
+            by_id = {e["id"]: e for e in m["deps"]}
+            self.assertEqual(by_id["hb:qrencode"]["status"], "would_download")
+            self.assertEqual(by_id["cmdpkgs:libqrencode"]["status"], "covered")
+            self.assertEqual(by_id["pkg-unknown:xkbcommon"]["status"],
+                             "would_download")
+            self.assertEqual(by_id["hb:libxkbcommon"]["status"], "covered")
+            self.assertEqual(m["summary"].get("would_download"), 2)
+        conn.close()
+
+    def test_fetch_special_classification(self):
+        """CMake 内置（OpenMP）/测试框架（GTest）不再显示为“需自行移植”。"""
+        conn = self._conn()
+        db.upsert_node(conn, "app:demo", "app", "demo", "scan", "unknown")
+        for ghost in ("openmp", "gtest"):
+            db.upsert_node(conn, "pkg-unknown:%s" % ghost, "package", ghost,
+                           "scan", "unknown")
+            db.upsert_edge(conn, "app:demo", "pkg-unknown:%s" % ghost,
+                           "runtime")
+        with tempfile.TemporaryDirectory() as tmp:
+            m = deps_fetch.fetch_app_deps(conn, "app:demo", Path(tmp),
+                                          dry_run=True)
+            by_name = {e["name"]: e for e in m["deps"]}
+            # OpenMP：编译器特性，随 NDK 提供，不进 need_port
+            self.assertEqual(by_name["openmp"]["status"], "provided")
+            self.assertEqual(by_name["openmp"]["role"], "build-tool")
+            # GTest：role=test，明确不进发行包
+            self.assertEqual(by_name["gtest"]["role"], "test")
+            self.assertIn("不进发行包", by_name["gtest"].get("note", ""))
+        conn.close()
+
+
+class TestScanAliasResolution(unittest.TestCase):
+    """扫描期别名解析：pkg-config 库名直接解析到鸿蒙包，不产生幽灵节点。"""
+
+    def _project(self, tmp: Path):
+        root = tmp / "aliasproj"
+        root.mkdir(parents=True)
+        (root / "CMakeLists.txt").write_text(
+            "cmake_minimum_required(VERSION 3.16)\n"
+            "project(AliasProj)\n"
+            'pkg_check_modules(FF REQUIRED "libavcodec >= 58")\n',
+            encoding="utf-8")
+        return root
+
+    def test_libavcodec_resolves_to_ffmpeg(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:ffmpeg", "package", "ffmpeg",
+                           "harmonybrew", "ported", version="9.0.2")
+            scan = project_scanner.scan_project(conn, root)
+            self.assertEqual(scan["deps_linked"],
+                             [{"hint": "libavcodec", "node": "hb:ffmpeg",
+                               "status": "ported", "alias": "ffmpeg"}])
+            self.assertEqual(scan["deps_unknown"], [])
+            edges = {e["dst"] for e in db.out_edges(conn, scan["app_id"])}
+            self.assertIn("hb:ffmpeg", edges)
+            self.assertNotIn("pkg-unknown:libavcodec", edges)
+            conn.close()
 
 
 class TestDepsFullForms(unittest.TestCase):
@@ -791,6 +1000,19 @@ AC_CHECK_LIB([m], [sqrt])
             self.assertIn("meson", tools)
             self.assertEqual(report["toolchain"]["cxx_standard"], 17)
             conn.close()
+
+
+class TestCLICompact(unittest.TestCase):
+    """--compact 后置：`portgraph.py <cmd> --compact` 应与前置等效可用。"""
+
+    def test_compact_after_subcommand(self):
+        import subprocess
+        r = subprocess.run(
+            [sys.executable, str(PROJECT_ROOT / "portgraph.py"),
+             "stats", "--compact"],
+            capture_output=True, text=True, timeout=60)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(r.stdout.strip())
 
 
 if __name__ == "__main__":

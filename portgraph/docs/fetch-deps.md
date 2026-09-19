@@ -46,10 +46,11 @@ manifest 中每个依赖条目带 `status`，agent 按下表决策：
 |---|---|---|
 | `downloaded` | 本次下载并解压成功（bottle 已过 sha256 校验） | 无需处理，路径见 `installed` |
 | `already_local` | 本地已就绪（上次 fetch 的产物或 `artifact_local`） | 无需处理，路径见 `installed` |
-| `covered` | 同名包产物已由另一数据源节点获取（hb:/cmdpkgs: 去重） | 无需处理，路径见 `installed` |
-| `provided` | Qt 模块 / 平台 API，由 Qt SDK / 鸿蒙框架提供 | 不下载；随 Qt for HarmonyOS 部署 |
+| `covered` | 同名包产物已由另一数据源节点获取（hb:/cmdpkgs: 去重，去重键为规范化名——去 lib 前缀，qrencode/libqrencode 这类同库异名只下载一次） | 无需处理，路径见 `installed` |
+| `provided` | Qt 模块 / 平台 API，由 Qt SDK / 鸿蒙框架提供；CMake 内置模块（OpenMP/Threads/iconv/dl）也归此类（随 OHOS NDK/SDK 自带，`note` 说明） | 不下载；随 Qt for HarmonyOS / NDK 部署 |
 | `cmd_only` | 无直链（formula 未能解析版本号），只有获取命令 | 在鸿蒙设备执行 `artifact_cmd`；或查 formula 补版本号构造 bottle 直链 |
 | `need_port` | 无鸿蒙产物，需自行交叉编译 | 取 `source_url`/`repo_url` 拉源码移植；能否鸿蒙化看 `port_status` 与递归分析 |
+| `test` | 测试框架（GTest/Catch2 等），不进发行包 | 发行包无需处理；如需在鸿蒙设备跑测试才准备 |
 | `failed` | 下载失败（404 / 网络 / sha256 不匹配） | 重试；仍失败则检查 URL 是否失效，回退源码编译 |
 | `would_download` | 仅 dry-run 出现：将下载 | 决定是否执行真实下载 |
 | `target` | 应用节点自身 | 即分析目标 |
@@ -74,6 +75,9 @@ manifest 中每个依赖条目带 `status`，agent 按下表决策：
       // role（按闭包深度）：link=应用直接声明（编译/链接需要）
       //                    runtime=传递依赖（设备侧 .so）
       //                    provided=Qt 模块；target=应用自身
+      //                    test=测试框架（不进发行包）
+      //                    build-tool=CMake 内置/主机构建工具
+      //                    （OpenMP 随 NDK、ECM 构建机安装即可）
       // 带版本范围/REQUIRED 语义的精确分类用 `deps` 命令的报告
       "artifact_url": "https://harmonybrew.atomgit.com/bottles/openssl@3-3.6.4.arm64_ohos.bottle.tar.gz",
       "sha256": "verified",

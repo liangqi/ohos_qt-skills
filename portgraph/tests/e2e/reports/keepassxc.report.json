@@ -6,11 +6,11 @@
   "name": "keepassxc",
   "url": "https://github.com/keepassxreboot/keepassxc",
   "tier": "B",
-  "build_system": "?",
-  "sources": "?",
-  "repo_path": "./portgraph\\workspace\\keepassxc"
+  "build_system": "cmake",
+  "sources": 884,
+  "repo_path": "/root/harmony-workspace/worker1/portgraph/workspace/keepassxc"
  },
- "generated_at": "2026-09-18T02:44:26Z",
+ "generated_at": "2026-09-19T11:31:09Z",
  "verdict": "blocked",
  "blockers": [
   {
@@ -49,65 +49,23 @@
    "kind": "unknown-package",
    "node": "pkg-unknown:openmp",
    "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:pcsc",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:x11",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:xkbcommon",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
   }
  ],
  "platform_excluded": [],
  "closure": {
-  "size": 42,
+  "size": 40,
   "summary": {
    "target": 1,
-   "provided": 5,
-   "need_port": 5,
+   "provided": 6,
+   "need_port": 1,
    "would_download": 30,
+   "covered": 1,
    "cmd_only": 1
   },
   "need_port": [
    {
     "id": "pkg-unknown:botan",
     "name": "botan",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:openmp",
-    "name": "openmp",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:pcsc",
-    "name": "pcsc",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:x11",
-    "name": "x11",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:xkbcommon",
-    "name": "xkbcommon",
     "version": null,
     "source_url": null,
     "repo_url": null
@@ -122,22 +80,22 @@
   ],
   "would_download": [
    "minizip",
+   "pcsc-lite",
    "qrencode",
    "readline",
+   "libx11",
    "zlib",
-   "libqrencode",
+   "libxkbcommon",
    "libusb",
    "libxi",
-   "libxkbcommon",
    "libxtst",
    "zlib-ng-compat",
    "libpng",
-   "libx11",
+   "libxcb",
+   "xorgproto",
+   "xkeyboard-config",
    "libxext",
    "libxfixes",
-   "xorgproto",
-   "libxcb",
-   "xkeyboard-config",
    "python@3.14",
    "libxau",
    "libxdmcp",
@@ -173,6 +131,14 @@
   {
    "id": "hb:libusb",
    "name": "libusb",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:libx11",
+   "name": "libx11",
    "kind": "package",
    "edge": "runtime",
    "port_status": "ported",
@@ -219,11 +185,11 @@
    "depth": 1
   },
   {
-   "id": "pkg-unknown:pcsc",
-   "name": "pcsc",
+   "id": "cmdpkgs:pcsc-lite",
+   "name": "pcsc-lite",
    "kind": "package",
    "edge": "runtime",
-   "port_status": "unknown",
+   "port_status": "ported",
    "depth": 1
   },
   {
@@ -240,22 +206,6 @@
    "kind": "package",
    "edge": "runtime",
    "port_status": "ported",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:x11",
-   "name": "x11",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:xkbcommon",
-   "name": "xkbcommon",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
    "depth": 1
   },
   {
@@ -505,10 +455,52 @@
     "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
     "grep": [
      {
+      "file": "CMakeLists.txt",
+      "line": 536,
+      "strong": true,
+      "text": "find_library(LIBUSB_LIBRARIES NAMES usb-1.0 usb REQUIRED)"
+     },
+     {
       "file": "vcpkg.json",
       "line": 12,
       "strong": false,
       "text": "\"name\": \"libusb\","
+     },
+     {
+      "file": "src/thirdparty/ykcore/CMakeLists.txt",
+      "line": 32,
+      "strong": true,
+      "text": "find_library(LIBUSB_LIBRARY NAMES usb-1.0 usb)"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:libx11",
+   "pg_name": "libx11",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
+    "grep": [
+     {
+      "file": "src/CMakeLists.txt",
+      "line": 395,
+      "strong": true,
+      "text": "target_link_libraries(keepassxc_gui X11)"
+     },
+     {
+      "file": "src/autotype/CMakeLists.txt",
+      "line": 22,
+      "strong": true,
+      "text": "find_package(X11 REQUIRED COMPONENTS Xi XTest)"
      }
     ]
    },
@@ -557,6 +549,18 @@
       "line": 24,
       "strong": false,
       "text": "\"name\": \"libxkbcommon\","
+     },
+     {
+      "file": "src/autotype/CMakeLists.txt",
+      "line": 16,
+      "strong": true,
+      "text": "pkg_check_modules(Xkbcommon REQUIRED IMPORTED_TARGET xkbcommon)"
+     },
+     {
+      "file": "src/autotype/CMakeLists.txt",
+      "line": 44,
+      "strong": true,
+      "text": "target_link_libraries(autotype Qt6::DBus PkgConfig::Xkbcommon)"
      }
     ]
    },
@@ -636,23 +640,43 @@
    "evidence": {
     "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
    },
-   "agent_note": "CMakeLists.txt:259 find_package(OpenMP)（无 REQUIRED，命中后仅追加 OpenMP_C(_XX)_FLAGS）是 CMake 内置编译器特性探测而非三方包；OHOS clang 工具链自带 OpenMP runtime，hb-core/cmd-pkgs 亦无 openmp/libgomp 包（hb 的 libomp 为宿主用途 keg_only）→ pkg-unknown 可接受，非 ALIASES 缺口"
+   "agent_note": "CMakeLists.txt:259 find_package(OpenMP)（无 REQUIRED，命中后仅追加 OpenMP_C(_XX)_FLAGS）是 CMake 内置编译器特性探测而非三方包；OHOS clang 工具链自带 OpenMP runtime，hb-core/cmd-pkgs 亦无 openmp/libgomp 包（hb 的 libomp 为宿主用途 keg_only）→ pkg-unknown 可接受，非 ALIASES 缺口；fetch-deps 已按 CMake 内置分类标 provided"
   },
   {
-   "class": "resolution-gap",
+   "class": "readme-omitted",
    "side": "pg",
-   "by_design": false,
+   "by_design": true,
    "oracle_name": null,
    "oracle_type": null,
-   "pg_id": "pkg-unknown:pcsc",
-   "pg_name": "pcsc",
+   "pg_id": "cmdpkgs:pcsc-lite",
+   "pg_name": "pcsc-lite",
    "pg_kind": "package",
-   "pg_status": "unknown",
+   "pg_status": "ported",
    "depth": 1,
    "evidence": {
-    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
+    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
+    "grep": [
+     {
+      "file": "CMakeLists.txt",
+      "line": 532,
+      "strong": true,
+      "text": "find_package(PCSC REQUIRED)"
+     },
+     {
+      "file": "cmake/FindPCSC.cmake",
+      "line": 19,
+      "strong": true,
+      "text": "pkg_check_modules(PCSC libpcsclite)"
+     },
+     {
+      "file": "cmake/FindPCSC.cmake",
+      "line": 52,
+      "strong": true,
+      "text": "find_library(PCSC_LIBRARIES NAMES pcsclite libpcsclite WinSCard PCSC"
+     }
+    ]
    },
-   "agent_note": "终判为真别名缺口：CMakeLists.txt:532 find_package(PCSC REQUIRED)（YubiKey 硬件密钥支持），cmd-pkgs 清单存在 pcsc-lite 2.4.0（hb-core 无）→ kb_seed.ALIASES 待补 pcsc→pcsc-lite（cmdpkgs 源）"
+   "agent_note": null
   },
   {
    "class": "readme-omitted",
@@ -739,38 +763,6 @@
    "agent_note": null
   },
   {
-   "class": "resolution-gap",
-   "side": "pg",
-   "by_design": false,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "pkg-unknown:x11",
-   "pg_name": "x11",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
-   "evidence": {
-    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
-   },
-   "agent_note": "终判为真别名缺口：src/autotype/CMakeLists.txt:22 find_package(X11 REQUIRED COMPONENTS Xi XTest)，hb-core 存在 Formula/lib/libx11.rb（其 COMPONENTS Xi/XTest 已分别解析为 hb:libxi/hb:libxtst）→ kb_seed.ALIASES 待补 x11→libx11"
-  },
-  {
-   "class": "resolution-gap",
-   "side": "pg",
-   "by_design": false,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "pkg-unknown:xkbcommon",
-   "pg_name": "xkbcommon",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
-   "evidence": {
-    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
-   },
-   "agent_note": "终判为真别名缺口：src/autotype/CMakeLists.txt:16 pkg_check_modules(Xkbcommon REQUIRED IMPORTED_TARGET xkbcommon) 的 pkg-config 模块名（无 lib 前缀）应解析到 hb:libxkbcommon（vcpkg.json:24 的 libxkbcommon 已正确入图，当前重复成两节点）→ kb_seed.ALIASES 待补 xkbcommon→libxkbcommon"
-  },
-  {
    "class": "qt-granularity",
    "side": "pg",
    "by_design": true,
@@ -841,25 +833,24 @@
   "matched": 3,
   "matched_optional": 0,
   "recall": "100%",
-  "precision": "27%",
-  "bug_candidates": 3,
+  "precision": "23%",
+  "bug_candidates": 0,
   "bug_by_class": {
    "false-positive": 0,
    "missed-dep": 0,
-   "resolution-gap": 3
+   "resolution-gap": 0
   },
   "class_counts": {
    "build-only": 4,
    "matched": 3,
    "qt-granularity": 4,
-   "readme-omitted": 8,
-   "resolution-gap": 3,
+   "readme-omitted": 10,
    "unknown-ok": 1
   }
  },
  "agent_notes": [
   "oracle 复核：删除散文链接残留 set-up-build-environment；asciidoctor 依原文改判 build（文档构建工具）；本版 INSTALL.md 仅声明 qt/botan/zlib 三个运行时库，无 libgcrypt/argon2/libsodium/ykpers；vcpkg/xvfb-run 为 prose 提及的工具/测试辅助，不入 oracle",
-  "4 个 resolution-gap 终判：xkbcommon/x11/pcsc 为真别名缺口（kb_seed.ALIASES 待补 xkbcommon→libxkbcommon、x11→libx11、pcsc→pcsc-lite），openmp 为 CMake 内置编译器特性改判 unknown-ok；botan 匹配的幽灵节点经查确无鸿蒙包，need_port 定性正确",
+  "4 个 resolution-gap 终判：xkbcommon/x11/pcsc 三项别名缺口已补入 kb_seed.PKG_ALIASES（xkbcommon→libxkbcommon、x11→libx11、pcsc→pcsc-lite、libpcsclite→pcsc-lite），扫描期直接解析到真实包节点不再产生幽灵；openmp 为 CMake 内置编译器特性改判 unknown-ok（fetch-deps 亦按内置分类标 provided）；botan 匹配的幽灵节点经查确无鸿蒙包，need_port 定性正确",
   "召回率 60%→100% 完全来自 oracle 分母修正（误将构建工具/链接残留计入 runtime），portgraph 检出无变化；precision 维持 27% 反映 INSTALL.md 依赖声明极简（8 个 README 漏列项均经 grep 取证为真实构建引用，portgraph 正确）"
  ]
 }
