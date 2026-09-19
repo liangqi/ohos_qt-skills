@@ -2042,6 +2042,37 @@ class TestWrapperCmakePassthrough(unittest.TestCase):
             self.assertNotIn("fluidsynth", raw)
 
 
+class TestDynamicLoadPlatformGuard(unittest.TestCase):
+    """非鸿蒙平台守卫（#if defined(Q_OS_WIN)）内的 QLibrary/dlopen
+    加载不编译、不计入 dynamic_loads（notepadqq 复盘：kernel32 误报）。"""
+
+    def test_win_guarded_qlibrary_excluded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "app"
+            (root / "src").mkdir(parents=True)
+            (root / "src" / "main.cpp").write_text(
+                "#if defined(Q_OS_WIN)\n"
+                "    QLibrary lib(\"kernel32\");\n"
+                "#endif\n"
+                "void init() { QLibrary l(\" genuine_plugin \"); }\n",
+                encoding="utf-8")
+            info = qt_scanner.scan_project(root)
+            names = [d["name"] for d in info["dynamic_loads"]]
+            self.assertNotIn("kernel32", names)
+            self.assertIn("genuine_plugin", names)
+
+    def test_unconditional_load_kept(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "app"
+            (root / "src").mkdir(parents=True)
+            (root / "src" / "main.cpp").write_text(
+                "void init() { QLibrary l(\"plainlib\"); }\n",
+                encoding="utf-8")
+            info = qt_scanner.scan_project(root)
+            self.assertEqual([d["name"] for d in info["dynamic_loads"]],
+                             ["plainlib"])
+
+
 class TestRequireDepManifest(unittest.TestCase):
     """依赖清单函数检测（muse_deps 引擎）：require_dep/require_source_dep/
     require_tool → link/vendored/tool 三种角色；条件块标注。"""
