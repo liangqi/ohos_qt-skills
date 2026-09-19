@@ -1002,6 +1002,276 @@ AC_CHECK_LIB([m], [sqrt])
             conn.close()
 
 
+class TestGeneralizationFixes(unittest.TestCase):
+    """语料外泛化测试（QOwnNotes/strawberry/krita，2026-09）暴露问题的
+    回归测试：URL 版本提取 / 宏包装目标 / find_library 关键字 / env -y /
+    共享解析阶梯 / in-tree 判定 / raw 链接名的 test 角色。"""
+
+    # ---- 1) harmonybrew URL 版本提取（419 个 formula 无版本的根因）
+    def test_url_version_extraction(self):
+        cases = {
+            # 版本后带 -b2-nodocs / -bin / -complete 等名称后缀段（boost/ant/antlr）
+            "https://github.com/boostorg/boost/releases/download/boost-1.92.0/boost-1.92.0-b2-nodocs.tar.xz": "1.92.0",
+            "https://www.apache.org/dyn/closer.lua?path=ant/binaries/apache-ant-1.10.18-bin.tar.xz": "1.10.18",
+            "https://www.antlr.org/download/antlr-4.13.2-complete.jar": "4.13.2",
+            # Rust crate 扩展名
+            "https://static.crates.io/crates/action-validator/action-validator-0.9.0.crate": "0.9.0",
+            # 大写 V 前缀 / 字母尾缀无数字
+            "https://github.com/CycoPH/atasm/archive/refs/tags/V1.30.tar.gz": "1.30",
+            "https://loop-aes.sourceforge.net/aespipe/aespipe-v2.4j.tar.bz2": "2.4j",
+            "https://www.harding.motd.ca/autossh/autossh-1.4g.tgz": "1.4g",
+            # 回归：原有形态不变
+            "https://www.zlib.net/zlib-1.3.1.tar.gz": "1.3.1",
+            "https://github.com/i/indi/archive/refs/tags/v2.0.9.tar.gz": "2.0.9",
+            "https://ftp.gnu.org/gnu/gzip/gzip-1.14.tar.xz": "1.14",
+            # 版本是独立路径段（兑底规则）
+            "https://chiselapp.com/user/moinejf/repository/abcm2ps/tarball/v8.14.18/download.tar.gz": "8.14.18",
+        }
+        for url, want in cases.items():
+            m = harmonybrew._URL_VER_RE.search(url)
+            got = m.group(1) if m else None
+            if not got:
+                m2 = harmonybrew._URL_VER_SEG_RE.search(url)
+                got = m2.group(1) if m2 else None
+            self.assertEqual(got, want, "version of %s" % url)
+
+    # ---- 2) 宏包装的 add_library（krita kis_add_library 实证）
+    def test_macro_wrapped_add_library(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text("""
+cmake_minimum_required(VERSION 3.16)
+project(MacroWrap)
+macro(kis_add_library)
+    add_library(${REAL_UNPARSED_ARGUMENTS})
+endmacro()
+kis_add_library(kritaui SHARED src/x.cpp)
+add_executable(app src/main.cpp)
+target_link_libraries(app PRIVATE kritaui zlib)
+""", encoding="utf-8")
+            (root / "src").mkdir()
+            (root / "src" / "x.cpp").write_text("", encoding="utf-8")
+            (root / "src" / "main.cpp").write_text("", encoding="utf-8")
+            info = qt_scanner.scan_project(root)
+            raw = {e["name"].lower() for e in info["raw_libs"]}
+            self.assertNotIn("kritaui", raw)   # 宏定义的项目内目标
+            self.assertIn("zlib", raw)
+
+    # ---- 2b) set() 变量间接的 add_library（fakevim 实证）
+    def test_var_indirect_add_library(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text("""
+cmake_minimum_required(VERSION 3.16)
+project(VarIndirect)
+set(bin fakevim)
+add_library(${bin} STATIC fakevim.cpp)
+add_executable(app main.cpp)
+target_link_libraries(app PRIVATE ${bin} libgit2)
+""", encoding="utf-8")
+            (root / "fakevim.cpp").write_text("", encoding="utf-8")
+            (root / "main.cpp").write_text("", encoding="utf-8")
+            info = qt_scanner.scan_project(root)
+            raw = {e["name"].lower() for e in info["raw_libs"]}
+            self.assertNotIn("fakevim", raw)
+            self.assertIn("libgit2", raw)
+
+    # ---- 3) find_library 参数列表里的 CMake 变量名/单字符垃圾
+    def test_find_library_skips_keyword_junk(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text("""
+cmake_minimum_required(VERSION 3.16)
+project(FindJunk)
+find_library(QUAZIP_LIBRARIES WIN32_DEBUG_POSTFIX d
+    NAMES quazip5 quazip HINTS /usr/lib)
+""", encoding="utf-8")
+            info = qt_scanner.scan_project(root)
+            raw = {e["name"].lower() for e in info["raw_libs"]}
+            self.assertNotIn("win32_debug_postfix", raw)
+            self.assertNotIn("d", raw)
+            self.assertIn("quazip5", raw)
+            self.assertIn("quazip", raw)
+
+    # ---- 4) CI 脚本 apt install -y 的选项 token 不入清单
+    def test_env_install_dash_y(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            (root / ".github" / "workflows").mkdir(parents=True)
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\nproject(EnvY)\n",
+                encoding="utf-8")
+            (root / ".github" / "workflows" / "ci.yml").write_text(
+                "run: apt install -y libtag-dev\n"
+                "run: apt upgrade -y\n", encoding="utf-8")
+            info = qt_scanner.scan_project(root)
+            env = {e["name"] for e in info["env_installs"]}
+            self.assertEqual(env, {"libtag-dev"})
+
+    # ---- 5) 共享解析阶梯（扫描期与报告期口径一致）
+    def test_resolve_pkg_ladder(self):
+        conn = db.connect(":memory:")
+        db.init_db(conn)
+        kb_seed.seed_interfaces(conn)
+        for nid, name in (("hb:sqlite", "sqlite"), ("hb:fftw", "fftw"),
+                          ("hb:glib", "glib"), ("cmdpkgs:gstreamer", "gstreamer"),
+                          ("hb:jpeg-turbo", "jpeg-turbo")):
+            db.upsert_node(conn, nid, "package", name, "harmonybrew",
+                           "ported", version="1.0")
+        # 同库异名（hb 包名口径别名优先，消除 sqlite3/sqlite 双产物）
+        self.assertEqual(kb_seed.resolve_pkg_name(conn, "sqlite3")["id"],
+                         "hb:sqlite")
+        # lib 前缀剥离 + 变体后缀（libfftw3f_omp → fftw）
+        self.assertEqual(kb_seed.resolve_pkg_name(conn, "libfftw3f_omp")["id"],
+                         "hb:fftw")
+        # pkg-config 组件名（gio-2.0 → glib；gstreamer-base → gstreamer）
+        self.assertEqual(kb_seed.resolve_pkg_name(conn, "gio-2.0")["id"],
+                         "hb:glib")
+        self.assertEqual(kb_seed.resolve_pkg_name(conn, "gstreamer-base-1.0")["id"],
+                         "cmdpkgs:gstreamer")
+        # 构建形态后缀（jpeg-static → jpeg-turbo）
+        self.assertEqual(kb_seed.resolve_pkg_name(conn, "jpeg-static")["id"],
+                         "hb:jpeg-turbo")
+        # 未命中返回 None
+        self.assertIsNone(kb_seed.resolve_pkg_name(conn, "no-such-pkg"))
+        conn.close()
+
+    # ---- 5b) 扫描期幽灵节点用别名规范名（botan3/botan-3 归并）
+    def test_scan_ghost_canonical_name(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text(
+                'pkg_check_modules(B REQUIRED botan-3)\n'
+                'find_package(Botan3 REQUIRED)\n', encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            scan = project_scanner.scan_project(conn, root)
+            unknown = {u["hint"] for u in scan["deps_unknown"]}
+            self.assertEqual(unknown, {"botan-3"})   # 两条声明同一幽灵
+            conn.close()
+
+    # ---- 6) in-tree 判定：未解析名命中项目内自带源码目录
+    def test_in_tree_dir_classification(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            lib = root / "src" / "libraries" / "fakevim"
+            lib.mkdir(parents=True)
+            for i in range(4):
+                (lib / ("f%d.cpp" % i)).write_text("", encoding="utf-8")
+            (lib / "CMakeLists.txt").write_text(
+                "project(fakevim)\n", encoding="utf-8")
+            # 依赖集合父目录需要 ≥5 个库子目录
+            for k in ("qtcsv", "qhotkey", "md4c", "botan", "sonnet"):
+                d = root / "src" / "libraries" / k
+                d.mkdir(parents=True)
+                (d / "CMakeLists.txt").write_text("", encoding="utf-8")
+                (d / "x.cpp").write_text("", encoding="utf-8")
+            (root / "CMakeLists.txt").write_text(
+                "find_package(fakevim REQUIRED)\n"
+                "find_package(Lager REQUIRED)\n", encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            self.assertEqual(link["fakevim"]["kind"], "in-tree")
+            self.assertTrue(link["fakevim"]["artifact"]["ready"])
+            # 无同名源码目录的未解析名仍是 need_port 缺口
+            self.assertEqual(link["lager"]["kind"], "package")
+            self.assertFalse((link["lager"].get("artifact") or {}).get("ready"))
+            conn.close()
+
+    # ---- 6b) in-tree 不误收项目自身代码目录（krita lager/lcms 实证）
+    def test_in_tree_rejects_project_code_dirs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            d = root / "libs" / "flake" / "text" / "lager"
+            d.mkdir(parents=True)
+            (d / "CMakeLists.txt").write_text("", encoding="utf-8")
+            (d / "CssLength.cpp").write_text("", encoding="utf-8")
+            # 胶水目录（无构建文件）
+            g = root / "plugins" / "jpeg" / "3rdparty" / "lcms"
+            g.mkdir(parents=True)
+            (g / "iccjpeg.c").write_text("", encoding="utf-8")
+            (g / "iccjpeg.h").write_text("", encoding="utf-8")
+            (root / "CMakeLists.txt").write_text(
+                "find_package(Lager REQUIRED)\n", encoding="utf-8")
+            from port_graph.deps_report import (_in_tree_dir_index,
+                                                _match_in_tree_dir)
+            idx = _in_tree_dir_index(root)
+            self.assertIsNone(_match_in_tree_dir(idx, "lager"))
+            self.assertIsNone(_match_in_tree_dir(idx, "lcms"))
+
+    # ---- 7) 裸链接名命中测试框架 → test 角色
+    def test_raw_lib_test_framework(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text("""
+add_executable(app main.cpp)
+target_link_libraries(app PRIVATE gtest_main libgit2)
+""", encoding="utf-8")
+            (root / "main.cpp").write_text("", encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            report = deps_report.analyze_dependencies(conn, root)
+            tests = {t["name"] for t in report["test_deps"]}
+            links = {d["name"] for d in report["link_deps"]}
+            self.assertIn("gtest_main", tests)
+            self.assertNotIn("gtest_main", links)
+            self.assertIn("libgit2", links)
+            conn.close()
+
+    # ---- 8) 编译器运行时库 → system-lib（atomic/gcov）
+    def test_compiler_runtime_system_lib(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text("""
+add_executable(app main.cpp)
+target_link_libraries(app PRIVATE atomic)
+""", encoding="utf-8")
+            (root / "app.pro").write_text("LIBS += -lgcov\n",
+                                          encoding="utf-8")
+            (root / "main.cpp").write_text("", encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            self.assertEqual(link["atomic"]["kind"], "system-lib")
+            self.assertEqual(link["gcov"]["kind"], "system-lib")
+            # 系统库不产生 need_port 警告
+            warn = [w for w in report["warnings"]
+                    if "atomic" in w["msg"] or "gcov" in w["msg"]]
+            self.assertEqual(warn, [])
+            conn.close()
+
+    # ---- 9) find_package 名经别名归并（KDcrawQt6/kdcraw 合一）
+    def test_find_package_alias_rename(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "find_package(KDcrawQt6 REQUIRED)\n"
+                "pkg_check_modules(KD REQUIRED kdcraw)\n",
+                encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            report = deps_report.analyze_dependencies(conn, root)
+            names = [d["name"] for d in report["link_deps"]]
+            self.assertEqual(names.count("kdcraw"), 1)
+            self.assertNotIn("KDcrawQt6", names)
+            conn.close()
+
+
 class TestCLICompact(unittest.TestCase):
     """--compact 后置：`portgraph.py <cmd> --compact` 应与前置等效可用。"""
 

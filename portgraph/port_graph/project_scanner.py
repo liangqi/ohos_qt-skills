@@ -28,37 +28,59 @@ PLATFORM_API_RULES: List[Dict] = [
                       r"\b(CreateWindow|SendMessage|PostMessage|GetMessage|"
                       r"LoadLibrary|GetProcAddress|CreateFile|ReadFile|WriteFile|"
                       r"VirtualAlloc|HeapAlloc|RegOpenKey|RegQueryValue|CoCreateInstance|"
-                      r"IDispatch|IUnknown|HWND|HDC|HINSTANCE)\b")},
+                      r"IDispatch|IUnknown|HWND|HDC|HINSTANCE)\b"),
+     "pre": ("windows.h", "shellapi", "shlobj", "winuser", "wingdi",
+             "winbase", "winsock2", "commctrl", "commdlg", "CreateWindow",
+             "SendMessage", "PostMessage", "GetMessage", "LoadLibrary",
+             "GetProcAddress", "CreateFile", "ReadFile", "WriteFile",
+             "VirtualAlloc", "HeapAlloc", "RegOpenKey", "RegQueryValue",
+             "CoCreateInstance", "IDispatch", "IUnknown", "HWND", "HDC",
+             "HINSTANCE")},
     {"iface": "iface:x11",
-     "re": re.compile(r"#\s*include\s*<\s*(X11|xcb|Xlib)\b")},
+     "re": re.compile(r"#\s*include\s*<\s*(X11|xcb|Xlib)\b"),
+     "pre": ("X11", "xcb", "Xlib")},
     {"iface": "iface:wayland",
-     "re": re.compile(r"#\s*include\s*<\s*wayland-client")},
+     "re": re.compile(r"#\s*include\s*<\s*wayland-client"),
+     "pre": ("wayland-client",)},
     {"iface": "iface:dbus",
      "re": re.compile(r"#\s*include\s*<\s*dbus/|\bQDBusConnection\b|"
-                       r"#\s*include\s*<\s*QtDBus")},
+                       r"#\s*include\s*<\s*QtDBus"),
+     "pre": ("dbus/", "QDBusConnection", "QtDBus")},
     {"iface": "iface:alsa",
-     "re": re.compile(r"#\s*include\s*<\s*alsa/|\bsnd_")},
+     "re": re.compile(r"#\s*include\s*<\s*alsa/|\bsnd_"),
+     "pre": ("alsa/", "snd_")},
     {"iface": "iface:pulseaudio",
-     "re": re.compile(r"#\s*include\s*<\s*pulse/|\bpa_simple|\bpa_mainloop")},
+     "re": re.compile(r"#\s*include\s*<\s*pulse/|\bpa_simple|\bpa_mainloop"),
+     "pre": ("pulse/", "pa_simple", "pa_mainloop")},
     {"iface": "iface:coreaudio",
      "re": re.compile(r"#\s*include\s*<\s*(CoreAudio|AudioToolbox|"
-                      r"CoreAudioTypes|CoreMIDI)\b|\bAudioUnit\b|\bMIDIPortRef\b")},
+                      r"CoreAudioTypes|CoreMIDI)\b|\bAudioUnit\b|\bMIDIPortRef\b"),
+     "pre": ("CoreAudio", "AudioToolbox", "CoreMIDI", "AudioUnit",
+             "MIDIPortRef")},
     {"iface": "iface:cocoa",
      "re": re.compile(r"#\s*(include|import)\s*<\s*(Cocoa|AppKit|Foundation|IOKit)/"
                       r"|\bNS(Window|View|Application|Responder|Object)\b|"
-                      r"@interface\b|@implementation\b|^\s*@\w+\b")},
+                      r"@interface\b|@implementation\b|^\s*@\w+\b"),
+     # "@" 单独作锚：覆盖 ^\s*@\w+ 分支（文本起始），宁误跑不漏检
+     "pre": ("Cocoa", "AppKit", "Foundation", "IOKit", "NSWindow", "NSView",
+             "NSApplication", "NSResponder", "NSObject", "@")},
     {"iface": "iface:systemd",
      "re": re.compile(r"#\s*include\s*<\s*systemd/|"
                       r"\b(sd_listen_fds|sd_notify|sd_notifyf|sd_watchdog|"
-                      r"sd_booted|sd_journal_)\b")},
+                      r"sd_booted|sd_journal_)\b"),
+     "pre": ("systemd/", "sd_listen", "sd_notify", "sd_watchdog",
+             "sd_booted", "sd_journal_")},
     {"iface": "iface:dylib",
      "re": re.compile(r"\bdlopen\s*\(|\bLoadLibrary[AW]?\s*\(|"
-                      r"\bdlsym\s*\(|\bdlclose\s*\(")},
+                      r"\bdlsym\s*\(|\bdlclose\s*\("),
+     "pre": ("dlopen", "dlsym", "dlclose", "LoadLibrary")},
     {"iface": "iface:gpu-desktop-gl",
      "re": re.compile(r"#\s*include\s*<\s*GL/gl\.h|\bglBegin\s*\(|\bglClear\s*\(")
-     },
+     ,
+     "pre": ("GL/gl.h", "glBegin", "glClear")},
     {"iface": "iface:fork-exec",
-     "re": re.compile(r"\bfork\s*\(\s*\)")},
+     "re": re.compile(r"\bfork\s*\(\s*\)"),
+     "pre": ("fork",)},
 ]
 
 # 平台宏分类（用于宏栈追踪）
@@ -192,6 +214,10 @@ def _macro_stack_status(text: str) -> Dict[int, str]:
 
     for lineno, line in enumerate(text.splitlines(), 1):
         s = line.strip()
+        # 快路径：绝大多数行不是预处理指令，不影响宏栈
+        if not s.startswith("#"):
+            result[lineno] = current_guard()
+            continue
         m = _IFDEF_RE.match(s)
         if m:
             stack.append(_macro_compiles_on_ohos(m.group(1)))
@@ -256,13 +282,24 @@ def _detect_platform_interfaces(root: Path, scan_info: Dict) -> List[Dict]:
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
+        # 先跑接口规则：无命中则跳过逐行宏栈追踪（多数文件无平台 API
+        # 调用，此前对每个源文件全量逐行正则占扫描总耗时的 3/4）
+        file_matches: List = []
+        for rule in PLATFORM_API_RULES:
+            # 字面量锚点前置：无锚点必无匹配（正则分支均含这些必要子串），
+            # 35MB 源码实测正则扫描 7s → 锚点过滤后 <1s
+            if not any(a in text for a in rule.get("pre", ())):
+                continue
+            for m in rule["re"].finditer(text):
+                file_matches.append((rule, m))
+        if not file_matches:
+            continue
         file_plat = _file_platform_excluded(src["path"])
         guard_by_line = _macro_stack_status(text)
         lines = text.splitlines()
         # 预计算换行偏移，用二分查找定位行号（O(n log n) 替代 O(n*m)）
         nl_offsets = [i for i, ch in enumerate(text) if ch == "\n"]
-        for rule in PLATFORM_API_RULES:
-            for m in rule["re"].finditer(text):
+        for rule, m in file_matches:
                 # 行号 = 前面换行符数量 + 1
                 line_no = bisect_right(nl_offsets, m.start()) + 1
                 # 文件级平台隔离优先于行级守卫
@@ -380,6 +417,12 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
 
     返回 {linked: [...], unknown: [...]}。
     """
+    # 构建工具/平台接口名不建包节点也不建幽灵（python3/ecm/gettext 是
+    # 主机侧工具，systemd/alsa 是平台接口，由 analyze/deps 分类覆盖；
+    # 此前 pkg-unknown:python3 幽灵被 fetch-deps 计入 need_port）
+    from . import deps_report as _dr      # 函数内 import 避免循环依赖
+    _skip = (_dr.BUILD_TOOL_FINDPKG.keys() | _dr.INTERFACE_BOUND_PACKAGES.keys()
+             | _dr.QT_TOOL_NAMES)
     names: List[str] = []
     cp = info.get("cmake_packages", {})
     names.extend(cp.get("find_package", []))
@@ -397,23 +440,24 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
     seen = set()
     linked, unknown = [], []
     for name in names:
-        if name in seen:
+        if name in seen or name.lower() in _skip:
             continue
         seen.add(name)
-        node = kb_seed.resolve_package(conn, name)
+        # 与 deps_report._resolve 共享解析阶梯（别名优先 → 原名 → lib
+        # 前缀变体 → 去版本后缀）：扫描期不再因缺少 lib 前缀剥离而建
+        # pkg-unknown 幽灵节点（libsparsehash/gstreamer-1.0 实证）
+        node = kb_seed.resolve_pkg_name(conn, name)
         alias_used = None
-        if node is None:
-            # 直接名未解析时按别名表重试（libavcodec → ffmpeg 等），
-            # 避免同库异名产生 pkg-unknown 幽灵节点（fetch-deps 会误报
-            # need_port，而别名指向的 bottle 实际存在）
-            aliases = kb_seed.PKG_ALIASES.get(name.lower())
-            if isinstance(aliases, str):
-                aliases = [aliases]
-            for alias in aliases or []:
-                node = kb_seed.resolve_package(conn, alias.lower())
-                if node:
-                    alias_used = alias
-                    break
+        canon = kb_seed.PKG_ALIASES.get(name.lower())
+        if node is not None:
+            # 标记经别名表归并的解析（libavcodec → ffmpeg）
+            if canon and canon.lower() == (node.get("name") or "").lower():
+                alias_used = canon
+        else:
+            # 兑底：解析未命中时幽灵节点用别名表规范名，使同库异名
+            # （botan3/botan-3）归并到同一幽灵而非双份 need_port
+            if canon and canon.lower() != name.lower():
+                name = canon
         if node:
             db.upsert_edge(conn, app_id, node["id"], "runtime")
             item = {"hint": name, "node": node["id"],
