@@ -50,6 +50,7 @@ manifest 中每个依赖条目带 `status`，agent 按下表决策：
 | `provided` | Qt 模块 / 平台 API，由 Qt SDK / 鸿蒙框架提供 | 不下载；随 Qt for HarmonyOS 部署 |
 | `cmd_only` | 无直链（formula 未能解析版本号），只有获取命令 | 在鸿蒙设备执行 `artifact_cmd`；或查 formula 补版本号构造 bottle 直链 |
 | `need_port` | 无鸿蒙产物，需自行交叉编译 | 取 `source_url`/`repo_url` 拉源码移植；能否鸿蒙化看 `port_status` 与递归分析 |
+| `test` | 测试框架（GTest/Catch2 等），不进发行包 | 发行包无需处理；如需在鸿蒙设备跑测试才准备 |
 | `failed` | 下载失败（404 / 网络 / sha256 不匹配） | 重试；仍失败则检查 URL 是否失效，回退源码编译 |
 | `would_download` | 仅 dry-run 出现：将下载 | 决定是否执行真实下载 |
 | `target` | 应用节点自身 | 即分析目标 |

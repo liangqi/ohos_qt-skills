@@ -387,10 +387,17 @@ class TestDepsFetch(unittest.TestCase):
 
     def test_dry_run_classification(self):
         conn = self._conn()
+        db.upsert_node(conn, "pkg-unknown:gtest", "package", "gtest",
+                       "scan", "unknown")
+        db.upsert_edge(conn, "app:demo", "pkg-unknown:gtest", "runtime")
         with tempfile.TemporaryDirectory() as tmp:
             m = deps_fetch.fetch_app_deps(conn, "app:demo", Path(tmp),
                                           dry_run=True)
             by_id = {e["id"]: e for e in m["deps"]}
+            # 测试框架不再误报 need_port（需自行移植）
+            self.assertEqual(by_id["pkg-unknown:gtest"]["status"], "test")
+            self.assertEqual(by_id["pkg-unknown:gtest"]["role"], "test")
+            self.assertEqual(m["summary"].get("test"), 1)
             self.assertEqual(by_id["app:demo"]["status"], "target")
             self.assertEqual(by_id["qtmod:core"]["status"], "provided")
             self.assertEqual(by_id["hb:pkga"]["status"], "would_download")
@@ -631,6 +638,52 @@ int main() {
             self.assertEqual(link["zlib"]["version_check"], "unknown")
             self.assertEqual(report["counts"]["test"], 1)
             self.assertTrue(report["counts"]["vendored"] >= 2)
+
+    def test_build_tools_count_matches_display(self):
+        """build_tools 计数与文本报告展示一致：tools 列表 + CMake/C++/编译器
+        固定行（修复 tools 已含 build_tools 条目的重复计数）。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            conn = self._conn()
+            report = deps_report.analyze_dependencies(conn, root)
+            t = report["toolchain"]
+            expected = len(t["tools"]) + (1 if t["cmake_min"] else 0) \
+                + (1 if t["cxx_standard"] else 0) + 1
+            self.assertEqual(report["counts"]["build_tools"], expected)
+            conn.close()
+
+    def test_libav_version_not_false_conflict(self):
+        """libavcodec >= 58 是库主版本号（≈ffmpeg 4.x），与 ffmpeg 发布
+        版本不同量纲：不得误报 conflict，应记 unknown 并附说明。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            conn = self._conn()
+            db.upsert_node(conn, "hb:ffmpeg", "package", "ffmpeg",
+                           "harmonybrew", "ported", version="7.1")
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            self.assertEqual(link["ffmpeg"]["version_req"], ">= 58")
+            self.assertEqual(link["ffmpeg"]["version_req_scope"],
+                             "libav-major")
+            self.assertEqual(link["ffmpeg"]["version_check"], "unknown")
+            self.assertFalse(any(w["msg"].startswith("ffmpeg 版本冲突")
+                                 for w in report["warnings"]))
+            conn.close()
+
+    def test_runtime_closure_cache_shared(self):
+        """共享图缓存下闭包结果与去重口径不变：两个 link 依赖指向同一传递
+        依赖时 needed_by 合并双方，环图不死循环。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            conn = self._conn()
+            # zlib → zstd → zlib（环）+ openssl → zstd（共享传递依赖）
+            db.upsert_edge(conn, "hb:zstd", "hb:zlib", "runtime")
+            db.upsert_edge(conn, "hb:openssl@3", "hb:zstd", "runtime")
+            report = deps_report.analyze_dependencies(conn, root)
+            rt = {d["name"].lower(): d for d in report["runtime_deps"]}
+            self.assertIn("zstd", rt)
+            self.assertIn("zlib", set(rt["zstd"]["needed_by"]))
+            conn.close()
 
     def test_manifest_roles(self):
         """fetch-deps manifest：depth 决定 role（link/runtime/provided）。"""

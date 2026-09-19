@@ -38,6 +38,15 @@ RECURSE_TYPES = ("runtime", "uses-module")
 SKIP_PLATFORM_CONDS = ("macos",)
 PROVIDED_KINDS = ("qt-module", "platform-api")
 
+# 测试框架（find_package 名命中）：不进发行包，无鸿蒙产物需求。
+# 扫描器对 find_package(GTest) 也建 runtime 边，若不识别会误报
+# need_port（“gtest 需自行移植”）误导 agent
+TEST_FRAMEWORKS = {
+    "gtest", "googletest", "gtest_main", "gmock", "catch2", "catch",
+    "doctest", "qtest", "qttest", "testlib", "cppunit", "boosttest",
+    "unittest++",
+}
+
 # cmd-pkgs 产物 URL 尾部 .../<name>-<version>-ohos-aarch64.tar.gz
 _URL_VER_RE = re.compile(r"-(.+?)-ohos-aarch64\.tar\.gz$")
 
@@ -250,7 +259,13 @@ def fetch_app_deps(conn, app_id: str, out_dir: Path,
             # depth 1 = 应用直接声明（link：需要 headers+libs 参与编译链接）
             # depth ≥2 = 传递依赖（runtime：bottle 不捆绑，设备侧仍需其 .so）
             entry["role"] = "link" if depth == 1 else "runtime"
-            if name.lower() in installed_by_name:
+            if name.lower() in TEST_FRAMEWORKS:
+                # 测试专用：不进发行包，无需鸿蒙产物（此前误报 need_port）
+                entry["role"] = "test"
+                entry["status"] = "test"
+                entry["note"] = ("测试框架，不进发行包；"
+                                 "如需在鸿蒙设备跑测试才处理")
+            elif name.lower() in installed_by_name:
                 entry["status"] = "covered"
                 entry["installed"] = installed_by_name[name.lower()]
             elif name.lower() in downloadable:
