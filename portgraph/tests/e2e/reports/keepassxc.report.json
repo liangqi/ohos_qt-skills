@@ -8,9 +8,9 @@
   "tier": "B",
   "build_system": "cmake",
   "sources": 884,
-  "repo_path": "/root/harmony-workspace/worker4/portgraph/workspace/keepassxc"
+  "repo_path": "/root/harmony-workspace/worker1/portgraph/workspace/keepassxc"
  },
- "generated_at": "2026-09-19T12:49:13Z",
+ "generated_at": "2026-09-19T13:32:12Z",
  "verdict": "blocked",
  "blockers": [
   {
@@ -44,19 +44,14 @@
    "kind": "unknown-package",
    "node": "pkg-unknown:botan",
    "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:openmp",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
   }
  ],
  "platform_excluded": [],
  "closure": {
-  "size": 40,
+  "size": 42,
   "summary": {
    "target": 1,
-   "provided": 6,
+   "provided": 8,
    "need_port": 1,
    "would_download": 30,
    "covered": 1,
@@ -83,6 +78,7 @@
    "pcsc-lite",
    "qrencode",
    "readline",
+   "libx11",
    "zlib",
    "libxkbcommon",
    "libusb",
@@ -91,11 +87,10 @@
    "zlib-ng-compat",
    "libpng",
    "libxcb",
+   "xorgproto",
    "xkeyboard-config",
-   "libx11",
    "libxext",
    "libxfixes",
-   "xorgproto",
    "python@3.14",
    "libxau",
    "libxdmcp",
@@ -137,6 +132,14 @@
    "depth": 1
   },
   {
+   "id": "hb:libx11",
+   "name": "libx11",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
    "id": "hb:libxi",
    "name": "libxi",
    "kind": "package",
@@ -166,14 +169,6 @@
    "kind": "package",
    "edge": "runtime",
    "port_status": "ported",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:openmp",
-   "name": "openmp",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
    "depth": 1
   },
   {
@@ -217,11 +212,27 @@
    "depth": 1
   },
   {
+   "id": "qtmod:core",
+   "name": "Qt Core",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
    "id": "qtmod:dbus",
    "name": "Qt D-Bus",
    "kind": "qt-module",
    "edge": "uses-module",
    "port_status": "blocked",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:gui",
+   "name": "Qt GUI",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
    "depth": 1
   },
   {
@@ -235,6 +246,14 @@
   {
    "id": "qtmod:svg",
    "name": "Qt SVG",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:test",
+   "name": "Qt Test",
    "kind": "qt-module",
    "edge": "uses-module",
    "port_status": "ported",
@@ -390,7 +409,7 @@
    "pg_status": "unknown",
    "depth": 1,
    "evidence": {
-    "note": "⚠ 匹配到幽灵节点（pkg-unknown）——名字未解析到已知鸿蒙包，实为解析缺口，需复核"
+    "note": "匹配到幽灵节点：真实外部依赖且无已知鸿蒙包（fetch-deps 报 need_port/需源码移植，检出正确）"
    },
    "agent_note": "复核⚠注记：hb-core Formula 与 cmd-pkgs 均确无 botan 包（find_package(Botan REQUIRED)，CMakeLists.txt:511），pkg-unknown/need_port 定性正确——检出与状态均准确，非解析缺口，需自行交叉编译属实"
   },
@@ -450,7 +469,13 @@
       "file": "CMakeLists.txt",
       "line": 536,
       "strong": true,
-      "text": "find_library(LIBUSB_LIBRARIES NAMES usb-1.0 usb REQUIRED)"
+      "text": "find_library(LIBUSB"
+     },
+     {
+      "file": "CMakeLists.txt",
+      "line": 536,
+      "strong": true,
+      "text": "find_library(LIBUSB_LIBRARIES NAMES usb-1.0"
      },
      {
       "file": "vcpkg.json",
@@ -459,10 +484,52 @@
       "text": "\"name\": \"libusb\","
      },
      {
+      "file": "src/CMakeLists.txt",
+      "line": 390,
+      "strong": true,
+      "text": "target_link_libraries(keepassxc_core Qt6::DBus ${LIBUSB"
+     },
+     {
       "file": "src/thirdparty/ykcore/CMakeLists.txt",
       "line": 32,
       "strong": true,
-      "text": "find_library(LIBUSB_LIBRARY NAMES usb-1.0 usb)"
+      "text": "find_library(LIBUSB"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:libx11",
+   "pg_name": "libx11",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
+    "grep": [
+     {
+      "file": "src/CMakeLists.txt",
+      "line": 395,
+      "strong": true,
+      "text": "target_link_libraries(keepassxc_gui X11"
+     },
+     {
+      "file": "src/autotype/CMakeLists.txt",
+      "line": 22,
+      "strong": true,
+      "text": "find_package(X11"
+     },
+     {
+      "file": "src/autotype/CMakeLists.txt",
+      "line": 46,
+      "strong": true,
+      "text": "target_link_libraries(autotype ${X11"
      }
     ]
    },
@@ -516,13 +583,13 @@
       "file": "src/autotype/CMakeLists.txt",
       "line": 16,
       "strong": true,
-      "text": "pkg_check_modules(Xkbcommon REQUIRED IMPORTED_TARGET xkbcommon)"
+      "text": "pkg_check_modules(Xkbcommon REQUIRED IMPORTED_TARGET xkbcommon"
      },
      {
       "file": "src/autotype/CMakeLists.txt",
       "line": 44,
       "strong": true,
-      "text": "target_link_libraries(autotype Qt6::DBus PkgConfig::Xkbcommon)"
+      "text": "target_link_libraries(autotype Qt6::DBus PkgConfig::Xkbcommon"
      }
     ]
    },
@@ -570,7 +637,7 @@
       "file": "CMakeLists.txt",
       "line": 528,
       "strong": true,
-      "text": "find_package(Minizip REQUIRED)"
+      "text": "find_package(Minizip"
      },
      {
       "file": "vcpkg.json",
@@ -582,27 +649,23 @@
       "file": "cmake/FindMinizip.cmake",
       "line": 5,
       "strong": true,
-      "text": "find_library(MINIZIP_LIBRARIES NAMES minizip libminizip)"
+      "text": "find_library(MINIZIP_LIBRARIES NAMES minizip"
+     },
+     {
+      "file": "src/CMakeLists.txt",
+      "line": 363,
+      "strong": true,
+      "text": "        ${MINIZIP"
+     },
+     {
+      "file": "src/keeshare/CMakeLists.txt",
+      "line": 30,
+      "strong": true,
+      "text": "target_link_libraries(keeshare PUBLIC Qt6::Core Qt6::Widgets ${BOTAN_LIBRARIES} ${ZLIB_LIBRARIES} PRIVATE ${MINIZIP"
      }
     ]
    },
    "agent_note": null
-  },
-  {
-   "class": "unknown-ok",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "pkg-unknown:openmp",
-   "pg_name": "openmp",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
-   "evidence": {
-    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
-   },
-   "agent_note": "CMakeLists.txt:259 find_package(OpenMP)（无 REQUIRED，命中后仅追加 OpenMP_C(_XX)_FLAGS）是 CMake 内置编译器特性探测而非三方包；OHOS clang 工具链自带 OpenMP runtime，hb-core/cmd-pkgs 亦无 openmp/libgomp 包（hb 的 libomp 为宿主用途 keg_only）→ pkg-unknown 可接受，非 ALIASES 缺口；fetch-deps 已按 CMake 内置分类标 provided"
   },
   {
    "class": "readme-omitted",
@@ -622,19 +685,31 @@
       "file": "CMakeLists.txt",
       "line": 532,
       "strong": true,
-      "text": "find_package(PCSC REQUIRED)"
+      "text": "find_package(PCSC"
      },
      {
       "file": "cmake/FindPCSC.cmake",
       "line": 19,
       "strong": true,
-      "text": "pkg_check_modules(PCSC libpcsclite)"
+      "text": "pkg_check_modules(PCSC"
      },
      {
       "file": "cmake/FindPCSC.cmake",
       "line": 52,
       "strong": true,
       "text": "find_library(PCSC_LIBRARIES NAMES pcsclite libpcsclite WinSCard PCSC"
+     },
+     {
+      "file": "cmake/FindPCSC.cmake",
+      "line": 19,
+      "strong": true,
+      "text": "pkg_check_modules(PCSC libpcsclite"
+     },
+     {
+      "file": "cmake/FindPCSC.cmake",
+      "line": 52,
+      "strong": true,
+      "text": "find_library(PCSC_LIBRARIES NAMES pcsclite libpcsclite"
      }
     ]
    },
@@ -658,19 +733,31 @@
       "file": "cmake/FindQREncode.cmake",
       "line": 19,
       "strong": true,
-      "text": "find_library(QRENCODE_LIBRARY_RELEASE qrencode)"
+      "text": "find_library(QRENCODE_LIBRARY_RELEASE qrencode"
+     },
+     {
+      "file": "cmake/FindQREncode.cmake",
+      "line": 20,
+      "strong": true,
+      "text": "find_library(QRENCODE"
      },
      {
       "file": "cmake/FindQREncode.cmake",
       "line": 23,
       "strong": true,
-      "text": "find_library(QRENCODE_LIBRARY qrencode)"
+      "text": "find_library(QRENCODE_LIBRARY qrencode"
      },
      {
       "file": "src/qrcode/CMakeLists.txt",
       "line": 20,
       "strong": true,
-      "text": "find_package(QREncode REQUIRED)"
+      "text": "find_package(QREncode"
+     },
+     {
+      "file": "src/qrcode/CMakeLists.txt",
+      "line": 24,
+      "strong": true,
+      "text": "target_link_libraries(qrcode PUBLIC Qt6::Core Qt6::Svg ${QRENCODE"
      }
     ]
    },
@@ -700,27 +787,43 @@
       "file": "cmake/FindReadline.cmake",
       "line": 9,
       "strong": true,
-      "text": "#     find_package(Readline [REQUIRED] [QUIET])"
-     },
-     {
-      "file": "cmake/FindReadline.cmake",
-      "line": 10,
-      "strong": true,
-      "text": "#     target_link_libraries(<target> PRIVATE Readline::readline)"
+      "text": "find_package(Readline"
      },
      {
       "file": "cmake/FindReadline.cmake",
       "line": 35,
       "strong": true,
-      "text": "pkg_check_modules(Readline IMPORTED_TARGET readline)"
+      "text": "pkg_check_modules(Readline IMPORTED_TARGET readline"
      },
      {
-      "file": "src/cli/CMakeLists.txt",
-      "line": 54,
+      "file": "cmake/FindReadline.cmake",
+      "line": 61,
       "strong": true,
-      "text": "find_package(Readline MODULE)"
+      "text": "        DOC \"readline"
+     },
+     {
+      "file": "cmake/FindReadline.cmake",
+      "line": 10,
+      "strong": true,
+      "text": "target_link_libraries(<target> PRIVATE Readline"
      }
     ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:core",
+   "pg_name": "Qt Core",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt 模块粒度：README 通常只写 'Qt'"
    },
    "agent_note": null
   },
@@ -734,6 +837,22 @@
    "pg_name": "Qt D-Bus",
    "pg_kind": "qt-module",
    "pg_status": "blocked",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt 模块粒度：README 通常只写 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:gui",
+   "pg_name": "Qt GUI",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
    "depth": 1,
    "evidence": {
     "note": "Qt 模块粒度：README 通常只写 'Qt'"
@@ -778,6 +897,22 @@
    "by_design": true,
    "oracle_name": null,
    "oracle_type": null,
+   "pg_id": "qtmod:test",
+   "pg_name": "Qt Test",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt 模块粒度：README 通常只写 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
    "pg_id": "qtmod:widgets",
    "pg_name": "Qt Widgets",
    "pg_kind": "qt-module",
@@ -795,7 +930,7 @@
   "matched": 3,
   "matched_optional": 0,
   "recall": "100%",
-  "precision": "25%",
+  "precision": "23%",
   "bug_candidates": 0,
   "bug_by_class": {
    "false-positive": 0,
@@ -805,9 +940,8 @@
   "class_counts": {
    "build-only": 4,
    "matched": 3,
-   "qt-granularity": 4,
-   "readme-omitted": 9,
-   "unknown-ok": 1
+   "qt-granularity": 7,
+   "readme-omitted": 10
   }
  },
  "agent_notes": [

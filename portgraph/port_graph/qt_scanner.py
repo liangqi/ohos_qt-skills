@@ -1282,12 +1282,16 @@ def _detect_cmake_raw_links(root: Path, cmake_files: List[str]):
     raw: Dict[str, Dict] = {}
     frameworks: Dict[str, List[str]] = {}
     texts: Dict[str, str] = {}
+    all_texts: Dict[str, str] = {}   # 含 vendored：供目标定义收集
     defined = set()
     lib_macros = set()      # body 内调用 add_library 的 macro/函数名
     for rel in cmake_files:
-        if _is_vendored_path(rel):
-            continue  # vendored 三方自己的链接声明不算应用依赖
         text = _strip_cmake_comments(_read_text(root / rel))
+        all_texts[rel] = text
+        if _is_vendored_path(rel):
+            # 链接声明（target_link_libraries 等）不收集：vendored 三方
+            # 自己的链接不算应用依赖；但其目标定义仍参与收集（见下）
+            continue
         texts[rel] = text
         # 包装器检测：macro/function 定义块内出现 add_library( =>
         # 调用 <wrapper>(<target> ...) 也定义项目内目标
@@ -1298,12 +1302,15 @@ def _detect_cmake_raw_links(root: Path, cmake_files: List[str]):
                 lib_macros.add(dm.group(1).lower())
     # set(<var> <字面量>) 变量表：解析 add_library(${VAR} ...) 的目标名
     vart: Dict[str, str] = {}
-    for text in texts.values():
+    for text in all_texts.values():
         for m in re.finditer(
                 r"^\s*set\s*\(\s*(\w+)\s+\"?([\w.]+)\"?\s*\)",
                 text, re.M):
             vart.setdefault(m.group(1), m.group(2))
-    for rel, text in texts.items():
+    # 目标定义收集（含 vendored 文件）：vendored 源码内
+    # add_library(fluidsynth) 定义的是项目内目标，应用侧
+    # target_link_libraries(fluidsynth) 链的是内部目标而非外部包
+    for rel, text in all_texts.items():
         for m in _ADD_TARGET_RE.finditer(text):
             tgt = m.group(1)
             if tgt.startswith("${"):
