@@ -8,9 +8,9 @@
   "tier": "C",
   "build_system": "cmake+qmake",
   "sources": 6358,
-  "repo_path": "/root/harmony-workspace/worker4/portgraph/workspace/tdesktop"
+  "repo_path": "/root/harmony-workspace/worker1/portgraph/workspace/tdesktop"
  },
- "generated_at": "2026-09-19T14:32:19Z",
+ "generated_at": "2026-09-19T14:53:38Z",
  "verdict": "blocked",
  "blockers": [
   {
@@ -87,11 +87,6 @@
   },
   {
    "kind": "unknown-package",
-   "node": "pkg-unknown:toomanycooks",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
    "node": "pkg-unknown:breakpad-client",
    "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
   },
@@ -118,11 +113,6 @@
   {
    "kind": "unknown-package",
    "node": "pkg-unknown:rnnoise",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:angle",
    "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
   },
   {
@@ -201,12 +191,12 @@
   }
  ],
  "closure": {
-  "size": 116,
+  "size": 112,
   "summary": {
    "target": 1,
    "provided": 9,
-   "need_port": 23,
-   "would_download": 80,
+   "need_port": 21,
+   "would_download": 78,
    "covered": 1,
    "cmd_only": 2
   },
@@ -254,13 +244,6 @@
     "repo_url": null
    },
    {
-    "id": "pkg-unknown:toomanycooks",
-    "name": "toomanycooks",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
     "id": "pkg-unknown:breakpad-client",
     "name": "breakpad-client",
     "version": null,
@@ -298,13 +281,6 @@
    {
     "id": "pkg-unknown:rnnoise",
     "name": "rnnoise",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:angle",
-    "name": "angle",
     "version": null,
     "source_url": null,
     "repo_url": null
@@ -409,8 +385,6 @@
    "libxcb",
    "libxkbcommon",
    "cmark-gfm",
-   "libdispatch",
-   "libiconv",
    "pango",
    "libqrcodegen",
    "icu4c@78",
@@ -496,14 +470,6 @@
   {
    "id": "pkg-unknown:ada",
    "name": "ada",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:angle",
-   "name": "angle",
    "kind": "package",
    "edge": "runtime",
    "port_status": "unknown",
@@ -606,24 +572,8 @@
    "depth": 1
   },
   {
-   "id": "cmdpkgs:libdispatch",
-   "name": "libdispatch",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "ported",
-   "depth": 1
-  },
-  {
    "id": "hb:libheif",
    "name": "libheif",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "ported",
-   "depth": 1
-  },
-  {
-   "id": "hb:libiconv",
-   "name": "libiconv",
    "kind": "package",
    "edge": "runtime",
    "port_status": "ported",
@@ -832,14 +782,6 @@
   {
    "id": "pkg-unknown:tmc",
    "name": "tmc",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:toomanycooks",
-   "name": "toomanycooks",
    "kind": "package",
    "edge": "runtime",
    "port_status": "unknown",
@@ -1439,22 +1381,6 @@
    "by_design": true,
    "oracle_name": null,
    "oracle_type": null,
-   "pg_id": "pkg-unknown:angle",
-   "pg_name": "angle",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
-   "evidence": {
-    "note": "未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植）"
-   },
-   "agent_note": null
-  },
-  {
-   "class": "unknown-ok",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
    "pg_id": "pkg-unknown:auto-updates",
    "pg_name": "auto_updates",
    "pg_kind": "package",
@@ -1766,23 +1692,6 @@
    "agent_note": null
   },
   {
-   "class": "false-positive",
-   "side": "pg",
-   "by_design": false,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "cmdpkgs:libdispatch",
-   "pg_name": "libdispatch",
-   "pg_kind": "package",
-   "pg_status": "ported",
-   "depth": 1,
-   "evidence": {
-    "note": "portgraph 检出但构建文件无引用 → 扫描误报候选（include 启发式/名字巧合）",
-    "grep": []
-   },
-   "agent_note": null
-  },
-  {
    "class": "readme-omitted",
    "side": "pg",
    "by_design": true,
@@ -1825,54 +1734,6 @@
       "line": 95,
       "strong": true,
       "text": "target_link_libraries(kimg_heif PkgConfig::LibHeif"
-     }
-    ]
-   },
-   "agent_note": null
-  },
-  {
-   "class": "readme-omitted",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "hb:libiconv",
-   "pg_name": "libiconv",
-   "pg_kind": "package",
-   "pg_status": "ported",
-   "depth": 1,
-   "evidence": {
-    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
-    "grep": [
-     {
-      "file": "cmake/external/iconv/CMakeLists.txt",
-      "line": 16,
-      "strong": true,
-      "text": "        ${libs_loc}/local/lib/libiconv"
-     },
-     {
-      "file": "cmake/external/iconv/CMakeLists.txt",
-      "line": 11,
-      "strong": true,
-      "text": "find_package(Iconv"
-     },
-     {
-      "file": "cmake/external/iconv/CMakeLists.txt",
-      "line": 12,
-      "strong": true,
-      "text": "target_link_libraries(external_iconv"
-     },
-     {
-      "file": "cmake/external/iconv/CMakeLists.txt",
-      "line": 14,
-      "strong": true,
-      "text": "target_link_libraries(external_iconv"
-     },
-     {
-      "file": "Telegram/CMakeLists.txt",
-      "line": 2279,
-      "strong": true,
-      "text": "target_link_libraries(Telegram PRIVATE desktop-app::external_iconv"
      }
     ]
    },
@@ -2468,22 +2329,6 @@
    "agent_note": null
   },
   {
-   "class": "unknown-ok",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "pkg-unknown:toomanycooks",
-   "pg_name": "toomanycooks",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
-   "evidence": {
-    "note": "未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植）"
-   },
-   "agent_note": null
-  },
-  {
    "class": "readme-omitted",
    "side": "pg",
    "by_design": true,
@@ -2666,22 +2511,22 @@
   "matched": 12,
   "matched_optional": 0,
   "recall": "71%",
-  "precision": "38%",
-  "bug_candidates": 4,
+  "precision": "40%",
+  "bug_candidates": 3,
   "bug_by_class": {
-   "false-positive": 2,
+   "false-positive": 1,
    "missed-dep": 2,
    "resolution-gap": 0
   },
   "class_counts": {
    "build-only": 3,
-   "false-positive": 2,
+   "false-positive": 1,
    "matched": 12,
    "missed-dep": 2,
    "qt-granularity": 11,
-   "readme-omitted": 18,
+   "readme-omitted": 17,
    "readme-stale": 2,
-   "unknown-ok": 17,
+   "unknown-ok": 15,
    "vendored": 1
   }
  },

@@ -1,17 +1,17 @@
 # tdesktop 依赖对账报告（portgraph E2E）
 
-> 生成时间: 2026-09-19T14:32:19Z | 语料: corpus.json#tdesktop | 构建系统: cmake+qmake | 源文件: 6358
+> 生成时间: 2026-09-19T14:53:38Z | 语料: corpus.json#tdesktop | 构建系统: cmake+qmake | 源文件: 6358
 > Oracle: README.md（复核: 已复核，20 条；来源: README §Third-party 逐条人工复核：剥离许可后缀噪声；GYP/Ninja/CMake 改 build 型；Open Sans/Vazirmatn 字体与 Emoji alpha codes 为数据资产（非链接依赖）已删）
 
 ## 1. 结论速览
 
 | 指标 | 值 |
 |---|---|
-| 可移植性 verdict | **blocked**（阻塞 7 / 未知 21 / 平台排除 2） |
+| 可移植性 verdict | **blocked**（阻塞 7 / 未知 19 / 平台排除 2） |
 | 检出召回率 | 71%（12/17 README 运行时依赖） |
-| 检出精确率 | 38% |
-| Bug 候选 | **4**（false-positive=2, missed-dep=2） |
-| 依赖闭包 | 116 项（cmd_only 2, covered 1, need_port 23, provided 9, target 1, would_download 80） |
+| 检出精确率 | 40% |
+| Bug 候选 | **3**（false-positive=1, missed-dep=2） |
+| 依赖闭包 | 112 项（cmd_only 2, covered 1, need_port 21, provided 9, target 1, would_download 78） |
 
 **Agent 复核说明**：
 
@@ -32,7 +32,7 @@
 | unsupported-module | qtmod:dbus | Qt for HarmonyOS 模块适配表: 不支持 - 鸿蒙无 D-Bus |
 | unsupported-module | qtmod:waylandcompositor | Qt for HarmonyOS 模块适配表: 不支持 - Linux/Wayland 合成器框架，鸿蒙窗口模型非 Wayland |
 
-未确认项 21 个：
+未确认项 19 个：
 - [unknown-interface] app:tdesktop: 平台接口 fork()/exec() 进程模型 的鸿蒙支持性未确认（guard=ohos-active）
 - [unknown-package] pkg-unknown:ada: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
 - [unknown-package] pkg-unknown:microsoft: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
@@ -40,14 +40,14 @@
 - [unknown-package] pkg-unknown:tde2e: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
 - [unknown-package] pkg-unknown:tg-owt: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
 - [unknown-package] pkg-unknown:tl: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
-- [unknown-package] pkg-unknown:toomanycooks: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
 - [unknown-package] pkg-unknown:breakpad-client: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
 - [unknown-package] pkg-unknown:giomm-2-68: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
 - [unknown-package] pkg-unknown:libudev: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
 - [unknown-package] pkg-unknown:pangocairo: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
 - [unknown-package] pkg-unknown:pangoft2: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
 - [unknown-package] pkg-unknown:rnnoise: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
-- [unknown-package] pkg-unknown:angle: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
+- [unknown-package] pkg-unknown:auto-updates: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
+- [unknown-package] pkg-unknown:crash-reports: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
 
 ## 3. 差异归因明细（oracle × portgraph 直接依赖）
 
@@ -55,7 +55,6 @@
 |---|---|---|---|---|
 | ★漏检 | breakpad | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 【agent: 主集成位于 cmake/（cmake_helpers）子模块：Linux 侧经 external_crash_reports 包装（CMakeLists.txt:97），主仓库仅 macstore 段 target_link_frameworks(Telegram PRIVATE Breakpad)（:2381 |
 | ★漏检 | crashpad | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 【agent: 主集成位于 cmake/（cmake_helpers）子模块：Linux 侧经 external_crash_reports 包装（CMakeLists.txt:97），主仓库仅 macstore 段 target_link_frameworks(Telegram PRIVATE Breakpad)（:2381 |
-| ★误报 | — | libdispatch | package d1 | portgraph 检出但构建文件无引用 → 扫描误报候选（include 启发式/名字巧合） |
 | ★误报 | — | libxcb | package d1 | portgraph 检出但构建文件无引用 → 扫描误报候选（include 启发式/名字巧合） |
 | README过时 | lzma-sdk | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 |
 | README过时 | opus | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 |
@@ -66,7 +65,6 @@
 | README漏列 | — | jpeg-turbo | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | README漏列 | — | libavif | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | README漏列 | — | libheif | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
-| README漏列 | — | libiconv | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | README漏列 | — | libjxl | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | README漏列 | — | libvpx | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | README漏列 | — | libxkbcommon | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
@@ -104,7 +102,6 @@
 | 一致 | hunspell | hunspell | package d1 |  |
 | 一致 | ada | ada | package d1 | 匹配到幽灵节点：真实外部依赖且无已知鸿蒙包（fetch-deps 报 need_port/需源码移植，检出正确） |
 | 自带子模块 | gsl | — | runtime |  .gitmodules 自带子模块（Telegram/ThirdParty/GSL → https://github.com/Microsoft/GSL.git）：随项目源码一起编译，不作为外部包获取/检测 |
-| 未知包(正常) | — | angle | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
 | 未知包(正常) | — | auto_updates | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
 | 未知包(正常) | — | breakpad-client | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
 | 未知包(正常) | — | crash_reports | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
@@ -120,26 +117,25 @@
 | 未知包(正常) | — | tl | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
 | 未知包(正常) | — | tlottie | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
 | 未知包(正常) | — | tmc | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
-| 未知包(正常) | — | toomanycooks | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
 
-归类统计：构建工具×3，★误报×2，一致×12，★漏检×2，粒度折叠×11，README漏列×18，README过时×2，未知包(正常)×17，自带子模块×1
+归类统计：构建工具×3，★误报×1，一致×12，★漏检×2，粒度折叠×11，README漏列×17，README过时×2，未知包(正常)×15，自带子模块×1
 
 ## 4. 依赖闭包概览（fetch-deps --dry-run）
 
-- 闭包总数 116 项：cmd_only 2，covered 1，need_port 23，provided 9，target 1，would_download 80
-- 可直下 bottle：boost、jpeg-turbo、libavif、libheif、xz、lz4、minizip、openal-soft、openssl@3、opus、protobuf、xxhash、zlib、glib、glibmm、hunspell、ffmpeg、libjxl、openh264、libvpx、libxcb、libxkbcommon、cmark-gfm、libdispatch、libiconv、pango、libqrcodegen、icu4c@78、zstd、zlib-ng-compat、dav1d、libpng、libde265、libtiff、webp、x265、abseil、bison、python-setuptools、pcre2
+- 闭包总数 112 项：cmd_only 2，covered 1，need_port 21，provided 9，target 1，would_download 78
+- 可直下 bottle：boost、jpeg-turbo、libavif、libheif、xz、lz4、minizip、openal-soft、openssl@3、opus、protobuf、xxhash、zlib、glib、glibmm、hunspell、ffmpeg、libjxl、openh264、libvpx、libxcb、libxkbcommon、cmark-gfm、pango、libqrcodegen、icu4c@78、zstd、zlib-ng-compat、dav1d、libpng、libde265、libtiff、webp、x265、abseil、bison、python-setuptools、pcre2、dbus、util-linux
 - 仅命令获取（cmd_only）：aom、ca-certificates
-- 需自行移植（need_port）：ada、microsoft、range、tde2e、tg_owt、tl、toomanycooks、breakpad-client、giomm-2.68、libudev、pangocairo、pangoft2、rnnoise、angle、auto_updates、crash_reports、ranges、tlottie、tmc、webrtc
+- 需自行移植（need_port）：ada、microsoft、range、tde2e、tg_owt、tl、breakpad-client、giomm-2.68、libudev、pangocairo、pangoft2、rnnoise、auto_updates、crash_reports、ranges、tlottie、tmc、webrtc、KF archive、KF coreaddons
   - ada: ?
   - microsoft: ?
   - range: ?
   - tde2e: ?
   - tg_owt: ?
   - tl: ?
-  - toomanycooks: ?
   - breakpad-client: ?
   - giomm-2.68: ?
   - libudev: ?
+  - pangocairo: ?
 
 ## 5. 直接依赖全量清单（portgraph depth-1）
 
@@ -149,7 +145,6 @@
 | KF coreaddons | framework | runtime | unknown | 1 |
 | KF desktoptojson | framework | runtime | unknown | 1 |
 | ada | package | runtime | unknown | 1 |
-| angle | package | runtime | unknown | 1 |
 | auto_updates | package | runtime | unknown | 1 |
 | boost | package | runtime | ported | 1 |
 | breakpad-client | package | runtime | unknown | 1 |
@@ -162,9 +157,7 @@
 | hunspell | package | runtime | ported | 1 |
 | jpeg-turbo | package | runtime | ported | 1 |
 | libavif | package | runtime | ported | 1 |
-| libdispatch | package | runtime | ported | 1 |
 | libheif | package | runtime | ported | 1 |
-| libiconv | package | runtime | ported | 1 |
 | libjxl | package | runtime | ported | 1 |
 | libqrcodegen | package | runtime | ported | 1 |
 | libudev | package | runtime | unknown | 1 |
@@ -191,7 +184,6 @@
 | tl | package | runtime | unknown | 1 |
 | tlottie | package | runtime | unknown | 1 |
 | tmc | package | runtime | unknown | 1 |
-| toomanycooks | package | runtime | unknown | 1 |
 | webrtc | package | runtime | unknown | 1 |
 | xxhash | package | runtime | ported | 1 |
 | xz | package | runtime | ported | 1 |
@@ -211,4 +203,4 @@
 - 对比口径：portgraph 直接依赖（depth-1 边）vs README/INSTALL 声明依赖；闭包仅做产物概览。
 - 归因证据：对未匹配项自动 grep 克隆仓库构建文件（find_package/pkg_check_modules/target_link_libraries/vcpkg 等）。
 - ★ 类（missed-dep / resolution-gap / false-positive）为 bug 候选，需人工确认；其余为预期差异。
-- agent 可读报告：`/root/harmony-workspace/worker4/portgraph/tests/e2e/reports/tdesktop.report.json`
+- agent 可读报告：`/root/harmony-workspace/worker1/portgraph/tests/e2e/reports/tdesktop.report.json`

@@ -1,6 +1,6 @@
 # keepassxc 依赖对账报告（portgraph E2E）
 
-> 生成时间: 2026-09-19T14:32:24Z | 语料: corpus.json#keepassxc | 构建系统: cmake | 源文件: 884
+> 生成时间: 2026-09-19T14:53:27Z | 语料: corpus.json#keepassxc | 构建系统: cmake | 源文件: 884
 > Oracle: INSTALL.md（复核: 已复核，7 条；来源: agent 复核定稿：删除散文链接残留 set-up-build-environment；asciidoctor 依原文（build tools must exist within your PATH + KPXC_FEATURE_DOCS）改判 build；本版 INSTALL.md 仅声明 qt/botan/zlib 三个库，无 libgcrypt/argon2/libsodium/ykpers；vcpkg/xvfb-run 为 prose 提及的工具/测试辅助，不入 oracle）
 
 ## 1. 结论速览
@@ -101,4 +101,4 @@
 - 对比口径：portgraph 直接依赖（depth-1 边）vs README/INSTALL 声明依赖；闭包仅做产物概览。
 - 归因证据：对未匹配项自动 grep 克隆仓库构建文件（find_package/pkg_check_modules/target_link_libraries/vcpkg 等）。
 - ★ 类（missed-dep / resolution-gap / false-positive）为 bug 候选，需人工确认；其余为预期差异。
-- agent 可读报告：`/root/harmony-workspace/worker4/portgraph/tests/e2e/reports/keepassxc.report.json`
+- agent 可读报告：`/root/harmony-workspace/worker1/portgraph/tests/e2e/reports/keepassxc.report.json`
