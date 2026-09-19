@@ -85,6 +85,14 @@ CMAKE_BUILTIN_PACKAGES = {
                "note": "编译器特性：OHOS NDK clang 支持 -fopenmp（libomp 随 SDK）"},
     "iconv": {"kind": "system-lib", "note": "musl libc 内置 iconv"},
     "dl": {"kind": "system-lib", "note": "musl libc 内置 dlopen"},
+    "opengl": {"kind": "system-lib",
+               "note": "OHOS 提供 OpenGL ES（libEGL_ndk / libGLESv3_ndk），"
+                      "桌面 OpenGL 调用需适配 GLES 3（lmms/zynaddsubfx 实证）"},
+    "packagehandlestandardargs": {
+        "kind": "build-tool",
+        "note": "CMake 内置模块（find_package_handle_standard_args），非依赖"
+                "（lmms FindFFTW.cmake 实证；曾以错名"
+                "findpackagehandlestandardargs 入表致幽灵残留）"},
 }
 
 # 平台接口绑定包：find_package/链接命中说明应用直连该平台栈，
@@ -95,7 +103,13 @@ INTERFACE_BOUND_PACKAGES = {
     "xext": "X11 扩展：鸿蒙不支持直连",
     "xcb": "XCB：鸿蒙不支持直连",
     "alsa": "ALSA 音频：鸿蒙不可用，需改鸿蒙 AudioRenderer",
+    "asound": "ALSA 客户端库名（-lasound / find_library）：鸿蒙不可用，"
+            "需改鸿蒙 AudioRenderer/AudioCapturer（lmms FindAlsa 实证）",
     "pulseaudio": "PulseAudio：鸿蒙无此服务",
+    "libpulse": "PulseAudio 客户端库（pkg-config 名 libpulse）：鸿蒙无此服务，"
+              "需改鸿蒙 AudioRenderer/AudioCapturer（lmms 实证）",
+    "pulse": "PulseAudio 客户端库名（find_library pulse / -lpulse）：鸿蒙无此"
+           "服务（lmms FindPulseAudio 实证）",
     "dbus": "D-Bus IPC：鸿蒙无 D-Bus（Qt D-Bus 模块 Out of scope）",
     "cocoa": "macOS Cocoa：鸿蒙不适用",
     "appkit": "macOS AppKit：鸿蒙不适用",
@@ -108,6 +122,13 @@ INTERFACE_BOUND_PACKAGES = {
     "security": "macOS Security 框架：鸿蒙不适用（APPLE 平台块）",
     "coreservices": "macOS CoreServices 框架：鸿蒙不适用（APPLE 平台块）",
     "corefoundation": "macOS CoreFoundation 框架：鸿蒙不适用（APPLE 平台块）",
+    # macOS 框架经 find_library 裸名引入（muse 实证：AudioToolbox/CoreMIDI
+    # 在 OS_IS_MAC 块内 find_library，未命中表时被当普通包报“需源码交叉编译”）
+    "audiotoolbox": "macOS AudioToolbox 框架：鸿蒙不可用，需改鸿蒙"
+                  " AudioRenderer/AudioCapturer（APPLE 平台块内引入）",
+    "coremidi": "macOS CoreMIDI 框架：鸿蒙不适用（APPLE 平台块内引入；"
+              "MIDI 需改鸿蒙 MIDI 能力）",
+    "carbon": "macOS Carbon 遗留框架：鸿蒙不适用（APPLE 平台块内引入）",
 }
 
 # find_package 命中的主机侧构建工具（原 _FINDPKG_SKIP 静默丢弃，现归入
@@ -118,6 +139,8 @@ INTERFACE_BOUND_PACKAGES = {
 TEST_FRAMEWORKS = {
     "gtest", "googletest", "catch2", "catch", "doctest", "qtest", "qttest",
     "testlib", "cppunit", "boosttest", "unittest++", "gtest_main", "qttest",
+    "gmock", "gmock_main",
+    "cxxtest",
 }
 
 # Qt 自带的构建工具（由 Qt SDK 提供，无需单独准备）

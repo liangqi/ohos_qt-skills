@@ -1007,6 +1007,188 @@ class TestGeneralizationFixes(unittest.TestCase):
     回归测试：URL 版本提取 / 宏包装目标 / find_library 关键字 / env -y /
     共享解析阶梯 / in-tree 判定 / raw 链接名的 test 角色。"""
 
+    # ---- 0) lmms 泛化轮（2026-09 worker2-deps-regress）暴露的表缺口
+    def test_lmms_regress_classifications(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "lm"
+            (root / "src").mkdir(parents=True)
+            (root / "CMakeLists.txt").write_text("""
+cmake_minimum_required(VERSION 3.16)
+project(LmRegress)
+find_package(PackageHandleStandardArgs)
+find_package(PythonInterp)
+find_package(Perl)
+find_package(OpenGL)
+find_package(OggVorbis)
+pkg_check_modules(PULSE libpulse)
+find_package(CxxTest)
+add_library(app STATIC src/x.cpp)
+target_link_libraries(app PRIVATE cxxtest)
+""", encoding="utf-8")
+            (root / "src" / "x.cpp").write_text("", encoding="utf-8")
+            info = qt_scanner.scan_project(root)
+            fp = set(info["cmake_packages"]["find_package"])
+            # CMake 机械模块 / OpenGL 系统能力：不进包清单
+            for n in ("packagehandlestandardargs", "opengl"):
+                self.assertNotIn(n, fp, n)
+            # 主机解释器保留在清单中（报告侧归 build-tool，图侧不建边）
+            for n in ("perl", "pythoninterp"):
+                self.assertIn(n, fp, n)
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:libvorbis", "package", "libvorbis",
+                           "harmonybrew", "ported")
+            # 图侧：主机解释器 / CMake 模块 / opengl 不建运行时边也不建幽灵
+            scan = project_scanner.scan_project(conn, root)
+            hints = [d["hint"] for d in scan["deps_linked"]] + \
+                [d["hint"] for d in scan["deps_unknown"]]
+            for n in ("perl", "pythoninterp", "packagehandlestandardargs",
+                      "opengl"):
+                self.assertNotIn(n, hints, n)
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            # oggvorbis 复合模块名经别名归并到 libvorbis
+            self.assertIn("libvorbis", link)
+            self.assertNotIn("oggvorbis", link)
+            # libpulse → 平台接口（PulseAudio 无鸿蒙服务）
+            self.assertEqual(link["libpulse"]["kind"], "platform-iface")
+            # cxxtest → 测试框架，不进 link 也不需移植
+            self.assertNotIn("cxxtest", link)
+            self.assertIn("cxxtest",
+                          {t["name"] for t in report["test_deps"]})
+            tools = {t["tool"] for t in report["toolchain"]["tools"]}
+            # 主机解释器归 build-tool（若经其他路径进入报告）
+            self.assertIn("perl", tools)
+            conn.close()
+
+    # ---- 0b) libopenshot 泛化轮：绑定生成工具链 + lib前缀+版本后缀组合剥离
+    def test_openshot_bindings_and_ladder(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "os"
+            (root / "bindings").mkdir(parents=True)
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\nproject(OsB)\n"
+                "add_subdirectory(bindings)\n", encoding="utf-8")
+            (root / "bindings" / "CMakeLists.txt").write_text(
+                "find_package(SWIG 3.0 REQUIRED)\n"
+                "find_package(Java REQUIRED)\n"
+                "find_package(JNI REQUIRED)\n"
+                "find_package(Ruby)\n"
+                "find_package(PythonLibs 3)\n"
+                "pkg_check_modules(PC_PIPEWIRE libpipewire-0.3)\n",
+                encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:ruby", "package", "ruby", "harmonybrew",
+                           "ported")
+            db.upsert_node(conn, "hb:pipewire", "package", "pipewire",
+                           "harmonybrew", "ported")
+            # 图侧：绑定工具不建运行时边（ruby 不再连 hb:ruby）
+            scan = project_scanner.scan_project(conn, root)
+            hints = [d["hint"] for d in scan["deps_linked"]] + \
+                [d["hint"] for d in scan["deps_unknown"]]
+            for n in ("swig", "ruby", "java", "jni", "pythonlibs"):
+                self.assertNotIn(n, hints, n)
+            # libpipewire-0.3 解析到 hb:pipewire（见 0c），无幽灵
+            self.assertEqual(scan["deps_unknown"], [])
+            # 报告侧：绑定工具归 build-tools
+            report = deps_report.analyze_dependencies(conn, root)
+            tools = {t["tool"] for t in report["toolchain"]["tools"]}
+            for n in ("swig", "ruby", "java", "jni", "pythonlibs"):
+                self.assertIn(n, tools, n)
+            link = {d["name"].lower() for d in report["link_deps"]}
+            self.assertNotIn("swig", link)
+            conn.close()
+
+    # ---- 0e) lmms 第二轮：平台接口库名 / 版本化库名归并
+    def test_lmms_iface_libnames_and_merge(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "lm2"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text("""
+cmake_minimum_required(VERSION 3.16)
+project(Lm2)
+find_library(ASOUND asound)
+find_library(PULSE pulse)
+find_library(FS1 fluidsynth-1)
+add_library(p STATIC a.c)
+target_link_libraries(p PRIVATE ${ASOUND} ${PULSE} ${FS1} sfftw)
+""", encoding="utf-8")
+            (root / "a.c").write_text("", encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "cmdpkgs:fftw", "package", "fftw",
+                           "cmdpkgs", "ported", version="3.3.10")
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            # ALSA / PulseAudio 库名形态 → platform-iface
+            self.assertEqual(link["asound"]["kind"], "platform-iface")
+            self.assertEqual(link["pulse"]["kind"], "platform-iface")
+            # fluidsynth-1 / sfftw 归并到基础名
+            self.assertNotIn("fluidsynth-1", link)
+            self.assertNotIn("sfftw", link)
+            self.assertIn("fftw", link)
+            self.assertEqual(link["fftw"]["available_version"], "3.3.10")
+            conn.close()
+
+    # ---- 0c) 图侧解析结果校验（hint 保留原名，节点应命中 hb:pipewire）
+    def test_openshot_ladder_node_resolution(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "os2"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\nproject(OsC)\n"
+                "pkg_check_modules(PC_PIPEWIRE libpipewire-0.3)\n",
+                encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:pipewire", "package", "pipewire",
+                           "harmonybrew", "ported")
+            scan = project_scanner.scan_project(conn, root)
+            linked = {d["hint"]: d["node"] for d in scan["deps_linked"]}
+            self.assertEqual(linked.get("libpipewire-0.3"), "hb:pipewire")
+            self.assertEqual(scan["deps_unknown"], [])
+            conn.close()
+
+    # ---- 0d) libopenshot 第二轮：win32 缺口库 + OpenCV 目标名归并
+    def test_openshot_win32_and_target_merge(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "os3"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text("""
+cmake_minimum_required(VERSION 3.16)
+project(OsD)
+add_library(osd STATIC a.c)
+if(WIN32)
+    target_link_libraries(osd PUBLIC imagehlp dbghelp ole32)
+endif()
+if(ENABLE_OPENCV)
+    target_link_libraries(osd PUBLIC opencv_core opencv_dnn)
+endif()
+pkg_check_modules(BABL babl-0.1)
+""", encoding="utf-8")
+            (root / "a.c").write_text("", encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "cmdpkgs:opencv", "package", "opencv",
+                           "cmdpkgs", "ported")
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            # win32 系统库
+            for n in ("imagehlp", "dbghelp"):
+                self.assertEqual(link[n]["kind"], "win32-system-lib", n)
+            # OpenCV 导入目标名归并到 opencv（不再 5 条独立幽灵）
+            self.assertIn("opencv", link)
+            for n in ("opencv_core", "opencv_dnn"):
+                self.assertNotIn(n, link, n)
+            # babl-0.1 版本后缀剥离到 babl（同一幽灵）
+            conn.close()
+
     # ---- 1) harmonybrew URL 版本提取（419 个 formula 无版本的根因）
     def test_url_version_extraction(self):
         cases = {
@@ -1020,6 +1202,10 @@ class TestGeneralizationFixes(unittest.TestCase):
             "https://github.com/CycoPH/atasm/archive/refs/tags/V1.30.tar.gz": "1.30",
             "https://loop-aes.sourceforge.net/aespipe/aespipe-v2.4j.tar.bz2": "2.4j",
             "https://www.harding.motd.ca/autossh/autossh-1.4g.tgz": "1.4g",
+            # 7z 扩展名 + 连字符补丁号版本（imagemagick 7.1.2-31 实证，
+            # 修复前退化为尾部 "31.7z" → bottle URL 404）
+            "https://github.com/ImageMagick/ImageMagick/releases/download/7.1.2-31/ImageMagick-7.1.2-31.7z": "7.1.2-31",
+            "https://github.com/ImageMagick/ImageMagick6/releases/download/6.9.13-56/ImageMagick-6.9.13-56.7z": "6.9.13-56",
             # 回归：原有形态不变
             "https://www.zlib.net/zlib-1.3.1.tar.gz": "1.3.1",
             "https://github.com/i/indi/archive/refs/tags/v2.0.9.tar.gz": "2.0.9",
@@ -1878,6 +2064,64 @@ class TestWin32LibNoFalseEdge(unittest.TestCase):
                 [d["hint"] for d in scan["deps_unknown"]]
             self.assertNotIn("bcrypt", hints)
             self.assertNotIn("hid", hints)
+            conn.close()
+
+
+class TestMusescoreRegressTables(unittest.TestCase):
+    """musescore 回归轮（2026-09 worker2-deps-regress）暴露的表缺口：
+    gmock 测试框架 / win32 系统库 4 缺口 / macOS 框架 find_library 裸名
+    （修复前均被当普通包报“无鸿蒙预编译产物，需源码交叉编译”）。"""
+
+    CMAKE = """
+cmake_minimum_required(VERSION 3.16)
+project(RegressTables)
+add_library(drv STATIC src/x.cpp)
+if (OS_IS_WIN)
+    target_link_libraries(drv PRIVATE winmm mmdevapi msi taskschd userenv)
+endif()
+if (OS_IS_MAC)
+    find_library(AUDIOTOOLBOX_LIB AudioToolbox)
+    find_library(CARBON_LIB Carbon)
+    find_library(COREMIDI_LIB CoreMIDI)
+    target_link_libraries(drv PRIVATE ${AUDIOTOOLBOX_LIB} ${CARBON_LIB})
+endif()
+add_executable(t1 src/t1.cpp)
+target_link_libraries(t1 PRIVATE drv gmock)
+"""
+
+    def test_table_classifications(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "rt"
+            (root / "src").mkdir(parents=True)
+            (root / "CMakeLists.txt").write_text(self.CMAKE,
+                                                 encoding="utf-8")
+            (root / "src" / "x.cpp").write_text("", encoding="utf-8")
+            (root / "src" / "t1.cpp").write_text("", encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            # gmock → test 分类，不进 link 也不报“需源码交叉编译”
+            self.assertNotIn("gmock", link)
+            self.assertIn("gmock", {t["name"] for t in report["test_deps"]})
+            # win32 系统库 → win32-system-lib
+            for n in ("mmdevapi", "msi", "taskschd", "userenv"):
+                self.assertEqual(link[n]["kind"], "win32-system-lib", n)
+            # macOS 框架 find_library 裸名 → platform-iface + ohos_note
+            for n in ("audiotoolbox", "carbon", "coremidi"):
+                self.assertEqual(link[n]["kind"], "platform-iface", n)
+                self.assertTrue(link[n].get("ohos_note"), n)
+            # 不再出现“需源码交叉编译”误导警告
+            for w in report["warnings"]:
+                self.assertNotIn("需源码交叉编译",
+                                 "{} {}".format(w.get("msg", ""), w))
+            # 图侧：win32 裸名不建幽灵/误连边
+            scan = project_scanner.scan_project(conn, root)
+            hints = [d["hint"] for d in scan["deps_linked"]] + \
+                [d["hint"] for d in scan["deps_unknown"]]
+            for n in ("mmdevapi", "msi", "taskschd", "userenv"):
+                self.assertNotIn(n, hints)
             conn.close()
 
 

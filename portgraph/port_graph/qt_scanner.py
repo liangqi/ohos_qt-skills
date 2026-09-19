@@ -498,10 +498,13 @@ def _detect_third_party(root: Path, sources: List[Dict]) -> List[Dict]:
 # 循环导入在两处维护：图侧跳过 + 报告侧归入 build-tool/system-lib 分类）
 _FINDPKG_SKIP = {"ecm", "pkgconfig", "pkgconf", "threads", "sharedmimeinfo",
                  "doxygen", "gettext", "intltool", "i18n", "imported_target",
-                 "findpackagehandlestandardargs", "selectlibrary",
+                 "packagehandlestandardargs", "selectlibrary",
                  "pkg_check_modules",
                  # CMake 内置模块（编译器特性 / musl libc 内置）
                  "openmp", "iconv", "dl",
+                 # OpenGL：鸿蒙为 OpenGL ES（EGL/GLESv3_ndk 系统能力，
+                 # 非 CMake 内置但同样非外部包；报告侧 CMAKE_BUILTIN 分类）
+                 "opengl",
                  # 主机构建工具 / VCS（find_package(Git) 是取版本，非链接 git）
                  "git", "subversion", "mercurial", "ccache", "sccache",
                  "cmake", "ninja", "python", "python3", "flex", "bison",
@@ -540,7 +543,13 @@ WIN32_SYSTEM_LIBS = {
     "psapi", "version", "iphlfapi", "powrprof", "setupapi", "strmiids",
     "avifil32", "mfplat", "mfuuid", "strmbase", "strmbasd", "wtsapi32",
     "windowsapp", "delayimp", "opengl32", "glu32", "wintrust", "shcore",
-    "winscard", "bcrypt", "hid", "winusb", "cfgmgr32", "dbghelp",
+    "winscard", "bcrypt", "hid", "winusb", "cfgmgr32",
+    # muse 实证：OS_IS_WIN 块内 target_link_libraries 的 4 个缺口
+    # （同块的 winmm/ole32/shell32/wintrust 等均已往表内）
+    "mmdevapi", "msi", "taskschd", "userenv",
+    # libopenshot 实证：WIN32 块异常处理/DirectShow（同块 ole32/strmiids
+    # /uuid 已在表内）
+    "dbghelp", "imagehlp",
 }
 
 # find_package 名为构建工具/解释器（主机侧，非应用运行时依赖）。
@@ -557,6 +566,13 @@ BUILD_TOOL_FINDPKG = {
     "ninja": "Ninja 构建器",
     "python3": "Python 3",
     "python": "Python",
+    "pythoninterp": "Python 解释器（CMake FindPythonInterp，主机侧）",
+    "pythonlibs": "Python 头文件/库（CMake FindPythonLibs，绑定生成，主机侧）",
+    "perl": "Perl 解释器（主机侧，测试/代码生成脚本）",
+    "swig": "SWIG 绑定生成器（主机侧，libopenshot bindings 实证）",
+    "ruby": "Ruby 解释器（绑定生成/脚本，主机侧）",
+    "java": "JDK（CMake FindJava，绑定生成，主机侧）",
+    "jni": "JNI 头文件（CMake FindJNI，绑定编译，主机侧）",
     "flex": "flex 词法生成器",
     "bison": "bison 语法生成器",
     "gperf": "gperf 完美哈希生成器",
