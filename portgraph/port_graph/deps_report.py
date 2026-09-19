@@ -610,6 +610,31 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
         if aliased:
             e.setdefault("ohos_note", "包装声明 %s 归并为包 %s" % (n, aliased))
 
+    # ---- 6h) 依赖清单函数（muse_deps 引擎等）：require_dep / require_source_dep /
+    #          require_tool。link → 常规 link 依赖；source → vendored；tool → 工具链
+    manifest_vendored: List[Dict] = []
+    for md in info.get("manifest_deps", []):
+        n = md["name"]
+        ev = "require_dep 系清单声明 %s (%s)" % (
+            n, md["evidence"][0] if md.get("evidence") else "?")
+        if md.get("conditional"):
+            ev += " [条件块 if(%s)，默认构建未必启用]" % (md.get("condition") or "?")
+        if md["mode"] == "tool":
+            build_tools.append({"tool": n, "how": [ev],
+                                "note": "依赖清单声明的主机构建工具"
+                                        "（require_tool），构建机安装即可",
+                                "provided_by": "host"})
+        elif md["mode"] == "source":
+            manifest_vendored.append({"name": n, "path": None, "url": None,
+                                      "note": "require_source_dep：源码自带，"
+                                              "随项目一起编译"})
+        else:
+            e = link.add(n, required=not md.get("conditional"), evidence=ev)
+            if md.get("conditional"):
+                e.setdefault("ohos_note",
+                             "条件块 if(%s) 内声明，默认构建未必启用"
+                             % (md.get("condition") or "?"))
+
     # ---- 7) 解析产物 + 版本检查 + 传递 runtime
     runtime_book: Dict[str, Dict] = {}
     graph_cache = _GraphCache(conn) if conn is not None else None
@@ -767,6 +792,10 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
     vendored.extend({"name": sp, "path": "subprojects/%s" % sp, "url": None,
                      "note": "meson subproject：随项目一起编译"}
                     for sp in meson_info.get("subprojects", []))
+    # require_source_dep 声明的源码自带依赖（去重后并入）
+    vendored_names = {v["name"].lower() for v in vendored}
+    vendored.extend(v for v in manifest_vendored
+                    if v["name"].lower() not in vendored_names)
 
     # ---- 11b) 环境依赖（CI / 安装脚本 apt/brew/pacman install 清单）
     env_deps = []

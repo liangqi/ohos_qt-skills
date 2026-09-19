@@ -219,6 +219,17 @@ ALIASES: Dict[str, List[str]] = {
     "protobuf": ["protobuf"],
     "spdlog": ["spdlog"],
     "glm": ["glm"],
+    # CMake 模块名/依赖清单名 → hb 包名（e2e musescore 复核；同时供
+    # e2e names_match 对账：oracle 名 alsa ↔ 已解析节点名 alsa-lib）
+    "alsa": ["alsa-lib", "alsa"],
+    "sndfile": ["libsndfile", "sndfile"],
+    "ogg": ["libogg", "ogg"],
+    "vorbis": ["libvorbis", "vorbis"],
+    "tinyxml": ["tinyxml2", "tinyxml"],
+    "glib2": ["glib", "glib2"],
+    "dbus1": ["dbus", "dbus1"],
+    "png": ["libpng", "png"],
+    "nlohmann_json": ["nlohmann-json", "nlohmann_json"],
     "opencv": ["opencv"],
 }
 
@@ -251,6 +262,19 @@ PKG_ALIASES: Dict[str, str] = {
     "boost_regex": "boost",           # boost::regex 组件链接 → boost 包
     "cmark_gfm": "cmark-gfm",         # 分隔符差异（_ vs -）
     "qr_code_generator": "libqrcodegen",  # nayuki QR-Code-generator（cmd-pkgs 版本 1.8.0 同源）
+    # ---- e2e musescore（tier C）复核确认的缺口 ----
+    "alsa": "alsa-lib",           # find_package(ALSA) → alsa-lib
+    "sndfile": "libsndfile",      # find_package(SndFile) → libsndfile
+    "tinyxml": "tinyxml2",        # FindTinyXml 实际找 tinyxml2
+    "glib2": "glib",             # CMake GLib2 模块名
+    "dbus1": "dbus",             # CMake DBus1 模块名
+    "ogg": "libogg",             # require_dep(ogg) / pkg-config ogg
+    "vorbis": "libvorbis",       # require_dep(vorbis)
+    "png": "libpng",             # CMake PNG 模块名
+    "brotlidec": "brotli",       # pkg-config 组件名
+    "intl": "gettext",           # CMake Intl 模块 → gettext(libintl)
+    "utfcpp": "utf8cpp",         # require_source_dep(utfcpp) → hb utf8cpp
+    "nlohmann_json": "nlohmann-json",  # require_dep 名 → hb nlohmann-json
 }
 
 

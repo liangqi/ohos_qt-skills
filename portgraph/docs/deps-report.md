@@ -24,11 +24,11 @@ link 又因被 mpfr 传递依赖而出现在 runtime）：
 
 | role | 含义 | 缺失后果 | 来源证据 |
 |---|---|---|---|
-| `link` | **编译产物依赖**：目标侧 headers + .so/.a，交叉编译/链接应用时必须存在 | 编译/链接失败 | `find_package`、`pkg_check_modules`、`target_link_libraries` 裸名/`-lfoo`、`find_library`、Conan/vcpkg 清单、源码 `#include` 第三方库头文件、qmake `LIBS`/`PKGCONFIG`、meson `dependency()`、autotools `PKG_CHECK_MODULES`/`AC_CHECK_LIB`、自定义包装函数 `PACKAGE`/`LIBRARY` 声明（如 qTox `search_dependency`）、KF 组件 |
+| `link` | **编译产物依赖**：目标侧 headers + .so/.a，交叉编译/链接应用时必须存在 | 编译/链接失败 | `find_package`、`pkg_check_modules`、`target_link_libraries` 裸名/`-lfoo`、`find_library`、Conan/vcpkg 清单、源码 `#include` 第三方库头文件、qmake `LIBS`/`PKGCONFIG`、meson `dependency()`、autotools `PKG_CHECK_MODULES`/`AC_CHECK_LIB`、自定义包装函数 `PACKAGE`/`LIBRARY` 声明（如 qTox `search_dependency`）、依赖清单函数 `require_dep(…)`（如 muse_deps 引擎）、KF 组件 |
 | `build-tool` | **编译器/构建工具依赖**：构建机运行，不部署到设备 | 构建无法进行（交叉编译产物不受影响） | `cmake_minimum_required`/`meson_version`、C++ 标准、`find_program`、`execute_process/add_custom_command COMMAND`、`find_package(ECM/gettext/OpenMP/…)` |
 | `runtime` | **运行时依赖**：设备侧 .so，不参与编译但缺了跑不起来 | 部署后 dlopen/链接失败 | link 依赖的传递闭包（hb runtime 边）、`dlopen`/`QLibrary`/`QPluginLoader` 字面量 |
 | `test` | 测试专用，不进发行包 | 测试无法构建 | `find_package(GTest/Catch2/…)`、`enable_testing` |
-| `vendored` | 项目内自带源码，随项目编译，无需外部产物 | 无（锁定提交在仓库内） | `.gitmodules`、`3rdparty/` 等目录、`FetchContent_Declare`/`ExternalProject_Add`/`CPMAddPackage`（含 GIT_TAG/VERSION 锁定）、meson `subproject()` |
+| `vendored` | 项目内自带源码，随项目编译，无需外部产物 | 无（锁定提交在仓库内） | `.gitmodules`、`3rdparty/` 等目录、`FetchContent_Declare`/`ExternalProject_Add`/`CPMAddPackage`（含 GIT_TAG/VERSION 锁定）、`require_source_dep(…)` 依赖清单声明（如 muse_deps 引擎）、meson `subproject()` |
 | `provided` | Qt 模块等由 Qt SDK / 鸿蒙框架提供 | 无（随 Qt for HarmonyOS 部署） | `QT +=`、`find_package(Qt5/6 COMPONENTS …)`、`#include <Qt…>`、meson `dependency('qt5'/'qt6', modules: …)` |
 | `env` | CI/脚本声明的**构建机环境清单**（信息性，混合工具与库，作交叉核对信源） | — | `.github`/`.ci`/顶层 `*.sh` 中 `apt/brew/pacman install` 包名 |
 

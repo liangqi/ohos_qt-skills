@@ -398,9 +398,31 @@ def _submodule_folds(git_submodules: List[Dict]) -> set:
     return folds
 
 
+def _resolve_pkg_node(conn, name: str) -> tuple:
+    """包名 -> (节点, 别名)：直接名失败后按 kb_seed.PKG_ALIASES 重试。
+
+    避免同库异名产生 pkg-unknown 幽灵节点（fetch-deps 会误报 need_port，
+    而别名指向的 bottle 实际存在）。
+    """
+    node = kb_seed.resolve_package(conn, name)
+    alias_used = None
+    if node is None:
+        aliases = kb_seed.PKG_ALIASES.get(name.lower())
+        if isinstance(aliases, str):
+            aliases = [aliases]
+        for alias in aliases or []:
+            node = kb_seed.resolve_package(conn, alias.lower())
+            if node:
+                alias_used = alias
+                break
+    return node, alias_used
+
+
 def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
-    """把 CMake find_package/pkg_check_modules + Conan/vcpkg 清单发现的第三方包
-    连边到已知包节点；未匹配的记为 unknown 包节点。
+    """把 CMake find_package/pkg_check_modules + Conan/vcpkg 清单 + 依赖清单
+    函数（require_dep 等）发现的第三方包连边到已知包节点；未匹配的记为
+    unknown 包节点。require_source_dep（源码自带）→ vendored 边；
+    require_tool（主机构建工具）不连边。
 
     另含两轮增强（e2e tdesktop tier C 复核驱动）：
     - find_package 命中的构建工具/解释器（python3 等）不建运行时边——
@@ -408,7 +430,9 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
     - target_link_libraries 的 ns::external_<name> 导入目标名（剥前缀后
       在 raw_libs 里，ext_target=True）：能解析则连边，不能解析且非
       vendored 子模块则建幽灵节点（高置信声明，如 tdesktop 的全部三方库）
-    返回 {linked: [...], unknown: [...]}。
+
+    返回 {linked: [...], unknown: [...], vendored: [...]}。
+
     """
     cp = info.get("cmake_packages", {})
     # find_package 构建工具（python3/cmake/...）不是应用运行时依赖
@@ -424,26 +448,14 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
     for h in info.get("third_party_hints", []):
         if h["name"] not in names:
             names.append(h["name"])
+    # 依赖清单函数（require_dep）：与 find_package 同等参与解析
+    manifest = info.get("manifest_deps", [])
+    for md in manifest:
+        if md["mode"] == "link" and md["name"] not in names:
+            names.append(md["name"])
 
     seen = set()
     linked, unknown = [], []
-
-    def _resolve_one(name: str):
-        node = kb_seed.resolve_package(conn, name)
-        alias_used = None
-        if node is None:
-            # 直接名未解析时按别名表重试（libavcodec → ffmpeg 等），
-            # 避免同库异名产生 pkg-unknown 幽灵节点（fetch-deps 会误报
-            # need_port，而别名指向的 bottle 实际存在）
-            aliases = kb_seed.PKG_ALIASES.get(name.lower())
-            if isinstance(aliases, str):
-                aliases = [aliases]
-            for alias in aliases or []:
-                node = kb_seed.resolve_package(conn, alias.lower())
-                if node:
-                    alias_used = alias
-                    break
-        return node, alias_used
 
     def _link(name: str, node, alias_used=None, via=None):
         db.upsert_edge(conn, app_id, node["id"], "runtime")
@@ -468,7 +480,7 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
         if name.lower() in seen:
             continue
         seen.add(name.lower())
-        node, alias_used = _resolve_one(name)
+        node, alias_used = _resolve_pkg_node(conn, name)
         if node:
             _link(name, node, alias_used)
         else:
@@ -487,7 +499,7 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
         # 库误连边（bcrypt → OpenBSD bcrypt）
         if name.lower() in qt_scanner.WIN32_SYSTEM_LIBS:
             continue
-        node, alias_used = _resolve_one(name)
+        node, alias_used = _resolve_pkg_node(conn, name)
         if node:
             _link(name, node, alias_used,
                   via="external-target" if rl.get("ext_target") else None)
@@ -498,7 +510,34 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
                 continue
             if len(name) >= 3:
                 _ghost(name)
-    return {"linked": linked, "unknown": unknown}
+
+    # require_source_dep：源码自带依赖 → vendored 边（随项目编译，
+    # fetch-deps 标 role=vendored，不进入 need_port）
+    vendored = []
+    for md in manifest:
+        if md["mode"] != "source":
+            continue
+        name = md["name"]
+        node, alias_used = _resolve_pkg_node(conn, name)
+        if node:
+            vid = node["id"]
+            status = node["port_status"]
+        else:
+            vid = "pkg-unknown:%s" % normalize_app_name(name)
+            status = "unknown"
+            db.upsert_node(
+                conn, vid, "package", name, "scan", "unknown",
+                description="依赖清单声明的源码自带依赖（require_source_dep），"
+                            "随项目源码编译",
+                port_evidence="不在 Harmonybrew/cmd-pkgs 已知清单（vendored，"
+                              "无需外部产物）")
+        db.upsert_edge(conn, app_id, vid, "vendored")
+        item = {"hint": name, "node": vid, "status": status,
+                "evidence": md["evidence"][:1]}
+        if alias_used:
+            item["alias"] = alias_used
+        vendored.append(item)
+    return {"linked": linked, "unknown": unknown, "vendored": vendored}
 
 
 def scan_project(conn, project_root, info: Dict = None) -> Dict:
@@ -538,7 +577,8 @@ def scan_project(conn, project_root, info: Dict = None) -> Dict:
         else:
             modules_missing.append(mod)
 
-    # 第三方库依赖边（find_package/pkg_check_modules/Conan/vcpkg/include）
+    # 第三方库依赖边（find_package/pkg_check_modules/Conan/vcpkg/include/
+    # require_dep；require_source_dep → vendored 边）
     tp = _link_third_party(conn, app_id, info)
     deps_linked, deps_unknown = tp["linked"], tp["unknown"]
 
@@ -579,5 +619,6 @@ def scan_project(conn, project_root, info: Dict = None) -> Dict:
         "sources": len(info["sources"]),
         "modules_linked": modules_linked, "modules_missing": modules_missing,
         "deps_linked": deps_linked, "deps_unknown": deps_unknown,
+        "deps_vendored": tp["vendored"],
         "interfaces": ifaces,
     }

@@ -13,7 +13,7 @@
       "url": "https://github.com/musescore/MuseScore",
       "tier": "C",
       "oracle_files": ["INSTALL.md", "README.md"],
-      "notes": "MuseScore，CMake 大型应用；workspace 已有克隆"
+      "notes": "MuseScore，CMake 大型应用；依赖清单在 muse_deps / muse submodule（cloner 自动浅层初始化）"
     },
     {
       "name": "keepassxc",

@@ -15,6 +15,7 @@ build/test 依赖是主机构建工具（cmake/nasm 等在构建机运行），
   already_local 本地已就绪（artifact_local 或 out/<name>/<version>/ 已存在）
   covered       同名包产物已由另一数据源节点获取（hb:/cmdpkgs: 去重）
   provided      Qt 模块 / 平台 API，由 Qt SDK / 鸿蒙框架本身提供
+  vendored      源码自带依赖（require_source_dep），随项目编译，不下载
   cmd_only      无直链但有获取命令（多为 formula 缺版本号无法构造 bottle URL）
   need_port     无产物，需自行交叉编译（附源码链接）
   failed        下载失败（404 / 网络错误 / sha256 不匹配）
@@ -35,6 +36,7 @@ from typing import Callable, Dict, List, Optional
 from . import db, deps_report, engine, harmonybrew
 
 RECURSE_TYPES = ("runtime", "uses-module")
+VENDORED_TYPES = ("vendored",)
 SKIP_PLATFORM_CONDS = ("macos",)
 PROVIDED_KINDS = ("qt-module", "platform-api")
 
@@ -48,25 +50,42 @@ def dependency_closure(conn, app_id: str) -> List[Dict]:
     每个节点附 _depth（距 app 的跳数）：1=应用直接声明（link 语义），
     ≥2=传递依赖（runtime 语义）。
     provided 节点（Qt 模块）不展开——其依赖由 Qt SDK 自带。
+    应用直连的 vendored 边（require_source_dep 源码自带依赖）收进闭包
+    （附 _via="vendored"）但不下钻——自带源码随项目一起交叉编译，
+    其自身依赖由项目源码/构建脚本携带。
     """
     result: List[Dict] = []
     visited = {app_id: 0}
-    queue = deque([(app_id, 0)])
+    queue: deque = deque([(app_id, 0, None)])
     while queue:
-        nid, depth = queue.popleft()
+        nid, depth, via = queue.popleft()
         node = db.get_node(conn, nid)
         if node is None:
             continue
         node["_depth"] = depth
+        if via:
+            node["_via"] = via
         result.append(node)
         if node["kind"] in PROVIDED_KINDS:
             continue
-        for e in db.out_edges(conn, nid, RECURSE_TYPES):
+        for e in db.out_edges(conn, nid, RECURSE_TYPES + VENDORED_TYPES):
             if e.get("platform_cond") in SKIP_PLATFORM_CONDS:
                 continue
+            is_vendored = e["type"] in VENDORED_TYPES
+            if is_vendored and depth != 0:
+                continue  # 只收应用直连的 vendored 依赖
             if e["dst"] not in visited:
                 visited[e["dst"]] = depth + 1
-                queue.append((e["dst"], depth + 1))
+                if is_vendored:
+                    # 不入队：vendored 依赖不下钻其闭包
+                    vnode = db.get_node(conn, e["dst"])
+                    if vnode is None:
+                        continue
+                    vnode["_depth"] = depth + 1
+                    vnode["_via"] = "vendored"
+                    result.append(vnode)
+                else:
+                    queue.append((e["dst"], depth + 1, None))
     return result
 
 
@@ -289,6 +308,11 @@ def fetch_app_deps(conn, app_id: str, out_dir: Path,
         if node["id"] == app_id:
             entry["status"] = "target"
             entry["role"] = "target"
+        elif node.get("_via") == "vendored":
+            entry["status"] = "vendored"
+            entry["role"] = "vendored"
+            entry["note"] = ("源码自带依赖（require_source_dep）：随项目"
+                             "源码交叉编译，无需外部鸿蒙产物")
         elif node["kind"] in PROVIDED_KINDS:
             entry["status"] = "provided"
             entry["role"] = "provided"

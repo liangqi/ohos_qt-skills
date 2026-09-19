@@ -1319,3 +1319,318 @@ class TestPkgConfigVersionSuffixResolve(unittest.TestCase):
         # 无形近包仍返回 None（保持幽灵行为）
         self.assertIsNone(kb_seed.resolve_package(conn, "suil-0"))
         conn.close()
+
+class TestBuildscriptsDirNotExcluded(unittest.TestCase):
+    """build* 前缀误排除修复：buildscripts/buildtools 是源码目录必须扫描，
+    build/build-Debug 等构建输出目录仍排除（e2e musescore 根因）。"""
+
+    def _project(self, tmp: Path):
+        root = tmp / "bs"
+        for rel in ("buildscripts/cmake/Setup.cmake", "buildtools/x.cmake",
+                    "build/out.cmake", "build-Debug/out.cmake"):
+            p = root / rel
+            p.parent.mkdir(parents=True, exist_ok=True)
+            name = rel.split("/")[-1].replace("out.cmake", "Out").replace(
+                ".cmake", "").replace("Setup", "SetupDep")
+            p.write_text("find_package(%s REQUIRED)\n" % name,
+                         encoding="utf-8")
+        (root / "CMakeLists.txt").write_text(
+            "cmake_minimum_required(VERSION 3.16)\nproject(BS)\n",
+            encoding="utf-8")
+        return root
+
+    def test_buildscripts_scanned_build_output_skipped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            info = qt_scanner.scan_project(root)
+            fp = set(info["cmake_packages"]["find_package"])
+            self.assertIn("setupdep", fp)     # buildscripts/cmake/Setup.cmake
+            self.assertIn("x", fp)            # buildtools/x.cmake
+            self.assertNotIn("out", fp)       # build/ 与 build-Debug/ 排除
+
+
+class TestVendoredCmakeSkip(unittest.TestCase):
+    """vendored/依赖引擎目录内的 CMake 声明与注释行不算应用依赖
+    （e2e musescore：thirdparty/fluidsynth、KDDockWidgets/python、
+    muse_deps/recipes 污染 depth-1；注释行 find_package 误匹配）。"""
+
+    def _project(self, tmp: Path):
+        root = tmp / "vend"
+        # 内嵌三方自己的 find_package（不应计入）
+        p = root / "framework/audio/thirdparty/fluidsynth/CMakeLists.txt"
+        p.parent.mkdir(parents=True)
+        p.write_text(
+            "find_package(GLib2 REQUIRED)\n"
+            "find_package(Lash)\n"
+            "# Exported targets for cmake: find_package(FluidSynth)\n",
+            encoding="utf-8")
+        # 依赖引擎子模块 recipes 的系统模式回退（不应计入）
+        p = root / "muse_deps/recipes/lv2sdk/meta.cmake"
+        p.parent.mkdir(parents=True)
+        p.write_text(
+            "pkg_check_modules(lv2sdk_system REQUIRED IMPORTED_TARGET "
+            "lilv-0 suil-0 lv2)\n", encoding="utf-8")
+        # 内嵌三方的 include 也不算 hint 证据
+        p = root / "thirdparty/kdw/util.h"
+        p.parent.mkdir(parents=True)
+        p.write_text("#include <uuid/uuid.h>\n", encoding="utf-8")
+        # 应用自身声明（应计入）
+        (root / "CMakeLists.txt").write_text(
+            "cmake_minimum_required(VERSION 3.16)\nproject(Vend)\n"
+            "find_package(Jack REQUIRED)\n"
+            "# find_package(Commented)\n"
+            "find_package(Git REQUIRED)\n",   # VCS 构建工具应跳过
+            encoding="utf-8")
+        return root
+
+    def test_vendored_and_comments_skipped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            info = qt_scanner.scan_project(root)
+            fp = info["cmake_packages"]["find_package"]
+            self.assertEqual(fp, ["jack"])
+            self.assertEqual(info["cmake_packages"]["pkg_check_modules"], [])
+            hints = {h["name"] for h in info["third_party_hints"]}
+            self.assertNotIn("libuuid", hints)
+
+
+class TestRequireDepManifest(unittest.TestCase):
+    """依赖清单函数检测（muse_deps 引擎）：require_dep/require_source_dep/
+    require_tool → link/vendored/tool 三种角色；条件块标注。"""
+
+    ENGINE = """
+function(require_dep name)
+  # resolve prebuilt / system / source
+endfunction()
+function(require_source_dep name)
+endfunction()
+function(require_tool name)
+endfunction()
+"""
+    MANIFEST = """
+require_dep(zlib)
+require_dep(freetype STATIC)
+require_source_dep(kddockwidgets)
+require_tool(crashpad_handler)
+if (MUSE_MODULE_AUDIO_PIPEWIRE)
+    require_dep(pipewire)
+endif()
+"""
+
+    def _project(self, tmp: Path):
+        root = tmp / "mdep"
+        # 引擎定义在依赖子模块（vendored 路径）：定义可用，但其中调用不扫
+        p = root / "muse_deps/buildtools/manifest.cmake"
+        p.parent.mkdir(parents=True)
+        p.write_text(self.ENGINE +
+                     "require_dep(internal_only_in_engine)\n",
+                     encoding="utf-8")
+        p = root / "buildscripts/cmake/ExtDepsManifest.cmake"
+        p.parent.mkdir(parents=True)
+        p.write_text(self.MANIFEST, encoding="utf-8")
+        (root / "CMakeLists.txt").write_text(
+            "cmake_minimum_required(VERSION 3.16)\nproject(MDep)\n",
+            encoding="utf-8")
+        return root
+
+    def test_manifest_deps_extracted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            info = qt_scanner.scan_project(root)
+            md = {d["name"]: d for d in info["manifest_deps"]}
+            self.assertEqual(md["zlib"]["mode"], "link")
+            self.assertFalse(md["zlib"]["conditional"])
+            self.assertEqual(md["freetype"]["mode"], "link")
+            self.assertEqual(md["kddockwidgets"]["mode"], "source")
+            self.assertEqual(md["crashpad_handler"]["mode"], "tool")
+            # 条件块标注：不求值，只标注
+            self.assertTrue(md["pipewire"]["conditional"])
+            self.assertIn("MUSE_MODULE_AUDIO_PIPEWIRE",
+                          md["pipewire"]["condition"])
+            # STATIC 等模式参数不是依赖名；引擎内部调用不扫
+            self.assertNotIn("static", md)
+            self.assertNotIn("internal_only_in_engine", md)
+
+    def test_manifest_graph_edges(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:zlib", "package", "zlib",
+                           "harmonybrew", "ported")
+            scan = project_scanner.scan_project(conn, root)
+            edges = {e["dst"]: e["type"]
+                     for e in db.out_edges(conn, scan["app_id"])}
+            # require_dep → runtime 边（已解析包）
+            self.assertEqual(edges.get("hb:zlib"), "runtime")
+            # require_source_dep → vendored 边（幽灵节点 + vendored 描述）
+            self.assertEqual(edges.get("pkg-unknown:kddockwidgets"),
+                             "vendored")
+            # require_tool 不连边
+            self.assertNotIn("pkg-unknown:crashpad-handler", edges)
+            self.assertEqual([v["hint"] for v in scan["deps_vendored"]],
+                             ["kddockwidgets"])
+            conn.close()
+
+    def test_manifest_report_roles(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            report = deps_report.analyze_dependencies(None, root)
+            link = {d["name"] for d in report["link_deps"]}
+            self.assertIn("zlib", link)
+            self.assertIn("freetype", link)
+            vend = {v["name"] for v in report["vendored"]}
+            self.assertIn("kddockwidgets", vend)
+            tools = {t["tool"] for t in report["toolchain"]["tools"]}
+            self.assertIn("crashpad_handler", tools)
+            # 条件块声明的 required=False
+            by_name = {d["name"]: d for d in report["link_deps"]}
+            self.assertFalse(by_name["pipewire"]["required"])
+
+
+class TestFetchVendoredRole(unittest.TestCase):
+    """fetch-deps：vendored 边（require_source_dep）→ status/role=vendored，
+    不下载、不下钻其传递依赖。"""
+
+    def test_vendored_not_need_port(self):
+        conn = db.connect(":memory:")
+        db.init_db(conn)
+        kb_seed.seed_interfaces(conn)
+        db.upsert_node(conn, "app:x", "app", "x", "scan", "unknown")
+        db.upsert_node(conn, "hb:vend1", "package", "vend1",
+                       "harmonybrew", "ported")
+        db.upsert_node(conn, "pkg-unknown:vend2", "package", "vend2",
+                       "scan", "unknown")
+        # vend2 自身的 runtime 依赖（闭包不应包含）
+        db.upsert_node(conn, "pkg-unknown:vend2child", "package",
+                       "vend2child", "scan", "unknown")
+        db.upsert_edge(conn, "app:x", "hb:vend1", "vendored")
+        db.upsert_edge(conn, "app:x", "pkg-unknown:vend2", "vendored")
+        db.upsert_edge(conn, "pkg-unknown:vend2",
+                       "pkg-unknown:vend2child", "runtime")
+        manifest = deps_fetch.fetch_app_deps(
+            conn, "app:x", Path(tempfile.gettempdir()) / "x-out",
+            dry_run=True)
+        by_name = {e["name"]: e for e in manifest["deps"]}
+        self.assertEqual(by_name["vend1"]["status"], "vendored")
+        self.assertEqual(by_name["vend1"]["role"], "vendored")
+        self.assertEqual(by_name["vend2"]["status"], "vendored")
+        self.assertNotIn("vend2child", by_name)   # vendored 不下钻
+        self.assertEqual(manifest["summary"].get("vendored"), 2)
+        conn.close()
+
+
+class TestQtComponentsListVar(unittest.TestCase):
+    """set(<var> Core Gui ...) + list(APPEND) + find_package(Qt6 COMPONENTS
+    ${var}) 的组件展开（muse SetupQt6.cmake 形式）；同名变量跨文件并集，
+    与目录遍历顺序无关。"""
+
+    def _project(self, tmp: Path):
+        root = tmp / "qtcomp"
+        root.mkdir(parents=True)
+        (root / "CMakeLists.txt").write_text(
+            "cmake_minimum_required(VERSION 3.16)\nproject(QtComp)\n"
+            "set(qt_components\n    Core\n    Gui\n    Widgets\n)\n"
+            "list(APPEND qt_components Network)\n"
+            "find_package(Qt6 6.8 REQUIRED COMPONENTS ${qt_components})\n",
+            encoding="utf-8")
+        # sandbox 等旁支目录的同名变量：并集去重，不遮蔽主声明
+        p = root / "sandbox/web_sandbox/CMakeLists.txt"
+        p.parent.mkdir(parents=True)
+        p.write_text(
+            "set(qt_components Core Gui Quick Qml Widgets)\n"
+            "list(APPEND qt_components Svg)\n", encoding="utf-8")
+        return root
+
+    def test_components_from_list_var(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            info = qt_scanner.scan_project(root)
+            for m in ("core", "gui", "widgets", "network", "quick",
+                      "qml", "svg"):
+                self.assertIn(m, info["qt_modules"], "missing %s" % m)
+            self.assertEqual(info["qt_version_hint"], "6")
+
+
+class TestMusescoreAliasResolution(unittest.TestCase):
+    """e2e musescore 确认的别名缺口：CMake 模块名/依赖清单名 → hb 包名，
+    扫描期解析不产生幽灵节点。"""
+
+    def _project(self, tmp: Path):
+        root = tmp / "msalias"
+        root.mkdir(parents=True)
+        (root / "CMakeLists.txt").write_text(
+            "cmake_minimum_required(VERSION 3.16)\nproject(MSAlias)\n"
+            "find_package(ALSA REQUIRED)\n"
+            "find_package(SndFile REQUIRED)\n"
+            "find_package(PNG REQUIRED)\n"
+            "find_package(DBus1)\n"
+            "find_package(GLib2 REQUIRED)\n"
+            "find_package(TinyXml REQUIRED)\n",
+            encoding="utf-8")
+        return root
+
+    def test_aliases_resolve(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            for nid, name in [("cmdpkgs:alsa-lib", "alsa-lib"),
+                              ("hb:libsndfile", "libsndfile"),
+                              ("cmdpkgs:libpng", "libpng"),
+                              ("cmdpkgs:dbus", "dbus"),
+                              ("cmdpkgs:glib", "glib"),
+                              ("cmdpkgs:tinyxml2", "tinyxml2")]:
+                db.upsert_node(conn, nid, "package", name, "test", "ported")
+            scan = project_scanner.scan_project(conn, root)
+            linked = {d["hint"]: d["node"] for d in scan["deps_linked"]}
+            self.assertEqual(linked["alsa"], "cmdpkgs:alsa-lib")
+            self.assertEqual(linked["sndfile"], "hb:libsndfile")
+            self.assertEqual(linked["png"], "cmdpkgs:libpng")
+            self.assertEqual(linked["dbus1"], "cmdpkgs:dbus")
+            self.assertEqual(linked["glib2"], "cmdpkgs:glib")
+            self.assertEqual(linked["tinyxml"], "cmdpkgs:tinyxml2")
+            self.assertEqual(scan["deps_unknown"], [])
+            conn.close()
+
+
+class TestClonerSubmodules(unittest.TestCase):
+    """clone 复用时应补拉 submodule（musescore 依赖清单在 muse_deps/muse
+    submodule 内，不初始化则扫描不到）；无 submodule/失败时静默降级。"""
+
+    def test_reused_clone_inits_submodules_silently(self):
+        from port_graph import cloner
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "subproj"
+            root.mkdir()
+            # 伪造已有克隆：.git 目录 + .gitmodules（内容指向不存在的子模块）
+            (root / ".git").mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "project(Sub)\n", encoding="utf-8")
+            (root / ".gitmodules").write_text(
+                '[submodule "muse_deps"]\n'
+                '\tpath = muse_deps\n'
+                '\turl = https://example.invalid/muse_deps.git\n',
+                encoding="utf-8")
+            orig_ws = cloner.WORKSPACE
+            cloner.WORKSPACE = Path(tmp)   # 克隆目标指到临时 workspace
+            try:
+                info = cloner.clone_repo("https://github.com/x/subproj",
+                                         name="subproj")
+            finally:
+                cloner.WORKSPACE = orig_ws
+            # 目录已存在 → 复用，且 submodule init 失败（无效 URL）不抛异常
+            self.assertFalse(info["cloned"])
+            self.assertEqual(info["path"], str(root))
+
+    def test_no_gitmodules_noop(self):
+        from port_graph import cloner
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "plain"
+            root.mkdir()
+            (root / ".git").mkdir()
+            # 无 .gitmodules → 直接返回，不执行 git 命令
+            cloner._init_submodules(root, 10)
+            self.assertTrue((root / ".git").is_dir())
