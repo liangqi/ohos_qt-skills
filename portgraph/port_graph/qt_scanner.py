@@ -23,8 +23,14 @@ SOURCE_EXTS = {".c", ".cc", ".cpp", ".cxx", ".c++", ".h", ".hh", ".hpp", ".hxx",
 TEXT_SCAN_EXTS = {".c", ".cc", ".cpp", ".cxx", ".c++", ".h", ".hh", ".hpp",
                   ".hxx", ".m", ".mm", ".qml"}
 BINARY_EXTS = {".so", ".a", ".dll", ".dylib", ".lib", ".dll.a"}
+# 排除目录：仅排除确定非源码的（VCS/IDE 缓存/构建产物）。
+# 注意：dist 不排除——C++/CMake 项目中常为源控的打包/安装子目录
+# （如 qBittorrent 的 add_subdirectory(dist)，内含真实依赖声明与
+# 选项守卫，e2e 复盘曾因排除 dist 漏掉 if(SYSTEMD) 守卫上下文）。
 EXCLUDE_DIRS = {".git", ".hg", ".svn", ".qt-ohos", "node_modules", "__pycache__",
-                ".idea", ".vs", ".vscode", ".gradle", "out", "dist"}
+                ".idea", ".vs", ".vscode", ".gradle", "out"}
+# dist 不在排除清单：C++ 项目中 dist 多为源控打包/安装目录（qbittorrent
+# 的 dist/unix/CMakeLists.txt 是真实构建子目录，e2e 复核确认）
 # 构建输出目录（build / build-Debug / build.123 / build2）：排除以免扫到生成物；
 # 注意 buildscripts / buildtools 是源码目录（muse、musescore 的依赖清单
 # ExtDepsManifest.cmake / SetupQt6.cmake 都在其中），不能按 build 前缀排除
@@ -557,35 +563,188 @@ _PKGCHECK_KW = {"IMPORTED_TARGET", "GLOBAL", "STATIC", "SHARED", "MODULE",
                 "OPTIONAL", "SKIP_CMAKE_DIRS", "WITHOUT_CMAKE_PACKAGE"}
 
 
+# ------------------------------------------------------ CMake 选项守卫分析
+#
+# 背景（e2e qbittorrent 复盘）：find_package(Systemd) 位于
+# `if (SYSTEMD)` 内，而 SYSTEMD 由 feature_option_dependent(... OFF ...)
+# 声明且默认 OFF——该依赖不参与默认构建，不应记为 runtime 依赖。
+# 方案：收集 option/feature_option[_dependent]/cmake_dependent_option 的
+# 默认值；逐行追踪 if 栈；OFF 默认选项裸守卫（未被 NOT 修饰）内的
+# find_package/pkg_check_modules 标记 optional。Find<Name>.cmake 模块
+# 文件内的检测继承 find_package(Name) 的 optional 守卫（模块仅在
+# 调用时执行，守卫上下文在调用处）。
+
+# option(NAME "doc" [ON|OFF])——无默认值时 CMake 默认 OFF
+_OPTION_RE = re.compile(
+    r'^\s*option\s*\(\s*(\w+)\s+"(?:[^"\\]|\\.)*"\s*([A-Za-z0-9_${}.]+)?',
+    re.M)
+# feature_option(NAME "doc" <default>)
+_FEATURE_OPTION_RE = re.compile(
+    r'^\s*feature_option\s*\(\s*(\w+)\s+"(?:[^"\\]|\\.)*"\s*'
+    r'([A-Za-z0-9_${}.]+)',
+    re.M)
+# feature_option_dependent(NAME "doc" <default> "COND" <fallback>) /
+# cmake_dependent_option(同形)：第一个非字符串实参是默认值
+_DEPENDENT_OPTION_RE = re.compile(
+    r'^\s*(?:feature_option_dependent|cmake_dependent_option)\s*\('
+    r'\s*(\w+)\s+"(?:[^"\\]|\\.)*"\s*([A-Za-z0-9_${}.]+)',
+    re.M)
+
+_CMAKE_IF_RE = re.compile(r'^\s*if\s*\((.*)\)\s*$', re.I)
+_CMAKE_ELSEIF_RE = re.compile(r'^\s*elseif\s*\((.*)\)\s*$', re.I)
+_CMAKE_ELSE_RE = re.compile(r'^\s*else\s*\(\s*\)\s*$', re.I)
+_CMAKE_ENDIF_RE = re.compile(r'^\s*endif\s*\(\s*\)\s*$', re.I)
+_CMAKE_FUNC_RE = re.compile(r'^\s*(?:function|macro)\s*\(', re.I)
+_CMAKE_ENDFUNC_RE = re.compile(r'^\s*end(?:function|macro)\b', re.I)
+# 条件中被 NOT 修饰的 token：`NOT X` 表示 X 为假时进入，非正向守卫
+_NOT_TOKEN_RE = re.compile(r'(?i)\bNOT\s+(\w+)')
+
+
+def _collect_option_defaults(cmake_texts: List[str]) -> Dict[str, bool]:
+    """收集 CMake 选项声明的默认值 → {选项名: 默认是否为真}。
+
+    跨文件合并（选项定义与 if 守卫常不在同一文件）；首个定义优先。
+    默认值含 ${VAR} 等非字面量时不记录（无法判定）。
+    """
+    out: Dict[str, bool] = {}
+    for rx in (_OPTION_RE, _FEATURE_OPTION_RE, _DEPENDENT_OPTION_RE):
+        for text in cmake_texts:
+            for m in rx.finditer(text):
+                name, val = m.group(1), (m.group(2) or "OFF").upper()
+                if name in out:
+                    continue
+                if val in ("ON", "TRUE", "1"):
+                    out[name] = True
+                elif val in ("OFF", "FALSE", "0"):
+                    out[name] = False
+    return out
+
+
+def _frame_positively_guarded(cond: str, off_options: Dict[str, bool]) -> bool:
+    """if 条件是否含 OFF 默认选项的裸正向引用（未被 NOT 修饰）。
+
+    `if (SYSTEMD)` → True（SYSTEMD 默认 OFF）；
+    `if (NOT SYSTEMD)` / `if (DBUS)`（默认 ON）→ False。
+    """
+    if not off_options:
+        return False
+    stripped = _NOT_TOKEN_RE.sub(" ", cond)
+    for tok in re.findall(r"\w+", stripped):
+        if off_options.get(tok) is False:
+            return True
+    return False
+
+
+def _cmake_optional_line_map(text: str,
+                             off_options: Dict[str, bool]) -> Dict[int, bool]:
+    """逐行追踪 CMake if 栈，返回 {行号: 是否处于 OFF 默认选项守卫内}。
+
+    - 任一活动 if 帧正向守卫 OFF 默认选项 → 帧内代码默认不参与构建；
+    - else/elseif 分支保守视为不守卫（可能含回退逻辑）；
+    - function/macro 体内的声明在调用点生效，守卫上下文不可靠 → 不标记。
+    """
+    result: Dict[int, bool] = {}
+    stack: List[bool] = []   # 每帧：是否 OFF 选项正向守卫
+    func_depth = 0
+    for lineno, line in enumerate(text.splitlines(), 1):
+        s = line.strip()
+        if _CMAKE_IF_RE.match(s):
+            stack.append(_frame_positively_guarded(
+                _CMAKE_IF_RE.match(s).group(1), off_options))
+        elif _CMAKE_ELSEIF_RE.match(s) and stack:
+            stack[-1] = False   # 保守：else/elseif 分支不判定为守卫
+        elif _CMAKE_ELSE_RE.match(s) and stack:
+            stack[-1] = False
+        elif _CMAKE_ENDIF_RE.match(s) and stack:
+            stack.pop()
+        elif _CMAKE_FUNC_RE.match(s):
+            func_depth += 1
+        elif _CMAKE_ENDFUNC_RE.match(s) and func_depth:
+            func_depth -= 1
+        result[lineno] = (func_depth == 0 and any(stack))
+    return result
+
+
+def _cmake_guard_context(root: Path,
+                         cmake_files: List[str]) -> Dict[str, Dict[int, bool]]:
+    """构建 {文件: {行号: optional 守卫}} 上下文（选项默认值跨文件合并）。"""
+    texts = {rel: _read_text(root / rel) for rel in cmake_files}
+    option_defaults = _collect_option_defaults(list(texts.values()))
+    off_options = {k: v for k, v in option_defaults.items() if v is False}
+    return {rel: _cmake_optional_line_map(text, off_options)
+            for rel, text in texts.items()}
+
+
+def _find_module_optional_files(cmake_files: List[str],
+                                optional_names: set) -> set:
+    """Find<Name>.cmake 模块文件（Name 的 find_package 被 optional 守卫时
+    整个模块继承 optional——模块内的 pkg_check_modules 只在调用时执行）。"""
+    if not optional_names:
+        return set()
+    wanted = {"find%s.cmake" % n for n in optional_names}
+    return {rel for rel in cmake_files
+            if Path(rel).name.lower() in wanted}
+
+
 def _detect_cmake_packages(root: Path, cmake_files: List[str]) -> Dict:
     """从 CMake 中提取第三方包：find_package(*) 和 pkg_check_modules。
 
     Qt/KF 已由 _detect_qt 专门处理，这里只返回其它包。
-    返回 {find_package: [names...], pkg_check_modules: [modules...],
-          pkg_modules: [{name, version_req}...]}（含版本约束）。
+    返回 {find_package: [必需名...], find_package_optional: [可选名...],
+          pkg_check_modules: [必需名...], pkg_check_modules_optional: [...],
+          pkg_modules: [{name, version_req, optional?}...]}（含版本约束）。
+
+    optional = 声明点位于 OFF 默认 CMake 选项的 if 守卫内（默认构建不含）。
+    同一包既有 optional 又有必需声明点时，必需优先（保守）。
     """
-    findpkgs = set()
-    pkgmods = set()
+    findpkgs, pkgmods = set(), set()
+    findpkgs_opt, pkgmods_opt = set(), set()
     pkg_details: Dict[str, Dict] = {}
     vart = _collect_cmake_vars(root, cmake_files)
+    guards = _cmake_guard_context(root, cmake_files)
     skip_prefixes = ("qt", "kf")
+
+    def _line_of(text: str, pos: int) -> int:
+        return text.count("\n", 0, pos) + 1
+
+    # pass 1: find_package（先收集，供 Find<Name>.cmake 模块继承判定）
     for rel in cmake_files:
         if _is_vendored_path(rel):
             continue
         text = _strip_cmake_comments(_read_text(root / rel))
+        gmap = guards.get(rel, {})
         for m in _FINDPKG_ANY_RE.finditer(text):
             name = m.group(1).lower()
             if (name.startswith(skip_prefixes) or name in _CMAKE_KW
                     or name in _FINDPKG_SKIP
                     or name.replace(".", "").isdigit()):
                 continue
-            findpkgs.add(name)
+            if gmap.get(_line_of(text, m.start())):
+                findpkgs_opt.add(name)
+            else:
+                findpkgs.add(name)
+
+    # Find<Name>.cmake 模块文件：其内全部检测继承 optional 守卫
+    opt_files = _find_module_optional_files(
+        cmake_files, findpkgs_opt - findpkgs)
+
+    # pass 2: pkg_check_modules
+    for rel in cmake_files:
+        if _is_vendored_path(rel):
+            continue
+        text = _strip_cmake_comments(_read_text(root / rel))
+        gmap = guards.get(rel, {})
+        file_opt = rel in opt_files
         for m in _PKGCHECK_RE.finditer(text):
+            line_opt = file_opt or gmap.get(_line_of(text, m.start()))
             # pkg-config spec 可带版本约束："glib-2.0 >= 2.50" / glib-2.0>=2.50
             # 替换 set() 变量；无法解析的 ${宏参} 整体剔除，避免混入包名
             specs = _subst_vars(m.group(1), vart).replace("\\\n", " ")
             specs = re.sub(r"\$\{\w+\}", " ", specs)
-            _absorb_pkg_spec(specs, pkg_details)
+            if line_opt:
+                _absorb_pkg_spec(specs, pkg_details, optional=True)
+            else:
+                _absorb_pkg_spec(specs, pkg_details, optional=False)
             for tok in _PKGCONF_NAME_RE.findall(specs):
                 tok = tok.lower()
                 if (tok.upper() in _CMAKE_KW or tok in _FINDPKG_SKIP
@@ -593,12 +752,32 @@ def _detect_cmake_packages(root: Path, cmake_files: List[str]) -> Dict:
                         or tok.startswith(("qt", "kf"))
                         or tok.replace(".", "").isdigit()):
                     continue
-                pkgmods.add(tok)
-                pkg_details.setdefault(tok, {"name": tok, "version_req": None})
+                if line_opt:
+                    pkgmods_opt.add(tok)
+                    pkg_details.setdefault(
+                        tok, {"name": tok, "version_req": None,
+                              "optional": True})
+                else:
+                    pkgmods.add(tok)
+                    pkg_details.setdefault(tok, {"name": tok,
+                                                 "version_req": None})
+
+    # 必需优先：同一包 optional 声明点与必需声明点并存时按必需处理
+    findpkgs_opt -= findpkgs
+    pkgmods_opt -= pkgmods
+    for name in pkgmods:
+        d = pkg_details.get(name)
+        if d:
+            d.pop("optional", None)
     # 带约束的 spec 覆盖裸名（保留版本要求）
-    pkgmods.update(pkg_details.keys())
+    pkgmods.update(k for k, d in pkg_details.items()
+                   if not d.get("optional"))
+    pkgmods_opt.update(k for k, d in pkg_details.items()
+                       if d.get("optional"))
     return {"find_package": sorted(findpkgs),
+            "find_package_optional": sorted(findpkgs_opt),
             "pkg_check_modules": sorted(pkgmods),
+            "pkg_check_modules_optional": sorted(pkgmods_opt),
             "pkg_modules": sorted(pkg_details.values(),
                                   key=lambda d: d["name"])}
 
@@ -607,7 +786,8 @@ _PKG_SPEC_VER_RE = re.compile(
     r"([A-Za-z0-9][A-Za-z0-9._+-]*)\s*(>=|<=|==|=|<|>|!=)\s*([0-9][\w.]*)")
 
 
-def _absorb_pkg_spec(spec: str, out: Dict[str, Dict]) -> None:
+def _absorb_pkg_spec(spec: str, out: Dict[str, Dict],
+                     optional: bool = False) -> None:
     """吸收一条 pkg-config spec（可含版本约束）到 out。"""
     m = _PKG_SPEC_VER_RE.search(spec)
     if not m:
@@ -615,6 +795,8 @@ def _absorb_pkg_spec(spec: str, out: Dict[str, Dict]) -> None:
     name = m.group(1).lower()
     out[name] = {"name": name,
                  "version_req": "%s %s" % (m.group(2), m.group(3))}
+    if optional:
+        out[name]["optional"] = True
 
 
 def _detect_pkg_manifests(root: Path) -> Dict:
@@ -875,18 +1057,26 @@ def _subst_vars(text: str, vart: Dict[str, str]) -> str:
 
 
 def _detect_find_package_details(root: Path, info: Dict) -> List[Dict]:
-    """提取全部 find_package 调用的完整参数（跨行），含 Qt/KF 调用。"""
+    """提取全部 find_package 调用的完整参数（跨行），含 Qt/KF 调用。
+
+    附 optional 标志（OFF 默认选项守卫内的声明，默认构建不含）。
+    """
     vart = _collect_cmake_vars(root, info["cmake_files"])
+    guards = _cmake_guard_context(root, info["cmake_files"])
     out: List[Dict] = []
     for rel in info["cmake_files"]:
         if _is_vendored_path(rel):
             continue
         text = _strip_cmake_comments(_read_text(root / rel))
+        gmap = guards.get(rel, {})
         for m in _FINDPKG_FULL_RE.finditer(text):
             line = text.count("\n", 0, m.start()) + 1
-            out.append(_parse_findpkg_args(m.group(1),
-                                           _subst_vars(m.group(2) or "", vart),
-                                           rel, line))
+            detail = _parse_findpkg_args(m.group(1),
+                                         _subst_vars(m.group(2) or "", vart),
+                                         rel, line)
+            if gmap.get(line):
+                detail["optional"] = True
+            out.append(detail)
     return out
 
 

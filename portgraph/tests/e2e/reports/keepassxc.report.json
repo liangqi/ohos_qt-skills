@@ -8,9 +8,9 @@
   "tier": "B",
   "build_system": "cmake",
   "sources": 884,
-  "repo_path": "/root/harmony-workspace/worker1/portgraph/workspace/keepassxc"
+  "repo_path": "/root/harmony-workspace/worker3/portgraph/workspace/keepassxc"
  },
- "generated_at": "2026-09-19T12:36:05Z",
+ "generated_at": "2026-09-19T12:13:14Z",
  "verdict": "blocked",
  "blockers": [
   {
@@ -398,7 +398,7 @@
    "pg_status": "unknown",
    "depth": 1,
    "evidence": {
-    "note": "匹配到幽灵节点：真实外部依赖且无已知鸿蒙包（fetch-deps 报 need_port/需源码移植，检出正确）"
+    "note": "⚠ 匹配到幽灵节点（pkg-unknown）——名字未解析到已知鸿蒙包，实为解析缺口，需复核"
    },
    "agent_note": "复核⚠注记：hb-core Formula 与 cmd-pkgs 均确无 botan 包（find_package(Botan REQUIRED)，CMakeLists.txt:511），pkg-unknown/need_port 定性正确——检出与状态均准确，非解析缺口，需自行交叉编译属实"
   },
@@ -458,13 +458,7 @@
       "file": "CMakeLists.txt",
       "line": 536,
       "strong": true,
-      "text": "find_library(LIBUSB"
-     },
-     {
-      "file": "CMakeLists.txt",
-      "line": 536,
-      "strong": true,
-      "text": "find_library(LIBUSB_LIBRARIES NAMES usb-1.0"
+      "text": "find_library(LIBUSB_LIBRARIES NAMES usb-1.0 usb REQUIRED)"
      },
      {
       "file": "vcpkg.json",
@@ -473,16 +467,10 @@
       "text": "\"name\": \"libusb\","
      },
      {
-      "file": "src/CMakeLists.txt",
-      "line": 390,
-      "strong": true,
-      "text": "target_link_libraries(keepassxc_core Qt6::DBus ${LIBUSB"
-     },
-     {
       "file": "src/thirdparty/ykcore/CMakeLists.txt",
       "line": 32,
       "strong": true,
-      "text": "find_library(LIBUSB"
+      "text": "find_library(LIBUSB_LIBRARY NAMES usb-1.0 usb)"
      }
     ]
    },
@@ -506,19 +494,13 @@
       "file": "src/CMakeLists.txt",
       "line": 395,
       "strong": true,
-      "text": "target_link_libraries(keepassxc_gui X11"
+      "text": "target_link_libraries(keepassxc_gui X11)"
      },
      {
       "file": "src/autotype/CMakeLists.txt",
       "line": 22,
       "strong": true,
-      "text": "find_package(X11"
-     },
-     {
-      "file": "src/autotype/CMakeLists.txt",
-      "line": 46,
-      "strong": true,
-      "text": "target_link_libraries(autotype ${X11"
+      "text": "find_package(X11 REQUIRED COMPONENTS Xi XTest)"
      }
     ]
    },
@@ -572,13 +554,13 @@
       "file": "src/autotype/CMakeLists.txt",
       "line": 16,
       "strong": true,
-      "text": "pkg_check_modules(Xkbcommon REQUIRED IMPORTED_TARGET xkbcommon"
+      "text": "pkg_check_modules(Xkbcommon REQUIRED IMPORTED_TARGET xkbcommon)"
      },
      {
       "file": "src/autotype/CMakeLists.txt",
       "line": 44,
       "strong": true,
-      "text": "target_link_libraries(autotype Qt6::DBus PkgConfig::Xkbcommon"
+      "text": "target_link_libraries(autotype Qt6::DBus PkgConfig::Xkbcommon)"
      }
     ]
    },
@@ -626,7 +608,7 @@
       "file": "CMakeLists.txt",
       "line": 528,
       "strong": true,
-      "text": "find_package(Minizip"
+      "text": "find_package(Minizip REQUIRED)"
      },
      {
       "file": "vcpkg.json",
@@ -638,19 +620,7 @@
       "file": "cmake/FindMinizip.cmake",
       "line": 5,
       "strong": true,
-      "text": "find_library(MINIZIP_LIBRARIES NAMES minizip"
-     },
-     {
-      "file": "src/CMakeLists.txt",
-      "line": 363,
-      "strong": true,
-      "text": "        ${MINIZIP"
-     },
-     {
-      "file": "src/keeshare/CMakeLists.txt",
-      "line": 30,
-      "strong": true,
-      "text": "target_link_libraries(keeshare PUBLIC Qt6::Core Qt6::Widgets ${BOTAN_LIBRARIES} ${ZLIB_LIBRARIES} PRIVATE ${MINIZIP"
+      "text": "find_library(MINIZIP_LIBRARIES NAMES minizip libminizip)"
      }
     ]
    },
@@ -668,9 +638,9 @@
    "pg_status": "unknown",
    "depth": 1,
    "evidence": {
-    "note": "未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植）"
+    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
    },
-   "agent_note": null
+   "agent_note": "CMakeLists.txt:259 find_package(OpenMP)（无 REQUIRED，命中后仅追加 OpenMP_C(_XX)_FLAGS）是 CMake 内置编译器特性探测而非三方包；OHOS clang 工具链自带 OpenMP runtime，hb-core/cmd-pkgs 亦无 openmp/libgomp 包（hb 的 libomp 为宿主用途 keg_only）→ pkg-unknown 可接受，非 ALIASES 缺口；fetch-deps 已按 CMake 内置分类标 provided"
   },
   {
    "class": "readme-omitted",
@@ -690,31 +660,19 @@
       "file": "CMakeLists.txt",
       "line": 532,
       "strong": true,
-      "text": "find_package(PCSC"
+      "text": "find_package(PCSC REQUIRED)"
      },
      {
       "file": "cmake/FindPCSC.cmake",
       "line": 19,
       "strong": true,
-      "text": "pkg_check_modules(PCSC"
+      "text": "pkg_check_modules(PCSC libpcsclite)"
      },
      {
       "file": "cmake/FindPCSC.cmake",
       "line": 52,
       "strong": true,
       "text": "find_library(PCSC_LIBRARIES NAMES pcsclite libpcsclite WinSCard PCSC"
-     },
-     {
-      "file": "cmake/FindPCSC.cmake",
-      "line": 19,
-      "strong": true,
-      "text": "pkg_check_modules(PCSC libpcsclite"
-     },
-     {
-      "file": "cmake/FindPCSC.cmake",
-      "line": 52,
-      "strong": true,
-      "text": "find_library(PCSC_LIBRARIES NAMES pcsclite libpcsclite"
      }
     ]
    },
@@ -738,31 +696,19 @@
       "file": "cmake/FindQREncode.cmake",
       "line": 19,
       "strong": true,
-      "text": "find_library(QRENCODE_LIBRARY_RELEASE qrencode"
-     },
-     {
-      "file": "cmake/FindQREncode.cmake",
-      "line": 20,
-      "strong": true,
-      "text": "find_library(QRENCODE"
+      "text": "find_library(QRENCODE_LIBRARY_RELEASE qrencode)"
      },
      {
       "file": "cmake/FindQREncode.cmake",
       "line": 23,
       "strong": true,
-      "text": "find_library(QRENCODE_LIBRARY qrencode"
+      "text": "find_library(QRENCODE_LIBRARY qrencode)"
      },
      {
       "file": "src/qrcode/CMakeLists.txt",
       "line": 20,
       "strong": true,
-      "text": "find_package(QREncode"
-     },
-     {
-      "file": "src/qrcode/CMakeLists.txt",
-      "line": 24,
-      "strong": true,
-      "text": "target_link_libraries(qrcode PUBLIC Qt6::Core Qt6::Svg ${QRENCODE"
+      "text": "find_package(QREncode REQUIRED)"
      }
     ]
    },
@@ -792,25 +738,25 @@
       "file": "cmake/FindReadline.cmake",
       "line": 9,
       "strong": true,
-      "text": "find_package(Readline"
-     },
-     {
-      "file": "cmake/FindReadline.cmake",
-      "line": 35,
-      "strong": true,
-      "text": "pkg_check_modules(Readline IMPORTED_TARGET readline"
-     },
-     {
-      "file": "cmake/FindReadline.cmake",
-      "line": 61,
-      "strong": true,
-      "text": "        DOC \"readline"
+      "text": "#     find_package(Readline [REQUIRED] [QUIET])"
      },
      {
       "file": "cmake/FindReadline.cmake",
       "line": 10,
       "strong": true,
-      "text": "target_link_libraries(<target> PRIVATE Readline"
+      "text": "#     target_link_libraries(<target> PRIVATE Readline::readline)"
+     },
+     {
+      "file": "cmake/FindReadline.cmake",
+      "line": 35,
+      "strong": true,
+      "text": "pkg_check_modules(Readline IMPORTED_TARGET readline)"
+     },
+     {
+      "file": "src/cli/CMakeLists.txt",
+      "line": 54,
+      "strong": true,
+      "text": "find_package(Readline MODULE)"
      }
     ]
    },

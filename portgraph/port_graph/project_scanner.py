@@ -4,6 +4,8 @@
 - app:<name> 节点（普通属性）
 - uses-module 边 -> qtmod:*（Qt 模块）
 - runtime 边 -> 已入库包节点 / pkg-unknown:* 幽灵节点（第三方库）
+- optional 边 -> 默认构建不含的依赖（OFF 默认 CMake 选项守卫内声明；
+  不进入 runtime 闭包/可移植性分析，仅供展示层与人工复核）
 - node_interfaces 记录（平台接口使用 + 证据）
 """
 
@@ -424,21 +426,28 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
     unknown 包节点。require_source_dep（源码自带）→ vendored 边；
     require_tool（主机构建工具）不连边。
 
-    另含两轮增强（e2e tdesktop tier C 复核驱动）：
+    集三轮实测增强（e2e tdesktop/musescore/qbittorrent 复核驱动）：
     - find_package 命中的构建工具/解释器（python3 等）不建运行时边——
-      那是构建期依赖，deps_report 侧归 build-tool 分类
+      那是构建期依赖，deps_report 侧归 build-tool 分类；
     - target_link_libraries 的 ns::external_<name> 导入目标名（剥前缀后
       在 raw_libs 里，ext_target=True）：能解析则连边，不能解析且非
-      vendored 子模块则建幽灵节点（高置信声明，如 tdesktop 的全部三方库）
+      vendored 子模块则建幽灵节点（高置信声明，如 tdesktop 的全部三方库）；
+    - 同库异名归并：find_package 的 CamelCase 压平名（LibtorrentRasterbar →
+      libtorrentrasterbar）与 pkg-config 连字符名（libtorrent-rasterbar）按
+      去分隔符键分组，组内选代表名，避免同库产生重复幽灵节点/重复下载；
+    - OFF 默认 CMake 选项守卫内的声明（默认构建不含）连 optional 边，
+      不进入 runtime 闭包/可移植性分析。
 
-    返回 {linked: [...], unknown: [...], vendored: [...]}。
-
+    返回 {linked: [...], unknown: [...], optional: [...], vendored: [...]}。
     """
     cp = info.get("cmake_packages", {})
     # find_package 构建工具（python3/cmake/...）不是应用运行时依赖
     names: List[str] = [n for n in cp.get("find_package", [])
                         if n not in qt_scanner.BUILD_TOOL_FINDPKG]
+    names.extend(n for n in cp.get("find_package_optional", [])
+                 if n not in qt_scanner.BUILD_TOOL_FINDPKG)
     names.extend(cp.get("pkg_check_modules", []))
+    names.extend(cp.get("pkg_check_modules_optional", []))
     pm = info.get("pkg_manifests", {})
     for c in pm.get("conan", []):
         names.append(c["name"])
@@ -454,37 +463,97 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
         if md["mode"] == "link" and md["name"] not in names:
             names.append(md["name"])
 
-    seen = set()
-    linked, unknown = [], []
+    # optional 名单：全部声明点都在 OFF 默认选项守卫内的包
+    # （scanner 层已保证必需优先：任一必需声明点即不入 optional 名单）
+    optional_names = set(cp.get("find_package_optional", []))
+    optional_names.update(cp.get("pkg_check_modules_optional", []))
+    optional_names.update(spec["name"] for spec in
+                          cp.get("pkg_modules", []) if spec.get("optional"))
 
-    def _link(name: str, node, alias_used=None, via=None):
-        db.upsert_edge(conn, app_id, node["id"], "runtime")
-        item = {"hint": name, "node": node["id"],
-                "status": node["port_status"]}
+    def _resolve(name: str, dashless_index: Dict[str, str]):
+        node = kb_seed.resolve_package(conn, name)
+        alias_used = None
+        if node is None:
+            # 直接名未解析时按别名表重试（libavcodec → ffmpeg 等），
+            # 避免同库异名产生 pkg-unknown 幽灵节点（fetch-deps 会误报
+            # need_port，而别名指向的 bottle 实际存在）
+            aliases = kb_seed.PKG_ALIASES.get(name.lower())
+            if isinstance(aliases, str):
+                aliases = [aliases]
+            for alias in aliases or []:
+                node = kb_seed.resolve_package(conn, alias.lower())
+                if node:
+                    alias_used = alias
+                    break
+        if node is None:
+            # 兜底：去分隔符匹配（CamelCase 压平名 → 连字符包名）
+            node = kb_seed.resolve_package_dashless(conn, name, dashless_index)
+            if node:
+                alias_used = "dashless"
+        return node, alias_used
+
+    def _emit(name: str, node, alias_used=None, via=None, merged=None,
+              edge_type="runtime"):
+        """解析结果落图：node 为 None 时建幽灵节点。"""
+        if node is not None:
+            target_id = node["id"]
+            status = node["port_status"]
+        else:
+            target_id = "pkg-unknown:%s" % normalize_app_name(name)
+            status = "unknown"
+            db.upsert_node(
+                conn, target_id, "package", name, "scan", "unknown",
+                description="扫描发现的第三方库，未匹配到已知包源",
+                port_evidence="不在 Harmonybrew/cmd-pkgs 已知清单")
+        db.upsert_edge(conn, app_id, target_id, edge_type)
+        item = {"hint": name, "node": target_id, "status": status}
         if alias_used:
             item["alias"] = alias_used
         if via:
             item["via"] = via
-        linked.append(item)
-
-    def _ghost(name: str):
-        ghost_id = "pkg-unknown:%s" % normalize_app_name(name)
-        db.upsert_node(
-            conn, ghost_id, "package", name, "scan", "unknown",
-            description="扫描发现的第三方库，未匹配到已知包源",
-            port_evidence="不在 Harmonybrew/cmd-pkgs 已知清单")
-        db.upsert_edge(conn, app_id, ghost_id, "runtime")
-        unknown.append({"hint": name, "node": ghost_id})
-
-    for name in names:
-        if name.lower() in seen:
-            continue
-        seen.add(name.lower())
-        node, alias_used = _resolve_pkg_node(conn, name)
-        if node:
-            _link(name, node, alias_used)
+        if merged:
+            item["merged_from"] = merged
+        if edge_type == "optional":
+            item["optional"] = True
+            optional.append(item)
+        elif node is not None:
+            linked.append(item)
         else:
-            _ghost(name)
+            unknown.append(item)
+
+    linked, unknown, optional = [], [], []
+    seen = set()
+
+    # ---- 主名单：同库异名分组（组内代表名 = 能解析到已知包的 >
+    #      带分隔符的（pkg-config/hb 命名口径）> 首个出现的）
+    dashless_index = kb_seed.build_dashless_index(conn)
+    groups: Dict[str, List[str]] = {}
+    order: List[str] = []
+    for name in names:
+        key = kb_seed._dashless_key(name)
+        if key not in groups:
+            groups[key] = []
+            order.append(key)
+        if name not in groups[key]:
+            groups[key].append(name)
+        seen.add(name.lower())
+
+    for key in order:
+        members = groups[key]
+        dashed = [n for n in members if re.search(r"[-_.]", n)]
+        rep, rep_node, rep_alias = None, None, None
+        for cand in dashed + [m for m in members if m not in dashed]:
+            node, alias = _resolve(cand, dashless_index)
+            if node:
+                rep, rep_node, rep_alias = cand, node, alias
+                break
+        if rep is None:
+            rep = dashed[0] if dashed else members[0]
+        merged = [m for m in members if m != rep]
+        # 任一成员必需 → 必需（保守：可选声明点与必需声明点并存时按必需）
+        edge_type = ("runtime" if any(m not in optional_names
+                                      for m in members) else "optional")
+        _emit(rep, rep_node, rep_alias, merged=merged, edge_type=edge_type)
 
     # ---- 裸链接名（含 ns::external_<name> 导入目标，剥前缀后标记
     #      ext_target）：能解析则连边；external-target 高置信声明
@@ -494,14 +563,17 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
         name = rl["name"]
         if name.lower() in seen:
             continue
+        # 同库异名：压平名与主名单已分组处理的条目同库时跳过
+        if kb_seed._dashless_key(name) in groups:
+            continue
         seen.add(name.lower())
         # Windows 系统库（通常位于 win32 平台块）：跳过，防止同名 Unix
         # 库误连边（bcrypt → OpenBSD bcrypt）
         if name.lower() in qt_scanner.WIN32_SYSTEM_LIBS:
             continue
-        node, alias_used = _resolve_pkg_node(conn, name)
+        node, alias_used = _resolve(name, dashless_index)
         if node:
-            _link(name, node, alias_used,
+            _emit(name, node, alias_used,
                   via="external-target" if rl.get("ext_target") else None)
         elif rl.get("ext_target"):
             # vendored 子模块（.gitmodules 声明，随项目编译）不建幽灵：
@@ -509,7 +581,7 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
             if _fold_dep_name(name) in submodule_folds:
                 continue
             if len(name) >= 3:
-                _ghost(name)
+                _emit(name, None)
 
     # require_source_dep：源码自带依赖 → vendored 边（随项目编译，
     # fetch-deps 标 role=vendored，不进入 need_port）
@@ -518,7 +590,7 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
         if md["mode"] != "source":
             continue
         name = md["name"]
-        node, alias_used = _resolve_pkg_node(conn, name)
+        node, alias_used = _resolve(name, dashless_index)
         if node:
             vid = node["id"]
             status = node["port_status"]
@@ -537,7 +609,8 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
         if alias_used:
             item["alias"] = alias_used
         vendored.append(item)
-    return {"linked": linked, "unknown": unknown, "vendored": vendored}
+    return {"linked": linked, "unknown": unknown, "optional": optional,
+            "vendored": vendored}
 
 
 def scan_project(conn, project_root, info: Dict = None) -> Dict:
@@ -581,6 +654,7 @@ def scan_project(conn, project_root, info: Dict = None) -> Dict:
     # require_dep；require_source_dep → vendored 边）
     tp = _link_third_party(conn, app_id, info)
     deps_linked, deps_unknown = tp["linked"], tp["unknown"]
+    deps_optional = tp.get("optional", [])
 
     # KDE Frameworks 组件 → 作为子项目节点递归分析（不再整体判 blocked）
     _link_kf_components(conn, app_id, info.get("kf_components", []))
@@ -620,5 +694,6 @@ def scan_project(conn, project_root, info: Dict = None) -> Dict:
         "modules_linked": modules_linked, "modules_missing": modules_missing,
         "deps_linked": deps_linked, "deps_unknown": deps_unknown,
         "deps_vendored": tp["vendored"],
+        "deps_optional": deps_optional,
         "interfaces": ifaces,
     }

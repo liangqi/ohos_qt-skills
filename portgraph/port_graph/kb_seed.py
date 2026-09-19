@@ -278,6 +278,60 @@ PKG_ALIASES: Dict[str, str] = {
 }
 
 
+def _dashless_key(name: str) -> str:
+    """去分隔符键：'libtorrent-rasterbar' 与 'libtorrentrasterbar' 同键。
+
+    用于两处：1) 扫描期同库异名归并（find_package 的 CamelCase 压平名
+    vs pkg-config 连字符名）；2) 解析失败时的兜底匹配。
+    """
+    return re.sub(r"[-_.]+", "", (name or "").lower())
+
+
+def build_dashless_index(conn) -> Dict[str, str]:
+    """包名去分隔符索引：{dashless键: 节点 id}。
+
+    供 find_package CamelCase 压平名（LibtorrentRasterbar →
+    libtorrentrasterbar）解析到已知鸿蒙包（libtorrent-rasterbar）。
+    只收已知包源（hb:/cmdpkgs:）——pkg-unknown 幽灵节点入索引会导致
+    “上一次扫描的幽灵被下一次扫描当作已知包解析”的自满足闭环。
+    键冲突时 hb 源 / ported 优先。
+    """
+    best: Dict[str, tuple] = {}
+    try:
+        rows = conn.execute(
+            "SELECT id, name, port_status FROM nodes "
+            "WHERE kind='package' AND id NOT LIKE 'pkg-unknown:%'"
+        ).fetchall()
+    except Exception:
+        return {}
+    for r in rows:
+        key = _dashless_key(r["name"])
+        if not key:
+            continue
+        rank = (r["id"].startswith("hb:"), r["port_status"] == "ported")
+        cur = best.get(key)
+        if cur is None or rank > cur[0]:
+            best[key] = (rank, r["id"])
+    return {k: v[1] for k, v in best.items()}
+
+
+def resolve_package_dashless(conn, hint_name: str,
+                             index: Optional[Dict[str, str]] = None) -> Optional[Dict]:
+    """解析失败兑底：去分隔符键匹配已知包名。
+
+    仅处理多词压平名（键长 ≥6），避免短名碰撞；典型场景是
+    find_package(LibtorrentRasterbar) 的压平名匹配到 libtorrent-rasterbar
+    这类连字符包名。找不到返回 None。
+    """
+    key = _dashless_key(hint_name)
+    if len(key) < 6:
+        return None
+    if index is None:
+        index = build_dashless_index(conn)
+    nid = index.get(key)
+    return db.get_node(conn, nid) if nid else None
+
+
 def resolve_package(conn, hint_name: str) -> Optional[Dict]:
     """第三方库线索 -> 已入库的包节点（hb 优先，ported 优先）。
 

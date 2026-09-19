@@ -220,6 +220,21 @@ flowchart TB
   `kb_seed.PKG_ALIASES`（libavcodec→ffmpeg、xkbcommon→libxkbcommon、
   pcsc→pcsc-lite 等）重试，同库异名不再产生 pkg-unknown 幽灵节点——
   analyze / fetch-deps / deps 三个命令的名称解析口径因此一致
+- **同库异名归并 + 去分隔符兑底解析**：find_package 的 CamelCase 压平名
+  （`LibtorrentRasterbar` → `libtorrentrasterbar`）与 pkg-config 连字符名
+  （`libtorrent-rasterbar`）指同一库，扫描期按去分隔符键分组归并为一个
+  节点（不再产生重复幽灵节点/重复 need_port）；仍未命中时按
+  `kb_seed.build_dashless_index`（仅收 hb:/cmdpkgs: 已知包源，键长 ≥6
+  防碰撞）兑底解析到已知连字符包名
+- **CMake 选项守卫（默认 OFF）内的声明标 optional**：`option` /
+  `feature_option` / `feature_option_dependent` / `cmake_dependent_option`
+  默认值为 OFF 的选项，其 `if(<OPTION>)` 正向守卫内的
+  find_package/pkg_check_modules 视为默认构建不含（e2e qBittorrent
+  `if (SYSTEMD)` 复盘）：deps 报告该条目 `required=false` + 注记；
+  `analyze`/`fetch-deps` 连 **optional 边**（不进入 runtime 闭包与
+  可移植性分析）；Find<Name>.cmake 模块文件继承 find_package(Name)
+  的守卫；同一包必需声明点与可选声明点并存时按必需（保守）。注意
+  `else`/`elseif` 分支与 function/macro 体内不判定（保守视为必需）
 - 工具链检测只记**已知工具名或命中特征后缀**（`*-config`/`*-scanner`/
   `*-codegen`/`glib-*`）的 `COMMAND`/`find_program` token，避免把任意
   可执行名当依赖

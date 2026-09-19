@@ -1015,6 +1015,280 @@ class TestCLICompact(unittest.TestCase):
         self.assertTrue(r.stdout.strip())
 
 
+# ------------------------------------------------- e2e qbittorrent 复盘修复
+
+class TestCmakeOptionGuard(unittest.TestCase):
+    """OFF 默认 CMake 选项守卫内的 find_package/pkg_check_modules 标 optional。
+
+    取证样本：qBittorrent dist/unix/CMakeLists.txt 的 if (SYSTEMD)
+    （SYSTEMD 由 feature_option_dependent 声明且默认 OFF）。同时覆盖
+    dist/ 目录不再被排除（add_subdirectory(dist) 是真实构建子目录）。
+    """
+
+    ROOT_CMAKE = """cmake_minimum_required(VERSION 3.16)
+project(GuardProj)
+feature_option(GUI "Build GUI" ON)
+feature_option_dependent(SYSTEMD "Install systemd unit" OFF "NOT GUI" OFF)
+option(WEBUI "Enable WebUI" ON)
+option(STACKTRACE "Stacktrace" OFF)
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    feature_option_dependent(DBUS "D-Bus" ON "GUI" OFF)
+endif()
+"""
+
+    DIST_CMAKE = """if (SYSTEMD)
+    if (NOT SYSTEMD_DIR)
+        find_package(Systemd)
+    endif()
+endif()
+if (DBUS)
+    find_package(Qt6 6.6 REQUIRED COMPONENTS DBus)
+endif()
+if (STACKTRACE)
+    find_package(LibunwindStacktrace QUIET)
+endif()
+find_package(Boost 1.76 REQUIRED)
+"""
+
+    FIND_MODULE_CMAKE = """
+find_package(PkgConfig QUIET)
+if (NOT GUARDPROJ_FOUND)
+    pkg_check_modules(GUARDPROJ "systemd")
+endif()
+"""
+
+    MACRO_CMAKE = """
+macro(find_lib version)
+    find_package(LibtorrentRasterbar QUIET ${version})
+endmacro()
+find_lib(2.0)
+"""
+
+    def _project(self, tmp: Path):
+        root = tmp / "guardproj"
+        (root / "dist" / "unix").mkdir(parents=True)
+        (root / "cmake" / "Modules").mkdir(parents=True)
+        (root / "CMakeLists.txt").write_text(self.ROOT_CMAKE,
+                                              encoding="utf-8")
+        # dist/ 内的 CMakeLists 不应再被排除
+        (root / "dist" / "unix" / "CMakeLists.txt").write_text(
+            self.DIST_CMAKE, encoding="utf-8")
+        # Find 模块文件：find_package(Systemd) optional → 整个模块继承
+        (root / "cmake" / "Modules" / "FindSystemd.cmake").write_text(
+            self.FIND_MODULE_CMAKE, encoding="utf-8")
+        # macro 体内的声明：调用点生效，不标 optional
+        (root / "cmake" / "Modules" / "CheckPackages.cmake").write_text(
+            self.MACRO_CMAKE, encoding="utf-8")
+        return root
+
+    def _packages(self, tmp: Path):
+        root = self._project(tmp)
+        info = qt_scanner.scan_project(root)
+        return info["cmake_packages"], info
+
+    def test_optional_flagging(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cp, info = self._packages(Path(tmp))
+            # SYSTEMD 默认 OFF → find_package(Systemd) optional
+            self.assertIn("systemd", cp["find_package_optional"])
+            self.assertNotIn("systemd", cp["find_package"])
+            # Find<systemd>.cmake 模块继承 optional（pkg_check_modules）
+            self.assertIn("systemd", cp["pkg_check_modules_optional"])
+            self.assertNotIn("systemd", cp["pkg_check_modules"])
+            # pkg_modules 条目带 optional 标志
+            pm = {d["name"]: d for d in cp["pkg_modules"]}
+            self.assertTrue(pm["systemd"].get("optional"))
+            # 默认 ON 的选项（DBUS/WEBUI）与无条件声明 → 必需
+            self.assertIn("boost", cp["find_package"])
+            self.assertNotIn("boost", cp["find_package_optional"])
+            self.assertNotIn("dbus", cp["find_package"])
+            # STACKTRACE 默认 OFF → optional
+            self.assertIn("libunwindstacktrace",
+                          cp["find_package_optional"])
+            # macro 体内的声明不标 optional（调用点上下文未知）
+            self.assertIn("libtorrentrasterbar", cp["find_package"])
+            self.assertNotIn("libtorrentrasterbar",
+                             cp["find_package_optional"])
+
+    def test_find_package_details_optional(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            info = qt_scanner.scan_project(root)
+            details = {(d["name"], d["file"].endswith("unix/CMakeLists.txt"))
+                       : d for d in info["find_package_details"]}
+            systemd = next(d for (n, _), d in details.items()
+                           if n == "Systemd")
+            self.assertTrue(systemd.get("optional"))
+            boost = next(d for (n, _), d in details.items()
+                         if n == "Boost")
+            self.assertFalse(boost.get("optional", False))
+
+
+class TestOptionalEdgeExcludedFromClosure(unittest.TestCase):
+    """optional 边不进入 runtime 闭包与可移植性分析（e2e systemd 误报修复）。"""
+
+    def test_optional_edge_semantics(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "optproj"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\n"
+                "project(OptProj)\n"
+                'option(SYSTEMD "Install unit" OFF)\n'
+                "if (SYSTEMD)\n"
+                "    find_package(Systemd)\n"
+                "endif()\n"
+                "find_package(ZLIB 1.2 REQUIRED)\n",
+                encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:zlib", "package", "zlib",
+                           "harmonybrew", "ported", version="1.3.1")
+            scan = project_scanner.scan_project(conn, root)
+            edges = {e["type"]: e["dst"]
+                     for e in db.out_edges(conn, scan["app_id"])}
+            self.assertEqual(edges.get("optional"),
+                             "pkg-unknown:systemd")
+            self.assertEqual(edges.get("runtime"), "hb:zlib")
+            # 可移植性分析不沿 optional 边递归（不产生 unknown）
+            analysis = engine.analyze(conn, scan["app_id"])
+            self.assertEqual(
+                [u["node"] for u in analysis["unknowns"]], [])
+            # fetch-deps 闭包不含 optional 依赖
+            closure = deps_fetch.dependency_closure(conn, scan["app_id"])
+            ids = [n["id"] for n in closure]
+            self.assertNotIn("pkg-unknown:systemd", ids)
+            self.assertIn("hb:zlib", ids)
+            # 扫描摘要区分 optional / unknown
+            self.assertEqual(scan["deps_unknown"], [])
+            self.assertEqual([d["hint"] for d in scan["deps_optional"]],
+                             ["systemd"])
+            conn.close()
+
+
+class TestDashlessSameLibMerge(unittest.TestCase):
+    """同库异名归并：find_package CamelCase 压平名与 pkg-config 连字符名
+    不产生重复幽灵节点；包库有对应包时能兑底解析（e2e libtorrentrasterbar
+    幽灵节点修复）。"""
+
+    CMAKE = """cmake_minimum_required(VERSION 3.16)
+project(DashlessProj)
+find_package(LibtorrentRasterbar 2.0 REQUIRED)
+pkg_check_modules(LT IMPORTED_TARGET "libtorrent-rasterbar>=2.0.10")
+find_package(Boost REQUIRED)
+"""
+
+    def _project(self, tmp: Path):
+        root = tmp / "dashless"
+        root.mkdir()
+        (root / "CMakeLists.txt").write_text(self.CMAKE, encoding="utf-8")
+        return root
+
+    def test_ghost_merge_when_unresolvable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            scan = project_scanner.scan_project(conn, root)
+            # 只产生一个 libtorrent 幽灵节点（boost 无包源，另算一个），
+            # 代表名为 pkg-config 连字符口径
+            self.assertEqual(
+                [d["node"] for d in scan["deps_unknown"]
+                if "torrent" in d["node"]],
+                ["pkg-unknown:libtorrent-rasterbar"])
+            lt = next(d for d in scan["deps_unknown"]
+                      if d["node"] == "pkg-unknown:libtorrent-rasterbar")
+            self.assertEqual(lt["merged_from"], ["libtorrentrasterbar"])
+            edges = [e for e in db.out_edges(conn, scan["app_id"])
+                     if e["dst"].startswith("pkg-unknown:")]
+            self.assertEqual(len(edges), 2)   # boost + 合并后的 libtorrent
+            conn.close()
+
+    def test_dashless_resolve_when_package_exists(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:libtorrent-rasterbar", "package",
+                           "libtorrent-rasterbar", "harmonybrew",
+                           "ported", version="2.0.10")
+            scan = project_scanner.scan_project(conn, root)
+            # 压平名兑底解析到连字符包名 → 无 libtorrent 幽灵节点
+            self.assertEqual(
+                [d for d in scan["deps_unknown"]
+                 if "torrent" in d["node"]], [])
+            linked = {d["hint"]: d for d in scan["deps_linked"]}
+            self.assertEqual(linked["libtorrent-rasterbar"]["node"],
+                             "hb:libtorrent-rasterbar")
+            conn.close()
+
+    def test_dashless_alias_for_collapsed_only_name(self):
+        """仅有 find_package 压平名时，兑底解析到连字符包名并标注 alias。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "dashless2"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\n"
+                "project(Dashless2)\n"
+                "find_package(LibtorrentRasterbar 2.0 REQUIRED)\n",
+                encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:libtorrent-rasterbar", "package",
+                           "libtorrent-rasterbar", "harmonybrew",
+                           "ported", version="2.0.10")
+            scan = project_scanner.scan_project(conn, root)
+            self.assertEqual(scan["deps_unknown"], [])
+            self.assertEqual(
+                [(d["hint"], d["node"], d.get("alias"))
+                 for d in scan["deps_linked"]],
+                [("libtorrentrasterbar", "hb:libtorrent-rasterbar",
+                  "dashless")])
+            conn.close()
+
+    def test_dashless_resolve_no_short_name_collision(self):
+        """短名（<6 字符）不走兑底匹配，避免碰撞误映射。"""
+        node = kb_seed.resolve_package_dashless(None, "zlib")
+        self.assertIsNone(node)
+
+    def test_dashless_index_excludes_ghost_nodes(self):
+        """pkg-unknown 幽灵节点不入索引：避免上一次扫描的幽灵
+        被下一次扫描当作已知包解析（deps CLI 写主库后复现）。"""
+        conn = db.connect(":memory:")
+        db.init_db(conn)
+        db.upsert_node(conn, "pkg-unknown:libtorrent-rasterbar", "package",
+                       "libtorrent-rasterbar", "scan", "unknown")
+        node = kb_seed.resolve_package_dashless(conn, "libtorrentrasterbar")
+        self.assertIsNone(node)
+        conn.close()
+
+
+class TestE2ENameVariants(unittest.TestCase):
+    """e2e harness 取证变体：含 @version 的节点名（openssl@3）需追加剥离
+    变体，否则 grep 不到 find_package(OpenSSL) 原始声明（误判 false-positive）。"""
+
+    def _load_e2e(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "run_e2e", PROJECT_ROOT / "tests" / "e2e" / "run_e2e.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_at_version_stripped(self):
+        e2e = self._load_e2e()
+        node = {"name": "openssl@3", "id": "hb:openssl@3"}
+        variants = e2e.name_variants(None, node)
+        self.assertIn("openssl@3", variants)
+        self.assertIn("openssl", variants)
+        # oracle 侧不变：仅节点侧追加剥离变体
+        self.assertIn("openssl", e2e.name_variants("OpenSSL >= 3.0"))
+
+
 if __name__ == "__main__":
     unittest.main()
 

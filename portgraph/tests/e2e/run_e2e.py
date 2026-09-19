@@ -469,10 +469,16 @@ def name_variants(disp_or_name: str, node: Optional[Dict] = None) -> List[str]:
         if nm:
             out.append(nm)
             out.append(nm.lower())
+        # 节点名含 @version（openssl@3）时追加剥离变体：否则 grep 不到
+        # find_package(OpenSSL) 这类原始声明（e2e qbittorrent 复盘确认）
+        if "@" in nm:
+            out.append(nm.split("@", 1)[0])
         nid = node["id"]
         if ":" in nid:
             tail = nid.split(":", 1)[1]
             out.append(tail)
+            if "@" in tail:
+                out.append(tail.split("@", 1)[0])
         # 反向别名：构建文件里用的是别名形态（find_package(X11) /
         # pkg_check_modules(xkbcommon)），而扫描期已归并到目标包节点
         # （libx11 / libxkbcommon）——把别名原名也加入 grep 变体

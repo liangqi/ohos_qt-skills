@@ -7,20 +7,79 @@
   "url": "https://github.com/musescore/MuseScore",
   "tier": "C",
   "build_system": "cmake+qmake",
+<<<<<<< HEAD
   "sources": 5729,
   "repo_path": "/root/harmony-workspace/worker2/portgraph/workspace/musescore"
  },
  "generated_at": "2026-09-19T12:29:12Z",
  "verdict": "blocked",
  "blockers": [
+=======
+  "sources": 3138,
+  "repo_path": "/root/harmony-workspace/worker3/portgraph/workspace/musescore"
+ },
+ "generated_at": "2026-09-19T12:14:03Z",
+ "verdict": "portable",
+ "blockers": [],
+ "unknowns": [],
+ "platform_excluded": [
+>>>>>>> worker3-deps-test
   {
-   "kind": "unsupported-interface",
    "node": "app:musescore",
+<<<<<<< HEAD
    "reason": "使用鸿蒙不支持的平台接口 ALSA 直连（audio）鸿蒙音频走 AudioRenderer/AudioCapturer，ALSA 不可用；同类鸿蒙替代接口: 鸿蒙 AudioRenderer/AudioCapturer［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (95 处无条件 / 120 处鸿蒙可编译 / 1 处宏守卫排除 / 0 处文件级排除) | muse/framework/midi/internal/platform/lin/alsamidiinport.cpp:24[unconditional] #include <alsa/asoundlib.h>; muse/framework/midi/internal/platform/lin/alsamidiinport.cpp:25[unconditional] #include <alsa/seq.h>; muse/framework/midi/internal/platform/lin/alsamidiinport.cpp:26[unconditional] #include <alsa/seq_midi_event.h>］"
+=======
+   "name": "musescore",
+   "iface": "macOS Cocoa/AppKit",
+   "category": "os-api",
+   "guard": "platform-excluded",
+   "reason": "接口 macOS Cocoa/AppKit 被非鸿蒙平台条件编译守卫包裹（鸿蒙不编译），功能类别=os-api",
+   "alternatives": [
+    {
+     "id": "iface:posix",
+     "name": "POSIX/musl C 库",
+     "category": "os-api",
+     "ohos_status": "supported",
+     "note": "OpenHarmony NDK 使用 musl libc，POSIX 基础接口覆盖面广"
+    },
+    {
+     "id": "iface:pthread",
+     "name": "pthread 多线程",
+     "category": "os-api",
+     "ohos_status": "supported",
+     "note": "musl 提供 pthread"
+    },
+    {
+     "id": "iface:dylib",
+     "name": "dlopen 动态加载",
+     "category": "os-api",
+     "ohos_status": "convertible",
+     "note": "鸿蒙支持 dlopen，但库路径/打包方式受限，需适配 HAP 内 native 目录"
+    },
+    {
+     "id": "iface:macos-system",
+     "name": "macOS 系统库绑定",
+     "category": "os-api",
+     "ohos_status": "convertible",
+     "note": "formula 依赖 macOS 系统自带库；鸿蒙上需改为显式打包依赖（多为可转化的开源库）"
+    },
+    {
+     "id": "iface:glib-event",
+     "name": "glib 事件循环",
+     "category": "os-api",
+     "ohos_status": "convertible",
+     "note": "可用 Qt 事件循环替代或移植 glib 主循环"
+    }
+   ],
+   "evidence": "[被非鸿蒙平台守卫包裹（不编译）] guard=platform-excluded (0 处无条件 / 0 处鸿蒙可编译 / 0 处宏守卫排除 / 2 处文件级排除) | src/project/internal/platform/macos/macosrecentfilescontroller.mm:22[platform-file-excluded] #include <Cocoa/Cocoa.h>; src/appshell/internal/platform/macos/macosappmenumodelhook.mm:25[platform-file-excluded] #include <Cocoa/Cocoa.h>",
+   "path": [
+    "app:musescore"
+   ]
+>>>>>>> worker3-deps-test
   },
   {
-   "kind": "unsupported-interface",
    "node": "app:musescore",
+<<<<<<< HEAD
    "reason": "使用鸿蒙不支持的平台接口 macOS CoreAudio（audio）macOS 专属音频框架；同类鸿蒙替代接口: 鸿蒙 AudioRenderer/AudioCapturer［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (2 处无条件 / 11 处鸿蒙可编译 / 0 处宏守卫排除 / 11 处文件级排除) | muse/framework/midi/internal/platform/osx/coremidiinport.cpp:24[platform-file-excluded] #include <CoreAudio/HostTime.h>; muse/framework/midi/internal/platform/osx/coremidiinport.cpp:26[platform-file-excluded] #include <CoreMIDI/CoreMIDI.h>; muse/framework/midi/internal/platform/osx/coremidiinport.cpp:47[platform-file-excluded] MIDIPortRef inputPort = 0;］"
   },
   {
@@ -246,10 +305,74 @@
    "libtirpc",
    "lz4",
    "krb5"
+=======
+   "name": "musescore",
+   "iface": "Win32 API",
+   "category": "os-api",
+   "guard": "platform-excluded",
+   "reason": "接口 Win32 API 被非鸿蒙平台条件编译守卫包裹（鸿蒙不编译），功能类别=os-api",
+   "alternatives": [
+    {
+     "id": "iface:posix",
+     "name": "POSIX/musl C 库",
+     "category": "os-api",
+     "ohos_status": "supported",
+     "note": "OpenHarmony NDK 使用 musl libc，POSIX 基础接口覆盖面广"
+    },
+    {
+     "id": "iface:pthread",
+     "name": "pthread 多线程",
+     "category": "os-api",
+     "ohos_status": "supported",
+     "note": "musl 提供 pthread"
+    },
+    {
+     "id": "iface:dylib",
+     "name": "dlopen 动态加载",
+     "category": "os-api",
+     "ohos_status": "convertible",
+     "note": "鸿蒙支持 dlopen，但库路径/打包方式受限，需适配 HAP 内 native 目录"
+    },
+    {
+     "id": "iface:macos-system",
+     "name": "macOS 系统库绑定",
+     "category": "os-api",
+     "ohos_status": "convertible",
+     "note": "formula 依赖 macOS 系统自带库；鸿蒙上需改为显式打包依赖（多为可转化的开源库）"
+    },
+    {
+     "id": "iface:glib-event",
+     "name": "glib 事件循环",
+     "category": "os-api",
+     "ohos_status": "convertible",
+     "note": "可用 Qt 事件循环替代或移植 glib 主循环"
+    }
+   ],
+   "evidence": "[被非鸿蒙平台守卫包裹（不编译）] guard=platform-excluded (0 处无条件 / 0 处鸿蒙可编译 / 0 处宏守卫排除 / 1 处文件级排除) | src/project/internal/platform/windows/windowsrecentfilescontroller.cpp:25[platform-file-excluded] #include <shlobj.h>",
+   "path": [
+    "app:musescore"
+   ]
+  }
+ ],
+ "closure": {
+  "size": 6,
+  "summary": {
+   "target": 1,
+   "provided": 2,
+   "would_download": 3
+  },
+  "need_port": [],
+  "cmd_only": [],
+  "would_download": [
+   "freetype",
+   "libpng",
+   "zlib-ng-compat"
+>>>>>>> worker3-deps-test
   ]
  },
  "direct_deps": [
   {
+<<<<<<< HEAD
    "id": "hb:alsa-lib",
    "name": "alsa-lib",
    "kind": "package",
@@ -274,6 +397,8 @@
    "depth": 1
   },
   {
+=======
+>>>>>>> worker3-deps-test
    "id": "hb:freetype",
    "name": "freetype",
    "kind": "package",
@@ -282,6 +407,7 @@
    "depth": 1
   },
   {
+<<<<<<< HEAD
    "id": "hb:harfbuzz",
    "name": "harfbuzz",
    "kind": "package",
@@ -410,19 +536,13 @@
    "depth": 1
   },
   {
+=======
+>>>>>>> worker3-deps-test
    "id": "qtmod:core",
    "name": "Qt Core",
    "kind": "qt-module",
    "edge": "uses-module",
    "port_status": "ported",
-   "depth": 1
-  },
-  {
-   "id": "qtmod:dbus",
-   "name": "Qt D-Bus",
-   "kind": "qt-module",
-   "edge": "uses-module",
-   "port_status": "blocked",
    "depth": 1
   },
   {
@@ -432,6 +552,7 @@
    "edge": "uses-module",
    "port_status": "ported",
    "depth": 1
+<<<<<<< HEAD
   },
   {
    "id": "qtmod:network",
@@ -528,6 +649,8 @@
    "edge": "uses-module",
    "port_status": "ported",
    "depth": 1
+=======
+>>>>>>> worker3-deps-test
   }
  ],
  "oracle": {
@@ -704,11 +827,16 @@
    "agent_note": null
   },
   {
+<<<<<<< HEAD
    "class": "matched",
+=======
+   "class": "readme-stale",
+>>>>>>> worker3-deps-test
    "side": "oracle",
    "by_design": true,
    "oracle_name": "alsa",
    "oracle_type": "runtime",
+<<<<<<< HEAD
    "pg_id": "hb:alsa-lib",
    "pg_name": "alsa-lib",
    "pg_kind": "package",
@@ -799,6 +927,17 @@
    "pg_status": "ported",
    "depth": 1,
    "evidence": null,
+=======
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "README 声明但构建文件无引用 → 疑似 README 过时/笔误",
+    "grep": []
+   },
+>>>>>>> worker3-deps-test
    "agent_note": null
   },
   {
@@ -816,9 +955,10 @@
    "agent_note": null
   },
   {
-   "class": "matched",
+   "class": "readme-stale",
    "side": "oracle",
    "by_design": true,
+<<<<<<< HEAD
    "oracle_name": "harfbuzz",
    "oracle_type": "runtime",
    "pg_id": "hb:harfbuzz",
@@ -827,12 +967,126 @@
    "pg_status": "ported",
    "depth": 1,
    "evidence": null,
+=======
+   "oracle_name": "jack",
+   "oracle_type": "runtime",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "README 声明但构建文件无引用 → 疑似 README 过时/笔误",
+    "grep": []
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-stale",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "pulseaudio",
+   "oracle_type": "runtime",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "README 声明但构建文件无引用 → 疑似 README 过时/笔误",
+    "grep": []
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-stale",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "sndfile",
+   "oracle_type": "runtime",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "README 声明但构建文件无引用 → 疑似 README 过时/笔误",
+    "grep": []
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-stale",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "openssl",
+   "oracle_type": "runtime",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "README 声明但构建文件无引用 → 疑似 README 过时/笔误",
+    "grep": []
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-stale",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "tinyxml",
+   "oracle_type": "runtime",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "README 声明但构建文件无引用 → 疑似 README 过时/笔误",
+    "grep": []
+   },
+   "agent_note": null
+  },
+  {
+   "class": "optional-not-built",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "ffmpeg",
+   "oracle_type": "optional",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "可选依赖，默认构建未启用"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "optional-not-built",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "harfbuzz",
+   "oracle_type": "optional",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "可选依赖，默认构建未启用"
+   },
+>>>>>>> worker3-deps-test
    "agent_note": null
   },
   {
    "class": "matched",
    "side": "oracle",
    "by_design": true,
+<<<<<<< HEAD
    "oracle_name": "libpng",
    "oracle_type": "runtime",
    "pg_id": "hb:libpng",
@@ -985,76 +1239,177 @@
    "by_design": true,
    "oracle_name": "git",
    "oracle_type": "build",
+=======
+   "oracle_name": "flac",
+   "oracle_type": "optional",
    "pg_id": null,
    "pg_name": null,
    "pg_kind": null,
    "pg_status": null,
    "depth": null,
    "evidence": {
-    "note": "构建工具，fetch-deps 不收 build 边"
+    "note": "可选依赖，默认构建未启用"
    },
    "agent_note": null
   },
   {
+   "class": "optional-not-built",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "opus",
+   "oracle_type": "optional",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "可选依赖，默认构建未启用"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "optional-not-built",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "libopusenc",
+   "oracle_type": "optional",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "可选依赖，默认构建未启用"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "optional-not-built",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "fontconfig",
+   "oracle_type": "optional",
+>>>>>>> worker3-deps-test
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+<<<<<<< HEAD
+    "note": "构建工具，fetch-deps 不收 build 边"
+=======
+    "note": "可选依赖，默认构建未启用"
+>>>>>>> worker3-deps-test
+   },
+   "agent_note": null
+  },
+  {
+<<<<<<< HEAD
    "class": "build-only",
    "side": "oracle",
    "by_design": true,
    "oracle_name": "crashpad_handler",
    "oracle_type": "build",
+=======
+   "class": "optional-not-built",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "mesa-gl",
+   "oracle_type": "optional",
+>>>>>>> worker3-deps-test
    "pg_id": null,
    "pg_name": null,
    "pg_kind": null,
    "pg_status": null,
    "depth": null,
    "evidence": {
+<<<<<<< HEAD
     "note": "构建工具，fetch-deps 不收 build 边"
+=======
+    "note": "可选依赖，默认构建未启用"
+>>>>>>> worker3-deps-test
    },
    "agent_note": null
   },
   {
+<<<<<<< HEAD
    "class": "build-only",
    "side": "oracle",
    "by_design": true,
    "oracle_name": "sentry-cli",
    "oracle_type": "build",
+=======
+   "class": "optional-not-built",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "nss",
+   "oracle_type": "optional",
+>>>>>>> worker3-deps-test
    "pg_id": null,
    "pg_name": null,
    "pg_kind": null,
    "pg_status": null,
    "depth": null,
    "evidence": {
+<<<<<<< HEAD
     "note": "构建工具，fetch-deps 不收 build 边"
+=======
+    "note": "可选依赖，默认构建未启用"
+>>>>>>> worker3-deps-test
    },
    "agent_note": null
   },
   {
+<<<<<<< HEAD
    "class": "build-only",
    "side": "oracle",
    "by_design": true,
    "oracle_name": "dump_syms",
    "oracle_type": "build",
+=======
+   "class": "optional-not-built",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "portmidi",
+   "oracle_type": "optional",
+>>>>>>> worker3-deps-test
    "pg_id": null,
    "pg_name": null,
    "pg_kind": null,
    "pg_status": null,
    "depth": null,
    "evidence": {
+<<<<<<< HEAD
     "note": "构建工具，fetch-deps 不收 build 边"
+=======
+    "note": "可选依赖，默认构建未启用"
+>>>>>>> worker3-deps-test
    },
    "agent_note": null
   },
   {
+<<<<<<< HEAD
    "class": "build-only",
    "side": "oracle",
    "by_design": true,
    "oracle_name": "uncrustify",
    "oracle_type": "build",
+=======
+   "class": "optional-not-built",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "dbus",
+   "oracle_type": "optional",
+>>>>>>> worker3-deps-test
    "pg_id": null,
    "pg_name": null,
    "pg_kind": null,
    "pg_status": null,
    "depth": null,
    "evidence": {
+<<<<<<< HEAD
     "note": "构建工具，fetch-deps 不收 build 边"
    },
    "agent_note": null
@@ -1088,6 +1443,9 @@
    "depth": 1,
    "evidence": {
     "note": "Qt 模块粒度：README 通常只写 'Qt'"
+=======
+    "note": "可选依赖，默认构建未启用"
+>>>>>>> worker3-deps-test
    },
    "agent_note": null
   },
@@ -1106,6 +1464,7 @@
     "note": "Qt 模块粒度：README 通常只写 'Qt'"
    },
    "agent_note": null
+<<<<<<< HEAD
   },
   {
    "class": "qt-granularity",
@@ -1306,6 +1665,16 @@
   "matched": 16,
   "matched_optional": 4,
   "recall": "100%",
+=======
+  }
+ ],
+ "metrics": {
+  "oracle_runtime": 8,
+  "oracle_optional": 10,
+  "matched": 2,
+  "matched_optional": 0,
+  "recall": "25%",
+>>>>>>> worker3-deps-test
   "precision": "100%",
   "bug_candidates": 0,
   "bug_by_class": {
@@ -1314,10 +1683,17 @@
    "resolution-gap": 0
   },
   "class_counts": {
+<<<<<<< HEAD
    "build-only": 5,
    "matched": 16,
    "matched-optional": 4,
    "qt-granularity": 15
+=======
+   "matched": 2,
+   "optional-not-built": 10,
+   "qt-granularity": 1,
+   "readme-stale": 6
+>>>>>>> worker3-deps-test
   }
  },
  "agent_notes": [
