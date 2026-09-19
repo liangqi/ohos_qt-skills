@@ -260,7 +260,13 @@ def _in_tree_dir_index(root: Path) -> Dict[str, str]:
             continue
         lib_dirs[dirpath] = [base, d.relative_to(root).as_posix(), 0,
                              filenames]
-    # 父目录的“依赖集合”判定：≥5 个子目录各自像库目录
+    # 父目录的“依赖集合”判定：父目录名是库容器（libraries/libs）且
+    # ≥5 个子目录各自像库目录。容器名白名单是为了避免把功能分组目录
+    # 误当依赖集合——okular 的 generators/（poppler/epub/markdown/…）
+    # 是格式生成器插件代码目录，不是自带库源码（实证误判 in-tree，
+    # 掩盖 poppler/epub 真实 need_port）；QOwnNotes 的 src/libraries
+    # 是真实的自带库集合。
+    _LIB_CONTAINER_NAMES = {"libraries", "libs"}
     children: Dict[str, int] = {}
     for dirpath in lib_dirs:
         parent = str(Path(dirpath).parent)
@@ -268,12 +274,20 @@ def _in_tree_dir_index(root: Path) -> Dict[str, str]:
     out: Dict[str, str] = {}
     for dirpath, (base, rel, _n, filenames) in lib_dirs.items():
         parts = Path(rel).parts[:-1]
-        parent = str(Path(dirpath).parent)
-        parent_is_collection = children.get(parent, 0) >= 5
+        parent_path = Path(dirpath).parent
+        parent = str(parent_path)
+        parent_is_collection = (
+            children.get(parent, 0) >= 5
+            and parent_path.name.lower() in _LIB_CONTAINER_NAMES)
         has_readme = any(f.upper().startswith(("README", "LICENSE", "COPYING"))
                          for f in filenames)
+        # README/LICENSE 单独不足以判定：okular generators/epub 的 README
+        # 描述的是“基于外部 libepub 的后端”（指向 svn 获取库），不是自带
+        # 源码包——仅在库容器父目录内作为补充佐证（容器内非集合规模的
+        # 自带库，如 libraries/ 下仅 2 个真库但各自带上游 README）。
         if (vendored_names.intersection(parts) or parent_is_collection
-                or has_readme):
+                or (has_readme
+                    and parent_path.name.lower() in _LIB_CONTAINER_NAMES)):
             out.setdefault(base, rel)
     return out
 
@@ -573,15 +587,25 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                                 if name == "linguisttools" else "host"})
             continue
         if name in INTERFACE_BOUND_PACKAGES:
+            plat = fp.get("platform")
             e = link.add(fp["name"], kind="platform-iface",
-                         required=fp["required"], evidence=ev)
+                         required=(fp["required"] and not fp.get("optional")
+                                   and not plat),
+                         evidence=ev)
             e["ohos_note"] = INTERFACE_BOUND_PACKAGES[name]
+            if fp.get("optional"):
+                e["note"] = ("CMake 选项守卫（默认 OFF）："
+                              "默认构建不含此依赖")
+            elif plat:
+                e["note"] = ("位于 if(%s) 平台块：仅该平台构建，"
+                              "鸿蒙构建不含" % plat)
             continue
         # 同库异名归并：find_package 名按别名表改写（KDcrawQt6→kdcraw、
         # QuaZip-Qt→quazip），使无包源时与 pkg-config/裸链接声明合为一条
         aliased = LIB_NAME_ALIASES.get(name)
         entry = link.add(aliased or fp["name"],
-                         required=(fp["required"] and not fp.get("optional")),
+                         required=(fp["required"] and not fp.get("optional")
+                                   and not fp.get("platform")),
                          min_version=fp["version"],
                          components=(fp["components"]
                                      + fp["optional_components"]) or None,
@@ -589,6 +613,9 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
         if fp.get("optional"):
             entry["note"] = ("CMake 选项守卫（默认 OFF）："
                               "默认构建不含此依赖")
+        elif fp.get("platform"):
+            entry["note"] = ("位于 if(%s) 平台块：仅该平台构建，"
+                              "鸿蒙构建不含" % fp["platform"])
         if aliased:
             entry.setdefault("ohos_note",
                              "find_package 名 %s 归并为包 %s"
@@ -605,17 +632,29 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                               "note": "测试框架，不进发行包"})
             continue
         if pm["name"] in INTERFACE_BOUND_PACKAGES:
-            e = link.add(pm["name"], kind="platform-iface", evidence=ev)
+            e = link.add(pm["name"], kind="platform-iface",
+                         required=(not pm.get("optional")
+                                   and not pm.get("platform")), evidence=ev)
             e["ohos_note"] = INTERFACE_BOUND_PACKAGES[pm["name"]]
+            if pm.get("optional"):
+                e["note"] = ("CMake 选项守卫（默认 OFF）："
+                              "默认构建不含此依赖")
+            elif pm.get("platform"):
+                e["note"] = ("位于 if(%s) 平台块：仅该平台构建，"
+                              "鸿蒙构建不含" % pm["platform"])
             continue
         # 同库双声明（pkg-config 名 vs find_package 名）按别名合并。
         # 版本约束挂在被归并的原名下（version_req_from）：libavcodec 的
         # “>= 58”是库主版本口径，与 ffmpeg 包版本不可直接比较。
         aliased = LIB_NAME_ALIASES.get(pm["name"], pm["name"])
         e = link.add(aliased, version_req=pm["version_req"], evidence=ev,
-                     required=not pm.get("optional"))
+                     required=(not pm.get("optional")
+                               and not pm.get("platform")))
         if pm.get("optional"):
             e["note"] = "CMake 选项守卫（默认 OFF）：默认构建不含此依赖"
+        elif pm.get("platform"):
+            e["note"] = ("位于 if(%s) 平台块：仅该平台构建，"
+                          "鸿蒙构建不含" % pm["platform"])
         if pm["version_req"] and aliased != pm["name"]:
             e["version_req_from"] = pm["name"]
 
@@ -672,6 +711,7 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
         n = rl["name"]
         ev = "%s (%s)" % ("+".join(rl.get("hows", [])),
                           rl["evidence"][0] if rl.get("evidence") else "?")
+        plat = rl.get("platform_block")
         if n.lower() in TEST_FRAMEWORKS:
             # target_link_libraries 裸名命中测试框架（如 QOwnNotes 的
             # gtest_main）：归入 test 而非 need_port 的 link
@@ -679,17 +719,24 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                               "note": "测试框架，不进发行包"})
             continue
         if n.lower() in OHOS_SYSTEM_LIBS:
-            e = link.add(n, kind="system-lib", evidence=ev)
+            e = link.add(n, kind="system-lib",
+                         required=not plat, evidence=ev)
             e["ohos_note"] = OHOS_SYSTEM_LIBS[n.lower()]
         elif n.lower() in WIN32_SYSTEM_LIBS:
             e = link.add(n, kind="win32-system-lib", required=False, evidence=ev)
             e["ohos_note"] = "Windows 系统库：通常位于 win32 平台块，鸿蒙不适用"
         elif n.lower() in INTERFACE_BOUND_PACKAGES:
-            e = link.add(n, kind="platform-iface", evidence=ev)
+            existed = (n.lower() in link.by_name)
+            e = link.add(n, kind="platform-iface", required=not plat,
+                         evidence=ev)
             e["ohos_note"] = INTERFACE_BOUND_PACKAGES[n.lower()]
+            if plat and not existed:
+                e["note"] = ("位于 if(%s) 平台块：仅该平台构建，"
+                              "鸿蒙构建不含" % plat)
         else:
             aliased = LIB_NAME_ALIASES.get(n.lower())
-            e = link.add(aliased or n, evidence=ev)
+            existed = ((aliased or n).lower() in link.by_name)
+            e = link.add(aliased or n, required=not plat, evidence=ev)
             if rl.get("ext_target"):
                 e.setdefault(
                     "ohos_note",
@@ -700,6 +747,12 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                 e.setdefault("ohos_note",
                              "裸链接名（未用 find_package/pkg-config 声明），"
                              "产物获取途径取决于名称匹配结果")
+            if plat and not existed:
+                # 仅当此条目由平台块内的裸链接声明创建时标注；已存在的
+                # 条目（find_package 必需声明等）required 语义由合并规则
+                # 保护（REQUIRED 优先，不会被此处降级）
+                e["note"] = ("位于 if(%s) 平台块：仅该平台构建，"
+                              "鸿蒙构建不含" % plat)
 
     # ---- 6c) macOS 框架（-framework X）
     for fw in info.get("macos_frameworks", []):
@@ -805,8 +858,17 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
     for entry in link_list:
         skip_resolve = entry["kind"] in ("system-lib", "win32-system-lib",
                                          "platform-iface")
-        node = None if skip_resolve else _resolve(conn, entry["name"],
-                                                  resolve_cache)
+        if entry["kind"] == "framework":
+            # KF 组件不能走包名解析阶梯：组件名与无关 C 库同名异义
+            # （KF Archive ≠ libarchive、KF Config ≠ libconfig，okular/
+            # konsole 实证曾误展示 ready bottle 与闭包 need_port 矛盾）。
+            # 解析到扫描入库的 kf:<comp> 节点（port_status=unknown →
+            # 需源码交叉编译，与 fetch-deps 闭包口径一致）。
+            node = (db.get_node(conn, "kf:%s" % entry["name"].lower())
+                    if conn is not None else None)
+        else:
+            node = None if skip_resolve else _resolve(conn, entry["name"],
+                                                      resolve_cache)
         entry["resolved_node"] = node["id"] if node else None
         entry["_resolved_name"] = node["name"] if node else None
         entry["port_status"] = node["port_status"] if node else None
@@ -880,6 +942,22 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
         at = n.find("@")
         return n[:at] if at > 0 else n
 
+    def _dashless_merge_key(name: str) -> Optional[str]:
+        """去分隔符合并键（libtorrent-rasterbar → libtorrentrasterbar）。
+
+        仅限无空白的单词名（含空白的 KF 节点名如 "KF archive" 不适用，
+        否则全部 KF 组件会同键误并）且键长 ≥ 6（与
+        kb_seed.resolve_package_dashless 的碰撞防护一致）；名字本身
+        无分隔符时键即 name.lower()，无需额外键（压平名条目的普通键
+        天然与带分隔符条目的去分隔符键碰撞 → 合并）。
+        """
+        if not re.fullmatch(r"[A-Za-z0-9@+_.-]+", name or ""):
+            return None
+        key = kb_seed._dashless_key(name)
+        if len(key) < 6 or key == name.lower():
+            return None
+        return key
+
     by_key: Dict[str, Dict] = {}
     for entry in link_list:
         keys = []
@@ -889,6 +967,12 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                 keys.append(_canon_pkg_name(entry["_resolved_name"]))
         else:
             keys.append(entry["name"].lower())
+        # 同库异名（压平名 vs 连字符名）凭去分隔符键合并——与扫描期
+        # project_scanner._link_third_party 的分组策略对齐，避免 deps
+        # 表对同一未解析库双计（两条“需源码交叉编译”警告）
+        dk = _dashless_merge_key(entry["name"])
+        if dk:
+            keys.append(dk)
         for key in keys:
             base = by_key.get(key)
             if base is not None and base is not entry:

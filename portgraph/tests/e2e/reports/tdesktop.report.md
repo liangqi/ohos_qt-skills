@@ -1,6 +1,6 @@
 # tdesktop 依赖对账报告（portgraph E2E）
 
-> 生成时间: 2026-09-19T13:32:14Z | 语料: corpus.json#tdesktop | 构建系统: cmake | 源文件: 2932
+> 生成时间: 2026-09-19T14:06:35Z | 语料: corpus.json#tdesktop | 构建系统: cmake | 源文件: 2932
 > Oracle: README.md（复核: 已复核，20 条；来源: README §Third-party 逐条人工复核：剥离许可后缀噪声；GYP/Ninja/CMake 改 build 型；Open Sans/Vazirmatn 字体与 Emoji alpha codes 为数据资产（非链接依赖）已删）
 
 ## 1. 结论速览
@@ -9,9 +9,9 @@
 |---|---|
 | 可移植性 verdict | **blocked**（阻塞 2 / 未知 8 / 平台排除 0） |
 | 检出召回率 | 53%（9/17 README 运行时依赖） |
-| 检出精确率 | 60% |
+| 检出精确率 | 64% |
 | Bug 候选 | **2**（missed-dep=2） |
-| 依赖闭包 | 61 项（cmd_only 1, need_port 7, provided 5, target 1, would_download 47） |
+| 依赖闭包 | 60 项（cmd_only 1, need_port 7, provided 5, target 1, would_download 46） |
 
 **Agent 复核说明**：
 
@@ -50,7 +50,6 @@
 | README漏列 | — | cmark-gfm | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | README漏列 | — | glib | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | README漏列 | — | libfido2 | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
-| README漏列 | — | libiconv | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | README漏列 | — | minizip | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | 构建工具 | gyp | — | build | 构建工具，fetch-deps 不收 build 边 |
 | 构建工具 | ninja | — | build | 构建工具，fetch-deps 不收 build 边 |
@@ -77,12 +76,12 @@
 | 未知包(正常) | — | rnnoise | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
 | 未知包(正常) | — | tde2e | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
 
-归类统计：构建工具×3，一致×9，★漏检×2，粒度折叠×4，README漏列×6，README过时×3，未知包(正常)×5，自带子模块×3
+归类统计：构建工具×3，一致×9，★漏检×2，粒度折叠×4，README漏列×5，README过时×3，未知包(正常)×5，自带子模块×3
 
 ## 4. 依赖闭包概览（fetch-deps --dry-run）
 
-- 闭包总数 61 项：cmd_only 1，need_port 7，provided 5，target 1，would_download 47
-- 可直下 bottle：libfido2、ffmpeg、openssl@3、zlib、boost、cmark-gfm、glib、libiconv、minizip、openal-soft、libqrcodegen、xxhash、dav1d、lame、libvpx、opus、svt-av1、x264、x265、alsa-lib、libxcb、xz、zlib-ng-compat、icu4c@78、zstd、bison、python-setuptools、pcre2、dbus、util-linux、mpg123、python@3.14、libxau、libxdmcp、lz4、python@3.12、gettext、readline、mpdecimal、sqlite
+- 闭包总数 60 项：cmd_only 1，need_port 7，provided 5，target 1，would_download 46
+- 可直下 bottle：libfido2、ffmpeg、openssl@3、zlib、boost、cmark-gfm、glib、minizip、openal-soft、libqrcodegen、xxhash、dav1d、lame、libvpx、opus、svt-av1、x264、x265、alsa-lib、libxcb、xz、zlib-ng-compat、icu4c@78、zstd、bison、python-setuptools、pcre2、dbus、util-linux、mpg123、python@3.14、libxau、libxdmcp、lz4、python@3.12、gettext、readline、mpdecimal、sqlite、musl-compat
 - 仅命令获取（cmd_only）：ca-certificates
 - 需自行移植（need_port）：libudev、ada、auto_updates、crash_reports、rnnoise、tde2e、webrtc
   - libudev: ?
@@ -105,7 +104,6 @@
 | ffmpeg | package | runtime | ported | 1 |
 | glib | package | runtime | ported | 1 |
 | libfido2 | package | runtime | ported | 1 |
-| libiconv | package | runtime | ported | 1 |
 | libqrcodegen | package | runtime | ported | 1 |
 | libudev | package | runtime | unknown | 1 |
 | minizip | package | runtime | ported | 1 |
@@ -127,4 +125,4 @@
 - 对比口径：portgraph 直接依赖（depth-1 边）vs README/INSTALL 声明依赖；闭包仅做产物概览。
 - 归因证据：对未匹配项自动 grep 克隆仓库构建文件（find_package/pkg_check_modules/target_link_libraries/vcpkg 等）。
 - ★ 类（missed-dep / resolution-gap / false-positive）为 bug 候选，需人工确认；其余为预期差异。
-- agent 可读报告：`/root/harmony-workspace/worker1/portgraph/tests/e2e/reports/tdesktop.report.json`
+- agent 可读报告：`/root/harmony-workspace/worker3/portgraph/tests/e2e/reports/tdesktop.report.json`

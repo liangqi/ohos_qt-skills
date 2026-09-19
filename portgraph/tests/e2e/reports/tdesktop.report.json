@@ -8,9 +8,9 @@
   "tier": "C",
   "build_system": "cmake",
   "sources": 2932,
-  "repo_path": "/root/harmony-workspace/worker1/portgraph/workspace/tdesktop"
+  "repo_path": "/root/harmony-workspace/worker3/portgraph/workspace/tdesktop"
  },
- "generated_at": "2026-09-19T13:32:14Z",
+ "generated_at": "2026-09-19T14:06:35Z",
  "verdict": "blocked",
  "blockers": [
   {
@@ -68,11 +68,11 @@
  ],
  "platform_excluded": [],
  "closure": {
-  "size": 61,
+  "size": 60,
   "summary": {
    "target": 1,
    "provided": 5,
-   "would_download": 47,
+   "would_download": 46,
    "need_port": 7,
    "cmd_only": 1
   },
@@ -142,7 +142,6 @@
    "boost",
    "cmark-gfm",
    "glib",
-   "libiconv",
    "minizip",
    "openal-soft",
    "libqrcodegen",
@@ -244,14 +243,6 @@
   {
    "id": "cmdpkgs:libfido2",
    "name": "libfido2",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "ported",
-   "depth": 1
-  },
-  {
-   "id": "hb:libiconv",
-   "name": "libiconv",
    "kind": "package",
    "edge": "runtime",
    "port_status": "ported",
@@ -953,30 +944,6 @@
    "agent_note": null
   },
   {
-   "class": "readme-omitted",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "hb:libiconv",
-   "pg_name": "libiconv",
-   "pg_kind": "package",
-   "pg_status": "ported",
-   "depth": 1,
-   "evidence": {
-    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
-    "grep": [
-     {
-      "file": "Telegram/CMakeLists.txt",
-      "line": 2279,
-      "strong": true,
-      "text": "target_link_libraries(Telegram PRIVATE desktop-app::external_iconv"
-     }
-    ]
-   },
-   "agent_note": null
-  },
-  {
    "class": "unknown-ok",
    "side": "pg",
    "by_design": true,
@@ -1125,7 +1092,7 @@
   "matched": 9,
   "matched_optional": 0,
   "recall": "53%",
-  "precision": "60%",
+  "precision": "64%",
   "bug_candidates": 2,
   "bug_by_class": {
    "false-positive": 0,
@@ -1137,7 +1104,7 @@
    "matched": 9,
    "missed-dep": 2,
    "qt-granularity": 4,
-   "readme-omitted": 6,
+   "readme-omitted": 5,
    "readme-stale": 3,
    "unknown-ok": 5,
    "vendored": 3

@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 SOURCE_EXTS = {".c", ".cc", ".cpp", ".cxx", ".c++", ".h", ".hh", ".hpp", ".hxx",
                ".m", ".mm", ".qml", ".qrc", ".ui", ".pro", ".pri"}
@@ -49,7 +49,42 @@ _KF_ALIAS = {"configcore": "config", "configgui": "config",
              "i18nqml": "i18n", "bookmarkswidgets": "bookmarks"}
 _COMPONENTS_RE = re.compile(r"\bCOMPONENTS\s+([^)]*)", re.I)
 _CMAKE_KW = {"REQUIRED", "CONFIG", "QUIET", "MODULE", "COMPONENTS",
-             "OPTIONAL_COMPONENTS"}
+             "OPTIONAL_COMPONENTS", "EXACT", "NO_MODULE", "NO_POLICY_SCOPE"}
+
+
+def _orphan_components(rest: str) -> List[str]:
+    """无 COMPONENTS 关键字时的尾随组件名（CMake 语义：版本/关键字之后
+    的裸名即组件）。
+
+    konsole 实证：find_package(Qt6 ${V} CONFIG REQUIRED\n Core ...)
+    与 find_package(KF6 ${V} REQUIRED\n Bookmarks ...)——合法但无
+    COMPONENTS 关键字，旧解析全部漏检（Qt 模块只余 include 启发式命中）。
+    OPTIONAL_COMPONENTS 之后的 token 是可选组件，不收（保守不判必需）。
+    """
+    out: List[str] = []
+    seen_kw = False
+    seen_comp = False   # 组件区：后续裸名均为组件（Config 与 CONFIG 同形）
+    for tok in rest.split():
+        t = tok.strip('"')
+        if not t:
+            continue
+        up = t.upper()
+        if not seen_comp:
+            if "${" in t:
+                seen_kw = True
+                continue
+            if re.fullmatch(r"\d+(\.\d+)*", t):
+                seen_kw = True
+                continue
+            if up == "OPTIONAL_COMPONENTS":
+                break
+            if up in _CMAKE_KW:
+                seen_kw = True
+                continue
+        if seen_kw and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", t):
+            out.append(t)
+            seen_comp = True
+    return out
 # 任意 find_package(<Name> ...) —— 捕获第三方包名（Qt/KF 已单独处理）
 _FINDPKG_ANY_RE = re.compile(r"find_package\s*\(\s*([A-Za-z0-9_]+)", re.I)
 # pkg_check_modules(<PREFIX> [REQUIRED] <module> [<module> ...])
@@ -441,7 +476,7 @@ def _detect_qt(root: Path, info: Dict):
             rest = _subst_vars(match.group(2) or "", list_vars)
             cm = _COMPONENTS_RE.search(rest)
             comps = cm.group(1) if cm else ""
-            for comp in re.split(r"\s+", comps):
+            for comp in re.split(r"\s+", comps) + _orphan_components(rest):
                 comp = comp.strip()
                 if comp and comp.isalpha() and comp.upper() not in _CMAKE_KW:
                     modules.add(comp.lower())
@@ -449,11 +484,17 @@ def _detect_qt(root: Path, info: Dict):
             frameworks.add("KF%s" % match.group(1))
             rest = match.group(2) or ""
             cm = _COMPONENTS_RE.search(rest)
-            if cm:
-                for comp in re.split(r"\s+", cm.group(1)):
-                    comp = comp.strip()
-                    if comp and comp.isalpha() and comp.upper() not in _CMAKE_KW:
-                        kf_components.add(_KF_ALIAS.get(comp.lower(), comp.lower()))
+            # _COMPONENTS_RE 截取段可能混入后续关键字，需 _CMAKE_KW 过滤；
+            # orphan token 已由区域状态机保证不是关键字，不过滤（否则
+            # 与 CONFIG 同形的 KF 组件 Config 会被丢弃——konsole 实证）
+            kw_filtered = [c for c in re.split(r"\s+", cm.group(1))
+                           if c and c.isalpha()
+                           and c.upper() not in _CMAKE_KW] if cm else []
+            kf_tokens = kw_filtered + _orphan_components(rest)
+            for comp in kf_tokens:
+                comp = comp.strip()
+                if comp and comp.isalpha():
+                    kf_components.add(_KF_ALIAS.get(comp.lower(), comp.lower()))
         for match in _KF_LINK_RE.finditer(text):
             name = match.group(1).lower()
             kf_components.add(_KF_ALIAS.get(name, name))
@@ -626,6 +667,72 @@ _CMAKE_ENDFUNC_RE = re.compile(r'^\s*end(?:function|macro)\b', re.I)
 # 条件中被 NOT 修饰的 token：`NOT X` 表示 X 为假时进入，非正向守卫
 _NOT_TOKEN_RE = re.compile(r'(?i)\bNOT\s+(\w+)')
 
+# 平台条件 if 帧：其他平台 token（鸿蒙不适用）与 OHOS 兼容 token。
+# 帧内声明仅在那些平台构建，默认鸿蒙构建不含 → required=False。
+# 同时含两类 token 时不判排除（UNIX AND NOT APPLE 是 OHOS 活跃块）；
+# 被 NOT 修饰的 token 不算（NOT WIN32 是 OHOS 活跃块）。
+_OTHER_PLATFORM_TOKENS = frozenset({
+    "APPLE", "DARWIN", "COCOA", "IOS", "TVOS", "WATCHOS",
+    "WIN32", "WINDOWS", "MSVC", "MINGW", "MSYS", "CYGWIN",
+    "FREEBSD", "OPENBSD", "NETBSD", "HAIKU", "SOLARIS", "ANDROID",
+})
+_OHOS_ACTIVE_TOKENS = frozenset({"UNIX", "LINUX", "POSIX", "OHOS",
+                                  "HARMONY"})
+
+
+def _frame_platform_excluded(cond: str) -> Optional[str]:
+    """if 条件是否为其他平台专属（鸿蒙不适用）。返回条件串或 None。
+
+    实证：konsole if(HAIKU) tll network、if(SYSTEM_NAME MATCHES
+    "FreeBSD") tll util、okular mobile if(ANDROID) tll -lsoftokn3、
+    keepassxc FindQREncode if(WIN32 AND NOT MINGW) find_library(qrencoded)。
+    """
+    stripped = _NOT_TOKEN_RE.sub(" ", cond)
+    toks = {t.upper() for t in re.findall(r"\w+", stripped)}
+    if not (toks & _OTHER_PLATFORM_TOKENS):
+        return None
+    if toks & _OHOS_ACTIVE_TOKENS:
+        return None
+    return cond.strip()
+
+
+def _cmake_platform_line_map(text: str) -> Dict[int, Optional[str]]:
+    """逐行追踪 CMake if 栈，返回 {行号: 内层排除帧的条件串或 None}。
+
+    与 _cmake_optional_line_map 同构：else/elseif 保守不判排除；
+    function/macro 体内不判（调用点上下文不可靠）。
+    """
+    result: Dict[int, Optional[str]] = {}
+    stack: List[Optional[str]] = []
+    func_depth = 0
+    for lineno, line in enumerate(text.splitlines(), 1):
+        s = line.strip()
+        m = _CMAKE_IF_RE.match(s)
+        if m:
+            stack.append(_frame_platform_excluded(m.group(1)))
+        elif _CMAKE_ELSEIF_RE.match(s) and stack:
+            # elseif 分支的条件可直接评估（if(Darwin) ... elseif(Windows)
+            # 两分支均为其他平台专属；qbittorrent src/base 实证）；
+            # 仅 else（补集，含 OHOS）保守不判
+            em = _CMAKE_ELSEIF_RE.match(s)
+            stack[-1] = _frame_platform_excluded(em.group(1))
+        elif _CMAKE_ELSE_RE.match(s) and stack:
+            stack[-1] = None
+        elif _CMAKE_ENDIF_RE.match(s) and stack:
+            stack.pop()
+        elif _CMAKE_FUNC_RE.match(s):
+            func_depth += 1
+        elif _CMAKE_ENDFUNC_RE.match(s) and func_depth:
+            func_depth -= 1
+        cur = None
+        if func_depth == 0:
+            for fr in stack:
+                if fr:
+                    cur = fr
+                    break
+        result[lineno] = cur
+    return result
+
 
 def _collect_option_defaults(cmake_texts: List[str]) -> Dict[str, bool]:
     """收集 CMake 选项声明的默认值 → {选项名: 默认是否为真}。
@@ -746,6 +853,7 @@ def _detect_cmake_packages(root: Path, cmake_files: List[str]) -> Dict:
     """
     findpkgs, pkgmods = set(), set()
     findpkgs_opt, pkgmods_opt = set(), set()
+    findpkgs_plat, pkgmods_plat = set(), set()
     pkg_details: Dict[str, Dict] = {}
     vart = _collect_cmake_vars(root, cmake_files)
     guards = _cmake_guard_context(root, cmake_files)
@@ -762,6 +870,7 @@ def _detect_cmake_packages(root: Path, cmake_files: List[str]) -> Dict:
             continue
         text = _strip_cmake_comments(_read_text(root / rel))
         gmap = guards.get(rel, {})
+        pmap = _cmake_platform_line_map(text)
         for m in _FINDPKG_ANY_RE.finditer(text):
             name = m.group(1).lower()
             if (name.startswith(skip_prefixes) or name in _CMAKE_KW
@@ -771,6 +880,8 @@ def _detect_cmake_packages(root: Path, cmake_files: List[str]) -> Dict:
                 continue
             if gmap.get(_line_of(text, m.start())):
                 findpkgs_opt.add(name)
+            elif pmap.get(_line_of(text, m.start())):
+                findpkgs_plat.add(name)
             else:
                 findpkgs.add(name)
 
@@ -784,17 +895,17 @@ def _detect_cmake_packages(root: Path, cmake_files: List[str]) -> Dict:
             continue
         text = _strip_cmake_comments(_read_text(root / rel))
         gmap = guards.get(rel, {})
+        pmap = _cmake_platform_line_map(text)
         file_opt = rel in opt_files
         for m in _PKGCHECK_RE.finditer(text):
             line_opt = file_opt or gmap.get(_line_of(text, m.start()))
+            line_plat = pmap.get(_line_of(text, m.start()))
             # pkg-config spec 可带版本约束："glib-2.0 >= 2.50" / glib-2.0>=2.50
             # 替换 set() 变量；无法解析的 ${宏参} 整体剔除，避免混入包名
             specs = _subst_vars(m.group(1), vart).replace("\\\n", " ")
             specs = re.sub(r"\$\{\w+\}", " ", specs)
-            if line_opt:
-                _absorb_pkg_spec(specs, pkg_details, optional=True)
-            else:
-                _absorb_pkg_spec(specs, pkg_details, optional=False)
+            _absorb_pkg_spec(specs, pkg_details, optional=line_opt,
+                             platform=line_plat)
             for tok in _PKGCONF_NAME_RE.findall(specs):
                 tok = tok.lower()
                 if (tok.upper() in _CMAKE_KW or tok in _FINDPKG_SKIP
@@ -807,27 +918,42 @@ def _detect_cmake_packages(root: Path, cmake_files: List[str]) -> Dict:
                     pkg_details.setdefault(
                         tok, {"name": tok, "version_req": None,
                               "optional": True})
+                elif line_plat:
+                    pkgmods_plat.add(tok)
+                    pkg_details.setdefault(
+                        tok, {"name": tok, "version_req": None,
+                              "platform": line_plat})
                 else:
                     pkgmods.add(tok)
                     pkg_details.setdefault(tok, {"name": tok,
                                                  "version_req": None})
 
-    # 必需优先：同一包 optional 声明点与必需声明点并存时按必需处理
+    # 必需优先：同一包 optional/platform 声明点与必需声明点并存时按必需处理
     findpkgs_opt -= findpkgs
     pkgmods_opt -= pkgmods
+    findpkgs_plat -= findpkgs
+    pkgmods_plat -= pkgmods
     for name in pkgmods:
         d = pkg_details.get(name)
         if d:
             d.pop("optional", None)
-    # 带约束的 spec 覆盖裸名（保留版本要求）
+            d.pop("platform", None)
+    # 带约束的 spec 覆盖裸名（保留版本要求；platform 块内的 spec
+    # 归入 pkgmods_plat，不入必需名单）
     pkgmods.update(k for k, d in pkg_details.items()
-                   if not d.get("optional"))
+                   if not d.get("optional") and not d.get("platform"))
     pkgmods_opt.update(k for k, d in pkg_details.items()
                        if d.get("optional"))
+    pkgmods_plat.update(k for k, d in pkg_details.items()
+                        if d.get("platform") and not d.get("optional")
+                        and k not in pkgmods)
+    pkgmods_plat -= pkgmods
     return {"find_package": sorted(findpkgs),
             "find_package_optional": sorted(findpkgs_opt),
+            "find_package_platform": sorted(findpkgs_plat),
             "pkg_check_modules": sorted(pkgmods),
             "pkg_check_modules_optional": sorted(pkgmods_opt),
+            "pkg_check_modules_platform": sorted(pkgmods_plat),
             "pkg_modules": sorted(pkg_details.values(),
                                   key=lambda d: d["name"])}
 
@@ -837,7 +963,8 @@ _PKG_SPEC_VER_RE = re.compile(
 
 
 def _absorb_pkg_spec(spec: str, out: Dict[str, Dict],
-                     optional: bool = False) -> None:
+                     optional: bool = False,
+                     platform: Optional[str] = None) -> None:
     """吸收一条 pkg-config spec（可含版本约束）到 out。"""
     m = _PKG_SPEC_VER_RE.search(spec)
     if not m:
@@ -847,6 +974,8 @@ def _absorb_pkg_spec(spec: str, out: Dict[str, Dict],
                  "version_req": "%s %s" % (m.group(2), m.group(3))}
     if optional:
         out[name]["optional"] = True
+    elif platform:
+        out[name]["platform"] = platform
 
 
 def _detect_pkg_manifests(root: Path) -> Dict:
@@ -936,31 +1065,47 @@ def _parse_findpkg_args(name: str, rest: str, rel: str,
     components: List[str] = []
     optional_components: List[str] = []
     mode = None
+    seen_kw = False    # 已过版本/关键字位置（其后的裸名是组件）
+    seen_comp = False  # 已开始收集组件：后续裸名均为组件，不再按关键字
+                        # 解释（KF 组件名 Config 与 CONFIG 同形，konsole 实证）
     for tok in tokens:
-        up = tok.strip('"').upper()
+        tok2 = tok.strip('"')
+        up = tok2.upper()
         if up == "COMPONENTS":
             mode = "c"
+            seen_kw = True
             continue
         if up == "OPTIONAL_COMPONENTS":
             mode = "o"
+            seen_kw = True
             continue
-        if up in _FP_KW:
+        if not seen_comp and up in _FP_KW:
             if up == "REQUIRED":
                 required = True
             elif up == "EXACT":
                 exact = True
             mode = None
+            seen_kw = True
             continue
-        if version is None and re.fullmatch(r"\d+(\.\d+)*", tok):
-            version = tok
+        if version is None and re.fullmatch(r"\d+(\.\d+)*", tok2):
+            # 版本可带引号：find_package(Poppler "24.08.0" ...)（okular）
+            version = tok2
+            seen_kw = True
             continue
         if "${" in tok or "$ENV" in tok:
             mode = None
+            seen_kw = True
             continue
-        if mode == "c":
-            components.append(tok)
-        elif mode == "o":
-            optional_components.append(tok)
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", tok2):
+            continue
+        if mode == "o":
+            optional_components.append(tok2)
+        elif seen_kw or mode == "c":
+            # CMake 语义：版本/关键字之后的裸名即组件，无需 COMPONENTS
+            # 关键字（konsole: find_package(Qt6 ${V} CONFIG REQUIRED\n Core ...)）
+            components.append(tok2)
+            mode = "c"
+            seen_comp = True
     return {"name": name, "name_lower": name.lower(), "version": version,
             "required": required, "exact": exact,
             "components": components, "optional_components": optional_components,
@@ -1120,6 +1265,7 @@ def _detect_find_package_details(root: Path, info: Dict) -> List[Dict]:
             continue
         text = _strip_cmake_comments(_read_text(root / rel))
         gmap = guards.get(rel, {})
+        pmap = _cmake_platform_line_map(text)
         for m in _FINDPKG_FULL_RE.finditer(text):
             line = text.count("\n", 0, m.start()) + 1
             detail = _parse_findpkg_args(m.group(1),
@@ -1129,6 +1275,8 @@ def _detect_find_package_details(root: Path, info: Dict) -> List[Dict]:
                 continue    # project() 自引用（如 Cutter 插件样例）
             if gmap.get(line):
                 detail["optional"] = True
+            elif pmap.get(line):
+                detail["platform"] = pmap.get(line)
             out.append(detail)
     return out
 
@@ -1280,7 +1428,8 @@ def _norm_lib_name(name: str) -> str:
 
 
 def _add_raw_lib(out: Dict[str, Dict], name: str, how: str, rel: str,
-                 ext_target: bool = False) -> None:
+                 ext_target: bool = False,
+                 platform: Optional[str] = None) -> None:
     n = _norm_lib_name(name).strip('"\'')
     if not n or not re.fullmatch(r"[A-Za-z0-9_.+-]+", n):
         return
@@ -1290,6 +1439,14 @@ def _add_raw_lib(out: Dict[str, Dict], name: str, how: str, rel: str,
         # 真正的 find_package 位于外部构建模块（cmake_helpers 等），
         # 链接名是唯一可见的声明——标记为高置信外部依赖
         e["ext_target"] = True
+    # 平台块上下文：仅全部声明点都在其他平台 if 块内时标记；
+    # 任一非平台块声明点即清除（跨平台库必需）
+    if platform:
+        if not e.get("unguarded"):
+            e["platform_block"] = platform
+    else:
+        e["unguarded"] = True
+        e.pop("platform_block", None)
     if how not in e["hows"]:
         e["hows"].append(how)
     if rel not in e["evidence"] and len(e["evidence"]) < 3:
@@ -1373,9 +1530,12 @@ def _detect_cmake_raw_links(root: Path, cmake_files: List[str]):
                         text, re.I):
                     defined.add(m.group(1).lower())
     for rel, text in texts.items():
+        pmap = _cmake_platform_line_map(text)
         for m in _TARGET_LINK_RE.finditer(text):
             args = _strip_cmake_comments(m.group(1))
             args = args.replace("\\\n", " ").replace('"', " ")
+            line = text.count("\n", 0, m.start()) + 1
+            plat = pmap.get(line)
             for fw in _FRAMEWORK_RE.finditer(args):
                 frameworks.setdefault(fw.group(1), []).append(rel)
             # 框架段不参与裸名/链接 flag 提取
@@ -1384,7 +1544,8 @@ def _detect_cmake_raw_links(root: Path, cmake_files: List[str]):
             if len(body) < 2:
                 continue
             for lm in _LFLAG_RE.finditer(args):
-                _add_raw_lib(raw, lm.group(1), "target_link_libraries -l", rel)
+                _add_raw_lib(raw, lm.group(1), "target_link_libraries -l", rel,
+                             platform=plat)
             for tok in body[1].split():
                 t = tok.strip()
                 if not t or t.startswith("$") or t.upper() in _TLL_KEYWORDS \
@@ -1409,12 +1570,15 @@ def _detect_cmake_raw_links(root: Path, cmake_files: List[str]):
                     base = tgt[len("external_"):]
                     _add_raw_lib(raw, base,
                                  "target_link_libraries external-target", rel,
-                                 ext_target=True)
+                                 ext_target=True, platform=plat)
                     continue
                 if ("/" in t or "\\" in t):
                     continue
-                _add_raw_lib(raw, t, "target_link_libraries", rel)
+                _add_raw_lib(raw, t, "target_link_libraries", rel,
+                             platform=plat)
         for m in _FINDLIB_RE.finditer(text):
+            line = text.count("\n", 0, m.start()) + 1
+            plat = pmap.get(line)
             toks = _strip_cmake_comments(m.group(1)).replace("\\\n", " ").split()
             # 首参数是接收结果的变量名，无条件跳过；NAMES 后是库名候选，
             # PATHS/HINTS/PATH_SUFFIXES/DOC 后是路径/描述（跳过）
@@ -1439,7 +1603,7 @@ def _detect_cmake_raw_links(root: Path, cmake_files: List[str]):
                 # 也几乎不可能是磁盘上的库名
                 if re.fullmatch(r"[A-Z][A-Z0-9_]*_+[A-Z0-9_]*", t) or len(t) == 1:
                     continue
-                _add_raw_lib(raw, t, "find_library", rel)
+                _add_raw_lib(raw, t, "find_library", rel, platform=plat)
     for name in defined:      # 项目内目标不算外部依赖
         raw.pop(name, None)
     fw_list = [{"name": k, "evidence": v[:3]} for k, v in sorted(frameworks.items())]
