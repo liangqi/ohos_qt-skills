@@ -1020,6 +1020,10 @@ class TestGeneralizationFixes(unittest.TestCase):
             "https://github.com/CycoPH/atasm/archive/refs/tags/V1.30.tar.gz": "1.30",
             "https://loop-aes.sourceforge.net/aespipe/aespipe-v2.4j.tar.bz2": "2.4j",
             "https://www.harding.motd.ca/autossh/autossh-1.4g.tgz": "1.4g",
+            # 7z 扩展名 + 连字符补丁号版本（imagemagick 7.1.2-31 实证，
+            # 修复前退化为尾部 "31.7z" → bottle URL 404）
+            "https://github.com/ImageMagick/ImageMagick/releases/download/7.1.2-31/ImageMagick-7.1.2-31.7z": "7.1.2-31",
+            "https://github.com/ImageMagick/ImageMagick6/releases/download/6.9.13-56/ImageMagick-6.9.13-56.7z": "6.9.13-56",
             # 回归：原有形态不变
             "https://www.zlib.net/zlib-1.3.1.tar.gz": "1.3.1",
             "https://github.com/i/indi/archive/refs/tags/v2.0.9.tar.gz": "2.0.9",
