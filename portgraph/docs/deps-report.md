@@ -193,8 +193,21 @@ flowchart TB
 - **runtime 不由构建文件直接声明**：由 link 依赖经 hb/cmd-pkgs 图的
   runtime 边传递闭包推导（`needed_by` 给出引入链），加上源码
   dlopen/QLibrary 字面量
-- **vendored 的三种形态**：submodule（提交锁定在仓库）/ 目录（源码在
-  仓库）/ FetchContent 类（configure 期网络拉取，GIT_TAG/VERSION 锁定）
+- **vendored 的四种形态**：submodule（提交锁定在仓库）/ 目录（源码在
+  仓库）/ FetchContent 类（configure 期网络拉取，GIT_TAG/VERSION 锁定）/
+  meson 子项目（subprojects/*.wrap 与 override_dependency 内部目标）
+- **自带源码声明与 link 名的归并**（2026-09 回归轮增强）：未解析的
+  link 名命中项目自带源码声明（git 子模块 / CPM-FetchContent-ExternalProject
+  名或 URL 末段 / meson 子项目与内部目标）时归 `in-tree`（源码随项目编译，
+  不是外部 need_port 缺口）——宽容折叠匹配（去 lib 前缀、去尾部
+  qt5/qt6/system 变体 token：`qtadvanceddocking-qt6` ≡ CPM 包 `ads` 的
+  URL 末段 `Qt-Advanced-Docking-System`）；已解析到产物的同名依赖追加
+  "可随项目编译，bottle 为备选"注记。tdesktop kcoreaddons/microtex、
+  NotepadNext ads/QSimpleUpdater、cutter rz_*/zydis 实证
+- **find_package(<自身项目名>) 是自引用**：根 CMakeLists 的 project() 名
+  （如 Cutter 插件样例 find_package(Cutter)）不作为外部依赖，避免误解析
+  到同名无关包（cmdpkgs:cutter 实证）；vendored 子目录里 project(fakevim)
+  声明的子项目名不影响宿主声明
 - **env 是核对层**：不直接入 link；CI 装了但构建文件未声明的库名触发
   warning，提示可能经 `${VAR}` 引用或自定义 Find 模块引入
 
@@ -290,6 +303,22 @@ REQUIRED/OPTIONAL 语义的精确分类用 `deps` 报告。
   跨名归并到 ffmpeg 后此类约束携带 `version_req_from`（约束来源库名），
   `version_check` 记 `unknown` 而非误报 `conflict`
 
+- **其他平台 if 块内的声明降级 required=False**：`if(APPLE)`/`if(WIN32)`/
+  `if(HAIKU)`/`if(ANDROID)`/`if(SYSTEM_NAME STREQUAL "Darwin"/"Windows")`
+  等平台专属块内的 target_link_libraries/find_library/pkg_check_modules
+  标注 `note="位于 if(…) 平台块"` 且不入 runtime 边；`UNIX`/`LINUX`/
+  `POSIX`/`OHOS` 视为鸿蒙活跃（`if(UNIX AND NOT APPLE)` 不降级），
+  `NOT WIN32` 等否定条件不降级，`else` 分支保守不判（2026-09 泛化轮：
+  qbittorrent Darwin/Windows 块、konsole HAIKU/FreeBSD 块、okular mobile
+  ANDROID 块、keepassxc FindQREncode WIN32 块、tdesktop APPLE 块实证）。
+  局限：平台块内的 find_package 对 Find<Name>.cmake 模块内容的平台继承
+  未实现（保守按必需处理）
+- **KF 组件解析到 kf:<comp> 节点而非包名阶梯**：KF Archive ≠ libarchive、
+  KF Config ≠ libconfig（同名异义），deps 表与 fetch-deps 闭包口径一致
+  （kf 节点 need_port，需源码交叉编译 KF6）
+- **in-tree 判定的容器名白名单**：仅 `libraries`/`libs` 父目录（或 vendored
+  路径段）计为自带库集合；`generators` 等功能分组目录（okular 的
+  generators/poppler 是格式生成器插件代码而非 poppler 源码）不判 in-tree
 - find_package 名称 → hb 包名的匹配依赖 `kb_seed.resolve_package` 别名表 +
   前缀/后缀规则，同名异义（如多精度库 MPC vs 音乐播放器 mpc）可能错配，
   产物 URL 落地前应人工核对
@@ -304,6 +333,8 @@ REQUIRED/OPTIONAL 语义的精确分类用 `deps` 报告。
 - CI 环境清单是发行版打包名（libfoo-dev），映射回库名为近似；且只在
   `.github/`、`.ci/`、顶层 `*.sh` 范围内收集
 - meson `subproject()` 只有名字，版本取决于 subprojects/*.wrap 内容（未
-  解析 .wrap）
+  解析 .wrap）；meson 内部目标（override_dependency，如 rizin 的 rz_*）
+  与 subprojects/ 自带子项目归 in-tree，不报 need_port；`'@0@'` 字符串
+  插值占位符已剥离（'libpcre2-@0@' → libpcre2）
 - 动态加载只识别字面量（见上）；qmake 平台作用域块（`unix {}`/`win32 {}`）
   内的依赖不区分平台归属

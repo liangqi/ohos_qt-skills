@@ -206,6 +206,8 @@ def seed_interfaces(conn) -> None:
 ALIASES: Dict[str, List[str]] = {
     "openssl": ["openssl@3", "openssl"],
     "libjpeg": ["jpeg-turbo", "libjpeg-turbo"],
+    "liblzma": ["xz", "lzma", "liblzma"],
+    "lzma": ["xz", "lzma", "liblzma"],
     "icu": ["icu4c", "icu"],
     "libuuid": ["util-linux", "libuuid", "uuid"],
     "freetype": ["freetype"],
@@ -242,13 +244,31 @@ PKG_ALIASES: Dict[str, str] = {
     "avutil": "ffmpeg", "swresample": "ffmpeg", "postproc": "ffmpeg",
     "libswscale": "ffmpeg", "libavcodec": "ffmpeg", "libavformat": "ffmpeg",
     "libavutil": "ffmpeg", "libavdevice": "ffmpeg",
+    # xz 工具链提供 liblzma（find_package(LibLZMA) 是 CMake 官方模块名，
+    # tdesktop cmake/external/auto_updates/xz wrapper 实证）
+    "liblzma": "xz",
     "ssl": "openssl", "crypto": "openssl",
     "sqlite3": "sqlite", "curl": "curl", "gcrypt": "libgcrypt",
     "tag": "taglib", "mtp": "libmtp", "usb-1.0": "libusb",
     "magic": "libmagic", "exif": "libexif", "discid": "libdiscid",
     "chromaprint": "chromaprint", "mp3lame": "lame",
+    # lmms 实证：find_library/AC_CHECK_LIB 的版本化库名归并（veal
+    # FindFluidSynth 的 macOS dylib 变体 / swh 的单精度 fftw）
+    "fluidsynth-1": "fluidsynth", "fluidsynth-2": "fluidsynth",
+    "fluidsynth-3": "fluidsynth",
+    "fluidsynth": "fluid-synth",  # cmd-pkgs 包名（lmms 实证：图侧靠
+                                   # dashless 兑底而报告侧不可见，口径分裂）
+    "sfftw": "fftw",
+    # libopenshot 实证：OpenCV 4 导入目标名（非 OpenCV::core 命名形态）
+    # 归并到 opencv；jsoncppd 为 Findjsoncpp 的 debug 变体名
+    "opencv_core": "opencv", "opencv_video": "opencv",
+    "opencv_highgui": "opencv", "opencv_dnn": "opencv",
+    "opencv_tracking": "opencv",
+    "jsoncppd": "jsoncpp",
     # pkg-config 模块名无 lib 前缀 → hb 包名（e2e keepassxc 复核确认的缺口）
     "xkbcommon": "libxkbcommon", "x11": "libx11",
+    # graphviz 的链接库（cutter pkg_check_modules(libgvc) → graphviz 包）
+    "libgvc": "graphviz", "libcgraph": "graphviz", "libcdt": "graphviz",
     # PC/SC 智能卡栈：find_package(PCSC)/pkg-config libpcsclite/find_library
     # pcsclite → pcsc-lite
     "pcsc": "pcsc-lite", "libpcsclite": "pcsc-lite",
@@ -271,11 +291,18 @@ PKG_ALIASES: Dict[str, str] = {
     "dbus1": "dbus",             # CMake DBus1 模块名
     "ogg": "libogg",             # require_dep(ogg) / pkg-config ogg
     "vorbis": "libvorbis",       # require_dep(vorbis)
+    "oggvorbis": "libvorbis",    # lmms FindOggVorbis 复合模块名（模块内
+                                  # 部实为 find_package(Ogg/Vorbis)）
     "png": "libpng",             # CMake PNG 模块名
     "brotlidec": "brotli",       # pkg-config 组件名
     "intl": "gettext",           # CMake Intl 模块 → gettext(libintl)
     "utfcpp": "utf8cpp",         # require_source_dep(utfcpp) → hb utf8cpp
     "nlohmann_json": "nlohmann-json",  # require_dep 名 → hb nlohmann-json
+    # ── 泛化测试（okular KDE，2026-09）实证 ──
+    "ddjvuapi": "djvulibre",     # djvulibre 的 pkg-config 名（FindDjVuLibre
+                                  # 用 pkg_check_modules(ddjvuapi) 探测同库）
+    "libmarkdown": "discount",   # discount 的库名/pkg-config 名；hb markdown
+                                  # 是 daringfireball 的 Perl/PHP 版本，同名异义
     # ── 语料外泛化测试补充（QOwnNotes/strawberry/krita 实证，2026-09）──
     # glib 家族 pkg-config 模块（libgio/gobject/gthread/gmodule 随 glib
     # 包发布，cmd-pkgs glib 2.88.0 与 hb glib bottle 内均实测含对应 .pc）
@@ -399,7 +426,10 @@ def resolve_package(conn, hint_name: str) -> Optional[Dict]:
               name[3:] if name.startswith("lib") and len(name) > 3 else None,
               stripped if stripped != name else None,
               "lib" + stripped
-              if stripped != name and not stripped.startswith("lib") else None):
+              if stripped != name and not stripped.startswith("lib") else None,
+              stripped[3:]
+              if stripped != name and stripped.startswith("lib")
+              and len(stripped) > 3 else None):
         if c and c not in cands:
             cands.append(c)
     if not cands:
@@ -460,6 +490,10 @@ def resolve_pkg_name(conn, name: str,
             cands.append(stripped)
             if not stripped.startswith("lib"):
                 cands.append("lib" + stripped)
+            else:
+                # 去 lib 前缀 + 版本后缀组合（libpipewire-0.3 → pipewire；
+                # libopenshot 实证，单项剥离均不命中）
+                cands.append(stripped[3:])
         # find_library NAMES 的构建形态后缀（libFLAC_static / jpeg-static
         # / libFLAC_dynamic）→ 基础名
         for base in list(cands):

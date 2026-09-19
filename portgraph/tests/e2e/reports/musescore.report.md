@@ -1,6 +1,6 @@
 # musescore 依赖对账报告（portgraph E2E）
 
-> 生成时间: 2026-09-19T13:32:02Z | 语料: corpus.json#musescore | 构建系统: cmake+qmake | 源文件: 5729
+> 生成时间: 2026-09-19T14:53:32Z | 语料: corpus.json#musescore | 构建系统: cmake+qmake | 源文件: 5729
 > Oracle: buildscripts/cmake/DependencyManifest.cmake + muse/buildscripts/cmake/ExtDepsManifest.cmake + muse/framework/{midi,audio/driver}/CMakeLists.txt + muse/framework/cmake/MuseDeclareOptions.cmake（人工整理）（复核: 已复核，25 条；来源: 针对 master 2b540fe（muse_deps 依赖引擎时代）重写：README 无依赖段（指向 wiki.spatia... 外部 wiki），oracle 依仓库内依赖清单人工整理。口径=默认构建需外部产物的依赖：require_dep(...)（预编译/系统模式）与项目自身 find_package 为 runtime/optional；require_source_dep（liblouis/kddockwidgets/picojson/pugixml/utfcpp/googletest/crashpad_client/vst3sdk/lodepng/asiosdk）与 FetchContent 的 mnxdom 源码模式为 vendored，随项目源码编译、无需外部产物，不入 oracle；require_tool/find_package(Git) 为主机构建工具列 build。可选性依 MuseDeclareOptions.cmake 默认值：MUSE_MODULE_AUDIO_JACK OFF、MUSE_MODULE_AUDIO_PIPEWIRE OFF、MUSE_MODULE_DRAW_USE_QTTEXTDRAW ON（→ msdfgen 不启用）、MSS_USE_SYSTEM_MNXDOM OFF（→ mnxdom 默认源码自带，系统模式才 pkg_check）；MUSE_MODULE_AUDIO_EXPORT ON、MUSE_BUILD_IMPEXP_MNX_MODULE ON。旧 oracle（CI setup.sh + MUE_COMPILE_USE_SYSTEM_* 时代）的 pulseaudio/openssl/tinyxml/ffmpeg 在 master 已不存在：PulseAudio 直连仅存于内嵌 fluidsynth 可选驱动，openssl 无任何清单引用。）
 
 ## 1. 结论速览
@@ -23,7 +23,7 @@
 
 | 阻塞类型 | 节点 | 原因 |
 |---|---|---|
-| unsupported-interface | app:musescore | 使用鸿蒙不支持的平台接口 ALSA 直连（audio）鸿蒙音频走 AudioRenderer/AudioCapturer，ALSA 不可用；同类鸿蒙替代接口: 鸿蒙 AudioRenderer/AudioCapturer［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (95 处无条件 /  |
+| unsupported-interface | app:musescore | 使用鸿蒙不支持的平台接口 ALSA 直连（audio）鸿蒙音频走 AudioRenderer/AudioCapturer，ALSA 不可用；同类鸿蒙替代接口: 鸿蒙 AudioRenderer/AudioCapturer［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (89 处无条件 /  |
 | unsupported-interface | app:musescore | 使用鸿蒙不支持的平台接口 macOS CoreAudio（audio）macOS 专属音频框架；同类鸿蒙替代接口: 鸿蒙 AudioRenderer/AudioCapturer［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (2 处无条件 / 11 处鸿蒙可编译 / 0 处宏守卫排除 /  |
 | unsupported-interface | app:musescore | 使用鸿蒙不支持的平台接口 D-Bus IPC（ipc）鸿蒙无 D-Bus（Qt D-Bus 模块 Out of scope）；需改用系统服务/IPC；同类鸿蒙替代接口: 鸿蒙 IPC/系统服务能力［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (10 处无条件 / 0 处鸿蒙可编译 / 2 |
 | unsupported-interface | app:musescore | 使用鸿蒙不支持的平台接口 PulseAudio 直连（audio）鸿蒙无 PulseAudio 服务；同类鸿蒙替代接口: 鸿蒙 AudioRenderer/AudioCapturer［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (0 处无条件 / 8 处鸿蒙可编译 / 2 处宏守卫排除  |

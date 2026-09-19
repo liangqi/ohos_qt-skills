@@ -85,6 +85,14 @@ CMAKE_BUILTIN_PACKAGES = {
                "note": "编译器特性：OHOS NDK clang 支持 -fopenmp（libomp 随 SDK）"},
     "iconv": {"kind": "system-lib", "note": "musl libc 内置 iconv"},
     "dl": {"kind": "system-lib", "note": "musl libc 内置 dlopen"},
+    "opengl": {"kind": "system-lib",
+               "note": "OHOS 提供 OpenGL ES（libEGL_ndk / libGLESv3_ndk），"
+                      "桌面 OpenGL 调用需适配 GLES 3（lmms/zynaddsubfx 实证）"},
+    "packagehandlestandardargs": {
+        "kind": "build-tool",
+        "note": "CMake 内置模块（find_package_handle_standard_args），非依赖"
+                "（lmms FindFFTW.cmake 实证；曾以错名"
+                "findpackagehandlestandardargs 入表致幽灵残留）"},
 }
 
 # 平台接口绑定包：find_package/链接命中说明应用直连该平台栈，
@@ -95,7 +103,13 @@ INTERFACE_BOUND_PACKAGES = {
     "xext": "X11 扩展：鸿蒙不支持直连",
     "xcb": "XCB：鸿蒙不支持直连",
     "alsa": "ALSA 音频：鸿蒙不可用，需改鸿蒙 AudioRenderer",
+    "asound": "ALSA 客户端库名（-lasound / find_library）：鸿蒙不可用，"
+            "需改鸿蒙 AudioRenderer/AudioCapturer（lmms FindAlsa 实证）",
     "pulseaudio": "PulseAudio：鸿蒙无此服务",
+    "libpulse": "PulseAudio 客户端库（pkg-config 名 libpulse）：鸿蒙无此服务，"
+              "需改鸿蒙 AudioRenderer/AudioCapturer（lmms 实证）",
+    "pulse": "PulseAudio 客户端库名（find_library pulse / -lpulse）：鸿蒙无此"
+           "服务（lmms FindPulseAudio 实证）",
     "dbus": "D-Bus IPC：鸿蒙无 D-Bus（Qt D-Bus 模块 Out of scope）",
     "cocoa": "macOS Cocoa：鸿蒙不适用",
     "appkit": "macOS AppKit：鸿蒙不适用",
@@ -108,6 +122,13 @@ INTERFACE_BOUND_PACKAGES = {
     "security": "macOS Security 框架：鸿蒙不适用（APPLE 平台块）",
     "coreservices": "macOS CoreServices 框架：鸿蒙不适用（APPLE 平台块）",
     "corefoundation": "macOS CoreFoundation 框架：鸿蒙不适用（APPLE 平台块）",
+    # macOS 框架经 find_library 裸名引入（muse 实证：AudioToolbox/CoreMIDI
+    # 在 OS_IS_MAC 块内 find_library，未命中表时被当普通包报“需源码交叉编译”）
+    "audiotoolbox": "macOS AudioToolbox 框架：鸿蒙不可用，需改鸿蒙"
+                  " AudioRenderer/AudioCapturer（APPLE 平台块内引入）",
+    "coremidi": "macOS CoreMIDI 框架：鸿蒙不适用（APPLE 平台块内引入；"
+              "MIDI 需改鸿蒙 MIDI 能力）",
+    "carbon": "macOS Carbon 遗留框架：鸿蒙不适用（APPLE 平台块内引入）",
 }
 
 # find_package 命中的主机侧构建工具（原 _FINDPKG_SKIP 静默丢弃，现归入
@@ -118,6 +139,8 @@ INTERFACE_BOUND_PACKAGES = {
 TEST_FRAMEWORKS = {
     "gtest", "googletest", "catch2", "catch", "doctest", "qtest", "qttest",
     "testlib", "cppunit", "boosttest", "unittest++", "gtest_main", "qttest",
+    "gmock", "gmock_main",
+    "cxxtest",
 }
 
 # Qt 自带的构建工具（由 Qt SDK 提供，无需单独准备）
@@ -237,7 +260,13 @@ def _in_tree_dir_index(root: Path) -> Dict[str, str]:
             continue
         lib_dirs[dirpath] = [base, d.relative_to(root).as_posix(), 0,
                              filenames]
-    # 父目录的“依赖集合”判定：≥5 个子目录各自像库目录
+    # 父目录的“依赖集合”判定：父目录名是库容器（libraries/libs）且
+    # ≥5 个子目录各自像库目录。容器名白名单是为了避免把功能分组目录
+    # 误当依赖集合——okular 的 generators/（poppler/epub/markdown/…）
+    # 是格式生成器插件代码目录，不是自带库源码（实证误判 in-tree，
+    # 掩盖 poppler/epub 真实 need_port）；QOwnNotes 的 src/libraries
+    # 是真实的自带库集合。
+    _LIB_CONTAINER_NAMES = {"libraries", "libs"}
     children: Dict[str, int] = {}
     for dirpath in lib_dirs:
         parent = str(Path(dirpath).parent)
@@ -245,13 +274,85 @@ def _in_tree_dir_index(root: Path) -> Dict[str, str]:
     out: Dict[str, str] = {}
     for dirpath, (base, rel, _n, filenames) in lib_dirs.items():
         parts = Path(rel).parts[:-1]
-        parent = str(Path(dirpath).parent)
-        parent_is_collection = children.get(parent, 0) >= 5
+        parent_path = Path(dirpath).parent
+        parent = str(parent_path)
+        parent_is_collection = (
+            children.get(parent, 0) >= 5
+            and parent_path.name.lower() in _LIB_CONTAINER_NAMES)
         has_readme = any(f.upper().startswith(("README", "LICENSE", "COPYING"))
                          for f in filenames)
+        # README/LICENSE 单独不足以判定：okular generators/epub 的 README
+        # 描述的是“基于外部 libepub 的后端”（指向 svn 获取库），不是自带
+        # 源码包——仅在库容器父目录内作为补充佐证（容器内非集合规模的
+        # 自带库，如 libraries/ 下仅 2 个真库但各自带上游 README）。
         if (vendored_names.intersection(parts) or parent_is_collection
-                or has_readme):
+                or (has_readme
+                    and parent_path.name.lower() in _LIB_CONTAINER_NAMES)):
             out.setdefault(base, rel)
+    return out
+
+
+def _loose_folds(n: str) -> set:
+    """依赖名宽松折叠候选集：小写、去非字母数字、去 lib 前缀、
+    去尾部 qt5/qt6/system 变体 token。
+
+    editorconfig_core_qt ≡ editorconfig-core-qt；
+    Qt-Advanced-Docking-System ≡ qtadvanceddocking-qt6（CPM 名 ads
+    vs 链接目标名 qtadvanceddocking-qt6，NotepadNext 实证）。"""
+    toks = [t for t in re.split(r"[-_./]+", (n or "").lower()) if t]
+    while toks and toks[-1] in ("qt5", "qt6", "system"):
+        toks = toks[:-1]
+    out = set()
+    if toks:
+        f = "".join(toks)
+        out.add(f)
+        if f.startswith("lib") and len(f) > 3:
+            out.add(f[3:])
+    return {f for f in out if len(f) >= 3}
+
+
+def _vendored_declarations(info: Dict) -> Dict[str, tuple]:
+    """项目自带源码声明索引：宽松折叠名 → (标签, 详情)。
+
+    覆盖四类“随项目编译”的声明：
+    - git 子模块（.gitmodules；浅克隆未初始化时目录为空，
+      _in_tree_dir_index 不可见）——tdesktop kcoreaddons/microtex 实证
+    - CPM/FetchContent/ExternalProject 配置期拉取（fetched_deps；
+      名字或 URL 末段均可匹配）——NotepadNext ads/QSimpleUpdater 实证
+    - meson 自带子项目（subprojects/ 目录与 .wrap）与项目内部
+      override_dependency 目标——cutter/rizin 的 zydis/rz_* 实证
+    """
+    out: Dict[str, tuple] = {}
+
+    def add(nm: str, label: str, detail: str) -> None:
+        for f in _loose_folds(nm):
+            if f not in out:
+                out[f] = (label, detail)
+
+    for gm in info.get("git_submodules") or []:
+        cands = [gm.get("name") or "", gm.get("path") or ""]
+        url_last = ((gm.get("url") or "").rstrip("/").rsplit("/", 1)[-1])
+        if url_last.endswith(".git"):
+            url_last = url_last[:-4]
+        cands.append(url_last)
+        path = gm.get("path") or gm.get("name") or ""
+        for c in cands:
+            add(c, "git 子模块", path)
+    for fd in info.get("fetched_deps") or []:
+        nm = fd.get("name") or ""
+        how = fd.get("how") or "FetchContent"
+        add(nm, how, nm)
+        url = fd.get("url") or ""
+        last = url.rstrip("/").rsplit("/", 1)[-1]
+        if last.endswith(".git"):
+            last = last[:-4]
+        if last:
+            add(last, how, nm)
+    meson = info.get("meson") or {}
+    for nm in meson.get("internal_deps") or []:
+        add(nm, "meson 子项目/内部目标", nm)
+    for nm in meson.get("subprojects") or []:
+        add(nm, "meson 子项目", nm)
     return out
 
 
@@ -486,15 +587,25 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                                 if name == "linguisttools" else "host"})
             continue
         if name in INTERFACE_BOUND_PACKAGES:
+            plat = fp.get("platform")
             e = link.add(fp["name"], kind="platform-iface",
-                         required=fp["required"], evidence=ev)
+                         required=(fp["required"] and not fp.get("optional")
+                                   and not plat),
+                         evidence=ev)
             e["ohos_note"] = INTERFACE_BOUND_PACKAGES[name]
+            if fp.get("optional"):
+                e["note"] = ("CMake 选项守卫（默认 OFF）："
+                              "默认构建不含此依赖")
+            elif plat:
+                e["note"] = ("位于 if(%s) 平台块：仅该平台构建，"
+                              "鸿蒙构建不含" % plat)
             continue
         # 同库异名归并：find_package 名按别名表改写（KDcrawQt6→kdcraw、
         # QuaZip-Qt→quazip），使无包源时与 pkg-config/裸链接声明合为一条
         aliased = LIB_NAME_ALIASES.get(name)
         entry = link.add(aliased or fp["name"],
-                         required=(fp["required"] and not fp.get("optional")),
+                         required=(fp["required"] and not fp.get("optional")
+                                   and not fp.get("platform")),
                          min_version=fp["version"],
                          components=(fp["components"]
                                      + fp["optional_components"]) or None,
@@ -502,6 +613,9 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
         if fp.get("optional"):
             entry["note"] = ("CMake 选项守卫（默认 OFF）："
                               "默认构建不含此依赖")
+        elif fp.get("platform"):
+            entry["note"] = ("位于 if(%s) 平台块：仅该平台构建，"
+                              "鸿蒙构建不含" % fp["platform"])
         if aliased:
             entry.setdefault("ohos_note",
                              "find_package 名 %s 归并为包 %s"
@@ -518,17 +632,29 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                               "note": "测试框架，不进发行包"})
             continue
         if pm["name"] in INTERFACE_BOUND_PACKAGES:
-            e = link.add(pm["name"], kind="platform-iface", evidence=ev)
+            e = link.add(pm["name"], kind="platform-iface",
+                         required=(not pm.get("optional")
+                                   and not pm.get("platform")), evidence=ev)
             e["ohos_note"] = INTERFACE_BOUND_PACKAGES[pm["name"]]
+            if pm.get("optional"):
+                e["note"] = ("CMake 选项守卫（默认 OFF）："
+                              "默认构建不含此依赖")
+            elif pm.get("platform"):
+                e["note"] = ("位于 if(%s) 平台块：仅该平台构建，"
+                              "鸿蒙构建不含" % pm["platform"])
             continue
         # 同库双声明（pkg-config 名 vs find_package 名）按别名合并。
         # 版本约束挂在被归并的原名下（version_req_from）：libavcodec 的
         # “>= 58”是库主版本口径，与 ffmpeg 包版本不可直接比较。
         aliased = LIB_NAME_ALIASES.get(pm["name"], pm["name"])
         e = link.add(aliased, version_req=pm["version_req"], evidence=ev,
-                     required=not pm.get("optional"))
+                     required=(not pm.get("optional")
+                               and not pm.get("platform")))
         if pm.get("optional"):
             e["note"] = "CMake 选项守卫（默认 OFF）：默认构建不含此依赖"
+        elif pm.get("platform"):
+            e["note"] = ("位于 if(%s) 平台块：仅该平台构建，"
+                          "鸿蒙构建不含" % pm["platform"])
         if pm["version_req"] and aliased != pm["name"]:
             e["version_req_from"] = pm["name"]
 
@@ -585,6 +711,7 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
         n = rl["name"]
         ev = "%s (%s)" % ("+".join(rl.get("hows", [])),
                           rl["evidence"][0] if rl.get("evidence") else "?")
+        plat = rl.get("platform_block")
         if n.lower() in TEST_FRAMEWORKS:
             # target_link_libraries 裸名命中测试框架（如 QOwnNotes 的
             # gtest_main）：归入 test 而非 need_port 的 link
@@ -592,17 +719,24 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                               "note": "测试框架，不进发行包"})
             continue
         if n.lower() in OHOS_SYSTEM_LIBS:
-            e = link.add(n, kind="system-lib", evidence=ev)
+            e = link.add(n, kind="system-lib",
+                         required=not plat, evidence=ev)
             e["ohos_note"] = OHOS_SYSTEM_LIBS[n.lower()]
         elif n.lower() in WIN32_SYSTEM_LIBS:
             e = link.add(n, kind="win32-system-lib", required=False, evidence=ev)
             e["ohos_note"] = "Windows 系统库：通常位于 win32 平台块，鸿蒙不适用"
         elif n.lower() in INTERFACE_BOUND_PACKAGES:
-            e = link.add(n, kind="platform-iface", evidence=ev)
+            existed = (n.lower() in link.by_name)
+            e = link.add(n, kind="platform-iface", required=not plat,
+                         evidence=ev)
             e["ohos_note"] = INTERFACE_BOUND_PACKAGES[n.lower()]
+            if plat and not existed:
+                e["note"] = ("位于 if(%s) 平台块：仅该平台构建，"
+                              "鸿蒙构建不含" % plat)
         else:
             aliased = LIB_NAME_ALIASES.get(n.lower())
-            e = link.add(aliased or n, evidence=ev)
+            existed = ((aliased or n).lower() in link.by_name)
+            e = link.add(aliased or n, required=not plat, evidence=ev)
             if rl.get("ext_target"):
                 e.setdefault(
                     "ohos_note",
@@ -613,6 +747,12 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                 e.setdefault("ohos_note",
                              "裸链接名（未用 find_package/pkg-config 声明），"
                              "产物获取途径取决于名称匹配结果")
+            if plat and not existed:
+                # 仅当此条目由平台块内的裸链接声明创建时标注；已存在的
+                # 条目（find_package 必需声明等）required 语义由合并规则
+                # 保护（REQUIRED 优先，不会被此处降级）
+                e["note"] = ("位于 if(%s) 平台块：仅该平台构建，"
+                              "鸿蒙构建不含" % plat)
 
     # ---- 6c) macOS 框架（-framework X）
     for fw in info.get("macos_frameworks", []):
@@ -713,12 +853,22 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
     graph_cache = _GraphCache(conn) if conn is not None else None
     resolve_cache: Dict[str, Optional[Dict]] = {}
     in_tree_index: Optional[Dict[str, str]] = None   # 惰性构建
+    vendored_decls = _vendored_declarations(info)
     link_list = link.values()
     for entry in link_list:
         skip_resolve = entry["kind"] in ("system-lib", "win32-system-lib",
                                          "platform-iface")
-        node = None if skip_resolve else _resolve(conn, entry["name"],
-                                                  resolve_cache)
+        if entry["kind"] == "framework":
+            # KF 组件不能走包名解析阶梯：组件名与无关 C 库同名异义
+            # （KF Archive ≠ libarchive、KF Config ≠ libconfig，okular/
+            # konsole 实证曾误展示 ready bottle 与闭包 need_port 矛盾）。
+            # 解析到扫描入库的 kf:<comp> 节点（port_status=unknown →
+            # 需源码交叉编译，与 fetch-deps 闭包口径一致）。
+            node = (db.get_node(conn, "kf:%s" % entry["name"].lower())
+                    if conn is not None else None)
+        else:
+            node = None if skip_resolve else _resolve(conn, entry["name"],
+                                                      resolve_cache)
         entry["resolved_node"] = node["id"] if node else None
         entry["_resolved_name"] = node["name"] if node else None
         entry["port_status"] = node["port_status"] if node else None
@@ -737,6 +887,33 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                                      "source": "in-tree:%s" % hit}
                 entry["ohos_note"] = ("项目内自带源码目录（%s）：随项目"
                                       "编译，无需外部产物" % hit)
+        # 未解析且命中项目自带源码声明（git 子模块 / CPM-FetchContent
+        # / meson 子项目与内部目标）：源码随项目，不是外部 need_port
+        # 缺口（tdesktop kcoreaddons、NotepadNext QSimpleUpdater、
+        # cutter rz_*/zydis 实证）
+        if node is None and entry["kind"] == "package" and vendored_decls:
+            hit = next((vendored_decls[f]
+                        for f in _loose_folds(entry["name"])
+                        if f in vendored_decls), None)
+            if hit:
+                label, detail = hit
+                entry["kind"] = "in-tree"
+                entry["artifact"] = {"ready": True, "provided": True,
+                                     "source": "%s:%s" % (label, detail)}
+                entry["ohos_note"] = (
+                    "%s（%s）：源码随项目编译，无需外部产物" % (label, detail))
+        # 已解析到鸿蒙产物、但项目同时自带该库源码：bottle 为备选
+        if (node is not None and entry["kind"] == "package"
+                and vendored_decls):
+            hit = next((vendored_decls[f]
+                        for f in _loose_folds(entry["name"])
+                        if f in vendored_decls), None)
+            if hit:
+                label, detail = hit
+                entry["ohos_note"] = ((entry.get("ohos_note") or "")
+                                      + "；项目自带该库源码（%s %s），"
+                                        "可随项目编译，bottle 为备选"
+                                        % (label, detail)).lstrip("；")
         if entry["kind"] == "system-lib":
             entry["artifact"] = entry["artifact"] or {
                 "ready": True, "provided": True, "source": "ohos-system"}
@@ -765,6 +942,22 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
         at = n.find("@")
         return n[:at] if at > 0 else n
 
+    def _dashless_merge_key(name: str) -> Optional[str]:
+        """去分隔符合并键（libtorrent-rasterbar → libtorrentrasterbar）。
+
+        仅限无空白的单词名（含空白的 KF 节点名如 "KF archive" 不适用，
+        否则全部 KF 组件会同键误并）且键长 ≥ 6（与
+        kb_seed.resolve_package_dashless 的碰撞防护一致）；名字本身
+        无分隔符时键即 name.lower()，无需额外键（压平名条目的普通键
+        天然与带分隔符条目的去分隔符键碰撞 → 合并）。
+        """
+        if not re.fullmatch(r"[A-Za-z0-9@+_.-]+", name or ""):
+            return None
+        key = kb_seed._dashless_key(name)
+        if len(key) < 6 or key == name.lower():
+            return None
+        return key
+
     by_key: Dict[str, Dict] = {}
     for entry in link_list:
         keys = []
@@ -774,6 +967,12 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                 keys.append(_canon_pkg_name(entry["_resolved_name"]))
         else:
             keys.append(entry["name"].lower())
+        # 同库异名（压平名 vs 连字符名）凭去分隔符键合并——与扫描期
+        # project_scanner._link_third_party 的分组策略对齐，避免 deps
+        # 表对同一未解析库双计（两条“需源码交叉编译”警告）
+        dk = _dashless_merge_key(entry["name"])
+        if dk:
+            keys.append(dk)
         for key in keys:
             base = by_key.get(key)
             if base is not None and base is not entry:

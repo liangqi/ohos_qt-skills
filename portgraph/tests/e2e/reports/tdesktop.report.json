@@ -6,22 +6,47 @@
   "name": "tdesktop",
   "url": "https://github.com/telegramdesktop/tdesktop",
   "tier": "C",
-  "build_system": "cmake",
-  "sources": 2932,
+  "build_system": "cmake+qmake",
+  "sources": 6358,
   "repo_path": "/root/harmony-workspace/worker1/portgraph/workspace/tdesktop"
  },
- "generated_at": "2026-09-19T13:32:14Z",
+ "generated_at": "2026-09-19T14:53:38Z",
  "verdict": "blocked",
  "blockers": [
   {
    "kind": "unsupported-interface",
    "node": "app:tdesktop",
-   "reason": "使用鸿蒙不支持的平台接口 macOS Cocoa/AppKit（os-api）macOS 专属 UI/系统框架；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (4 处无条件 / 0 处鸿蒙可编译 / 0 处宏守卫排除 / 212 处文件级排除) | Telegram/SourceFiles/webauthn/cable_scanner_mac.mm:58[unconditional] @interface TDCableScannerDelegate : NSObject<CBCentralManagerDelegate>; Telegram/SourceFiles/webauthn/cable_scanner_mac.mm:58[unconditional] @interface TDCableScannerDelegate : NSObject<CBCentralManagerDelegate>; Telegram/SourceFiles/webauthn/cable_scanner_mac.mm:63[unconditional] @implementation TDCableScannerDelegate {］"
+   "reason": "使用鸿蒙不支持的平台接口 macOS Cocoa/AppKit（os-api）macOS 专属 UI/系统框架；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (7 处无条件 / 0 处鸿蒙可编译 / 0 处宏守卫排除 / 621 处文件级排除) | Telegram/lib_webview/webview/platform/mac/webview_mac.mm:26[platform-file-excluded] #import <Foundation/Foundation.h>; Telegram/lib_webview/webview/platform/mac/webview_mac.mm:31[platform-file-excluded] @protocol WebviewWKFeature <NSObject>; Telegram/lib_webview/webview/platform/mac/webview_mac.mm:35[platform-file-excluded] @interface WKPreferences (WebviewPrivate)］"
   },
   {
    "kind": "unsupported-interface",
    "node": "app:tdesktop",
-   "reason": "使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (54 处无条件 / 3 处鸿蒙可编译 / 2 处宏守卫排除 / 67 处文件级排除) | Telegram/SourceFiles/webauthn/cable_scanner_win.cpp:20[unconditional] #include <windows.h>; Telegram/SourceFiles/webauthn/webauthn_common.cpp:50[ohos-active] || base::Platform::LoadLibrary(\"libudev.so.1\");; Telegram/SourceFiles/ui/controls/location_picker.cpp:767[unconditional] // calls DestroyWindow() on the HWND the WebView2 controller is］"
+   "reason": "使用鸿蒙不支持的平台接口 D-Bus IPC（ipc）鸿蒙无 D-Bus（Qt D-Bus 模块 Out of scope）；需改用系统服务/IPC；同类鸿蒙替代接口: 鸿蒙 IPC/系统服务能力［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (54 处无条件 / 7 处鸿蒙可编译 / 53 处宏守卫排除 / 0 处文件级排除) | Telegram/ThirdParty/kcoreaddons/src/lib/io/kurlmimedata.cpp:102[ohos-active] static bool available = QDBusConnection::sessionBus().interface(); Telegram/ThirdParty/kcoreaddons/src/lib/io/kurlmimedata.cpp:103[ohos-active] && QDBusConnection::sessionBus().interface()->activatableServiceNames().value().; Telegram/ThirdParty/kcoreaddons/src/lib/io/kurlmimedata.cpp:110[ohos-active] QDBusConnection::sessionBus().interface() && QDBusConnection::sessionBus().inter］"
+  },
+  {
+   "kind": "unsupported-interface",
+   "node": "app:tdesktop",
+   "reason": "使用鸿蒙不支持的平台接口 systemd（os-api）鸿蒙无 systemd 服务管理；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (0 处无条件 / 2 处鸿蒙可编译 / 0 处宏守卫排除 / 0 处文件级排除) | Telegram/ThirdParty/xdg-desktop-portal/src/xdp-app-info-host.c:23[ohos-active] #include <systemd/sd-login.h>; Telegram/ThirdParty/xdg-desktop-portal/src/xdp-app-info.c:38[ohos-active] #include <systemd/sd-login.h>］"
+  },
+  {
+   "kind": "unsupported-interface",
+   "node": "app:tdesktop",
+   "reason": "使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (107 处无条件 / 9 处鸿蒙可编译 / 59 处宏守卫排除 / 187 处文件级排除) | cmake/win_directx_helper/win_directx_helper.cpp:25[unconditional] using Handle = HINSTANCE;; cmake/win_directx_helper/win_directx_helper.cpp:84[unconditional] ? reinterpret_cast<Function>(GetProcAddress(handle, name)); cmake/win_directx_helper/win_directx_helper.cpp:96[unconditional] const auto file = CreateFile(］"
+  },
+  {
+   "kind": "unsupported-interface",
+   "node": "app:tdesktop",
+   "reason": "使用鸿蒙不支持的平台接口 X11/Xlib 直连（display）鸿蒙无 X11 显示服务；Qt 应用应走 QPA，直连 X11 代码不可移植；同类鸿蒙替代接口: 鸿蒙 WindowStage/XComponent［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (34 处无条件 / 3 处鸿蒙可编译 / 26 处宏守卫排除 / 0 处文件级排除) | Telegram/ThirdParty/nimf/modules/services/xim/nimf-xim-ic.c:23[unconditional] #include <X11/Xutil.h>; Telegram/ThirdParty/nimf/modules/services/xim/nimf-xim.h:28[platform-excluded] #include <X11/XKBlib.h>; Telegram/ThirdParty/nimf/modules/services/xim/IMdkit/FrameMgr.c:29[unconditional] #include <X11/Xlibint.h>］"
+  },
+  {
+   "kind": "unsupported-module",
+   "node": "qtmod:dbus",
+   "reason": "Qt for HarmonyOS 模块适配表: 不支持 - 鸿蒙无 D-Bus"
+  },
+  {
+   "kind": "unsupported-module",
+   "node": "qtmod:waylandcompositor",
+   "reason": "Qt for HarmonyOS 模块适配表: 不支持 - Linux/Wayland 合成器框架，鸿蒙窗口模型非 Wayland"
   }
  ],
  "unknowns": [
@@ -32,12 +57,62 @@
   },
   {
    "kind": "unknown-package",
+   "node": "pkg-unknown:ada",
+   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:microsoft",
+   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:range",
+   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:tde2e",
+   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:tg-owt",
+   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:tl",
+   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:breakpad-client",
+   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:giomm-2-68",
+   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
+  },
+  {
+   "kind": "unknown-package",
    "node": "pkg-unknown:libudev",
    "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
   },
   {
    "kind": "unknown-package",
-   "node": "pkg-unknown:ada",
+   "node": "pkg-unknown:pangocairo",
+   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:pangoft2",
+   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:rnnoise",
    "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
   },
   {
@@ -52,12 +127,17 @@
   },
   {
    "kind": "unknown-package",
-   "node": "pkg-unknown:rnnoise",
+   "node": "pkg-unknown:ranges",
    "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
   },
   {
    "kind": "unknown-package",
-   "node": "pkg-unknown:tde2e",
+   "node": "pkg-unknown:tlottie",
+   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:tmc",
    "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
   },
   {
@@ -66,17 +146,117 @@
    "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
   }
  ],
- "platform_excluded": [],
+ "platform_excluded": [
+  {
+   "node": "app:tdesktop",
+   "name": "tdesktop",
+   "iface": "macOS CoreAudio",
+   "category": "audio",
+   "guard": "platform-excluded",
+   "reason": "接口 macOS CoreAudio 被非鸿蒙平台条件编译守卫包裹（鸿蒙不编译），功能类别=audio",
+   "alternatives": [
+    {
+     "id": "iface:ohos-audio",
+     "name": "鸿蒙 AudioRenderer/AudioCapturer",
+     "category": "audio",
+     "ohos_status": "supported",
+     "note": "鸿蒙原生音频 API，替代 ALSA/PulseAudio/CoreAudio"
+    }
+   ],
+   "evidence": "[被非鸿蒙平台守卫包裹（不编译）] guard=platform-excluded (0 处无条件 / 0 处鸿蒙可编译 / 0 处宏守卫排除 / 5 处文件级排除) | Telegram/ThirdParty/tgcalls/tgcalls/platform/darwin/iOS/tgcalls_audio_device_ios.h:252[platform-file-excluded] // The AudioUnit used to play and record audio.; Telegram/ThirdParty/tgcalls/tgcalls/platform/darwin/iOS/tgcalls_voice_processing_audio_unit.h:14[platform-file-excluded] #include <AudioUnit/AudioUnit.h>; Telegram/ThirdParty/tgcalls/tgcalls/platform/darwin/iOS/tgcalls_voice_processing_audio_unit.h:14[platform-file-excluded] #include <AudioUnit/AudioUnit.h>",
+   "path": [
+    "app:tdesktop"
+   ]
+  },
+  {
+   "node": "app:tdesktop",
+   "name": "tdesktop",
+   "iface": "Wayland 直连",
+   "category": "display",
+   "guard": "platform-excluded",
+   "reason": "接口 Wayland 直连 被非鸿蒙平台条件编译守卫包裹（鸿蒙不编译），功能类别=display",
+   "alternatives": [
+    {
+     "id": "iface:ohos-window",
+     "name": "鸿蒙 WindowStage/XComponent",
+     "category": "display",
+     "ohos_status": "supported",
+     "note": "鸿蒙窗口模型，替代 X11/Wayland 直连"
+    }
+   ],
+   "evidence": "[被非鸿蒙平台守卫包裹（不编译）] guard=platform-excluded (0 处无条件 / 0 处鸿蒙可编译 / 1 处宏守卫排除 / 0 处文件级排除) | Telegram/ThirdParty/nimf/modules/services/wayland/nimf-wayland.h:36[platform-excluded] #include <wayland-client.h>",
+   "path": [
+    "app:tdesktop"
+   ]
+  }
+ ],
  "closure": {
-  "size": 61,
+  "size": 112,
   "summary": {
    "target": 1,
-   "provided": 5,
-   "would_download": 47,
-   "need_port": 7,
-   "cmd_only": 1
+   "provided": 9,
+   "need_port": 21,
+   "would_download": 78,
+   "covered": 1,
+   "cmd_only": 2
   },
   "need_port": [
+   {
+    "id": "pkg-unknown:ada",
+    "name": "ada",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:microsoft",
+    "name": "microsoft",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:range",
+    "name": "range",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:tde2e",
+    "name": "tde2e",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:tg-owt",
+    "name": "tg_owt",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:tl",
+    "name": "tl",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:breakpad-client",
+    "name": "breakpad-client",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:giomm-2-68",
+    "name": "giomm-2.68",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
    {
     "id": "pkg-unknown:libudev",
     "name": "libudev",
@@ -85,8 +265,22 @@
     "repo_url": null
    },
    {
-    "id": "pkg-unknown:ada",
-    "name": "ada",
+    "id": "pkg-unknown:pangocairo",
+    "name": "pangocairo",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:pangoft2",
+    "name": "pangoft2",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:rnnoise",
+    "name": "rnnoise",
     "version": null,
     "source_url": null,
     "repo_url": null
@@ -106,15 +300,22 @@
     "repo_url": null
    },
    {
-    "id": "pkg-unknown:rnnoise",
-    "name": "rnnoise",
+    "id": "pkg-unknown:ranges",
+    "name": "ranges",
     "version": null,
     "source_url": null,
     "repo_url": null
    },
    {
-    "id": "pkg-unknown:tde2e",
-    "name": "tde2e",
+    "id": "pkg-unknown:tlottie",
+    "name": "tlottie",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:tmc",
+    "name": "tmc",
     "version": null,
     "source_url": null,
     "repo_url": null
@@ -125,9 +326,35 @@
     "version": null,
     "source_url": null,
     "repo_url": null
+   },
+   {
+    "id": "kf:archive",
+    "name": "KF archive",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "kf:coreaddons",
+    "name": "KF coreaddons",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "kf:desktoptojson",
+    "name": "KF desktoptojson",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
    }
   ],
   "cmd_only": [
+   {
+    "id": "hb:aom",
+    "name": "aom",
+    "artifact_cmd": "brew install aom"
+   },
    {
     "id": "hb:ca-certificates",
     "name": "ca-certificates",
@@ -135,48 +362,79 @@
    }
   ],
   "would_download": [
-   "libfido2",
-   "ffmpeg",
-   "openssl@3",
-   "zlib",
    "boost",
-   "cmark-gfm",
-   "glib",
-   "libiconv",
+   "jpeg-turbo",
+   "libavif",
+   "libheif",
+   "xz",
+   "lz4",
    "minizip",
    "openal-soft",
-   "libqrcodegen",
-   "xxhash",
-   "dav1d",
-   "lame",
-   "libvpx",
+   "openssl@3",
    "opus",
-   "svt-av1",
-   "x264",
-   "x265",
-   "alsa-lib",
+   "protobuf",
+   "xxhash",
+   "zlib",
+   "glib",
+   "glibmm",
+   "hunspell",
+   "ffmpeg",
+   "libjxl",
+   "openh264",
+   "libvpx",
    "libxcb",
-   "xz",
-   "zlib-ng-compat",
+   "libxkbcommon",
+   "cmark-gfm",
+   "pango",
+   "libqrcodegen",
    "icu4c@78",
    "zstd",
+   "zlib-ng-compat",
+   "dav1d",
+   "libpng",
+   "libde265",
+   "libtiff",
+   "webp",
+   "x265",
+   "abseil",
    "bison",
    "python-setuptools",
    "pcre2",
    "dbus",
    "util-linux",
-   "mpg123",
+   "libsigc++",
+   "lame",
+   "svt-av1",
+   "x264",
+   "alsa-lib",
    "python@3.14",
    "libxau",
    "libxdmcp",
-   "lz4",
+   "xkeyboard-config",
+   "cairo",
+   "fontconfig",
+   "freetype",
+   "fribidi",
+   "harfbuzz",
+   "libthai",
+   "libvmaf",
+   "giflib",
+   "googletest",
    "python@3.12",
    "gettext",
    "readline",
+   "mpg123",
    "mpdecimal",
    "sqlite",
    "musl-compat",
    "xorgproto",
+   "libx11",
+   "libxext",
+   "libxrender",
+   "lzo",
+   "pixman",
+   "graphite2",
+   "libdatrie",
    "berkeley-db@5",
    "libnsl",
    "libtirpc",
@@ -185,6 +443,30 @@
   ]
  },
  "direct_deps": [
+  {
+   "id": "kf:archive",
+   "name": "KF archive",
+   "kind": "framework",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "kf:coreaddons",
+   "name": "KF coreaddons",
+   "kind": "framework",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "kf:desktoptojson",
+   "name": "KF desktoptojson",
+   "kind": "framework",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
   {
    "id": "pkg-unknown:ada",
    "name": "ada",
@@ -207,6 +489,14 @@
    "kind": "package",
    "edge": "runtime",
    "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:breakpad-client",
+   "name": "breakpad-client",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
    "depth": 1
   },
   {
@@ -234,6 +524,14 @@
    "depth": 1
   },
   {
+   "id": "pkg-unknown:giomm-2-68",
+   "name": "giomm-2.68",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
    "id": "hb:glib",
    "name": "glib",
    "kind": "package",
@@ -242,16 +540,48 @@
    "depth": 1
   },
   {
-   "id": "cmdpkgs:libfido2",
-   "name": "libfido2",
+   "id": "hb:glibmm",
+   "name": "glibmm",
    "kind": "package",
    "edge": "runtime",
    "port_status": "ported",
    "depth": 1
   },
   {
-   "id": "hb:libiconv",
-   "name": "libiconv",
+   "id": "cmdpkgs:hunspell",
+   "name": "hunspell",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:jpeg-turbo",
+   "name": "jpeg-turbo",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:libavif",
+   "name": "libavif",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:libheif",
+   "name": "libheif",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "cmdpkgs:libjxl",
+   "name": "libjxl",
    "kind": "package",
    "edge": "runtime",
    "port_status": "ported",
@@ -274,6 +604,54 @@
    "depth": 1
   },
   {
+   "id": "hb:libvpx",
+   "name": "libvpx",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:libxcb",
+   "name": "libxcb",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:libxkbcommon",
+   "name": "libxkbcommon",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "cmdpkgs:libxxhash",
+   "name": "libxxhash",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:lz4",
+   "name": "lz4",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:microsoft",
+   "name": "microsoft",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
    "id": "hb:minizip",
    "name": "minizip",
    "kind": "package",
@@ -290,11 +668,75 @@
    "depth": 1
   },
   {
+   "id": "hb:openh264",
+   "name": "openh264",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
    "id": "hb:openssl@3",
    "name": "openssl@3",
    "kind": "package",
    "edge": "runtime",
    "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:opus",
+   "name": "opus",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:pango",
+   "name": "pango",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:pangocairo",
+   "name": "pangocairo",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:pangoft2",
+   "name": "pangoft2",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "hb:protobuf",
+   "name": "protobuf",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:range",
+   "name": "range",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:ranges",
+   "name": "ranges",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
    "depth": 1
   },
   {
@@ -308,6 +750,38 @@
   {
    "id": "pkg-unknown:tde2e",
    "name": "tde2e",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:tg-owt",
+   "name": "tg_owt",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:tl",
+   "name": "tl",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:tlottie",
+   "name": "tlottie",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:tmc",
+   "name": "tmc",
    "kind": "package",
    "edge": "runtime",
    "port_status": "unknown",
@@ -330,6 +804,14 @@
    "depth": 1
   },
   {
+   "id": "hb:xz",
+   "name": "xz",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
    "id": "hb:zlib",
    "name": "zlib",
    "kind": "package",
@@ -343,6 +825,14 @@
    "kind": "qt-module",
    "edge": "uses-module",
    "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:dbus",
+   "name": "Qt D-Bus",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "blocked",
    "depth": 1
   },
   {
@@ -362,11 +852,35 @@
    "depth": 1
   },
   {
+   "id": "qtmod:quick",
+   "name": "Qt Quick",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:quickwidgets",
+   "name": "Qt Quick Widgets",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
    "id": "qtmod:svg",
    "name": "Qt SVG",
    "kind": "qt-module",
    "edge": "uses-module",
    "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:waylandcompositor",
+   "name": "Qt Wayland Compositor",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "blocked",
    "depth": 1
   },
   {
@@ -583,20 +1097,17 @@
    "agent_note": null
   },
   {
-   "class": "readme-stale",
+   "class": "matched",
    "side": "oracle",
    "by_design": true,
    "oracle_name": "liblzma",
    "oracle_type": "runtime",
-   "pg_id": null,
-   "pg_name": null,
-   "pg_kind": null,
-   "pg_status": null,
-   "depth": null,
-   "evidence": {
-    "note": "README 声明但构建文件无引用 → 疑似 README 过时/笔误",
-    "grep": []
-   },
+   "pg_id": "hb:xz",
+   "pg_name": "xz",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
    "agent_note": null
   },
   {
@@ -614,7 +1125,7 @@
     "note": "README 声明但构建文件无引用 → 疑似 README 过时/笔误",
     "grep": []
    },
-   "agent_note": "主集成位于未初始化的 cmake/（cmake_helpers）子模块：Linux 侧经 external_crash_reports 包装（CMakeLists.txt:97 链接、cmake_helpers 内部实现 breakpad/crashpad 二选一），主仓库仅 macstore 段 target_link_frameworks(Telegram PRIVATE Breakpad)（:2381，平台守卫内）→ 克隆未初始化子模块导致扫描范围外，属工具残留缺口（见 TEST-REPORT）"
+   "agent_note": "主集成位于 cmake/（cmake_helpers）子模块：Linux 侧经 external_crash_reports 包装（CMakeLists.txt:97），主仓库仅 macstore 段 target_link_frameworks(Telegram PRIVATE Breakpad)（:2381，平台守卫内）。submodule 现已初始化，但 breakpad/crashpad 是 cmake/external/crash_reports 内 add_subdirectory 的 vendored 源码（随项目编译），portgraph 不作为外部包检出属正确定性；README 将其列为外部运行时依赖不准确"
   },
   {
    "class": "missed-dep",
@@ -631,7 +1142,7 @@
     "note": "README 声明但构建文件无引用 → 疑似 README 过时/笔误",
     "grep": []
    },
-   "agent_note": "主集成位于未初始化的 cmake/（cmake_helpers）子模块：macOS 段 find_program(CRASHPAD_HANDLER crashpad_handler)（:2349）+ external_crash_reports（:97）→ 克隆未初始化子模块导致扫描范围外，属工具残留缺口（见 TEST-REPORT）"
+   "agent_note": "主集成位于 cmake/（cmake_helpers）子模块：Linux 侧经 external_crash_reports 包装（CMakeLists.txt:97），主仓库仅 macstore 段 target_link_frameworks(Telegram PRIVATE Breakpad)（:2381，平台守卫内）。submodule 现已初始化，但 breakpad/crashpad 是 cmake/external/crash_reports 内 add_subdirectory 的 vendored 源码（随项目编译），portgraph 不作为外部包检出属正确定性；README 将其列为外部运行时依赖不准确"
   },
   {
    "class": "build-only",
@@ -727,18 +1238,18 @@
    "agent_note": null
   },
   {
-   "class": "vendored",
+   "class": "matched",
    "side": "oracle",
    "by_design": true,
    "oracle_name": "range-v3",
    "oracle_type": "runtime",
-   "pg_id": null,
-   "pg_name": null,
-   "pg_kind": null,
-   "pg_status": null,
-   "depth": null,
+   "pg_id": "pkg-unknown:range",
+   "pg_name": "range",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
    "evidence": {
-    "note": " .gitmodules 自带子模块（Telegram/ThirdParty/range-v3 → https://github.com/ericniebler/range-v3.git）：随项目源码一起编译，不作为外部包获取/检测"
+    "note": "⚠ 匹配到幽灵节点：库里存在形近已知包 range-v3（hb:range-v3）→ 名字解析缺口，需复核"
    },
    "agent_note": null
   },
@@ -748,8 +1259,8 @@
    "by_design": true,
    "oracle_name": "xxhash",
    "oracle_type": "runtime",
-   "pg_id": "hb:xxhash",
-   "pg_name": "xxhash",
+   "pg_id": "cmdpkgs:libxxhash",
+   "pg_name": "libxxhash",
    "pg_kind": "package",
    "pg_status": "ported",
    "depth": 1,
@@ -787,19 +1298,17 @@
    "agent_note": null
   },
   {
-   "class": "vendored",
+   "class": "matched",
    "side": "oracle",
    "by_design": true,
    "oracle_name": "hunspell",
    "oracle_type": "runtime",
-   "pg_id": null,
-   "pg_name": null,
-   "pg_kind": null,
-   "pg_status": null,
-   "depth": null,
-   "evidence": {
-    "note": " .gitmodules 自带子模块（Telegram/ThirdParty/hunspell → https://github.com/hunspell/hunspell）：随项目源码一起编译，不作为外部包获取/检测"
-   },
+   "pg_id": "cmdpkgs:hunspell",
+   "pg_name": "hunspell",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
    "agent_note": null
   },
   {
@@ -815,6 +1324,54 @@
    "depth": 1,
    "evidence": {
     "note": "匹配到幽灵节点：真实外部依赖且无已知鸿蒙包（fetch-deps 报 need_port/需源码移植，检出正确）"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "kf:archive",
+   "pg_name": "KF archive",
+   "pg_kind": "framework",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "KDE Frameworks 组件粒度：README 通常只写 'KDE Frameworks'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "kf:coreaddons",
+   "pg_name": "KF coreaddons",
+   "pg_kind": "framework",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "KDE Frameworks 组件粒度：README 通常只写 'KDE Frameworks'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "kf:desktoptojson",
+   "pg_name": "KF desktoptojson",
+   "pg_kind": "framework",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "KDE Frameworks 组件粒度：README 通常只写 'KDE Frameworks'"
    },
    "agent_note": null
   },
@@ -849,18 +1406,52 @@
     "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
     "grep": [
      {
-      "file": "Telegram/cmake/lib_prisma.cmake",
-      "line": 33,
-      "strong": true,
-      "text": "    desktop-app::external_boost"
+      "file": "cmake/external/glib/cppgir/conanfile.py",
+      "line": 30,
+      "strong": false,
+      "text": "self.requires(\"boost/[>=1.58]\", options={'header_only': True})"
      },
      {
-      "file": "Telegram/cmake/lib_prisma.cmake",
-      "line": 33,
+      "file": "cmake/external/glib/cppgir/CMakeLists.txt",
+      "line": 56,
       "strong": true,
-      "text": "    desktop-app::external_boost_regex"
+      "text": "find_package(Boost"
+     },
+     {
+      "file": "cmake/external/glib/cppgir/CMakeLists.txt",
+      "line": 299,
+      "strong": true,
+      "text": "find_package(Boost"
+     },
+     {
+      "file": "cmake/external/glib/cppgir/CMakeLists.txt",
+      "line": 125,
+      "strong": true,
+      "text": "target_link_libraries(cppgir Boost"
+     },
+     {
+      "file": "cmake/external/glib/cppgir/CMakeLists.txt",
+      "line": 305,
+      "strong": true,
+      "text": "target_link_libraries(example-gio-async PRIVATE ${GIO_LDFLAGS} ${Boost"
      }
     ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:breakpad-client",
+   "pg_name": "breakpad-client",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植）"
    },
    "agent_note": null
   },
@@ -878,6 +1469,12 @@
    "evidence": {
     "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
     "grep": [
+     {
+      "file": "cmake/external/cmark_gfm/CMakeLists.txt",
+      "line": 100,
+      "strong": true,
+      "text": "target_link_libraries(external_cmark_gfm"
+     },
      {
       "file": "Telegram/cmake/td_iv.cmake",
       "line": 157,
@@ -905,6 +1502,22 @@
    "agent_note": null
   },
   {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:giomm-2-68",
+   "pg_name": "giomm-2.68",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植）"
+   },
+   "agent_note": null
+  },
+  {
    "class": "readme-omitted",
    "side": "pg",
    "by_design": true,
@@ -919,10 +1532,34 @@
     "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
     "grep": [
      {
-      "file": "Telegram/cmake/td_webauthn.cmake",
-      "line": 61,
+      "file": "cmake/external/qt/CMakeLists.txt",
+      "line": 432,
       "strong": true,
-      "text": "        desktop-app::external_glib"
+      "text": "        glib"
+     },
+     {
+      "file": "cmake/external/qt/CMakeLists.txt",
+      "line": 430,
+      "strong": true,
+      "text": "        gio-2.0"
+     },
+     {
+      "file": "cmake/external/qt/CMakeLists.txt",
+      "line": 431,
+      "strong": true,
+      "text": "        gobject-2.0"
+     },
+     {
+      "file": "cmake/external/qt/qt_static_plugins/nimf/CMakeLists.txt",
+      "line": 23,
+      "strong": true,
+      "text": "pkg_check_modules(DESKTOP_APP_GIO REQUIRED gio-2.0"
+     },
+     {
+      "file": "cmake/external/glib/generate_dbus.cmake",
+      "line": 48,
+      "strong": true,
+      "text": "target_link_libraries(${target_name}_${namespace}_dbus PUBLIC desktop-app::external_glib"
      }
     ]
    },
@@ -934,8 +1571,8 @@
    "by_design": true,
    "oracle_name": null,
    "oracle_type": null,
-   "pg_id": "cmdpkgs:libfido2",
-   "pg_name": "libfido2",
+   "pg_id": "hb:glibmm",
+   "pg_name": "glibmm",
    "pg_kind": "package",
    "pg_status": "ported",
    "depth": 1,
@@ -943,10 +1580,16 @@
     "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
     "grep": [
      {
-      "file": "Telegram/cmake/lib_fido2.cmake",
-      "line": 15,
+      "file": "cmake/external/glibmm/CMakeLists.txt",
+      "line": 11,
       "strong": true,
-      "text": "pkg_check_modules(TDESKTOP_FIDO2 IMPORTED_TARGET libfido2"
+      "text": "pkg_check_modules(DESKTOP_APP_GLIBMM REQUIRED IMPORTED_TARGET glibmm"
+     },
+     {
+      "file": "cmake/external/glibmm/CMakeLists.txt",
+      "line": 13,
+      "strong": true,
+      "text": "target_link_libraries(external_glibmm"
      }
     ]
    },
@@ -958,8 +1601,8 @@
    "by_design": true,
    "oracle_name": null,
    "oracle_type": null,
-   "pg_id": "hb:libiconv",
-   "pg_name": "libiconv",
+   "pg_id": "hb:jpeg-turbo",
+   "pg_name": "jpeg-turbo",
    "pg_kind": "package",
    "pg_status": "ported",
    "depth": 1,
@@ -967,10 +1610,178 @@
     "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
     "grep": [
      {
-      "file": "Telegram/CMakeLists.txt",
-      "line": 2279,
+      "file": "cmake/external/webrtc/CMakeLists.txt",
+      "line": 87,
       "strong": true,
-      "text": "target_link_libraries(Telegram PRIVATE desktop-app::external_iconv"
+      "text": "    $<LINK_ONLY:desktop-app::external_jpeg"
+     },
+     {
+      "file": "cmake/external/qt/CMakeLists.txt",
+      "line": 355,
+      "strong": true,
+      "text": "    $<LINK_ONLY:desktop-app::external_jpeg"
+     },
+     {
+      "file": "cmake/external/jpeg/CMakeLists.txt",
+      "line": 11,
+      "strong": true,
+      "text": "find_package(JPEG"
+     },
+     {
+      "file": "cmake/external/jpeg/CMakeLists.txt",
+      "line": 31,
+      "strong": true,
+      "text": "find_library(DESKTOP_APP_JPEG"
+     },
+     {
+      "file": "cmake/external/jpeg/CMakeLists.txt",
+      "line": 12,
+      "strong": true,
+      "text": "target_link_libraries(external_jpeg"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:libavif",
+   "pg_name": "libavif",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
+    "grep": [
+     {
+      "file": "cmake/external/qt/qt_static_plugins/kimageformats/CMakeLists.txt",
+      "line": 36,
+      "strong": true,
+      "text": "find_package(libavif"
+     },
+     {
+      "file": "cmake/external/qt/qt_static_plugins/kimageformats/CMakeLists.txt",
+      "line": 41,
+      "strong": true,
+      "text": "pkg_check_modules(DESKTOP_APP_AVIF IMPORTED_TARGET libavif"
+     },
+     {
+      "file": "cmake/external/qt/qt_static_plugins/kimageformats/CMakeLists.txt",
+      "line": 81,
+      "strong": true,
+      "text": "        ${libs_loc}/libavif"
+     },
+     {
+      "file": "cmake/external/qt/qt_static_plugins/kimageformats/CMakeLists.txt",
+      "line": 108,
+      "strong": true,
+      "text": "        ${libs_loc}/local/lib/libavif"
+     },
+     {
+      "file": "Telegram/ThirdParty/kimageformats/CMakeLists.txt",
+      "line": 54,
+      "strong": true,
+      "text": "find_package(libavif"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:libheif",
+   "pg_name": "libheif",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
+    "grep": [
+     {
+      "file": "cmake/external/qt/qt_static_plugins/kimageformats/CMakeLists.txt",
+      "line": 37,
+      "strong": true,
+      "text": "find_package(libheif"
+     },
+     {
+      "file": "cmake/external/qt/qt_static_plugins/kimageformats/CMakeLists.txt",
+      "line": 82,
+      "strong": true,
+      "text": "        ${libs_loc}/libheif"
+     },
+     {
+      "file": "cmake/external/qt/qt_static_plugins/kimageformats/CMakeLists.txt",
+      "line": 109,
+      "strong": true,
+      "text": "        ${libs_loc}/local/lib/libheif"
+     },
+     {
+      "file": "Telegram/ThirdParty/kimageformats/CMakeLists.txt",
+      "line": 65,
+      "strong": true,
+      "text": "pkg_check_modules(LibHeif IMPORTED_TARGET libheif"
+     },
+     {
+      "file": "Telegram/ThirdParty/kimageformats/src/imageformats/CMakeLists.txt",
+      "line": 95,
+      "strong": true,
+      "text": "target_link_libraries(kimg_heif PkgConfig::LibHeif"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "cmdpkgs:libjxl",
+   "pg_name": "libjxl",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
+    "grep": [
+     {
+      "file": "cmake/external/qt/qt_static_plugins/kimageformats/CMakeLists.txt",
+      "line": 43,
+      "strong": true,
+      "text": "pkg_check_modules(DESKTOP_APP_JXL IMPORTED_TARGET libjxl libjxl"
+     },
+     {
+      "file": "cmake/external/qt/qt_static_plugins/kimageformats/CMakeLists.txt",
+      "line": 85,
+      "strong": true,
+      "text": "        ${libs_loc}/libjxl"
+     },
+     {
+      "file": "cmake/external/qt/qt_static_plugins/kimageformats/CMakeLists.txt",
+      "line": 112,
+      "strong": true,
+      "text": "        ${libs_loc}/local/lib/libjxl"
+     },
+     {
+      "file": "cmake/external/qt/qt_static_plugins/kimageformats/CMakeLists.txt",
+      "line": 43,
+      "strong": true,
+      "text": "pkg_check_modules(DESKTOP_APP_JXL IMPORTED_TARGET libjxl libjxl_threads"
+     },
+     {
+      "file": "cmake/external/qt/qt_static_plugins/kimageformats/CMakeLists.txt",
+      "line": 114,
+      "strong": true,
+      "text": "        ${libs_loc}/local/lib/libjxl_threads"
      }
     ]
    },
@@ -998,6 +1809,159 @@
    "by_design": true,
    "oracle_name": null,
    "oracle_type": null,
+   "pg_id": "hb:libvpx",
+   "pg_name": "libvpx",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
+    "grep": [
+     {
+      "file": "cmake/external/vpx/CMakeLists.txt",
+      "line": 49,
+      "strong": true,
+      "text": "find_library(DESKTOP_APP_VPX_LIBRARIES libvpx"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "false-positive",
+   "side": "pg",
+   "by_design": false,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:libxcb",
+   "pg_name": "libxcb",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "portgraph 检出但构建文件无引用 → 扫描误报候选（include 启发式/名字巧合）",
+    "grep": []
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:libxkbcommon",
+   "pg_name": "libxkbcommon",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
+    "grep": [
+     {
+      "file": "cmake/external/qt/CMakeLists.txt",
+      "line": 413,
+      "strong": true,
+      "text": "        xkbcommon"
+     },
+     {
+      "file": "cmake/external/qt/qt_static_plugins/fcitx5/CMakeLists.txt",
+      "line": 47,
+      "strong": true,
+      "text": "pkg_check_modules(DESKTOP_APP_XKBCOMMON REQUIRED IMPORTED_TARGET xkbcommon"
+     },
+     {
+      "file": "cmake/external/qt/qt_static_plugins/fcitx5/CMakeLists.txt",
+      "line": 55,
+      "strong": true,
+      "text": "    PkgConfig::DESKTOP_APP_XKBCOMMON"
+     },
+     {
+      "file": "Telegram/ThirdParty/nimf/configure.ac",
+      "line": 75,
+      "strong": true,
+      "text": "                                       [xkbcommon"
+     },
+     {
+      "file": "Telegram/ThirdParty/nimf/configure.ac",
+      "line": 278,
+      "strong": true,
+      "text": "                                     wayland-protocols xkbcommon"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:lz4",
+   "pg_name": "lz4",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
+    "grep": [
+     {
+      "file": "cmake/external/lz4/CMakeLists.txt",
+      "line": 11,
+      "strong": true,
+      "text": "find_package(lz4"
+     },
+     {
+      "file": "cmake/external/lz4/CMakeLists.txt",
+      "line": 19,
+      "strong": true,
+      "text": "pkg_check_modules(DESKTOP_APP_LZ4"
+     },
+     {
+      "file": "cmake/external/lz4/CMakeLists.txt",
+      "line": 13,
+      "strong": true,
+      "text": "target_link_libraries(external_lz4"
+     },
+     {
+      "file": "cmake/external/lz4/CMakeLists.txt",
+      "line": 23,
+      "strong": true,
+      "text": "target_link_libraries(external_lz4"
+     },
+     {
+      "file": "cmake/external/lz4/CMakeLists.txt",
+      "line": 51,
+      "strong": true,
+      "text": "target_link_libraries(external_lz4"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:microsoft",
+   "pg_name": "microsoft",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植）"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
    "pg_id": "hb:minizip",
    "pg_name": "minizip",
    "pg_kind": "package",
@@ -1007,18 +1971,264 @@
     "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
     "grep": [
      {
-      "file": "Telegram/CMakeLists.txt",
-      "line": 91,
+      "file": "cmake/external/minizip/CMakeLists.txt",
+      "line": 11,
       "strong": true,
-      "text": "    desktop-app::external_minizip"
+      "text": "find_package(minizip"
      },
      {
-      "file": "Telegram/cmake/td_ui.cmake",
-      "line": 742,
+      "file": "cmake/external/minizip/CMakeLists.txt",
+      "line": 17,
       "strong": true,
-      "text": "    desktop-app::external_minizip"
+      "text": "find_package(minizip"
+     },
+     {
+      "file": "cmake/external/minizip/CMakeLists.txt",
+      "line": 24,
+      "strong": true,
+      "text": "pkg_check_modules(DESKTOP_APP_MINIZIP REQUIRED IMPORTED_TARGET minizip"
+     },
+     {
+      "file": "cmake/external/minizip/CMakeLists.txt",
+      "line": 47,
+      "strong": true,
+      "text": "find_library(DESKTOP_APP_MINIZIP"
+     },
+     {
+      "file": "cmake/external/minizip/CMakeLists.txt",
+      "line": 13,
+      "strong": true,
+      "text": "target_link_libraries(external_minizip"
      }
     ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:openh264",
+   "pg_name": "openh264",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
+    "grep": [
+     {
+      "file": "cmake/external/openh264/CMakeLists.txt",
+      "line": 13,
+      "strong": true,
+      "text": "pkg_check_modules(DESKTOP_APP_OPENH264 IMPORTED_TARGET openh264"
+     },
+     {
+      "file": "cmake/external/openh264/CMakeLists.txt",
+      "line": 41,
+      "strong": true,
+      "text": "find_library(DESKTOP_APP_OPENH264"
+     },
+     {
+      "file": "cmake/external/openh264/CMakeLists.txt",
+      "line": 16,
+      "strong": true,
+      "text": "target_link_libraries(external_openh264"
+     },
+     {
+      "file": "cmake/external/webrtc/CMakeLists.txt",
+      "line": 89,
+      "strong": true,
+      "text": "    $<LINK_ONLY:desktop-app::external_openh264"
+     },
+     {
+      "file": "cmake/external/ffmpeg/CMakeLists.txt",
+      "line": 39,
+      "strong": true,
+      "text": "    $<LINK_ONLY:desktop-app::external_openh264"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:opus",
+   "pg_name": "opus",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
+    "grep": [
+     {
+      "file": "cmake/external/webrtc/CMakeLists.txt",
+      "line": 91,
+      "strong": true,
+      "text": "    $<LINK_ONLY:desktop-app::external_opus"
+     },
+     {
+      "file": "cmake/external/ffmpeg/CMakeLists.txt",
+      "line": 41,
+      "strong": true,
+      "text": "    $<LINK_ONLY:desktop-app::external_opus"
+     },
+     {
+      "file": "cmake/external/opus/CMakeLists.txt",
+      "line": 11,
+      "strong": true,
+      "text": "find_package(Opus"
+     },
+     {
+      "file": "cmake/external/opus/CMakeLists.txt",
+      "line": 18,
+      "strong": true,
+      "text": "pkg_check_modules(DESKTOP_APP_OPUS IMPORTED_TARGET opus"
+     },
+     {
+      "file": "cmake/external/opus/CMakeLists.txt",
+      "line": 50,
+      "strong": true,
+      "text": "find_library(DESKTOP_APP_OPUS"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:pango",
+   "pg_name": "pango",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
+    "grep": [
+     {
+      "file": "cmake/external/pango/CMakeLists.txt",
+      "line": 14,
+      "strong": true,
+      "text": "target_link_libraries(external_pango"
+     },
+     {
+      "file": "cmake/external/qt/CMakeLists.txt",
+      "line": 402,
+      "strong": true,
+      "text": "        pango"
+     },
+     {
+      "file": "Telegram/lib_ui/CMakeLists.txt",
+      "line": 368,
+      "strong": true,
+      "text": "target_link_libraries(lib_ui PRIVATE desktop-app::external_pango"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:pangocairo",
+   "pg_name": "pangocairo",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植）"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:pangoft2",
+   "pg_name": "pangoft2",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植）"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:protobuf",
+   "pg_name": "protobuf",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
+    "grep": [
+     {
+      "file": "cmake/external/cld3/CMakeLists.txt",
+      "line": 11,
+      "strong": true,
+      "text": "find_package(protobuf"
+     },
+     {
+      "file": "Telegram/ThirdParty/cld3/CMakeLists.txt",
+      "line": 8,
+      "strong": true,
+      "text": "find_package(Protobuf"
+     },
+     {
+      "file": "Telegram/ThirdParty/cld3/CMakeLists.txt",
+      "line": 63,
+      "strong": true,
+      "text": "target_link_libraries(language_identifier_main cld3 ${Protobuf"
+     },
+     {
+      "file": "Telegram/ThirdParty/cld3/CMakeLists.txt",
+      "line": 66,
+      "strong": true,
+      "text": "target_link_libraries(getonescriptspan_test cld3 ${Protobuf"
+     },
+     {
+      "file": "Telegram/ThirdParty/cld3/CMakeLists.txt",
+      "line": 69,
+      "strong": true,
+      "text": "target_link_libraries(language_identifier_features_test cld3 ${Protobuf"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:ranges",
+   "pg_name": "ranges",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植）"
    },
    "agent_note": null
   },
@@ -1051,6 +2261,134 @@
    "depth": 1,
    "evidence": {
     "note": "未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植）"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:tg-owt",
+   "pg_name": "tg_owt",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植）"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:tl",
+   "pg_name": "tl",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植）"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:tlottie",
+   "pg_name": "tlottie",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植）"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:tmc",
+   "pg_name": "tmc",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植）"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:xxhash",
+   "pg_name": "xxhash",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
+    "grep": [
+     {
+      "file": "cmake/external/xxhash/CMakeLists.txt",
+      "line": 11,
+      "strong": true,
+      "text": "find_package(xxHash"
+     },
+     {
+      "file": "cmake/external/xxhash/CMakeLists.txt",
+      "line": 19,
+      "strong": true,
+      "text": "pkg_check_modules(DESKTOP_APP_XXHASH"
+     },
+     {
+      "file": "cmake/external/xxhash/CMakeLists.txt",
+      "line": 13,
+      "strong": true,
+      "text": "target_link_libraries(external_xxhash"
+     },
+     {
+      "file": "cmake/external/xxhash/CMakeLists.txt",
+      "line": 23,
+      "strong": true,
+      "text": "target_link_libraries(external_xxhash"
+     },
+     {
+      "file": "Telegram/CMakeLists.txt",
+      "line": 100,
+      "strong": true,
+      "text": "    desktop-app::external_xxhash"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:dbus",
+   "pg_name": "Qt D-Bus",
+   "pg_kind": "qt-module",
+   "pg_status": "blocked",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt 模块粒度：README 通常只写 'Qt'"
    },
    "agent_note": null
   },
@@ -1092,10 +2430,58 @@
    "by_design": true,
    "oracle_name": null,
    "oracle_type": null,
+   "pg_id": "qtmod:quick",
+   "pg_name": "Qt Quick",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt 模块粒度：README 通常只写 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:quickwidgets",
+   "pg_name": "Qt Quick Widgets",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt 模块粒度：README 通常只写 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
    "pg_id": "qtmod:svg",
    "pg_name": "Qt SVG",
    "pg_kind": "qt-module",
    "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt 模块粒度：README 通常只写 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:waylandcompositor",
+   "pg_name": "Qt Wayland Compositor",
+   "pg_kind": "qt-module",
+   "pg_status": "blocked",
    "depth": 1,
    "evidence": {
     "note": "Qt 模块粒度：README 通常只写 'Qt'"
@@ -1122,25 +2508,26 @@
  "metrics": {
   "oracle_runtime": 17,
   "oracle_optional": 0,
-  "matched": 9,
+  "matched": 12,
   "matched_optional": 0,
-  "recall": "53%",
-  "precision": "60%",
-  "bug_candidates": 2,
+  "recall": "71%",
+  "precision": "40%",
+  "bug_candidates": 3,
   "bug_by_class": {
-   "false-positive": 0,
+   "false-positive": 1,
    "missed-dep": 2,
    "resolution-gap": 0
   },
   "class_counts": {
    "build-only": 3,
-   "matched": 9,
+   "false-positive": 1,
+   "matched": 12,
    "missed-dep": 2,
-   "qt-granularity": 4,
-   "readme-omitted": 6,
-   "readme-stale": 3,
-   "unknown-ok": 5,
-   "vendored": 3
+   "qt-granularity": 11,
+   "readme-omitted": 17,
+   "readme-stale": 2,
+   "unknown-ok": 15,
+   "vendored": 1
   }
  },
  "agent_notes": [

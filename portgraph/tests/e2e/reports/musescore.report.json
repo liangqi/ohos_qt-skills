@@ -10,13 +10,13 @@
   "sources": 5729,
   "repo_path": "/root/harmony-workspace/worker1/portgraph/workspace/musescore"
  },
- "generated_at": "2026-09-19T13:32:02Z",
+ "generated_at": "2026-09-19T14:53:32Z",
  "verdict": "blocked",
  "blockers": [
   {
    "kind": "unsupported-interface",
    "node": "app:musescore",
-   "reason": "使用鸿蒙不支持的平台接口 ALSA 直连（audio）鸿蒙音频走 AudioRenderer/AudioCapturer，ALSA 不可用；同类鸿蒙替代接口: 鸿蒙 AudioRenderer/AudioCapturer［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (95 处无条件 / 120 处鸿蒙可编译 / 1 处宏守卫排除 / 0 处文件级排除) | muse/framework/midi/internal/platform/lin/alsamidiinport.cpp:24[unconditional] #include <alsa/asoundlib.h>; muse/framework/midi/internal/platform/lin/alsamidiinport.cpp:25[unconditional] #include <alsa/seq.h>; muse/framework/midi/internal/platform/lin/alsamidiinport.cpp:26[unconditional] #include <alsa/seq_midi_event.h>］"
+   "reason": "使用鸿蒙不支持的平台接口 ALSA 直连（audio）鸿蒙音频走 AudioRenderer/AudioCapturer，ALSA 不可用；同类鸿蒙替代接口: 鸿蒙 AudioRenderer/AudioCapturer［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (89 处无条件 / 113 处鸿蒙可编译 / 1 处宏守卫排除 / 0 处文件级排除) | muse/framework/midi/internal/platform/lin/alsamidiinport.cpp:24[unconditional] #include <alsa/asoundlib.h>; muse/framework/midi/internal/platform/lin/alsamidiinport.cpp:25[unconditional] #include <alsa/seq.h>; muse/framework/midi/internal/platform/lin/alsamidiinport.cpp:26[unconditional] #include <alsa/seq_midi_event.h>］"
   },
   {
    "kind": "unsupported-interface",

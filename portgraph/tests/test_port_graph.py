@@ -1002,10 +1002,231 @@ AC_CHECK_LIB([m], [sqrt])
             conn.close()
 
 
+class TestDbNameLookup(unittest.TestCase):
+    """find_node_by_name 大小写不敏感查找（回归：lower(name)=lower(?)
+    无法走索引 → 大库下 deps 报告全表扫描热点，2026-09 集成回退
+    性能修复：COLLATE NOCASE + 函数索引，语义等价仅折 ASCII）"""
+
+    def _conn(self):
+        conn = db.connect(":memory:")
+        db.init_db(conn)
+        db.upsert_node(conn, "hb:boost", "package", "Boost", "harmonybrew", "ported", version="1.92.0")
+        db.upsert_node(conn, "hb:zlib", "package", "zlib", "harmonybrew", "ported", version="1.3.1")
+        return conn
+
+    def test_case_insensitive_lookup(self):
+        conn = self._conn()
+        for probe in ("boost", "BOOST", "Boost", "bOoSt"):
+            node = db.find_node_by_name(conn, probe)
+            self.assertIsNotNone(node, probe)
+            self.assertEqual(node["id"], "hb:boost")
+        conn.close()
+
+    def test_exact_match_still_works(self):
+        conn = self._conn()
+        self.assertEqual(db.find_node_by_name(conn, "zlib")["version"], "1.3.1")
+        self.assertIsNone(db.find_node_by_name(conn, "no-such-pkg"))
+        conn.close()
+
+    def test_nocase_index_created_and_used(self):
+        conn = self._conn()
+        indexes = {r["name"] for r in
+                   conn.execute("PRAGMA index_list(nodes)").fetchall()}
+        self.assertIn("idx_nodes_name_nocase", indexes)
+        plan = conn.execute(
+            "EXPLAIN QUERY PLAN "
+            "SELECT * FROM nodes WHERE name='boost' COLLATE NOCASE LIMIT 1"
+        ).fetchall()
+        self.assertIn("idx_nodes_name_nocase", plan[0]["detail"])
+        conn.close()
+
+
 class TestGeneralizationFixes(unittest.TestCase):
     """语料外泛化测试（QOwnNotes/strawberry/krita，2026-09）暴露问题的
     回归测试：URL 版本提取 / 宏包装目标 / find_library 关键字 / env -y /
     共享解析阶梯 / in-tree 判定 / raw 链接名的 test 角色。"""
+
+    # ---- 0) lmms 泛化轮（2026-09 worker2-deps-regress）暴露的表缺口
+    def test_lmms_regress_classifications(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "lm"
+            (root / "src").mkdir(parents=True)
+            (root / "CMakeLists.txt").write_text("""
+cmake_minimum_required(VERSION 3.16)
+project(LmRegress)
+find_package(PackageHandleStandardArgs)
+find_package(PythonInterp)
+find_package(Perl)
+find_package(OpenGL)
+find_package(OggVorbis)
+pkg_check_modules(PULSE libpulse)
+find_package(CxxTest)
+add_library(app STATIC src/x.cpp)
+target_link_libraries(app PRIVATE cxxtest)
+""", encoding="utf-8")
+            (root / "src" / "x.cpp").write_text("", encoding="utf-8")
+            info = qt_scanner.scan_project(root)
+            fp = set(info["cmake_packages"]["find_package"])
+            # CMake 机械模块 / OpenGL 系统能力：不进包清单
+            for n in ("packagehandlestandardargs", "opengl"):
+                self.assertNotIn(n, fp, n)
+            # 主机解释器保留在清单中（报告侧归 build-tool，图侧不建边）
+            for n in ("perl", "pythoninterp"):
+                self.assertIn(n, fp, n)
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:libvorbis", "package", "libvorbis",
+                           "harmonybrew", "ported")
+            # 图侧：主机解释器 / CMake 模块 / opengl 不建运行时边也不建幽灵
+            scan = project_scanner.scan_project(conn, root)
+            hints = [d["hint"] for d in scan["deps_linked"]] + \
+                [d["hint"] for d in scan["deps_unknown"]]
+            for n in ("perl", "pythoninterp", "packagehandlestandardargs",
+                      "opengl"):
+                self.assertNotIn(n, hints, n)
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            # oggvorbis 复合模块名经别名归并到 libvorbis
+            self.assertIn("libvorbis", link)
+            self.assertNotIn("oggvorbis", link)
+            # libpulse → 平台接口（PulseAudio 无鸿蒙服务）
+            self.assertEqual(link["libpulse"]["kind"], "platform-iface")
+            # cxxtest → 测试框架，不进 link 也不需移植
+            self.assertNotIn("cxxtest", link)
+            self.assertIn("cxxtest",
+                          {t["name"] for t in report["test_deps"]})
+            tools = {t["tool"] for t in report["toolchain"]["tools"]}
+            # 主机解释器归 build-tool（若经其他路径进入报告）
+            self.assertIn("perl", tools)
+            conn.close()
+
+    # ---- 0b) libopenshot 泛化轮：绑定生成工具链 + lib前缀+版本后缀组合剥离
+    def test_openshot_bindings_and_ladder(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "os"
+            (root / "bindings").mkdir(parents=True)
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\nproject(OsB)\n"
+                "add_subdirectory(bindings)\n", encoding="utf-8")
+            (root / "bindings" / "CMakeLists.txt").write_text(
+                "find_package(SWIG 3.0 REQUIRED)\n"
+                "find_package(Java REQUIRED)\n"
+                "find_package(JNI REQUIRED)\n"
+                "find_package(Ruby)\n"
+                "find_package(PythonLibs 3)\n"
+                "pkg_check_modules(PC_PIPEWIRE libpipewire-0.3)\n",
+                encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:ruby", "package", "ruby", "harmonybrew",
+                           "ported")
+            db.upsert_node(conn, "hb:pipewire", "package", "pipewire",
+                           "harmonybrew", "ported")
+            # 图侧：绑定工具不建运行时边（ruby 不再连 hb:ruby）
+            scan = project_scanner.scan_project(conn, root)
+            hints = [d["hint"] for d in scan["deps_linked"]] + \
+                [d["hint"] for d in scan["deps_unknown"]]
+            for n in ("swig", "ruby", "java", "jni", "pythonlibs"):
+                self.assertNotIn(n, hints, n)
+            # libpipewire-0.3 解析到 hb:pipewire（见 0c），无幽灵
+            self.assertEqual(scan["deps_unknown"], [])
+            # 报告侧：绑定工具归 build-tools
+            report = deps_report.analyze_dependencies(conn, root)
+            tools = {t["tool"] for t in report["toolchain"]["tools"]}
+            for n in ("swig", "ruby", "java", "jni", "pythonlibs"):
+                self.assertIn(n, tools, n)
+            link = {d["name"].lower() for d in report["link_deps"]}
+            self.assertNotIn("swig", link)
+            conn.close()
+
+    # ---- 0e) lmms 第二轮：平台接口库名 / 版本化库名归并
+    def test_lmms_iface_libnames_and_merge(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "lm2"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text("""
+cmake_minimum_required(VERSION 3.16)
+project(Lm2)
+find_library(ASOUND asound)
+find_library(PULSE pulse)
+find_library(FS1 fluidsynth-1)
+add_library(p STATIC a.c)
+target_link_libraries(p PRIVATE ${ASOUND} ${PULSE} ${FS1} sfftw)
+""", encoding="utf-8")
+            (root / "a.c").write_text("", encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "cmdpkgs:fftw", "package", "fftw",
+                           "cmdpkgs", "ported", version="3.3.10")
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            # ALSA / PulseAudio 库名形态 → platform-iface
+            self.assertEqual(link["asound"]["kind"], "platform-iface")
+            self.assertEqual(link["pulse"]["kind"], "platform-iface")
+            # fluidsynth-1 / sfftw 归并到基础名
+            self.assertNotIn("fluidsynth-1", link)
+            self.assertNotIn("sfftw", link)
+            self.assertIn("fftw", link)
+            self.assertEqual(link["fftw"]["available_version"], "3.3.10")
+            conn.close()
+
+    # ---- 0c) 图侧解析结果校验（hint 保留原名，节点应命中 hb:pipewire）
+    def test_openshot_ladder_node_resolution(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "os2"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\nproject(OsC)\n"
+                "pkg_check_modules(PC_PIPEWIRE libpipewire-0.3)\n",
+                encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:pipewire", "package", "pipewire",
+                           "harmonybrew", "ported")
+            scan = project_scanner.scan_project(conn, root)
+            linked = {d["hint"]: d["node"] for d in scan["deps_linked"]}
+            self.assertEqual(linked.get("libpipewire-0.3"), "hb:pipewire")
+            self.assertEqual(scan["deps_unknown"], [])
+            conn.close()
+
+    # ---- 0d) libopenshot 第二轮：win32 缺口库 + OpenCV 目标名归并
+    def test_openshot_win32_and_target_merge(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "os3"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text("""
+cmake_minimum_required(VERSION 3.16)
+project(OsD)
+add_library(osd STATIC a.c)
+if(WIN32)
+    target_link_libraries(osd PUBLIC imagehlp dbghelp ole32)
+endif()
+if(ENABLE_OPENCV)
+    target_link_libraries(osd PUBLIC opencv_core opencv_dnn)
+endif()
+pkg_check_modules(BABL babl-0.1)
+""", encoding="utf-8")
+            (root / "a.c").write_text("", encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "cmdpkgs:opencv", "package", "opencv",
+                           "cmdpkgs", "ported")
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            # win32 系统库
+            for n in ("imagehlp", "dbghelp"):
+                self.assertEqual(link[n]["kind"], "win32-system-lib", n)
+            # OpenCV 导入目标名归并到 opencv（不再 5 条独立幽灵）
+            self.assertIn("opencv", link)
+            for n in ("opencv_core", "opencv_dnn"):
+                self.assertNotIn(n, link, n)
+            # babl-0.1 版本后缀剥离到 babl（同一幽灵）
+            conn.close()
 
     # ---- 1) harmonybrew URL 版本提取（419 个 formula 无版本的根因）
     def test_url_version_extraction(self):
@@ -1020,6 +1241,10 @@ class TestGeneralizationFixes(unittest.TestCase):
             "https://github.com/CycoPH/atasm/archive/refs/tags/V1.30.tar.gz": "1.30",
             "https://loop-aes.sourceforge.net/aespipe/aespipe-v2.4j.tar.bz2": "2.4j",
             "https://www.harding.motd.ca/autossh/autossh-1.4g.tgz": "1.4g",
+            # 7z 扩展名 + 连字符补丁号版本（imagemagick 7.1.2-31 实证，
+            # 修复前退化为尾部 "31.7z" → bottle URL 404）
+            "https://github.com/ImageMagick/ImageMagick/releases/download/7.1.2-31/ImageMagick-7.1.2-31.7z": "7.1.2-31",
+            "https://github.com/ImageMagick/ImageMagick6/releases/download/6.9.13-56/ImageMagick-6.9.13-56.7z": "6.9.13-56",
             # 回归：原有形态不变
             "https://www.zlib.net/zlib-1.3.1.tar.gz": "1.3.1",
             "https://github.com/i/indi/archive/refs/tags/v2.0.9.tar.gz": "2.0.9",
@@ -1206,6 +1431,174 @@ find_library(QUAZIP_LIBRARIES WIN32_DEBUG_POSTFIX d
             idx = _in_tree_dir_index(root)
             self.assertIsNone(_match_in_tree_dir(idx, "lager"))
             self.assertIsNone(_match_in_tree_dir(idx, "lcms"))
+
+    # ---- 6e) git 子模块 link 依赖（tdesktop kcoreaddons/microtex 实证）：
+    #          浅克隆未初始化时子模块目录为空，in-tree 索引不可见，
+    #          但 .gitmodules 已声明 → 未解析名归 in-tree，不误报
+    #          "无产物 → 需源码编译"；已解析到产物的同名依赖追加
+    #          "子模块可随项目编译"注记（cmark-gfm/xxhash 实证）
+    def test_submodule_link_classification(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            root.mkdir()
+            (root / ".gitmodules").write_text(
+                '[submodule "Telegram/ThirdParty/kcoreaddons"]\n'
+                "\tpath = Telegram/ThirdParty/kcoreaddons\n"
+                "\turl = https://github.com/KDE/kcoreaddons.git\n"
+                '[submodule "Telegram/ThirdParty/xxHash"]\n'
+                "\tpath = Telegram/ThirdParty/xxHash\n"
+                "\turl = https://github.com/Cyan4973/xxHash.git\n",
+                encoding="utf-8")
+            (root / "CMakeLists.txt").write_text(
+                "add_executable(app main.cpp)\n"
+                "target_link_libraries(app PRIVATE\n"
+                "  desktop-app::external_kcoreaddons\n"
+                "  desktop-app::external_xxhash)\n", encoding="utf-8")
+            (root / "main.cpp").write_text("int main(){}\n", encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:xxhash", "package", "xxhash",
+                           "harmonybrew", "ported", version="0.8.3",
+                           links={"artifact_url": "http://x/xxhash.tar.gz"})
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            # 未解析 + 子模块声明 → in-tree（源码随仓库自带）
+            self.assertEqual(link["kcoreaddons"]["kind"], "in-tree")
+            self.assertTrue(link["kcoreaddons"]["artifact"]["ready"])
+            self.assertIn("git 子模块",
+                          link["kcoreaddons"]["artifact"]["source"])
+            # 已解析到产物 + 子模块声明 → 产物可用，但注明子模块备选
+            self.assertEqual(link["xxhash"]["kind"], "package")
+            self.assertTrue(link["xxhash"]["artifact"]["ready"])
+            self.assertIn("子模块", link["xxhash"]["ohos_note"])
+            conn.close()
+
+    # ---- 6f) CPMAddPackage(NAME <name> ...) 名字提取（NotepadNext
+    #          实证：曾把字面量 NAME 当包名，vendored 段出现垃圾条目
+    #          "NAME"；真实名 ads/QSimpleUpdater 应被提取）
+    def test_cpm_name_keyword(self):
+        from port_graph.qt_scanner import _detect_fetched_deps
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "thirdparty").mkdir()
+            (root / "thirdparty" / "CMakeLists.txt").write_text(
+                "CPMAddPackage(\n"
+                "    NAME ads\n"
+                "    GITHUB_REPOSITORY githubuser0xFFFF/Qt-Advanced-Docking-System\n"
+                "    GIT_TAG 5.0.0)\n"
+                "CPMAddPackage(\n"
+                "    NAME QSimpleUpdater\n"
+                "    GITHUB_REPOSITORY alex-spataru/QSimpleUpdater\n"
+                "    GIT_TAG c5c136c)\n"
+                "FetchContent_Declare(foo GIT_REPOSITORY https://x/foo.git)\n",
+                encoding="utf-8")
+            out = _detect_fetched_deps(root, ["thirdparty/CMakeLists.txt"])
+            names = {d["name"] for d in out}
+            self.assertIn("ads", names)
+            self.assertIn("QSimpleUpdater", names)
+            self.assertIn("foo", names)
+            self.assertNotIn("NAME", names)
+
+    # ---- 6g) CPM/FetchContent 拉取的包：链接名命中（含宽松折叠，
+    #          qtadvanceddocking-qt6 ≡ ads 的 URL 末段）→ in-tree，
+    #          不再误报 need_port（NotepadNext 实证）
+    def test_fetched_dep_link_classification(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            root.mkdir()
+            (root / "thirdparty").mkdir()
+            (root / "thirdparty" / "CMakeLists.txt").write_text(
+                "CPMAddPackage(\n"
+                "    NAME ads\n"
+                "    GITHUB_REPOSITORY githubuser0xFFFF/Qt-Advanced-Docking-System\n"
+                "    GIT_TAG 5.0.0)\n"
+                "CPMAddPackage(\n"
+                "    NAME editorconfig_core_qt\n"
+                "    GITHUB_REPOSITORY editorconfig/editorconfig-core-qt\n"
+                "    GIT_TAG ab62f05)\n", encoding="utf-8")
+            (root / "CMakeLists.txt").write_text(
+                "add_executable(app main.cpp)\n"
+                "target_link_libraries(app PRIVATE\n"
+                "  qtadvanceddocking-qt6\n"
+                "  editorconfig-core-qt)\n", encoding="utf-8")
+            (root / "main.cpp").write_text("int main(){}\n", encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            for nm in ("qtadvanceddocking-qt6", "editorconfig-core-qt"):
+                self.assertEqual(link[nm]["kind"], "in-tree", nm)
+                self.assertTrue(link[nm]["artifact"]["ready"], nm)
+            conn.close()
+
+    # ---- 6h) find_package(<自身项目名>) 自引用（cutter 实证：曾误
+    #          解析到同名无关包 cmdpkgs:cutter）：根 project() 名跳过；
+    #          vendored 子目录里 project(fakevim) 不影响宿主声明
+    def test_find_package_self_reference(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "project(Cutter)\n"
+                "find_package(Cutter REQUIRED)\n"
+                "find_package(OpenSSL REQUIRED)\n", encoding="utf-8")
+            lib = root / "src" / "libraries" / "fakevim"
+            lib.mkdir(parents=True)
+            (lib / "CMakeLists.txt").write_text(
+                "project(fakevim)\nadd_library(fakevim f.cpp)\n",
+                encoding="utf-8")
+            (root / "src" / "CMakeLists.txt").write_text(
+                "find_package(fakevim REQUIRED)\n", encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            report = deps_report.analyze_dependencies(conn, root)
+            names = {d["name"].lower() for d in report["link_deps"]}
+            self.assertNotIn("cutter", names)     # 自引用不误入
+            self.assertIn("openssl", names)         # 正常外部包保留
+            conn.close()
+
+    # ---- 6i) meson 内部依赖与子项目（cutter/rizin 实证）：
+    #          override_dependency 定义的目标（rz_core）与
+    #          subprojects/ 自带子项目（zydis）→ in-tree；
+    #          外部依赖（pcre2）保留为 package
+    def test_meson_internal_dep_classification(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            librz = root / "librz" / "core"
+            librz.mkdir(parents=True)
+            (librz / "meson.build").write_text(
+                "rz_core_dep = declare_dependency(...\n"
+                "meson.override_dependency('rz_core', rz_core_dep)\n",
+                encoding="utf-8")
+            sp = root / "subprojects" / "zydis"
+            sp.mkdir(parents=True)
+            (sp / "meson.build").write_text(
+                "project('zydis')\n", encoding="utf-8")
+            (root / "meson.build").write_text(
+                "project('rizin', 'cpp')\n"
+                "rz_core_dep = dependency('rz_core')\n"
+                "zydis_dep = dependency('zydis')\n"
+                "pcre2_dep = dependency('libpcre2-@0@')\n",
+                encoding="utf-8")
+            from port_graph import qt_scanner
+            info = qt_scanner.scan_project(root)
+            md = {d["name"]: d for d in info["meson_deps"]}
+            self.assertTrue(md["rz_core"].get("internal"))
+            self.assertTrue(md["zydis"].get("internal"))
+            self.assertIn("libpcre2", md)      # @0@ 占位符已剥
+            self.assertNotIn("libpcre2-@0@", md)
+            self.assertFalse(md["libpcre2"].get("internal"))
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            report = deps_report.analyze_dependencies(conn, root, info)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            self.assertEqual(link["rz_core"]["kind"], "in-tree")
+            self.assertEqual(link["zydis"]["kind"], "in-tree")
+            conn.close()
 
     # ---- 7) 裸链接名命中测试框架 → test 角色
     def test_raw_lib_test_framework(self):
@@ -1559,8 +1952,6 @@ class TestE2ENameVariants(unittest.TestCase):
         self.assertIn("openssl", e2e.name_variants("OpenSSL >= 3.0"))
 
 
-if __name__ == "__main__":
-    unittest.main()
 
 
 # =====================================================================
@@ -1710,6 +2101,64 @@ class TestWin32LibNoFalseEdge(unittest.TestCase):
                 [d["hint"] for d in scan["deps_unknown"]]
             self.assertNotIn("bcrypt", hints)
             self.assertNotIn("hid", hints)
+            conn.close()
+
+
+class TestMusescoreRegressTables(unittest.TestCase):
+    """musescore 回归轮（2026-09 worker2-deps-regress）暴露的表缺口：
+    gmock 测试框架 / win32 系统库 4 缺口 / macOS 框架 find_library 裸名
+    （修复前均被当普通包报“无鸿蒙预编译产物，需源码交叉编译”）。"""
+
+    CMAKE = """
+cmake_minimum_required(VERSION 3.16)
+project(RegressTables)
+add_library(drv STATIC src/x.cpp)
+if (OS_IS_WIN)
+    target_link_libraries(drv PRIVATE winmm mmdevapi msi taskschd userenv)
+endif()
+if (OS_IS_MAC)
+    find_library(AUDIOTOOLBOX_LIB AudioToolbox)
+    find_library(CARBON_LIB Carbon)
+    find_library(COREMIDI_LIB CoreMIDI)
+    target_link_libraries(drv PRIVATE ${AUDIOTOOLBOX_LIB} ${CARBON_LIB})
+endif()
+add_executable(t1 src/t1.cpp)
+target_link_libraries(t1 PRIVATE drv gmock)
+"""
+
+    def test_table_classifications(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "rt"
+            (root / "src").mkdir(parents=True)
+            (root / "CMakeLists.txt").write_text(self.CMAKE,
+                                                 encoding="utf-8")
+            (root / "src" / "x.cpp").write_text("", encoding="utf-8")
+            (root / "src" / "t1.cpp").write_text("", encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            # gmock → test 分类，不进 link 也不报“需源码交叉编译”
+            self.assertNotIn("gmock", link)
+            self.assertIn("gmock", {t["name"] for t in report["test_deps"]})
+            # win32 系统库 → win32-system-lib
+            for n in ("mmdevapi", "msi", "taskschd", "userenv"):
+                self.assertEqual(link[n]["kind"], "win32-system-lib", n)
+            # macOS 框架 find_library 裸名 → platform-iface + ohos_note
+            for n in ("audiotoolbox", "carbon", "coremidi"):
+                self.assertEqual(link[n]["kind"], "platform-iface", n)
+                self.assertTrue(link[n].get("ohos_note"), n)
+            # 不再出现“需源码交叉编译”误导警告
+            for w in report["warnings"]:
+                self.assertNotIn("需源码交叉编译",
+                                 "{} {}".format(w.get("msg", ""), w))
+            # 图侧：win32 裸名不建幽灵/误连边
+            scan = project_scanner.scan_project(conn, root)
+            hints = [d["hint"] for d in scan["deps_linked"]] + \
+                [d["hint"] for d in scan["deps_unknown"]]
+            for n in ("mmdevapi", "msi", "taskschd", "userenv"):
+                self.assertNotIn(n, hints)
             conn.close()
 
 
@@ -1936,6 +2385,104 @@ class TestVendoredCmakeSkip(unittest.TestCase):
             self.assertEqual(info["cmake_packages"]["pkg_check_modules"], [])
             hints = {h["name"] for h in info["third_party_hints"]}
             self.assertNotIn("libuuid", hints)
+
+
+class TestWrapperCmakePassthrough(unittest.TestCase):
+    """vendored 路径下的 wrapper 声明文件（add_library(external_X)）
+    不是 vendored 源码：其内的 find_package / pkg_check_modules 是应用
+    自身依赖，应透传计入（tdesktop 复盘：submodule 初始化后 external_X
+    成为项目内目标，叠加 vendored 跳过把 openal/ada/rnnoise 全部藏掉）。"""
+
+    def _project(self, tmp: Path):
+        root = tmp / "wrap"
+        # cmake_helpers 风格 wrapper：定义 external_openal + find_package
+        p = root / "cmake/external/openal/CMakeLists.txt"
+        p.parent.mkdir(parents=True)
+        p.write_text(
+            "add_library(external_openal INTERFACE IMPORTED GLOBAL)\n"
+            "add_library(desktop-app::external_openal ALIAS external_openal)\n"
+            "if (DESKTOP_APP_USE_PACKAGED)\n"
+            "    find_package(OpenAL REQUIRED CONFIG)\n"
+            "endif()\n",
+            encoding="utf-8")
+        # wrapper 的 pkg_check_modules 变体（rnnoise）
+        p = root / "cmake/external/rnnoise/CMakeLists.txt"
+        p.parent.mkdir(parents=True)
+        p.write_text(
+            "add_library(external_rnnoise INTERFACE IMPORTED GLOBAL)\n"
+            "find_package(PkgConfig REQUIRED)\n"
+            "pkg_check_modules(RNNOISE IMPORTED_TARGET rnnoise)\n",
+            encoding="utf-8")
+        # 反例 1：真 vendored 源码树（无 external_ 目标定义）→ 仍跳过
+        p = root / "thirdparty/fluidsynth/CMakeLists.txt"
+        p.parent.mkdir(parents=True)
+        p.write_text(
+            "find_package(GLib2 REQUIRED)\n"
+            "target_link_libraries(fluidsynth PRIVATE glib-2.0)\n",
+            encoding="utf-8")
+        # 应用自身声明：链接 wrapper 目标（wrapper 定义在 vendored 路径下，
+        # external_X 不因 in-tree 定义而跳过，底层库名透传）
+        (root / "CMakeLists.txt").write_text(
+            "cmake_minimum_required(VERSION 3.16)\nproject(Wrap)\n"
+            "add_subdirectory(cmake/external/openal)\n"
+            "target_link_libraries(app PRIVATE desktop-app::external_openal)\n",
+            encoding="utf-8")
+        return root
+
+    def test_wrapper_findpkg_and_pkgconf_passthrough(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            info = qt_scanner.scan_project(root)
+            fp = info["cmake_packages"]["find_package"]
+            # wrapper 的 find_package 透传；PkgConfig 本身是主机工具跳过
+            self.assertIn("openal", fp)
+            self.assertNotIn("pkgconfig", fp)
+            # 真 vendored 源码树仍跳过
+            self.assertNotIn("glib2", fp)
+            # wrapper 的 pkg_check_modules 透传
+            pm = info["cmake_packages"]["pkg_check_modules"]
+            self.assertIn("rnnoise", pm)
+            self.assertNotIn("lilv-0", pm)
+            # wrapper 定义的 external_X 目标被链接时不因 in-tree 定义跳过：
+            # 底层库名经 external-target 证据透传（ada/zlib/openal 复盘根因）
+            raw = {x["name"]: x for x in info["raw_libs"]}
+            self.assertIn("openal", raw)
+            self.assertTrue(any("external-target" in h
+                                for h in raw["openal"]["hows"]))
+            # 反例：真 vendored 源码树内定义的目标（非 external_ wrapper）
+            # 仍属项目内目标，不进 raw_libs
+            self.assertNotIn("fluidsynth", raw)
+
+
+class TestDynamicLoadPlatformGuard(unittest.TestCase):
+    """非鸿蒙平台守卫（#if defined(Q_OS_WIN)）内的 QLibrary/dlopen
+    加载不编译、不计入 dynamic_loads（notepadqq 复盘：kernel32 误报）。"""
+
+    def test_win_guarded_qlibrary_excluded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "app"
+            (root / "src").mkdir(parents=True)
+            (root / "src" / "main.cpp").write_text(
+                "#if defined(Q_OS_WIN)\n"
+                "    QLibrary lib(\"kernel32\");\n"
+                "#endif\n"
+                "void init() { QLibrary l(\" genuine_plugin \"); }\n",
+                encoding="utf-8")
+            info = qt_scanner.scan_project(root)
+            names = [d["name"] for d in info["dynamic_loads"]]
+            self.assertNotIn("kernel32", names)
+            self.assertIn("genuine_plugin", names)
+
+    def test_unconditional_load_kept(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "app"
+            (root / "src").mkdir(parents=True)
+            (root / "src" / "main.cpp").write_text(
+                "void init() { QLibrary l(\"plainlib\"); }\n",
+                encoding="utf-8")
+            info = qt_scanner.scan_project(root)
+            self.assertEqual([d["name"] for d in info["dynamic_loads"]],
+                             ["plainlib"])
 
 
 class TestRequireDepManifest(unittest.TestCase):
@@ -2178,3 +2725,433 @@ class TestClonerSubmodules(unittest.TestCase):
             # 无 .gitmodules → 直接返回，不执行 git 命令
             cloner._init_submodules(root, 10)
             self.assertTrue((root / ".git").is_dir())
+
+
+class TestQuotedVersionAndOrphanComponents(unittest.TestCase):
+    """泛化回归（okular/konsole 实证）：
+
+    - find_package 带引号版本：find_package(Poppler "24.08.0" COMPONENTS Qt6)
+    - 无 COMPONENTS 关键字的尾随组件：find_package(Qt6 ${V} CONFIG REQUIRED
+      \\n Core Multimedia ...)（CMake 合法语法，konsole 全部漏检）
+    - 组件名与关键字同形：KF 组件 Config 不得被当 CONFIG 关键字丢弃
+    """
+
+    def _project(self, tmp: Path, cmake: str):
+        root = Path(tmp) / "p"
+        root.mkdir()
+        (root / "CMakeLists.txt").write_text(cmake, encoding="utf-8")
+        return root
+
+    def test_quoted_version_parsed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(tmp, (
+                "cmake_minimum_required(VERSION 3.16)\n"
+                "project(QuotedVer)\n"
+                'find_package(Poppler "24.08.0" COMPONENTS Qt6)\n'))
+            info = qt_scanner.scan_project(root)
+            fp = next(d for d in info["find_package_details"]
+                      if d["name"] == "Poppler")
+            self.assertEqual(fp["version"], "24.08.0")
+            self.assertEqual(fp["components"], ["Qt6"])
+
+    def test_components_without_keyword(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(tmp, (
+                "cmake_minimum_required(VERSION 3.16)\n"
+                "project(OrphanComps)\n"
+                "set(QT_MIN_VERSION 6.5.0)\n"
+                "find_package(Qt6 ${QT_MIN_VERSION} CONFIG REQUIRED\n"
+                "    Core\n"
+                "    Multimedia\n"
+                "    PrintSupport\n"
+                "    Widgets\n"
+                ")\n"))
+            info = qt_scanner.scan_project(root)
+            for mod in ("core", "multimedia", "printsupport", "widgets"):
+                self.assertIn(mod, info["qt_modules"], mod)
+            fp = next(d for d in info["find_package_details"]
+                      if d["name"] == "Qt6")
+            self.assertEqual(sorted(fp["components"]),
+                             ["Core", "Multimedia", "PrintSupport",
+                              "Widgets"])
+
+    def test_kf_config_component_not_swallowed(self):
+        """KF 组件名 Config 与 CONFIG 关键字同形：组件区开始后不再按
+        关键字解释（konsole find_package(KF6 ${V} REQUIRED Bookmarks
+        Config ConfigWidgets ...) 曾丢 Config）。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(tmp, (
+                "cmake_minimum_required(VERSION 3.16)\n"
+                "project(KfConfig)\n"
+                "set(KF6_DEP_VERSION 6.6.0)\n"
+                "find_package(KF6 ${KF6_DEP_VERSION} REQUIRED\n"
+                "    Bookmarks\n"
+                "    Config\n"
+                "    ConfigWidgets\n"
+                ")\n"))
+            info = qt_scanner.scan_project(root)
+            for comp in ("bookmarks", "config", "configwidgets"):
+                self.assertIn(comp, info["kf_components"], comp)
+            fp = next(d for d in info["find_package_details"]
+                      if d["name"] == "KF6")
+            self.assertIn("Config", fp["components"])
+
+    def test_optional_components_still_optional(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(tmp, (
+                "cmake_minimum_required(VERSION 3.16)\n"
+                "project(OptComps)\n"
+                "find_package(Qt5 5.15 REQUIRED COMPONENTS Core Widgets "
+                "OPTIONAL_COMPONENTS Network)\n"))
+            info = qt_scanner.scan_project(root)
+            fp = next(d for d in info["find_package_details"]
+                      if d["name"] == "Qt5")
+            self.assertEqual(fp["components"], ["Core", "Widgets"])
+            self.assertEqual(fp["optional_components"], ["Network"])
+
+
+class TestPlatformBlockContext(unittest.TestCase):
+    """其他平台 if 块内的链接/探测声明：required=False + 注记，
+    不入 DB runtime 边（konsole if(HAIKU) network、if(FreeBSD) util、
+    qbittorrent if(Darwin)/elseif(Windows)、okular mobile if(ANDROID)、
+    keepassxc FindQREncode if(WIN32 AND NOT MINGW) 实证）。"""
+
+    CMAKE = """cmake_minimum_required(VERSION 3.16)
+project(PlatBlocks)
+find_package(ZLIB REQUIRED)
+if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    find_library(AppKit_LIBRARY AppKit)
+    target_link_libraries(app PRIVATE ${AppKit_LIBRARY} objc)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    target_link_libraries(app PRIVATE iphlpapi)
+endif()
+if(HAIKU)
+    target_link_libraries(app PRIVATE network)
+endif()
+if("${CMAKE_SYSTEM_NAME}" MATCHES "FreeBSD")
+    target_link_libraries(app PRIVATE util)
+endif()
+if (ANDROID)
+    pkg_check_modules(NSS "nss")
+    target_link_libraries(app2 PRIVATE -lsoftokn3)
+endif()
+if(UNIX AND NOT APPLE)
+    target_link_libraries(app PRIVATE usb-1.0)
+endif()
+if(NOT WIN32)
+    target_link_libraries(app PRIVATE keyutils)
+endif()
+"""
+
+    def _project(self, tmp: Path):
+        root = Path(tmp) / "plat"
+        root.mkdir()
+        (root / "CMakeLists.txt").write_text(self.CMAKE, encoding="utf-8")
+        return root
+
+    def test_raw_links_platform_flags(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            info = qt_scanner.scan_project(root)
+            raw = {r["name"].lower(): r for r in info["raw_libs"]}
+            for n in ("appkit", "objc", "iphlpapi", "network", "util",
+                      "softokn3"):
+                self.assertTrue(raw[n].get("platform_block"),
+                                "%s 应有平台块标记" % n)
+            # OHOS 活跃块（UNIX AND NOT APPLE / NOT WIN32）不判排除
+            self.assertFalse(raw["usb-1.0"].get("platform_block"))
+            self.assertFalse(raw["keyutils"].get("platform_block"))
+
+    def test_report_required_flags_and_edges(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:libusb", "package", "libusb",
+                           "harmonybrew", "ported", version="1.0.30")
+            scan = project_scanner.scan_project(conn, root)
+            report = deps_report.analyze_dependencies(conn, root, info=None)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            for n in ("appkit", "objc", "iphlpapi", "network", "util",
+                      "softokn3", "nss"):
+                self.assertFalse(link[n]["required"],
+                                 "%s 应 required=False" % n)
+                self.assertIn("平台块", link[n].get("note") or "")
+            # OHOS 活跃块保持必需
+            self.assertTrue(link["keyutils"]["required"])
+            # usb-1.0 经别名表归并为 libusb（同库异名）
+            self.assertTrue(link["libusb"]["required"])
+            # DB：平台块内声明不建 runtime 边（nss/systemd 类幽灵消除）
+            dsts = {e["dst"] for e in db.out_edges(conn, scan["app_id"])}
+            self.assertNotIn("pkg-unknown:nss", dsts)
+            self.assertNotIn("pkg-unknown:network", dsts)
+            self.assertNotIn("pkg-unknown:util", dsts)
+            # UNIX AND NOT APPLE 内的可解析声明照常连边
+            self.assertIn("hb:libusb", dsts)
+            conn.close()
+
+    def test_unguarded_declaration_wins(self):
+        """同名库既有平台块内声明又有非平台块声明 → 必需（跨平台库）。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "mixed"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\n"
+                "project(Mixed)\n"
+                "if(APPLE)\n"
+                "    target_link_libraries(app PRIVATE foo)\n"
+                "endif()\n"
+                "target_link_libraries(app PRIVATE foo)\n",
+                encoding="utf-8")
+            info = qt_scanner.scan_project(root)
+            raw = {r["name"].lower(): r for r in info["raw_libs"]}
+            self.assertFalse(raw["foo"].get("platform_block"))
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            report = deps_report.analyze_dependencies(conn, root, info=info)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            self.assertTrue(link["foo"]["required"])
+            conn.close()
+
+
+class TestOptionalPlatformIface(unittest.TestCase):
+    """INTERFACE_BOUND_PACKAGES（platform-iface）条目遵循 optional 守卫：
+    qbittorrent systemd（feature_option_dependent 默认 OFF 块内的
+    find_package(Systemd)）曾误报 required=True + “直连平台栈”警告。"""
+
+    def test_optional_systemd_not_required(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "optiface"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\n"
+                "project(OptIface)\n"
+                "feature_option_dependent(SYSTEMD \"install systemd stuff\" "
+                "OFF \"NOT GUI\" OFF)\n"
+                "add_subdirectory(dist)\n",
+                encoding="utf-8")
+            dist = root / "dist"
+            dist.mkdir()
+            (dist / "CMakeLists.txt").write_text(
+                "if (SYSTEMD)\n"
+                "    find_package(Systemd)\n"
+                "endif()\n",
+                encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            self.assertFalse(link["systemd"]["required"])
+            self.assertIn("选项守卫", link["systemd"].get("note") or "")
+            warns = [w["msg"] for w in report["warnings"]
+                     if "Systemd" in w["msg"]]
+            self.assertEqual(warns, [])
+            conn.close()
+
+
+class TestDashlessMergeInDepsReport(unittest.TestCase):
+    """deps 报告 link 表的去分隔符合并：未解析的同库压平名/连字符名
+    不双计（qbittorrent LibtorrentRasterbar + libtorrent-rasterbar
+    曾产生两条“需源码交叉编译”警告）。"""
+
+    def test_single_entry_single_warning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "dashrep"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\n"
+                "project(DashRep)\n"
+                "find_package(LibtorrentRasterbar 2.0 REQUIRED)\n"
+                "pkg_check_modules(LT IMPORTED_TARGET "
+                "\"libtorrent-rasterbar>=2.0.10\")\n",
+                encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            report = deps_report.analyze_dependencies(conn, root)
+            entries = [d for d in report["link_deps"]
+                       if "torrent" in d["name"].lower()]
+            self.assertEqual(len(entries), 1)
+            self.assertEqual(entries[0]["name"], "libtorrent-rasterbar")
+            warns = [w["msg"] for w in report["warnings"]
+                     if "torrent" in w["msg"].lower()]
+            self.assertEqual(len(warns), 1)
+            conn.close()
+
+
+class TestKfFrameworkResolution(unittest.TestCase):
+    """KF 组件条目解析到 kf:<comp> 节点而非包名阶梯：KF Archive ≠
+    libarchive、KF Config ≠ libconfig（okular/konsole 曾误展示 ready
+    bottle，与闭包 need_port 矛盾）。"""
+
+    def test_framework_resolves_to_kf_node(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "kfproj"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\n"
+                "project(KFProj)\n"
+                "find_package(KF6 6.6 REQUIRED COMPONENTS Archive Config)\n"
+                "find_package(Qt6 6.6 REQUIRED COMPONENTS Core Widgets)\n",
+                encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            # 同名异义的无关 C 库（libarchive/libconfig）在库中存在
+            db.upsert_node(conn, "hb:libarchive", "package", "libarchive",
+                           "harmonybrew", "ported", version="3.8.9")
+            db.upsert_node(conn, "hb:libconfig", "package", "libconfig",
+                           "harmonybrew", "ported", version="1.8.2")
+            project_scanner.scan_project(conn, root)
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            self.assertEqual(link["archive"]["resolved_node"], "kf:archive")
+            self.assertEqual(link["config"]["resolved_node"], "kf:config")
+            self.assertFalse((link["archive"].get("artifact") or {})
+                             .get("ready"))
+            conn.close()
+
+
+class TestInTreeGeneratorDirs(unittest.TestCase):
+    """in-tree 判定不误收功能分组目录（okular generators/poppler、
+    generators/epub 是格式生成器插件代码而非自带库源码）；库容器
+    （libraries/libs）内的自带库照常命中（QOwnNotes fakevim 实证）。"""
+
+    def test_generators_not_in_tree(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "gen"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "find_package(Poppler REQUIRED)\n"
+                "find_package(EPub REQUIRED)\n"
+                "add_subdirectory(generators)\n",
+                encoding="utf-8")
+            gens = root / "generators"
+            for name in ("poppler", "epub", "djvu", "tiff", "xps", "txt"):
+                d = gens / name
+                d.mkdir(parents=True)
+                (d / "CMakeLists.txt").write_text(
+                    "okular_add_generator(okularGenerator_%s x.cpp)\n" % name,
+                    encoding="utf-8")
+                (d / "x.cpp").write_text("", encoding="utf-8")
+            # generators/epub 的 README 是“基于外部 libepub 的后端”说明
+            (gens / "epub" / "README").write_text(
+                "This is a libepub based backend\n", encoding="utf-8")
+            from port_graph.deps_report import (_in_tree_dir_index,
+                                                _match_in_tree_dir)
+            idx = _in_tree_dir_index(root)
+            self.assertIsNone(_match_in_tree_dir(idx, "Poppler"))
+            self.assertIsNone(_match_in_tree_dir(idx, "EPub"))
+
+    def test_libraries_container_with_readme_still_in_tree(self):
+        """库容器内少量自带库（不足 5 个）凭 README 佐证仍判 in-tree。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "libs2"
+            root.mkdir()
+            lib = root / "src" / "libraries" / "fakevim"
+            lib.mkdir(parents=True)
+            (lib / "fakevim.cpp").write_text("", encoding="utf-8")
+            (lib / "CMakeLists.txt").write_text(
+                "project(fakevim)\n", encoding="utf-8")
+            (lib / "README.md").write_text(
+                "# FakeVim\nlibrary to emulate Vim\n",
+                encoding="utf-8")
+            (root / "CMakeLists.txt").write_text(
+                "find_package(fakevim REQUIRED)\n", encoding="utf-8")
+            from port_graph.deps_report import (_in_tree_dir_index,
+                                                _match_in_tree_dir)
+            idx = _in_tree_dir_index(root)
+            self.assertEqual(_match_in_tree_dir(idx, "fakevim"),
+                             "src/libraries/fakevim")
+
+
+class TestPkgAliasesOkular(unittest.TestCase):
+    """okular 泛化实证的别名缺口：ddjvuapi→djvulibre（同库 pkg-config
+    名，消除双幽灵）、libmarkdown→discount（hb markdown 是 daringfireball
+    的 Perl/PHP 版本，同名异义曾误下载错误 bottle）。"""
+
+    def test_ddjvuapi_merges_into_djvulibre_ghost(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "djvu"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\n"
+                "project(DjVu)\n"
+                "find_package(DjVuLibre \"3.5.28\")\n"
+                "pkg_check_modules(PC_DJVULIBRE ddjvuapi)\n",
+                encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            scan = project_scanner.scan_project(conn, root)
+            ghosts = [d["node"] for d in scan["deps_unknown"]]
+            self.assertEqual(ghosts, ["pkg-unknown:djvulibre"])
+            lt = scan["deps_unknown"][0]
+            self.assertEqual(lt.get("merged_from"), ["ddjvuapi"])
+            conn.close()
+
+    def test_libmarkdown_resolves_to_discount(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "md"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\n"
+                "project(Md)\n"
+                "find_package(Discount)\n"
+                "pkg_check_modules(Discount IMPORTED_TARGET \"libmarkdown\")\n",
+                encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:discount", "package", "discount",
+                           "harmonybrew", "ported", version="3.0.2.0")
+            # 同名异义陷阱包：daringfireball Markdown（非 C 库）
+            db.upsert_node(conn, "hb:markdown", "package", "markdown",
+                           "harmonybrew", "ported", version="1.0.1")
+            scan = project_scanner.scan_project(conn, root)
+            self.assertEqual(scan["deps_unknown"], [])
+            # Discount（find_package 名）与 libmarkdown（pkg-config 名）
+            # 同库归并为单条，解析到 hb:discount
+            self.assertEqual(
+                [(d["hint"], d["node"], d.get("merged_from"))
+                 for d in scan["deps_linked"]],
+                [("discount", "hb:discount", ["libmarkdown"])])
+            conn.close()
+
+    def test_init_cmd_uses_dash_init_flag(self):
+        """回玺：`git submodule update init ...` 裸 init 被 git 当 pathspec，
+        报错但旧版静默吞掉 → 复用克隆的 submodule 永远拉不起来
+        （musescore 扫描范围缺失、deps 大面积漏检）。必须用 --init。"""
+        from port_graph import cloner
+        captured = {}
+
+        class FakeResult:
+            returncode = 0
+            stderr = ""
+
+        def fake_run(cmd, **kw):
+            captured["cmd"] = cmd
+            return FakeResult()
+
+        orig_run = cloner.subprocess.run
+        cloner.subprocess.run = fake_run
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp) / "proj"
+                root.mkdir()
+                (root / ".git").mkdir()
+                (root / ".gitmodules").write_text(
+                    '[submodule "x"]\n\tpath = x\n\turl = https://e.invalid/x.git\n',
+                    encoding="utf-8")
+                cloner._init_submodules(root, 10)
+        finally:
+            cloner.subprocess.run = orig_run
+        cmd = captured["cmd"]
+        self.assertIn("--init", cmd)
+        # 裸 init（无 --）不得再出现在命令里
+        self.assertNotIn("init", [c for c in cmd if not c.startswith("-")])
+
+
+if __name__ == "__main__":
+    unittest.main()
