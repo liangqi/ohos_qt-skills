@@ -4,6 +4,8 @@
 - app:<name> 节点（普通属性）
 - uses-module 边 -> qtmod:*（Qt 模块）
 - runtime 边 -> 已入库包节点 / pkg-unknown:* 幽灵节点（第三方库）
+- optional 边 -> 默认构建不含的依赖（OFF 默认 CMake 选项守卫内声明；
+  不进入 runtime 闭包/可移植性分析，仅供展示层与人工复核）
 - node_interfaces 记录（平台接口使用 + 证据）
 """
 
@@ -378,12 +380,20 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
     """把 CMake find_package/pkg_check_modules + Conan/vcpkg 清单发现的第三方包
     连边到已知包节点；未匹配的记为 unknown 包节点。
 
-    返回 {linked: [...], unknown: [...]}。
+    - 同库异名归并：find_package 的 CamelCase 压平名（LibtorrentRasterbar →
+      libtorrentrasterbar）与 pkg-config 连字符名（libtorrent-rasterbar）按
+      去分隔符键分组，组内选代表名，避免同库产生重复幽灵节点/重复下载；
+    - OFF 默认 CMake 选项守卫内的声明（默认构建不含）连 optional 边，
+      不进入 runtime 闭包/可移植性分析（fetch-deps 不变闭包口径影响）。
+
+    返回 {linked: [...], unknown: [...], optional: [...]}。
     """
-    names: List[str] = []
     cp = info.get("cmake_packages", {})
+    names: List[str] = []
     names.extend(cp.get("find_package", []))
+    names.extend(cp.get("find_package_optional", []))
     names.extend(cp.get("pkg_check_modules", []))
+    names.extend(cp.get("pkg_check_modules_optional", []))
     pm = info.get("pkg_manifests", {})
     for c in pm.get("conan", []):
         names.append(c["name"])
@@ -394,12 +404,14 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
         if h["name"] not in names:
             names.append(h["name"])
 
-    seen = set()
-    linked, unknown = [], []
-    for name in names:
-        if name in seen:
-            continue
-        seen.add(name)
+    # optional 名单：全部声明点都在 OFF 默认选项守卫内的包
+    # （scanner 层已保证必需优先：任一必需声明点即不入 optional 名单）
+    optional_names = set(cp.get("find_package_optional", []))
+    optional_names.update(cp.get("pkg_check_modules_optional", []))
+    optional_names.update(spec["name"] for spec in
+                          cp.get("pkg_modules", []) if spec.get("optional"))
+
+    def _resolve(name: str, dashless_index: Dict[str, str]):
         node = kb_seed.resolve_package(conn, name)
         alias_used = None
         if node is None:
@@ -414,22 +426,71 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
                 if node:
                     alias_used = alias
                     break
-        if node:
-            db.upsert_edge(conn, app_id, node["id"], "runtime")
-            item = {"hint": name, "node": node["id"],
-                    "status": node["port_status"]}
-            if alias_used:
-                item["alias"] = alias_used
-            linked.append(item)
+        if node is None:
+            # 兕底：去分隔符匹配（CamelCase 压平名 → 连字符包名）
+            node = kb_seed.resolve_package_dashless(conn, name, dashless_index)
+            if node:
+                alias_used = "dashless"
+        return node, alias_used
+
+    # 同库异名分组：组内代表名 = 能解析到已知包的 > 带分隔符的（pkg-config/
+    # hb 命名口径）> 首个出现的
+    dashless_index = kb_seed.build_dashless_index(conn)
+    groups: Dict[str, List[str]] = {}
+    order: List[str] = []
+    for name in names:
+        key = kb_seed._dashless_key(name)
+        if key not in groups:
+            groups[key] = []
+            order.append(key)
+        if name not in groups[key]:
+            groups[key].append(name)
+
+    linked, unknown, optional = [], [], []
+    for key in order:
+        members = groups[key]
+        rep, rep_node, rep_alias = None, None, None
+        dashed = [n for n in members if re.search(r"[-_.]", n)]
+        for cand in dashed + [m for m in members if m not in dashed]:
+            node, alias = _resolve(cand, dashless_index)
+            if node:
+                rep, rep_node, rep_alias = cand, node, alias
+                break
+        if rep is None:
+            rep = dashed[0] if dashed else members[0]
+        merged = [m for m in members if m != rep]
+        # 任一成员必需 → 必需（保守：可选声明点与必需声明点并存时按必需）
+        edge_type = "runtime" if any(m not in optional_names
+                                      for m in members) else "optional"
+        if rep_node is not None:
+            db.upsert_edge(conn, app_id, rep_node["id"], edge_type)
+            item = {"hint": rep, "node": rep_node["id"],
+                    "status": rep_node["port_status"]}
+            if rep_alias:
+                item["alias"] = rep_alias
+            if merged:
+                item["merged_from"] = merged
+            if edge_type == "optional":
+                item["optional"] = True
+                optional.append(item)
+            else:
+                linked.append(item)
         else:
-            ghost_id = "pkg-unknown:%s" % normalize_app_name(name)
+            ghost_id = "pkg-unknown:%s" % normalize_app_name(rep)
             db.upsert_node(
-                conn, ghost_id, "package", name, "scan", "unknown",
+                conn, ghost_id, "package", rep, "scan", "unknown",
                 description="扫描发现的第三方库，未匹配到已知包源",
                 port_evidence="不在 Harmonybrew/cmd-pkgs 已知清单")
-            db.upsert_edge(conn, app_id, ghost_id, "runtime")
-            unknown.append({"hint": name, "node": ghost_id})
-    return {"linked": linked, "unknown": unknown}
+            db.upsert_edge(conn, app_id, ghost_id, edge_type)
+            item = {"hint": rep, "node": ghost_id}
+            if merged:
+                item["merged_from"] = merged
+            if edge_type == "optional":
+                item["optional"] = True
+                optional.append(item)
+            else:
+                unknown.append(item)
+    return {"linked": linked, "unknown": unknown, "optional": optional}
 
 
 def scan_project(conn, project_root, info: Dict = None) -> Dict:
@@ -472,6 +533,7 @@ def scan_project(conn, project_root, info: Dict = None) -> Dict:
     # 第三方库依赖边（find_package/pkg_check_modules/Conan/vcpkg/include）
     tp = _link_third_party(conn, app_id, info)
     deps_linked, deps_unknown = tp["linked"], tp["unknown"]
+    deps_optional = tp.get("optional", [])
 
     # KDE Frameworks 组件 → 作为子项目节点递归分析（不再整体判 blocked）
     _link_kf_components(conn, app_id, info.get("kf_components", []))
@@ -510,5 +572,6 @@ def scan_project(conn, project_root, info: Dict = None) -> Dict:
         "sources": len(info["sources"]),
         "modules_linked": modules_linked, "modules_missing": modules_missing,
         "deps_linked": deps_linked, "deps_unknown": deps_unknown,
+        "deps_optional": deps_optional,
         "interfaces": ifaces,
     }

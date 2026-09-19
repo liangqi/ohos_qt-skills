@@ -465,11 +465,15 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                          required=fp["required"], evidence=ev)
             e["ohos_note"] = INTERFACE_BOUND_PACKAGES[name]
             continue
-        entry = link.add(fp["name"], required=fp["required"],
+        entry = link.add(fp["name"],
+                         required=(fp["required"] and not fp.get("optional")),
                          min_version=fp["version"],
                          components=(fp["components"]
                                      + fp["optional_components"]) or None,
                          evidence=ev)
+        if fp.get("optional"):
+            entry["note"] = ("CMake 选项守卫（默认 OFF）："
+                              "默认构建不含此依赖")
         if fp["exact"]:
             entry["version_req"] = "== %s" % fp["version"]
 
@@ -489,7 +493,10 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
         # 版本约束挂在被归并的原名下（version_req_from）：libavcodec 的
         # “>= 58”是库主版本口径，与 ffmpeg 包版本不可直接比较。
         aliased = LIB_NAME_ALIASES.get(pm["name"], pm["name"])
-        e = link.add(aliased, version_req=pm["version_req"], evidence=ev)
+        e = link.add(aliased, version_req=pm["version_req"], evidence=ev,
+                     required=not pm.get("optional"))
+        if pm.get("optional"):
+            e["note"] = "CMake 选项守卫（默认 OFF）：默认构建不含此依赖"
         if pm["version_req"] and aliased != pm["name"]:
             e["version_req_from"] = pm["name"]
 
