@@ -164,7 +164,11 @@ def canon_of(s: str) -> str:
 
 
 def pg_canon(node: Dict) -> str:
-    """portgraph 依赖节点 → 规范名（qt-module 折叠为 qt，KF 折叠为 kf）。"""
+    """portgraph 依赖节点 → 规范名（qt-module 折叠为 qt，KF 折叠为 kf）。
+
+    分隔符归一与 oracle 侧 norm_name 对齐（_ / 空格 → -）：否则
+    json_schema_validator（require_dep 下划线名）永远匹配不上
+    oracle 的 json-schema-validator，两侧对称归一后才可比。"""
     if node["kind"] == "qt-module":
         return "qt"
     if node["kind"] == "framework":
@@ -172,6 +176,7 @@ def pg_canon(node: Dict) -> str:
     name = (node["name"] or "").lower()
     if "@" in name and not name.startswith("openssl@"):
         name = name.split("@", 1)[0]
+    name = re.sub(r"[^a-z0-9@+]+", "-", name).strip("-")
     return name or node["id"].split(":", 1)[-1].lower()
 
 

@@ -1293,3 +1293,43 @@ class TestMusescoreAliasResolution(unittest.TestCase):
             self.assertEqual(linked["tinyxml"], "cmdpkgs:tinyxml2")
             self.assertEqual(scan["deps_unknown"], [])
             conn.close()
+
+
+class TestClonerSubmodules(unittest.TestCase):
+    """clone 复用时应补拉 submodule（musescore 依赖清单在 muse_deps/muse
+    submodule 内，不初始化则扫描不到）；无 submodule/失败时静默降级。"""
+
+    def test_reused_clone_inits_submodules_silently(self):
+        from port_graph import cloner
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "subproj"
+            root.mkdir()
+            # 伪造已有克隆：.git 目录 + .gitmodules（内容指向不存在的子模块）
+            (root / ".git").mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "project(Sub)\n", encoding="utf-8")
+            (root / ".gitmodules").write_text(
+                '[submodule "muse_deps"]\n'
+                '\tpath = muse_deps\n'
+                '\turl = https://example.invalid/muse_deps.git\n',
+                encoding="utf-8")
+            orig_ws = cloner.WORKSPACE
+            cloner.WORKSPACE = Path(tmp)   # 克隆目标指到临时 workspace
+            try:
+                info = cloner.clone_repo("https://github.com/x/subproj",
+                                         name="subproj")
+            finally:
+                cloner.WORKSPACE = orig_ws
+            # 目录已存在 → 复用，且 submodule init 失败（无效 URL）不抛异常
+            self.assertFalse(info["cloned"])
+            self.assertEqual(info["path"], str(root))
+
+    def test_no_gitmodules_noop(self):
+        from port_graph import cloner
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "plain"
+            root.mkdir()
+            (root / ".git").mkdir()
+            # 无 .gitmodules → 直接返回，不执行 git 命令
+            cloner._init_submodules(root, 10)
+            self.assertTrue((root / ".git").is_dir())
