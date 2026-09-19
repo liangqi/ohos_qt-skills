@@ -219,6 +219,17 @@ ALIASES: Dict[str, List[str]] = {
     "protobuf": ["protobuf"],
     "spdlog": ["spdlog"],
     "glm": ["glm"],
+    # CMake 模块名/依赖清单名 → hb 包名（e2e musescore 复核；同时供
+    # e2e names_match 对账：oracle 名 alsa ↔ 已解析节点名 alsa-lib）
+    "alsa": ["alsa-lib", "alsa"],
+    "sndfile": ["libsndfile", "sndfile"],
+    "ogg": ["libogg", "ogg"],
+    "vorbis": ["libvorbis", "vorbis"],
+    "tinyxml": ["tinyxml2", "tinyxml"],
+    "glib2": ["glib", "glib2"],
+    "dbus1": ["dbus", "dbus1"],
+    "png": ["libpng", "png"],
+    "nlohmann_json": ["nlohmann-json", "nlohmann_json"],
     "opencv": ["opencv"],
 }
 
@@ -244,6 +255,20 @@ PKG_ALIASES: Dict[str, str] = {
     "pcsclite": "pcsc-lite",
     # pkg-config 名 → CMake find_package 名（同库双声明合并）
     "libtorrent-rasterbar": "LibtorrentRasterbar",
+    # CMake find_package 名 / pkg-config 名 / 依赖清单名 → hb 包名
+    # （e2e musescore 复核确认，目标包在 hb-core/cmd-pkgs 均存在）
+    "alsa": "alsa-lib",           # find_package(ALSA) → alsa-lib
+    "sndfile": "libsndfile",      # find_package(SndFile) → libsndfile
+    "tinyxml": "tinyxml2",        # FindTinyXml 实际找 tinyxml2
+    "glib2": "glib",             # CMake GLib2 模块名
+    "dbus1": "dbus",             # CMake DBus1 模块名
+    "ogg": "libogg",             # require_dep(ogg) / pkg-config ogg
+    "vorbis": "libvorbis",       # require_dep(vorbis)
+    "png": "libpng",             # CMake PNG 模块名
+    "brotlidec": "brotli",       # pkg-config 组件名
+    "intl": "gettext",           # CMake Intl 模块 → gettext(libintl)
+    "utfcpp": "utf8cpp",         # require_source_dep(utfcpp) → hb utf8cpp
+    "nlohmann_json": "nlohmann-json",  # require_dep 名 → hb nlohmann-json
 }
 
 
