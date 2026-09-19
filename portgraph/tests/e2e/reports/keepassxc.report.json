@@ -8,9 +8,9 @@
   "tier": "B",
   "build_system": "cmake",
   "sources": 884,
-  "repo_path": "/root/harmony-workspace/worker1/portgraph/workspace/keepassxc"
+  "repo_path": "/root/harmony-workspace/worker4/portgraph/workspace/keepassxc"
  },
- "generated_at": "2026-09-19T11:31:09Z",
+ "generated_at": "2026-09-19T12:49:13Z",
  "verdict": "blocked",
  "blockers": [
   {
@@ -83,7 +83,6 @@
    "pcsc-lite",
    "qrencode",
    "readline",
-   "libx11",
    "zlib",
    "libxkbcommon",
    "libusb",
@@ -92,10 +91,11 @@
    "zlib-ng-compat",
    "libpng",
    "libxcb",
-   "xorgproto",
    "xkeyboard-config",
+   "libx11",
    "libxext",
    "libxfixes",
+   "xorgproto",
    "python@3.14",
    "libxau",
    "libxdmcp",
@@ -131,14 +131,6 @@
   {
    "id": "hb:libusb",
    "name": "libusb",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "ported",
-   "depth": 1
-  },
-  {
-   "id": "hb:libx11",
-   "name": "libx11",
    "kind": "package",
    "edge": "runtime",
    "port_status": "ported",
@@ -482,36 +474,6 @@
    "by_design": true,
    "oracle_name": null,
    "oracle_type": null,
-   "pg_id": "hb:libx11",
-   "pg_name": "libx11",
-   "pg_kind": "package",
-   "pg_status": "ported",
-   "depth": 1,
-   "evidence": {
-    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
-    "grep": [
-     {
-      "file": "src/CMakeLists.txt",
-      "line": 395,
-      "strong": true,
-      "text": "target_link_libraries(keepassxc_gui X11)"
-     },
-     {
-      "file": "src/autotype/CMakeLists.txt",
-      "line": 22,
-      "strong": true,
-      "text": "find_package(X11 REQUIRED COMPONENTS Xi XTest)"
-     }
-    ]
-   },
-   "agent_note": null
-  },
-  {
-   "class": "readme-omitted",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
    "pg_id": "hb:libxi",
    "pg_name": "libxi",
    "pg_kind": "package",
@@ -833,7 +795,7 @@
   "matched": 3,
   "matched_optional": 0,
   "recall": "100%",
-  "precision": "23%",
+  "precision": "25%",
   "bug_candidates": 0,
   "bug_by_class": {
    "false-positive": 0,
@@ -844,7 +806,7 @@
    "build-only": 4,
    "matched": 3,
    "qt-granularity": 4,
-   "readme-omitted": 10,
+   "readme-omitted": 9,
    "unknown-ok": 1
   }
  },

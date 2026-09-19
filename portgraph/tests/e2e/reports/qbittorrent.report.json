@@ -6,11 +6,11 @@
   "name": "qbittorrent",
   "url": "https://github.com/qbittorrent/qBittorrent",
   "tier": "B",
-  "build_system": "?",
-  "sources": "?",
-  "repo_path": "./portgraph\\workspace\\qbittorrent"
+  "build_system": "cmake",
+  "sources": 710,
+  "repo_path": "/root/harmony-workspace/worker4/portgraph/workspace/qbittorrent"
  },
- "generated_at": "2026-09-18T02:44:26Z",
+ "generated_at": "2026-09-19T12:49:14Z",
  "verdict": "blocked",
  "blockers": [
   {
@@ -27,26 +27,40 @@
    "kind": "unsupported-interface",
    "node": "app:qbittorrent",
    "reason": "使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (3 处无条件 / 2 处鸿蒙可编译 / 20 处宏守卫排除 / 0 处文件级排除) | src/gui/utils.cpp:36[platform-excluded] #include <shlobj.h>; src/gui/utils.cpp:37[platform-excluded] #include <shellapi.h>; src/gui/powermanagement/inhibitorwindows.cpp:32[unconditional] #include <windows.h>］"
+  },
+  {
+   "kind": "unsupported-module",
+   "node": "qtmod:dbus",
+   "reason": "Qt for HarmonyOS 模块适配表: 不支持 - 鸿蒙无 D-Bus"
   }
  ],
- "unknowns": [],
+ "unknowns": [
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:libtorrentrasterbar",
+   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
+  }
+ ],
  "platform_excluded": [],
  "closure": {
-  "size": 14,
+  "size": 19,
   "summary": {
    "target": 1,
-   "provided": 4,
-   "cmd_only": 2,
-   "would_download": 6,
-   "already_local": 1
+   "provided": 8,
+   "would_download": 8,
+   "need_port": 1,
+   "cmd_only": 1
   },
-  "need_port": [],
-  "cmd_only": [
+  "need_port": [
    {
-    "id": "hb:boost",
-    "name": "boost",
-    "artifact_cmd": "brew install boost"
-   },
+    "id": "pkg-unknown:libtorrentrasterbar",
+    "name": "LibtorrentRasterbar",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   }
+  ],
+  "cmd_only": [
    {
     "id": "hb:ca-certificates",
     "name": "ca-certificates",
@@ -54,8 +68,10 @@
    }
   ],
   "would_download": [
+   "boost",
    "openssl@3",
    "zlib",
+   "icu4c@78",
    "xz",
    "zstd",
    "zlib-ng-compat",
@@ -69,6 +85,14 @@
    "kind": "package",
    "edge": "runtime",
    "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:libtorrentrasterbar",
+   "name": "LibtorrentRasterbar",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
    "depth": 1
   },
   {
@@ -96,6 +120,30 @@
    "depth": 1
   },
   {
+   "id": "qtmod:dbus",
+   "name": "Qt D-Bus",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "blocked",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:network",
+   "name": "Qt Network",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:sql",
+   "name": "Qt SQL",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
    "id": "qtmod:svg",
    "name": "Qt SVG",
    "kind": "qt-module",
@@ -114,6 +162,14 @@
   {
    "id": "qtmod:widgets",
    "name": "Qt Widgets",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:xml",
+   "name": "Qt XML",
    "kind": "qt-module",
    "edge": "uses-module",
    "port_status": "ported",
@@ -296,6 +352,70 @@
    "agent_note": null
   },
   {
+   "class": "resolution-gap",
+   "side": "pg",
+   "by_design": false,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:libtorrentrasterbar",
+   "pg_name": "LibtorrentRasterbar",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:dbus",
+   "pg_name": "Qt D-Bus",
+   "pg_kind": "qt-module",
+   "pg_status": "blocked",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt 模块粒度：README 通常只写 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:network",
+   "pg_name": "Qt Network",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt 模块粒度：README 通常只写 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:sql",
+   "pg_name": "Qt SQL",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt 模块粒度：README 通常只写 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
    "class": "qt-granularity",
    "side": "pg",
    "by_design": true,
@@ -342,6 +462,22 @@
     "note": "Qt 模块粒度：README 通常只写 'Qt'"
    },
    "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:xml",
+   "pg_name": "Qt XML",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt 模块粒度：README 通常只写 'Qt'"
+   },
+   "agent_note": null
   }
  ],
  "metrics": {
@@ -351,18 +487,19 @@
   "matched_optional": 0,
   "recall": "80%",
   "precision": "100%",
-  "bug_candidates": 1,
+  "bug_candidates": 2,
   "bug_by_class": {
    "false-positive": 0,
    "missed-dep": 1,
-   "resolution-gap": 0
+   "resolution-gap": 1
   },
   "class_counts": {
    "build-only": 1,
    "matched": 4,
    "missed-dep": 1,
    "optional-not-built": 1,
-   "qt-granularity": 3
+   "qt-granularity": 7,
+   "resolution-gap": 1
   }
  },
  "agent_notes": [

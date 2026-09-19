@@ -1,17 +1,17 @@
 # tdesktop 依赖对账报告（portgraph E2E）
 
-> 生成时间: 2026-09-18T02:44:23Z | 语料: corpus.json#tdesktop | 构建系统: ? | 源文件: ?
+> 生成时间: 2026-09-19T12:49:05Z | 语料: corpus.json#tdesktop | 构建系统: cmake | 源文件: 2932
 > Oracle: README.md（复核: 已复核，20 条；来源: README §Third-party 逐条人工复核：剥离许可后缀噪声；GYP/Ninja/CMake 改 build 型；Open Sans/Vazirmatn 字体与 Emoji alpha codes 为数据资产（非链接依赖）已删）
 
 ## 1. 结论速览
 
 | 指标 | 值 |
 |---|---|
-| 可移植性 verdict | **blocked**（阻塞 2 / 未知 1 / 平台排除 0） |
+| 可移植性 verdict | **blocked**（阻塞 2 / 未知 2 / 平台排除 0） |
 | 检出召回率 | 24%（4/17 README 运行时依赖） |
-| 检出精确率 | 100% |
-| Bug 候选 | **7**（missed-dep=7） |
-| 依赖闭包 | 35 项（cmd_only 2, provided 5, target 1, would_download 27） |
+| 检出精确率 | 80% |
+| Bug 候选 | **8**（missed-dep=7, resolution-gap=1） |
+| 依赖闭包 | 37 项（cmd_only 1, need_port 1, provided 5, target 1, would_download 29） |
 
 **Agent 复核说明**：
 
@@ -26,8 +26,9 @@
 | unsupported-interface | app:tdesktop | 使用鸿蒙不支持的平台接口 macOS Cocoa/AppKit（os-api）macOS 专属 UI/系统框架；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-ac |
 | unsupported-interface | app:tdesktop | 使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (54 处无 |
 
-未确认项 1 个：
+未确认项 2 个：
 - [unknown-interface] app:tdesktop: 平台接口 fork()/exec() 进程模型 的鸿蒙支持性未确认（guard=ohos-active）
+- [unknown-package] pkg-unknown:libudev: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
 
 ## 3. 差异归因明细（oracle × portgraph 直接依赖）
 
@@ -40,12 +41,14 @@
 | ★漏检 | xxhash | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 【agent: Telegram/CMakeLists.txt:101 target_link_libraries(… desktop-app::external_xxhash)，且 .gitmodules 声明 ThirdParty/xxHash 子模块 → portgraph 漏检】 |
 | ★漏检 | qr-code-generator | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 【agent: Telegram/CMakeLists.txt:96 target_link_libraries(… desktop-app::external_qr_code_generator) → portgraph 漏检】 |
 | ★漏检 | ada | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 【agent: Telegram/cmake/td_iv.cmake:175 target_link_libraries(td_iv … desktop-app::external_ada) → portgraph 漏检】 |
+| ★解析缺口 | — | libudev | package d1 | pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口） |
 | README过时 | lzma-sdk | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 |
 | README过时 | liblzma | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 |
 | README过时 | opus | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 |
 | README过时 | gsl | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 |
 | README过时 | range-v3 | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 |
 | README过时 | hunspell | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 |
+| README漏列 | — | libfido2 | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | 构建工具 | gyp | — | build | 构建工具，fetch-deps 不收 build 边 |
 | 构建工具 | ninja | — | build | 构建工具，fetch-deps 不收 build 边 |
 | 构建工具 | cmake | — | build | 构建工具，fetch-deps 不收 build 边 |
@@ -58,19 +61,23 @@
 | 一致 | zlib | zlib | package d1 |  |
 | 一致 | ffmpeg | ffmpeg | package d1 |  |
 
-归类统计：构建工具×3，一致×4，★漏检×7，粒度折叠×4，README过时×6
+归类统计：构建工具×3，一致×4，★漏检×7，粒度折叠×4，README漏列×1，README过时×6，★解析缺口×1
 
 ## 4. 依赖闭包概览（fetch-deps --dry-run）
 
-- 闭包总数 35 项：cmd_only 2，provided 5，target 1，would_download 27
-- 可直下 bottle：ffmpeg、openssl@3、zlib、lame、libvpx、opus、svt-av1、x264、x265、alsa-lib、libxcb、xz、zlib-ng-compat、mpg123、python@3.14、libxau、libxdmcp、mpdecimal、sqlite、zstd、gettext、util-linux、musl-compat、xorgproto、readline、lz4、libunistring
-- 仅命令获取（cmd_only）：dav1d、ca-certificates
+- 闭包总数 37 项：cmd_only 1，need_port 1，provided 5，target 1，would_download 29
+- 可直下 bottle：libfido2、ffmpeg、openssl@3、zlib、dav1d、lame、libvpx、opus、svt-av1、x264、x265、alsa-lib、libxcb、xz、zlib-ng-compat、mpg123、python@3.14、libxau、libxdmcp、mpdecimal、sqlite、zstd、gettext、util-linux、musl-compat、xorgproto、readline、lz4、libunistring
+- 仅命令获取（cmd_only）：ca-certificates
+- 需自行移植（need_port）：libudev
+  - libudev: ?
 
 ## 5. 直接依赖全量清单（portgraph depth-1）
 
 | 节点 | 类型 | 边 | port_status | 深度 |
 |---|---|---|---|---|
 | ffmpeg | package | runtime | ported | 1 |
+| libfido2 | package | runtime | ported | 1 |
+| libudev | package | runtime | unknown | 1 |
 | openssl@3 | package | runtime | ported | 1 |
 | zlib | package | runtime | ported | 1 |
 | Qt Core | qt-module | uses-module | ported | 1 |
@@ -84,4 +91,4 @@
 - 对比口径：portgraph 直接依赖（depth-1 边）vs README/INSTALL 声明依赖；闭包仅做产物概览。
 - 归因证据：对未匹配项自动 grep 克隆仓库构建文件（find_package/pkg_check_modules/target_link_libraries/vcpkg 等）。
 - ★ 类（missed-dep / resolution-gap / false-positive）为 bug 候选，需人工确认；其余为预期差异。
-- agent 可读报告：`./portgraph\tests\e2e\reports\tdesktop.report.json`
+- agent 可读报告：`/root/harmony-workspace/worker4/portgraph/tests/e2e/reports/tdesktop.report.json`

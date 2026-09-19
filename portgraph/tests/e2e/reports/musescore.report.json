@@ -6,470 +6,145 @@
   "name": "musescore",
   "url": "https://github.com/musescore/MuseScore",
   "tier": "C",
-  "build_system": "?",
-  "sources": "?",
-  "repo_path": "./portgraph\\workspace\\musescore"
+  "build_system": "cmake+qmake",
+  "sources": 3138,
+  "repo_path": "/root/harmony-workspace/worker4/portgraph/workspace/musescore"
  },
- "generated_at": "2026-09-18T02:44:26Z",
- "verdict": "blocked",
- "blockers": [
-  {
-   "kind": "unsupported-interface",
-   "node": "app:musescore",
-   "reason": "使用鸿蒙不支持的平台接口 ALSA 直连（audio）鸿蒙音频走 AudioRenderer/AudioCapturer，ALSA 不可用；同类鸿蒙替代接口: 鸿蒙 AudioRenderer/AudioCapturer［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (95 处无条件 / 120 处鸿蒙可编译 / 1 处宏守卫排除 / 0 处文件级排除) | src/framework/midi/internal/platform/lin/alsamidiinport.cpp:24[unconditional] #include <alsa/asoundlib.h>; src/framework/midi/internal/platform/lin/alsamidiinport.cpp:25[unconditional] #include <alsa/seq.h>; src/framework/midi/internal/platform/lin/alsamidiinport.cpp:26[unconditional] #include <alsa/seq_midi_event.h>］"
-  },
-  {
-   "kind": "unsupported-interface",
-   "node": "app:musescore",
-   "reason": "使用鸿蒙不支持的平台接口 macOS Cocoa/AppKit（os-api）macOS 专属 UI/系统框架；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (3 处无条件 / 0 处鸿蒙可编译 / 1 处宏守卫排除 / 33 处文件级排除) | src/project/internal/platform/macos/macosrecentfilescontroller.mm:22[platform-file-excluded] #include <Cocoa/Cocoa.h>; src/framework/uicomponents/view/internal/platform/macos/macospopupviewclosecontroller.mm:25[platform-file-excluded] #include <AppKit/NSEvent.h>; src/framework/uicomponents/view/internal/platform/macos/macospopupviewclosecontroller.mm:30[platform-file-excluded] id<NSObject> minimizeObserverToken = nil;］"
-  },
-  {
-   "kind": "unsupported-interface",
-   "node": "app:musescore",
-   "reason": "使用鸿蒙不支持的平台接口 macOS CoreAudio（audio）macOS 专属音频框架；同类鸿蒙替代接口: 鸿蒙 AudioRenderer/AudioCapturer［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (0 处无条件 / 11 处鸿蒙可编译 / 0 处宏守卫排除 / 7 处文件级排除) | src/framework/midi/internal/platform/osx/coremidiinport.cpp:24[platform-file-excluded] #include <CoreAudio/HostTime.h>; src/framework/midi/internal/platform/osx/coremidiinport.cpp:26[platform-file-excluded] #include <CoreMIDI/CoreMIDI.h>; src/framework/midi/internal/platform/osx/coremidiinport.cpp:49[platform-file-excluded] MIDIPortRef inputPort = 0;］"
-  },
-  {
-   "kind": "unsupported-interface",
-   "node": "app:musescore",
-   "reason": "使用鸿蒙不支持的平台接口 D-Bus IPC（ipc）鸿蒙无 D-Bus（Qt D-Bus 模块 Out of scope）；需改用系统服务/IPC；同类鸿蒙替代接口: 鸿蒙 IPC/系统服务能力［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (10 处无条件 / 0 处鸿蒙可编译 / 2 处宏守卫排除 / 0 处文件级排除) | src/framework/ui/internal/platform/linux/linuxplatformtheme.cpp:23[unconditional] #include <QtDBus/QDBusConnection>; src/framework/ui/internal/platform/linux/linuxplatformtheme.cpp:23[unconditional] #include <QtDBus/QDBusConnection>; src/framework/ui/internal/platform/linux/linuxplatformtheme.cpp:24[unconditional] #include <QtDBus/QDBusConnectionInterface>］"
-  },
-  {
-   "kind": "unsupported-interface",
-   "node": "app:musescore",
-   "reason": "使用鸿蒙不支持的平台接口 PulseAudio 直连（audio）鸿蒙无 PulseAudio 服务；同类鸿蒙替代接口: 鸿蒙 AudioRenderer/AudioCapturer［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (0 处无条件 / 8 处鸿蒙可编译 / 2 处宏守卫排除 / 0 处文件级排除) | src/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/drivers/fluid_pulse.c:33[ohos-active] #include <pulse/simple.h>; src/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/drivers/fluid_pulse.c:34[ohos-active] #include <pulse/error.h>; src/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/drivers/fluid_pulse.c:44[ohos-active] pa_simple *pa_handle;］"
-  },
-  {
-   "kind": "unsupported-interface",
-   "node": "app:musescore",
-   "reason": "使用鸿蒙不支持的平台接口 systemd（os-api）鸿蒙无 systemd 服务管理；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (0 处无条件 / 3 处鸿蒙可编译 / 0 处宏守卫排除 / 0 处文件级排除) | src/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/fluidsynth.c:41[ohos-active] #include <systemd/sd-daemon.h>; src/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/fluidsynth.c:1098[ohos-active] sd_notify(0, \"READY=1\");; src/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/fluidsynth.c:1180[ohos-active] sd_notify(0, \"STOPPING=1\");］"
-  },
-  {
-   "kind": "unsupported-interface",
-   "node": "app:musescore",
-   "reason": "使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (80 处无条件 / 29 处鸿蒙可编译 / 102 处宏守卫排除 / 103 处文件级排除) | src/project/internal/platform/windows/windowsrecentfilescontroller.cpp:25[platform-file-excluded] #include <shlobj.h>; src/framework/ui/internal/platform/windows/windowsplatformtheme.cpp:46[platform-file-excluded] = reinterpret_cast<fnRtlGetNtVersionNumbers>((void*)GetProcAddress(GetModuleHand; src/framework/testing/thirdparty/googletest/googletest/test/googletest-break-on-failure-unittest_.cc:44[ohos-active] # include <windows.h>］"
-  },
-  {
-   "kind": "unsupported-module",
-   "node": "qtmod:dbus",
-   "reason": "Qt for HarmonyOS 模块适配表: 不支持 - 鸿蒙无 D-Bus"
-  },
-  {
-   "kind": "unsupported-module",
-   "node": "qtmod:x11extras",
-   "reason": "Qt for HarmonyOS 模块适配表: 不支持 - X11 专属"
-  }
- ],
+ "generated_at": "2026-09-19T12:49:12Z",
+ "verdict": "uncertain",
+ "blockers": [],
  "unknowns": [
   {
-   "kind": "unknown-interface",
-   "node": "app:musescore",
-   "reason": "平台接口 fork()/exec() 进程模型 的鸿蒙支持性未确认（guard=ohos-active）"
-  },
-  {
    "kind": "unknown-package",
-   "node": "pkg-unknown:alsa",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:brotlidec",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:dbus1",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:fluidsynth",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:glib2",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:iconv",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:instpatch",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:intl",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:lash",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:midishare",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:oboe",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:ogg",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:openmp",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:opensles",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:pipewire",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:png",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:pulseaudio",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:pyside",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:python3",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:shiboken",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:sndfile",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:systemd",
-   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
-  },
-  {
-   "kind": "unknown-package",
-   "node": "pkg-unknown:tinyxml",
+   "node": "pkg-unknown:mnxdom",
    "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
   }
  ],
- "platform_excluded": [],
+ "platform_excluded": [
+  {
+   "node": "app:musescore",
+   "name": "musescore",
+   "iface": "macOS Cocoa/AppKit",
+   "category": "os-api",
+   "guard": "platform-excluded",
+   "reason": "接口 macOS Cocoa/AppKit 被非鸿蒙平台条件编译守卫包裹（鸿蒙不编译），功能类别=os-api",
+   "alternatives": [
+    {
+     "id": "iface:posix",
+     "name": "POSIX/musl C 库",
+     "category": "os-api",
+     "ohos_status": "supported",
+     "note": "OpenHarmony NDK 使用 musl libc，POSIX 基础接口覆盖面广"
+    },
+    {
+     "id": "iface:pthread",
+     "name": "pthread 多线程",
+     "category": "os-api",
+     "ohos_status": "supported",
+     "note": "musl 提供 pthread"
+    },
+    {
+     "id": "iface:dylib",
+     "name": "dlopen 动态加载",
+     "category": "os-api",
+     "ohos_status": "convertible",
+     "note": "鸿蒙支持 dlopen，但库路径/打包方式受限，需适配 HAP 内 native 目录"
+    },
+    {
+     "id": "iface:macos-system",
+     "name": "macOS 系统库绑定",
+     "category": "os-api",
+     "ohos_status": "convertible",
+     "note": "formula 依赖 macOS 系统自带库；鸿蒙上需改为显式打包依赖（多为可转化的开源库）"
+    },
+    {
+     "id": "iface:glib-event",
+     "name": "glib 事件循环",
+     "category": "os-api",
+     "ohos_status": "convertible",
+     "note": "可用 Qt 事件循环替代或移植 glib 主循环"
+    }
+   ],
+   "evidence": "[被非鸿蒙平台守卫包裹（不编译）] guard=platform-excluded (0 处无条件 / 0 处鸿蒙可编译 / 0 处宏守卫排除 / 2 处文件级排除) | src/project/internal/platform/macos/macosrecentfilescontroller.mm:22[platform-file-excluded] #include <Cocoa/Cocoa.h>; src/appshell/internal/platform/macos/macosappmenumodelhook.mm:25[platform-file-excluded] #include <Cocoa/Cocoa.h>",
+   "path": [
+    "app:musescore"
+   ]
+  },
+  {
+   "node": "app:musescore",
+   "name": "musescore",
+   "iface": "Win32 API",
+   "category": "os-api",
+   "guard": "platform-excluded",
+   "reason": "接口 Win32 API 被非鸿蒙平台条件编译守卫包裹（鸿蒙不编译），功能类别=os-api",
+   "alternatives": [
+    {
+     "id": "iface:posix",
+     "name": "POSIX/musl C 库",
+     "category": "os-api",
+     "ohos_status": "supported",
+     "note": "OpenHarmony NDK 使用 musl libc，POSIX 基础接口覆盖面广"
+    },
+    {
+     "id": "iface:pthread",
+     "name": "pthread 多线程",
+     "category": "os-api",
+     "ohos_status": "supported",
+     "note": "musl 提供 pthread"
+    },
+    {
+     "id": "iface:dylib",
+     "name": "dlopen 动态加载",
+     "category": "os-api",
+     "ohos_status": "convertible",
+     "note": "鸿蒙支持 dlopen，但库路径/打包方式受限，需适配 HAP 内 native 目录"
+    },
+    {
+     "id": "iface:macos-system",
+     "name": "macOS 系统库绑定",
+     "category": "os-api",
+     "ohos_status": "convertible",
+     "note": "formula 依赖 macOS 系统自带库；鸿蒙上需改为显式打包依赖（多为可转化的开源库）"
+    },
+    {
+     "id": "iface:glib-event",
+     "name": "glib 事件循环",
+     "category": "os-api",
+     "ohos_status": "convertible",
+     "note": "可用 Qt 事件循环替代或移植 glib 主循环"
+    }
+   ],
+   "evidence": "[被非鸿蒙平台守卫包裹（不编译）] guard=platform-excluded (0 处无条件 / 0 处鸿蒙可编译 / 0 处宏守卫排除 / 1 处文件级排除) | src/project/internal/platform/windows/windowsrecentfilescontroller.cpp:25[platform-file-excluded] #include <shlobj.h>",
+   "path": [
+    "app:musescore"
+   ]
+  }
+ ],
  "closure": {
-  "size": 87,
+  "size": 7,
   "summary": {
    "target": 1,
-   "provided": 8,
-   "need_port": 23,
-   "would_download": 51,
-   "cmd_only": 2,
-   "already_local": 2
+   "provided": 2,
+   "need_port": 1,
+   "would_download": 3
   },
   "need_port": [
    {
-    "id": "pkg-unknown:alsa",
-    "name": "alsa",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:brotlidec",
-    "name": "brotlidec",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:dbus1",
-    "name": "dbus1",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:fluidsynth",
-    "name": "fluidsynth",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:glib2",
-    "name": "glib2",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:iconv",
-    "name": "iconv",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:instpatch",
-    "name": "instpatch",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:intl",
-    "name": "intl",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:lash",
-    "name": "lash",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:midishare",
-    "name": "midishare",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:oboe",
-    "name": "oboe",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:ogg",
-    "name": "ogg",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:openmp",
-    "name": "openmp",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:opensles",
-    "name": "opensles",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:pipewire",
-    "name": "pipewire",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:png",
-    "name": "png",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:pulseaudio",
-    "name": "pulseaudio",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:pyside",
-    "name": "pyside",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:python3",
-    "name": "python3",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:shiboken",
-    "name": "shiboken",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:sndfile",
-    "name": "sndfile",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:systemd",
-    "name": "systemd",
-    "version": null,
-    "source_url": null,
-    "repo_url": null
-   },
-   {
-    "id": "pkg-unknown:tinyxml",
-    "name": "tinyxml",
+    "id": "pkg-unknown:mnxdom",
+    "name": "mnxdom",
     "version": null,
     "source_url": null,
     "repo_url": null
    }
   ],
-  "cmd_only": [
-   {
-    "id": "hb:dav1d",
-    "name": "dav1d",
-    "artifact_cmd": "brew install dav1d"
-   },
-   {
-    "id": "hb:ca-certificates",
-    "name": "ca-certificates",
-    "artifact_cmd": "brew install ca-certificates"
-   }
-  ],
+  "cmd_only": [],
   "would_download": [
-   "bzip2",
-   "ffmpeg",
-   "harfbuzz",
-   "jack",
-   "portaudio",
-   "readline",
-   "SDL2",
-   "zlib",
    "freetype",
    "libpng",
-   "util-linux",
-   "openssl@3",
-   "lame",
-   "libvpx",
-   "opus",
-   "svt-av1",
-   "x264",
-   "x265",
-   "alsa-lib",
-   "libxcb",
-   "xz",
-   "zlib-ng-compat",
-   "cairo",
-   "glib",
-   "graphite2",
-   "gettext",
-   "mpg123",
-   "python@3.14",
-   "libxau",
-   "libxdmcp",
-   "libx11",
-   "libxext",
-   "libxrender",
-   "lzo",
-   "pixman",
-   "bison",
-   "python-setuptools",
-   "pcre2",
-   "dbus",
-   "libunistring",
-   "mpdecimal",
-   "sqlite",
-   "zstd",
-   "musl-compat",
-   "xorgproto",
-   "python@3.12",
-   "lz4",
-   "berkeley-db@5",
-   "libnsl",
-   "libtirpc",
-   "krb5"
+   "zlib-ng-compat"
   ]
  },
  "direct_deps": [
-  {
-   "id": "pkg-unknown:alsa",
-   "name": "alsa",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:brotlidec",
-   "name": "brotlidec",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "hb:bzip2",
-   "name": "bzip2",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "ported",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:dbus1",
-   "name": "dbus1",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "hb:ffmpeg",
-   "name": "ffmpeg",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "ported",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:fluidsynth",
-   "name": "fluidsynth",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
   {
    "id": "hb:freetype",
    "name": "freetype",
@@ -479,227 +154,11 @@
    "depth": 1
   },
   {
-   "id": "pkg-unknown:glib2",
-   "name": "glib2",
+   "id": "pkg-unknown:mnxdom",
+   "name": "mnxdom",
    "kind": "package",
    "edge": "runtime",
    "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "hb:harfbuzz",
-   "name": "harfbuzz",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "ported",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:iconv",
-   "name": "iconv",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:instpatch",
-   "name": "instpatch",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:intl",
-   "name": "intl",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "cmdpkgs:jack",
-   "name": "jack",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "ported",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:lash",
-   "name": "lash",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "hb:libpng",
-   "name": "libpng",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "ported",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:midishare",
-   "name": "midishare",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:oboe",
-   "name": "oboe",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:ogg",
-   "name": "ogg",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:openmp",
-   "name": "openmp",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:opensles",
-   "name": "opensles",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "hb:openssl@3",
-   "name": "openssl@3",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "ported",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:pipewire",
-   "name": "pipewire",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:png",
-   "name": "png",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "cmdpkgs:portaudio",
-   "name": "portaudio",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "ported",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:pulseaudio",
-   "name": "pulseaudio",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:pyside",
-   "name": "pyside",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:python3",
-   "name": "python3",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "hb:readline",
-   "name": "readline",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "ported",
-   "depth": 1
-  },
-  {
-   "id": "cmdpkgs:SDL2",
-   "name": "SDL2",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "ported",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:shiboken",
-   "name": "shiboken",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:sndfile",
-   "name": "sndfile",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:systemd",
-   "name": "systemd",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "pkg-unknown:tinyxml",
-   "name": "tinyxml",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "unknown",
-   "depth": 1
-  },
-  {
-   "id": "hb:util-linux",
-   "name": "util-linux",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "ported",
-   "depth": 1
-  },
-  {
-   "id": "hb:zlib",
-   "name": "zlib",
-   "kind": "package",
-   "edge": "runtime",
-   "port_status": "ported",
    "depth": 1
   },
   {
@@ -711,59 +170,11 @@
    "depth": 1
   },
   {
-   "id": "qtmod:dbus",
-   "name": "Qt D-Bus",
-   "kind": "qt-module",
-   "edge": "uses-module",
-   "port_status": "blocked",
-   "depth": 1
-  },
-  {
    "id": "qtmod:gui",
    "name": "Qt GUI",
    "kind": "qt-module",
    "edge": "uses-module",
    "port_status": "ported",
-   "depth": 1
-  },
-  {
-   "id": "qtmod:qml",
-   "name": "Qt QML",
-   "kind": "qt-module",
-   "edge": "uses-module",
-   "port_status": "ported",
-   "depth": 1
-  },
-  {
-   "id": "qtmod:quick",
-   "name": "Qt Quick",
-   "kind": "qt-module",
-   "edge": "uses-module",
-   "port_status": "ported",
-   "depth": 1
-  },
-  {
-   "id": "qtmod:test",
-   "name": "Qt Test",
-   "kind": "qt-module",
-   "edge": "uses-module",
-   "port_status": "ported",
-   "depth": 1
-  },
-  {
-   "id": "qtmod:widgets",
-   "name": "Qt Widgets",
-   "kind": "qt-module",
-   "edge": "uses-module",
-   "port_status": "ported",
-   "depth": 1
-  },
-  {
-   "id": "qtmod:x11extras",
-   "name": "Qt X11 Extras",
-   "kind": "qt-module",
-   "edge": "uses-module",
-   "port_status": "blocked",
    "depth": 1
   }
  ],
@@ -899,20 +310,21 @@
    "agent_note": null
   },
   {
-   "class": "resolution-gap",
+   "class": "readme-stale",
    "side": "oracle",
-   "by_design": false,
+   "by_design": true,
    "oracle_name": "alsa",
    "oracle_type": "runtime",
-   "pg_id": "pkg-unknown:alsa",
-   "pg_name": "alsa",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
    "evidence": {
-    "note": "⚠ 匹配到幽灵节点（pkg-unknown）——名字未解析到已知鸿蒙包，实为解析缺口，需复核"
+    "note": "README 声明但构建文件无引用 → 疑似 README 过时/笔误",
+    "grep": []
    },
-   "agent_note": "真别名缺口：hb-core/Formula/a/alsa-lib.rb 与 cmd-pkgs alsa-lib 1.2.12 均存在，ALIASES 缺 alsa→alsa-lib；find_package(ALSA REQUIRED) 位于项目自身 src/framework/midi/CMakeLists.txt:85（非内嵌三方）"
+   "agent_note": null
   },
   {
    "class": "matched",
@@ -929,107 +341,120 @@
    "agent_note": null
   },
   {
-   "class": "matched",
+   "class": "readme-stale",
    "side": "oracle",
    "by_design": true,
    "oracle_name": "jack",
    "oracle_type": "runtime",
-   "pg_id": "cmdpkgs:jack",
-   "pg_name": "jack",
-   "pg_kind": "package",
-   "pg_status": "ported",
-   "depth": 1,
-   "evidence": null,
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "README 声明但构建文件无引用 → 疑似 README 过时/笔误",
+    "grep": []
+   },
    "agent_note": null
   },
   {
-   "class": "unknown-ok",
+   "class": "readme-stale",
    "side": "oracle",
    "by_design": true,
    "oracle_name": "pulseaudio",
    "oracle_type": "runtime",
-   "pg_id": "pkg-unknown:pulseaudio",
-   "pg_name": "pulseaudio",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
    "evidence": {
-    "note": "⚠ 匹配到幽灵节点（pkg-unknown）——名字未解析到已知鸿蒙包，实为解析缺口，需复核"
+    "note": "README 声明但构建文件无引用 → 疑似 README 过时/笔误",
+    "grep": []
    },
-   "agent_note": "hb/cmd-pkgs 确无 pulseaudio 库包（仅 pulseaudio-ctl/pulsemixer 控制工具，非同名库）；PulseAudio 直连已由 unsupported-interface 阻塞项单独覆盖"
+   "agent_note": null
   },
   {
-   "class": "resolution-gap",
+   "class": "readme-stale",
    "side": "oracle",
-   "by_design": false,
+   "by_design": true,
    "oracle_name": "sndfile",
    "oracle_type": "runtime",
-   "pg_id": "pkg-unknown:sndfile",
-   "pg_name": "sndfile",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
    "evidence": {
-    "note": "⚠ 匹配到幽灵节点（pkg-unknown）——名字未解析到已知鸿蒙包，实为解析缺口，需复核"
+    "note": "README 声明但构建文件无引用 → 疑似 README 过时/笔误",
+    "grep": []
    },
-   "agent_note": "真别名缺口：hb-core/Formula/lib/libsndfile.rb 存在，ALIASES 缺 sndfile→libsndfile；项目 SetupSndFile.cmake:72 find_package(SndFile) 在 .cmake 文件中未被 portgraph 扫描，本次命中纯靠内嵌 fluidsynth 的 find_package(SndFile) 巧合"
+   "agent_note": null
   },
   {
-   "class": "matched",
+   "class": "readme-stale",
    "side": "oracle",
    "by_design": true,
    "oracle_name": "openssl",
    "oracle_type": "runtime",
-   "pg_id": "hb:openssl@3",
-   "pg_name": "openssl@3",
-   "pg_kind": "package",
-   "pg_status": "ported",
-   "depth": 1,
-   "evidence": null,
-   "agent_note": "检出证据为内嵌 freetype md5.h 与 google_crashpad_client 的 openssl include；CI runtime 段声明 libssl-dev，判 matched 合理（但证据源在内嵌代码，同 util-linux 问题）"
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "README 声明但构建文件无引用 → 疑似 README 过时/笔误",
+    "grep": []
+   },
+   "agent_note": null
   },
   {
-   "class": "resolution-gap",
+   "class": "readme-stale",
    "side": "oracle",
-   "by_design": false,
+   "by_design": true,
    "oracle_name": "tinyxml",
    "oracle_type": "runtime",
-   "pg_id": "pkg-unknown:tinyxml",
-   "pg_name": "tinyxml",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
    "evidence": {
-    "note": "⚠ 匹配到幽灵节点（pkg-unknown）——名字未解析到已知鸿蒙包，实为解析缺口，需复核"
+    "note": "README 声明但构建文件无引用 → 疑似 README 过时/笔误",
+    "grep": []
    },
-   "agent_note": "真别名缺口：hb-core/Formula/t/tinyxml2.rb 与 cmd-pkgs tinyxml2 10.0.0 存在，ALIASES 缺 tinyxml→tinyxml2；src/framework/global/CMakeLists.txt:28 find_package(TinyXml REQUIRED) 为项目必需依赖，实际用 pkg-config tinyxml2"
+   "agent_note": null
   },
   {
-   "class": "matched-optional",
+   "class": "optional-not-built",
    "side": "oracle",
    "by_design": true,
    "oracle_name": "ffmpeg",
    "oracle_type": "optional",
-   "pg_id": "hb:ffmpeg",
-   "pg_name": "ffmpeg",
-   "pg_kind": "package",
-   "pg_status": "ported",
-   "depth": 1,
-   "evidence": null,
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "可选依赖，默认构建未启用"
+   },
    "agent_note": null
   },
   {
-   "class": "matched-optional",
+   "class": "optional-not-built",
    "side": "oracle",
    "by_design": true,
    "oracle_name": "harfbuzz",
    "oracle_type": "optional",
-   "pg_id": "hb:harfbuzz",
-   "pg_name": "harfbuzz",
-   "pg_kind": "package",
-   "pg_status": "ported",
-   "depth": 1,
-   "evidence": null,
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "可选依赖，默认构建未启用"
+   },
    "agent_note": null
   },
   {
@@ -1166,520 +591,13 @@
    "by_design": false,
    "oracle_name": null,
    "oracle_type": null,
-   "pg_id": "pkg-unknown:brotlidec",
-   "pg_name": "brotlidec",
+   "pg_id": "pkg-unknown:mnxdom",
+   "pg_name": "mnxdom",
    "pg_kind": "package",
    "pg_status": "unknown",
    "depth": 1,
    "evidence": {
     "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
-   },
-   "agent_note": "真别名缺口：hb-core/Formula/b/brotli.rb 与 cmd-pkgs brotli 存在，ALIASES 缺 brotlidec→brotli（来自内嵌 freetype 可选依赖）"
-  },
-  {
-   "class": "readme-omitted",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "hb:bzip2",
-   "pg_name": "bzip2",
-   "pg_kind": "package",
-   "pg_status": "ported",
-   "depth": 1,
-   "evidence": {
-    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
-    "grep": [
-     {
-      "file": "src/framework/draw/thirdparty/freetype/freetype-2.13.1/CMakeLists.txt",
-      "line": 284,
-      "strong": true,
-      "text": "find_package(BZip2 REQUIRED)"
-     },
-     {
-      "file": "src/framework/draw/thirdparty/freetype/freetype-2.13.1/CMakeLists.txt",
-      "line": 286,
-      "strong": true,
-      "text": "find_package(BZip2)"
-     },
-     {
-      "file": "src/framework/draw/thirdparty/freetype/freetype-2.13.1/CMakeLists.txt",
-      "line": 288,
-      "strong": true,
-      "text": "pkg_check_modules(PC_BZIP2 bzip2)"
-     },
-     {
-      "file": "src/framework/draw/thirdparty/freetype/freetype-2.13.1/builds/unix/configure.ac",
-      "line": 339,
-      "strong": true,
-      "text": "PKG_CHECK_MODULES([BZIP2], [$bzip2_pkg],"
-     }
-    ]
-   },
-   "agent_note": null
-  },
-  {
-   "class": "resolution-gap",
-   "side": "pg",
-   "by_design": false,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "pkg-unknown:dbus1",
-   "pg_name": "dbus1",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
-   "evidence": {
-    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
-   },
-   "agent_note": "真别名缺口：hb-core/Formula/d/dbus.rb 与 cmd-pkgs dbus 1.14.10 存在，ALIASES 缺 dbus1→dbus（来自内嵌 fluidsynth）"
-  },
-  {
-   "class": "unknown-ok",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "pkg-unknown:fluidsynth",
-   "pg_name": "fluidsynth",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
-   "evidence": {
-    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
-   },
-   "agent_note": "hb/cmd-pkgs 确无 fluidsynth；且系内嵌 thirdparty 自带源码构建，find_package(FluidSynth) 实为 fluidsynth-2.3.3/CMakeLists.txt:851 注释行（'# Exported targets for cmake: find_package(FluidSynth)'）被正则误匹配"
-  },
-  {
-   "class": "resolution-gap",
-   "side": "pg",
-   "by_design": false,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "pkg-unknown:glib2",
-   "pg_name": "glib2",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
-   "evidence": {
-    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
-   },
-   "agent_note": "真别名缺口：hb-core/Formula/g/glib.rb 与 cmd-pkgs glib 2.88.0 存在，ALIASES 缺 glib2→glib（来自内嵌 fluidsynth 的 GLib2 find_package）"
-  },
-  {
-   "class": "resolution-gap",
-   "side": "pg",
-   "by_design": false,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "pkg-unknown:iconv",
-   "pg_name": "iconv",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
-   "evidence": {
-    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
-   },
-   "agent_note": "真别名缺口：hb-core/Formula/lib/libiconv.rb 与 cmd-pkgs libiconv 1.17 存在，ALIASES 缺 iconv→libiconv（musl 虽内置 iconv，但 libiconv bottle 确实存在；来自内嵌 flac/freetype）"
-  },
-  {
-   "class": "unknown-ok",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "pkg-unknown:instpatch",
-   "pg_name": "instpatch",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
-   "evidence": {
-    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
-   },
-   "agent_note": "hb/cmd-pkgs 确无 libinstpatch；来自内嵌 fluidsynth 的可选 MIDI 补丁支持"
-  },
-  {
-   "class": "resolution-gap",
-   "side": "pg",
-   "by_design": false,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "pkg-unknown:intl",
-   "pg_name": "intl",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
-   "evidence": {
-    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
-   },
-   "agent_note": "真别名缺口：libintl 属 gettext（hb-core/Formula/g/gettext.rb、cmd-pkgs gettext 0.22.5 存在），ALIASES 缺 intl→gettext（来自内嵌 flac）"
-  },
-  {
-   "class": "unknown-ok",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "pkg-unknown:lash",
-   "pg_name": "lash",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
-   "evidence": {
-    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
-   },
-   "agent_note": "hb/cmd-pkgs 确无 lash（LASH 音频会话管理已停止维护）；来自内嵌 fluidsynth 可选驱动"
-  },
-  {
-   "class": "readme-omitted",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "hb:libpng",
-   "pg_name": "libpng",
-   "pg_kind": "package",
-   "pg_status": "ported",
-   "depth": 1,
-   "evidence": {
-    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
-    "grep": [
-     {
-      "file": "src/framework/draw/thirdparty/freetype/freetype-2.13.1/builds/unix/configure.ac",
-      "line": 388,
-      "strong": true,
-      "text": "PKG_CHECK_MODULES([LIBPNG], [$libpng_pkg],"
-     }
-    ]
-   },
-   "agent_note": null
-  },
-  {
-   "class": "unknown-ok",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "pkg-unknown:midishare",
-   "pg_name": "midishare",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
-   "evidence": {
-    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
-   },
-   "agent_note": "hb/cmd-pkgs 确无 midishare（macOS 专属 MIDI 框架）；来自内嵌 fluidsynth 平台分支"
-  },
-  {
-   "class": "unknown-ok",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "pkg-unknown:oboe",
-   "pg_name": "oboe",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
-   "evidence": {
-    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
-   },
-   "agent_note": "hb/cmd-pkgs 确无 oboe formula；来自内嵌 fluidsynth 的 enable-oboe 选项分支（Android/OHOS 音频驱动，fluidsynth-2.3.3/CMakeLists.txt:676）"
-  },
-  {
-   "class": "resolution-gap",
-   "side": "pg",
-   "by_design": false,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "pkg-unknown:ogg",
-   "pg_name": "ogg",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
-   "evidence": {
-    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
-   },
-   "agent_note": "真别名缺口：hb-core/Formula/lib/libogg.rb 与 cmd-pkgs libogg 存在，ALIASES 缺 ogg→libogg（来自内嵌 flac 的 find_package(Ogg REQUIRED)）"
-  },
-  {
-   "class": "unknown-ok",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "pkg-unknown:openmp",
-   "pg_name": "openmp",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
-   "evidence": {
-    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
-   },
-   "agent_note": "编译器运行时（CMake OpenMP 模块）非三方包，应与 Threads 一样跳过；来自内嵌 fluidsynth"
-  },
-  {
-   "class": "unknown-ok",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "pkg-unknown:opensles",
-   "pg_name": "opensles",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
-   "evidence": {
-    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
-   },
-   "agent_note": "NDK 原生音频 API（OHOS NDK 自带头文件）非 bottle 包；来自内嵌 fluidsynth Android 分支"
-  },
-  {
-   "class": "unknown-ok",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "pkg-unknown:pipewire",
-   "pg_name": "pipewire",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
-   "evidence": {
-    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
-   },
-   "agent_note": "hb/cmd-pkgs 确无 pipewire；来自内嵌 fluidsynth 可选音频服务器驱动"
-  },
-  {
-   "class": "resolution-gap",
-   "side": "pg",
-   "by_design": false,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "pkg-unknown:png",
-   "pg_name": "png",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
-   "evidence": {
-    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
-   },
-   "agent_note": "真别名缺口：find_package(PNG) 名 png 未映射到 libpng（hb Formula/lib/libpng.rb、cmd-pkgs libpng 1.6.43）；且图中同时存在已解析的 libpng 节点→同库双节点（来自内嵌 freetype）"
-  },
-  {
-   "class": "readme-omitted",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "cmdpkgs:portaudio",
-   "pg_name": "portaudio",
-   "pg_kind": "package",
-   "pg_status": "ported",
-   "depth": 1,
-   "evidence": {
-    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
-    "grep": [
-     {
-      "file": "src/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/CMakeLists.txt",
-      "line": 575,
-      "strong": true,
-      "text": "find_package( PortAudio ${PORTAUDIO_MINIMUM_VERSION} )"
-     },
-     {
-      "file": "src/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/CMakeLists.txt",
-      "line": 372,
-      "strong": true,
-      "text": "target_link_libraries ( libfluidsynth-OBJ PUBLIC PortAudio::PortAudio )"
-     }
-    ]
-   },
-   "agent_note": null
-  },
-  {
-   "class": "unknown-ok",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "pkg-unknown:pyside",
-   "pg_name": "pyside",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
-   "evidence": {
-    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
-   },
-   "agent_note": "hb/cmd-pkgs 确无 pyside；来自内嵌 KDDockWidgets/python 绑定（默认不构建）"
-  },
-  {
-   "class": "unknown-ok",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "pkg-unknown:python3",
-   "pg_name": "python3",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
-   "evidence": {
-    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
-   },
-   "agent_note": "宿主构建工具（内嵌 KDDockWidgets python 绑定的 find_package(Python3)）；python@3.14 bottle 虽存在但映射为目标侧运行时依赖无意义"
-  },
-  {
-   "class": "readme-omitted",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "hb:readline",
-   "pg_name": "readline",
-   "pg_kind": "package",
-   "pg_status": "ported",
-   "depth": 1,
-   "evidence": {
-    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
-    "grep": [
-     {
-      "file": "src/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/CMakeLists.txt",
-      "line": 687,
-      "strong": true,
-      "text": "find_package ( Readline )"
-     },
-     {
-      "file": "src/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/CMakeLists.txt",
-      "line": 409,
-      "strong": true,
-      "text": "target_link_libraries ( libfluidsynth-OBJ PUBLIC Readline::Readline )"
-     }
-    ]
-   },
-   "agent_note": null
-  },
-  {
-   "class": "readme-omitted",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "cmdpkgs:SDL2",
-   "pg_name": "SDL2",
-   "pg_kind": "package",
-   "pg_status": "ported",
-   "depth": 1,
-   "evidence": {
-    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
-    "grep": [
-     {
-      "file": "src/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/CMakeLists.txt",
-      "line": 656,
-      "strong": true,
-      "text": "find_package ( SDL2 QUIET )"
-     }
-    ]
-   },
-   "agent_note": null
-  },
-  {
-   "class": "unknown-ok",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "pkg-unknown:shiboken",
-   "pg_name": "shiboken",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
-   "evidence": {
-    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
-   },
-   "agent_note": "hb/cmd-pkgs 确无 shiboken；来自内嵌 KDDockWidgets/python 绑定（默认不构建）"
-  },
-  {
-   "class": "unknown-ok",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "pkg-unknown:systemd",
-   "pg_name": "systemd",
-   "pg_kind": "package",
-   "pg_status": "unknown",
-   "depth": 1,
-   "evidence": {
-    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
-   },
-   "agent_note": "hb/cmd-pkgs 确无 systemd（Linux 服务管理器非移植目标包）；systemd 接口已由 unsupported-interface 阻塞项覆盖"
-  },
-  {
-   "class": "false-positive",
-   "side": "pg",
-   "by_design": false,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "hb:util-linux",
-   "pg_name": "util-linux",
-   "pg_kind": "package",
-   "pg_status": "ported",
-   "depth": 1,
-   "evidence": {
-    "note": "portgraph 检出但构建文件无引用 → 扫描误报候选（include 启发式/名字巧合）",
-    "grep": []
-   },
-   "agent_note": "维持误报：全仓仅内嵌 google_crashpad_client/util/misc/uuid.cc:34 include <uuid/uuid.h>（libuuid→util-linux include 启发式），无任何构建文件 find_package/pkg_check/link 引用，CI 依赖清单亦未声明——内嵌三方代码 include 污染应用 depth-1"
-  },
-  {
-   "class": "readme-omitted",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "hb:zlib",
-   "pg_name": "zlib",
-   "pg_kind": "package",
-   "pg_status": "ported",
-   "depth": 1,
-   "evidence": {
-    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
-    "grep": [
-     {
-      "file": "src/framework/draw/thirdparty/freetype/freetype-2.13.1/CMakeLists.txt",
-      "line": 272,
-      "strong": true,
-      "text": "find_package(ZLIB REQUIRED)"
-     },
-     {
-      "file": "src/framework/draw/thirdparty/freetype/freetype-2.13.1/CMakeLists.txt",
-      "line": 274,
-      "strong": true,
-      "text": "find_package(ZLIB)"
-     },
-     {
-      "file": "src/framework/draw/thirdparty/freetype/freetype-2.13.1/builds/unix/configure.ac",
-      "line": 284,
-      "strong": true,
-      "text": "PKG_CHECK_MODULES([ZLIB], [$zlib_pkg],"
-     }
-    ]
-   },
-   "agent_note": null
-  },
-  {
-   "class": "qt-granularity",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "qtmod:dbus",
-   "pg_name": "Qt D-Bus",
-   "pg_kind": "qt-module",
-   "pg_status": "blocked",
-   "depth": 1,
-   "evidence": {
-    "note": "Qt 模块粒度：README 通常只写 'Qt'"
    },
    "agent_note": null
   },
@@ -1698,110 +616,27 @@
     "note": "Qt 模块粒度：README 通常只写 'Qt'"
    },
    "agent_note": null
-  },
-  {
-   "class": "qt-granularity",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "qtmod:qml",
-   "pg_name": "Qt QML",
-   "pg_kind": "qt-module",
-   "pg_status": "ported",
-   "depth": 1,
-   "evidence": {
-    "note": "Qt 模块粒度：README 通常只写 'Qt'"
-   },
-   "agent_note": null
-  },
-  {
-   "class": "qt-granularity",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "qtmod:quick",
-   "pg_name": "Qt Quick",
-   "pg_kind": "qt-module",
-   "pg_status": "ported",
-   "depth": 1,
-   "evidence": {
-    "note": "Qt 模块粒度：README 通常只写 'Qt'"
-   },
-   "agent_note": null
-  },
-  {
-   "class": "qt-granularity",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "qtmod:test",
-   "pg_name": "Qt Test",
-   "pg_kind": "qt-module",
-   "pg_status": "ported",
-   "depth": 1,
-   "evidence": {
-    "note": "Qt 模块粒度：README 通常只写 'Qt'"
-   },
-   "agent_note": null
-  },
-  {
-   "class": "qt-granularity",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "qtmod:widgets",
-   "pg_name": "Qt Widgets",
-   "pg_kind": "qt-module",
-   "pg_status": "ported",
-   "depth": 1,
-   "evidence": {
-    "note": "Qt 模块粒度：README 通常只写 'Qt'"
-   },
-   "agent_note": null
-  },
-  {
-   "class": "qt-granularity",
-   "side": "pg",
-   "by_design": true,
-   "oracle_name": null,
-   "oracle_type": null,
-   "pg_id": "qtmod:x11extras",
-   "pg_name": "Qt X11 Extras",
-   "pg_kind": "qt-module",
-   "pg_status": "blocked",
-   "depth": 1,
-   "evidence": {
-    "note": "Qt 模块粒度：README 通常只写 'Qt'"
-   },
-   "agent_note": null
   }
  ],
  "metrics": {
   "oracle_runtime": 8,
   "oracle_optional": 10,
-  "matched": 4,
-  "matched_optional": 2,
-  "recall": "50%",
-  "precision": "46%",
-  "bug_candidates": 11,
+  "matched": 2,
+  "matched_optional": 0,
+  "recall": "25%",
+  "precision": "100%",
+  "bug_candidates": 1,
   "bug_by_class": {
-   "false-positive": 1,
+   "false-positive": 0,
    "missed-dep": 0,
-   "resolution-gap": 10
+   "resolution-gap": 1
   },
   "class_counts": {
-   "false-positive": 1,
-   "matched": 4,
-   "matched-optional": 2,
-   "optional-not-built": 8,
-   "qt-granularity": 7,
-   "readme-omitted": 6,
-   "resolution-gap": 10,
-   "unknown-ok": 13
+   "matched": 2,
+   "optional-not-built": 10,
+   "qt-granularity": 1,
+   "readme-stale": 6,
+   "resolution-gap": 1
   }
  },
  "agent_notes": [

@@ -6,11 +6,11 @@
   "name": "tdesktop",
   "url": "https://github.com/telegramdesktop/tdesktop",
   "tier": "C",
-  "build_system": "?",
-  "sources": "?",
-  "repo_path": "./portgraph\\workspace\\tdesktop"
+  "build_system": "cmake",
+  "sources": 2932,
+  "repo_path": "/root/harmony-workspace/worker4/portgraph/workspace/tdesktop"
  },
- "generated_at": "2026-09-18T02:44:23Z",
+ "generated_at": "2026-09-19T12:49:05Z",
  "verdict": "blocked",
  "blockers": [
   {
@@ -29,24 +29,33 @@
    "kind": "unknown-interface",
    "node": "app:tdesktop",
    "reason": "平台接口 fork()/exec() 进程模型 的鸿蒙支持性未确认（guard=ohos-active）"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:libudev",
+   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
   }
  ],
  "platform_excluded": [],
  "closure": {
-  "size": 35,
+  "size": 37,
   "summary": {
    "target": 1,
    "provided": 5,
-   "would_download": 27,
-   "cmd_only": 2
+   "would_download": 29,
+   "need_port": 1,
+   "cmd_only": 1
   },
-  "need_port": [],
-  "cmd_only": [
+  "need_port": [
    {
-    "id": "hb:dav1d",
-    "name": "dav1d",
-    "artifact_cmd": "brew install dav1d"
-   },
+    "id": "pkg-unknown:libudev",
+    "name": "libudev",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   }
+  ],
+  "cmd_only": [
    {
     "id": "hb:ca-certificates",
     "name": "ca-certificates",
@@ -54,9 +63,11 @@
    }
   ],
   "would_download": [
+   "libfido2",
    "ffmpeg",
    "openssl@3",
    "zlib",
+   "dav1d",
    "lame",
    "libvpx",
    "opus",
@@ -90,6 +101,22 @@
    "kind": "package",
    "edge": "runtime",
    "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "cmdpkgs:libfido2",
+   "name": "libfido2",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:libudev",
+   "name": "libudev",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
    "depth": 1
   },
   {
@@ -604,6 +631,46 @@
    "agent_note": "Telegram/cmake/td_iv.cmake:175 target_link_libraries(td_iv … desktop-app::external_ada) → portgraph 漏检"
   },
   {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "cmdpkgs:libfido2",
+   "pg_name": "libfido2",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
+    "grep": [
+     {
+      "file": "Telegram/cmake/lib_fido2.cmake",
+      "line": 15,
+      "strong": true,
+      "text": "pkg_check_modules(TDESKTOP_FIDO2 IMPORTED_TARGET libfido2)"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "resolution-gap",
+   "side": "pg",
+   "by_design": false,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:libudev",
+   "pg_name": "libudev",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"
+   },
+   "agent_note": null
+  },
+  {
    "class": "qt-granularity",
    "side": "pg",
    "by_design": true,
@@ -674,19 +741,21 @@
   "matched": 4,
   "matched_optional": 0,
   "recall": "24%",
-  "precision": "100%",
-  "bug_candidates": 7,
+  "precision": "80%",
+  "bug_candidates": 8,
   "bug_by_class": {
    "false-positive": 0,
    "missed-dep": 7,
-   "resolution-gap": 0
+   "resolution-gap": 1
   },
   "class_counts": {
    "build-only": 3,
    "matched": 4,
    "missed-dep": 7,
    "qt-granularity": 4,
-   "readme-stale": 6
+   "readme-omitted": 1,
+   "readme-stale": 6,
+   "resolution-gap": 1
   }
  },
  "agent_notes": [
