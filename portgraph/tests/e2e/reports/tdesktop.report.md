@@ -1,17 +1,17 @@
 # tdesktop 依赖对账报告（portgraph E2E）
 
-> 生成时间: 2026-09-19T13:32:14Z | 语料: corpus.json#tdesktop | 构建系统: cmake | 源文件: 2932
+> 生成时间: 2026-09-19T14:21:26Z | 语料: corpus.json#tdesktop | 构建系统: cmake+qmake | 源文件: 6358
 > Oracle: README.md（复核: 已复核，20 条；来源: README §Third-party 逐条人工复核：剥离许可后缀噪声；GYP/Ninja/CMake 改 build 型；Open Sans/Vazirmatn 字体与 Emoji alpha codes 为数据资产（非链接依赖）已删）
 
 ## 1. 结论速览
 
 | 指标 | 值 |
 |---|---|
-| 可移植性 verdict | **blocked**（阻塞 2 / 未知 8 / 平台排除 0） |
-| 检出召回率 | 53%（9/17 README 运行时依赖） |
-| 检出精确率 | 60% |
-| Bug 候选 | **2**（missed-dep=2） |
-| 依赖闭包 | 61 项（cmd_only 1, need_port 7, provided 5, target 1, would_download 47） |
+| 可移植性 verdict | **blocked**（阻塞 7 / 未知 21 / 平台排除 2） |
+| 检出召回率 | 71%（12/17 README 运行时依赖） |
+| 检出精确率 | 38% |
+| Bug 候选 | **4**（false-positive=2, missed-dep=2） |
+| 依赖闭包 | 116 项（cmd_only 2, covered 1, need_port 23, provided 9, target 1, would_download 80） |
 
 **Agent 复核说明**：
 
@@ -25,101 +25,185 @@
 | 阻塞类型 | 节点 | 原因 |
 |---|---|---|
 | unsupported-interface | app:tdesktop | 使用鸿蒙不支持的平台接口 macOS Cocoa/AppKit（os-api）macOS 专属 UI/系统框架；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-ac |
-| unsupported-interface | app:tdesktop | 使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (54 处无 |
+| unsupported-interface | app:tdesktop | 使用鸿蒙不支持的平台接口 D-Bus IPC（ipc）鸿蒙无 D-Bus（Qt D-Bus 模块 Out of scope）；需改用系统服务/IPC；同类鸿蒙替代接口: 鸿蒙 IPC/系统服务能力［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (54 处无条件 / 7 处鸿蒙可编译 / 5 |
+| unsupported-interface | app:tdesktop | 使用鸿蒙不支持的平台接口 systemd（os-api）鸿蒙无 systemd 服务管理；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (0 处无条 |
+| unsupported-interface | app:tdesktop | 使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (107 处 |
+| unsupported-interface | app:tdesktop | 使用鸿蒙不支持的平台接口 X11/Xlib 直连（display）鸿蒙无 X11 显示服务；Qt 应用应走 QPA，直连 X11 代码不可移植；同类鸿蒙替代接口: 鸿蒙 WindowStage/XComponent［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (34 处无条件 / 3 处 |
+| unsupported-module | qtmod:dbus | Qt for HarmonyOS 模块适配表: 不支持 - 鸿蒙无 D-Bus |
+| unsupported-module | qtmod:waylandcompositor | Qt for HarmonyOS 模块适配表: 不支持 - Linux/Wayland 合成器框架，鸿蒙窗口模型非 Wayland |
 
-未确认项 8 个：
+未确认项 21 个：
 - [unknown-interface] app:tdesktop: 平台接口 fork()/exec() 进程模型 的鸿蒙支持性未确认（guard=ohos-active）
-- [unknown-package] pkg-unknown:libudev: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
 - [unknown-package] pkg-unknown:ada: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
-- [unknown-package] pkg-unknown:auto-updates: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
-- [unknown-package] pkg-unknown:crash-reports: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
-- [unknown-package] pkg-unknown:rnnoise: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
+- [unknown-package] pkg-unknown:microsoft: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
+- [unknown-package] pkg-unknown:range: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
 - [unknown-package] pkg-unknown:tde2e: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
-- [unknown-package] pkg-unknown:webrtc: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
+- [unknown-package] pkg-unknown:tg-owt: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
+- [unknown-package] pkg-unknown:tl: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
+- [unknown-package] pkg-unknown:toomanycooks: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
+- [unknown-package] pkg-unknown:breakpad-client: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
+- [unknown-package] pkg-unknown:giomm-2-68: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
+- [unknown-package] pkg-unknown:libudev: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
+- [unknown-package] pkg-unknown:pangocairo: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
+- [unknown-package] pkg-unknown:pangoft2: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
+- [unknown-package] pkg-unknown:rnnoise: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
+- [unknown-package] pkg-unknown:angle: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
 
 ## 3. 差异归因明细（oracle × portgraph 直接依赖）
 
 | 归类 | README 侧 | portgraph 侧 | 类型/深度 | 证据/说明 |
 |---|---|---|---|---|
-| ★漏检 | breakpad | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 【agent: 主集成位于未初始化的 cmake/（cmake_helpers）子模块：Linux 侧经 external_crash_reports 包装（CMakeLists.txt:97 链接、cmake_helpers 内部实现 breakpad/crashpad 二选一），主仓库仅 macstore 段 target |
-| ★漏检 | crashpad | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 【agent: 主集成位于未初始化的 cmake/（cmake_helpers）子模块：macOS 段 find_program(CRASHPAD_HANDLER crashpad_handler)（:2349）+ external_crash_reports（:97）→ 克隆未初始化子模块导致扫描范围外，属工具残留缺口（见  |
+| ★漏检 | breakpad | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 【agent: 主集成位于 cmake/（cmake_helpers）子模块：Linux 侧经 external_crash_reports 包装（CMakeLists.txt:97），主仓库仅 macstore 段 target_link_frameworks(Telegram PRIVATE Breakpad)（:2381 |
+| ★漏检 | crashpad | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 【agent: 主集成位于 cmake/（cmake_helpers）子模块：Linux 侧经 external_crash_reports 包装（CMakeLists.txt:97），主仓库仅 macstore 段 target_link_frameworks(Telegram PRIVATE Breakpad)（:2381 |
+| ★误报 | — | libdispatch | package d1 | portgraph 检出但构建文件无引用 → 扫描误报候选（include 启发式/名字巧合） |
+| ★误报 | — | libxcb | package d1 | portgraph 检出但构建文件无引用 → 扫描误报候选（include 启发式/名字巧合） |
 | README过时 | lzma-sdk | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 |
-| README过时 | liblzma | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 |
 | README过时 | opus | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 |
 | README漏列 | — | boost | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | README漏列 | — | cmark-gfm | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | README漏列 | — | glib | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
-| README漏列 | — | libfido2 | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
+| README漏列 | — | glibmm | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
+| README漏列 | — | jpeg-turbo | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
+| README漏列 | — | libavif | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
+| README漏列 | — | libheif | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | README漏列 | — | libiconv | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
+| README漏列 | — | libjxl | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
+| README漏列 | — | libvpx | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
+| README漏列 | — | libxkbcommon | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
+| README漏列 | — | lz4 | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | README漏列 | — | minizip | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
+| README漏列 | — | openh264 | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
+| README漏列 | — | opus | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
+| README漏列 | — | pango | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
+| README漏列 | — | protobuf | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
+| README漏列 | — | xxhash | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | 构建工具 | gyp | — | build | 构建工具，fetch-deps 不收 build 边 |
 | 构建工具 | ninja | — | build | 构建工具，fetch-deps 不收 build 边 |
 | 构建工具 | cmake | — | build | 构建工具，fetch-deps 不收 build 边 |
+| 粒度折叠 | — | KF archive | framework d1 | KDE Frameworks 组件粒度：README 通常只写 'KDE Frameworks' |
+| 粒度折叠 | — | KF coreaddons | framework d1 | KDE Frameworks 组件粒度：README 通常只写 'KDE Frameworks' |
+| 粒度折叠 | — | KF desktoptojson | framework d1 | KDE Frameworks 组件粒度：README 通常只写 'KDE Frameworks' |
+| 粒度折叠 | — | Qt D-Bus | qt-module d1 | Qt 模块粒度：README 通常只写 'Qt' |
 | 粒度折叠 | — | Qt GUI | qt-module d1 | Qt 模块粒度：README 通常只写 'Qt' |
 | 粒度折叠 | — | Qt Network | qt-module d1 | Qt 模块粒度：README 通常只写 'Qt' |
+| 粒度折叠 | — | Qt Quick | qt-module d1 | Qt 模块粒度：README 通常只写 'Qt' |
+| 粒度折叠 | — | Qt Quick Widgets | qt-module d1 | Qt 模块粒度：README 通常只写 'Qt' |
 | 粒度折叠 | — | Qt SVG | qt-module d1 | Qt 模块粒度：README 通常只写 'Qt' |
+| 粒度折叠 | — | Qt Wayland Compositor | qt-module d1 | Qt 模块粒度：README 通常只写 'Qt' |
 | 粒度折叠 | — | Qt Widgets | qt-module d1 | Qt 模块粒度：README 通常只写 'Qt' |
 | 一致 | qt | Qt Core | qt-module d1 |  |
 | 一致 | openssl | openssl@3 | package d1 |  |
 | 一致 | webrtc | webrtc | package d1 | 匹配到幽灵节点：真实外部依赖且无已知鸿蒙包（fetch-deps 报 need_port/需源码移植，检出正确） |
 | 一致 | zlib | zlib | package d1 |  |
+| 一致 | liblzma | xz | package d1 |  |
 | 一致 | openal | openal-soft | package d1 |  |
 | 一致 | ffmpeg | ffmpeg | package d1 |  |
-| 一致 | xxhash | xxhash | package d1 |  |
+| 一致 | range-v3 | range | package d1 | ⚠ 匹配到幽灵节点：库里存在形近已知包 range-v3（hb:range-v3）→ 名字解析缺口，需复核 |
+| 一致 | xxhash | libxxhash | package d1 |  |
 | 一致 | qr-code-generator | libqrcodegen | package d1 |  |
+| 一致 | hunspell | hunspell | package d1 |  |
 | 一致 | ada | ada | package d1 | 匹配到幽灵节点：真实外部依赖且无已知鸿蒙包（fetch-deps 报 need_port/需源码移植，检出正确） |
 | 自带子模块 | gsl | — | runtime |  .gitmodules 自带子模块（Telegram/ThirdParty/GSL → https://github.com/Microsoft/GSL.git）：随项目源码一起编译，不作为外部包获取/检测 |
-| 自带子模块 | range-v3 | — | runtime |  .gitmodules 自带子模块（Telegram/ThirdParty/range-v3 → https://github.com/ericniebler/range-v3.git）：随项目源码一起编译，不作为外部包获取/检测 |
-| 自带子模块 | hunspell | — | runtime |  .gitmodules 自带子模块（Telegram/ThirdParty/hunspell → https://github.com/hunspell/hunspell）：随项目源码一起编译，不作为外部包获取/检测 |
+| 未知包(正常) | — | angle | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
 | 未知包(正常) | — | auto_updates | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
+| 未知包(正常) | — | breakpad-client | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
 | 未知包(正常) | — | crash_reports | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
+| 未知包(正常) | — | giomm-2.68 | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
 | 未知包(正常) | — | libudev | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
+| 未知包(正常) | — | microsoft | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
+| 未知包(正常) | — | pangocairo | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
+| 未知包(正常) | — | pangoft2 | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
+| 未知包(正常) | — | ranges | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
 | 未知包(正常) | — | rnnoise | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
 | 未知包(正常) | — | tde2e | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
+| 未知包(正常) | — | tg_owt | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
+| 未知包(正常) | — | tl | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
+| 未知包(正常) | — | tlottie | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
+| 未知包(正常) | — | tmc | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
+| 未知包(正常) | — | toomanycooks | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
 
-归类统计：构建工具×3，一致×9，★漏检×2，粒度折叠×4，README漏列×6，README过时×3，未知包(正常)×5，自带子模块×3
+归类统计：构建工具×3，★误报×2，一致×12，★漏检×2，粒度折叠×11，README漏列×18，README过时×2，未知包(正常)×17，自带子模块×1
 
 ## 4. 依赖闭包概览（fetch-deps --dry-run）
 
-- 闭包总数 61 项：cmd_only 1，need_port 7，provided 5，target 1，would_download 47
-- 可直下 bottle：libfido2、ffmpeg、openssl@3、zlib、boost、cmark-gfm、glib、libiconv、minizip、openal-soft、libqrcodegen、xxhash、dav1d、lame、libvpx、opus、svt-av1、x264、x265、alsa-lib、libxcb、xz、zlib-ng-compat、icu4c@78、zstd、bison、python-setuptools、pcre2、dbus、util-linux、mpg123、python@3.14、libxau、libxdmcp、lz4、python@3.12、gettext、readline、mpdecimal、sqlite
-- 仅命令获取（cmd_only）：ca-certificates
-- 需自行移植（need_port）：libudev、ada、auto_updates、crash_reports、rnnoise、tde2e、webrtc
-  - libudev: ?
+- 闭包总数 116 项：cmd_only 2，covered 1，need_port 23，provided 9，target 1，would_download 80
+- 可直下 bottle：boost、jpeg-turbo、libavif、libheif、xz、lz4、minizip、openal-soft、openssl@3、opus、protobuf、xxhash、zlib、glib、glibmm、hunspell、ffmpeg、libjxl、openh264、libvpx、libxcb、libxkbcommon、cmark-gfm、libdispatch、libiconv、pango、libqrcodegen、icu4c@78、zstd、zlib-ng-compat、dav1d、libpng、libde265、libtiff、webp、x265、abseil、bison、python-setuptools、pcre2
+- 仅命令获取（cmd_only）：aom、ca-certificates
+- 需自行移植（need_port）：ada、microsoft、range、tde2e、tg_owt、tl、toomanycooks、breakpad-client、giomm-2.68、libudev、pangocairo、pangoft2、rnnoise、angle、auto_updates、crash_reports、ranges、tlottie、tmc、webrtc
   - ada: ?
-  - auto_updates: ?
-  - crash_reports: ?
-  - rnnoise: ?
+  - microsoft: ?
+  - range: ?
   - tde2e: ?
-  - webrtc: ?
+  - tg_owt: ?
+  - tl: ?
+  - toomanycooks: ?
+  - breakpad-client: ?
+  - giomm-2.68: ?
+  - libudev: ?
 
 ## 5. 直接依赖全量清单（portgraph depth-1）
 
 | 节点 | 类型 | 边 | port_status | 深度 |
 |---|---|---|---|---|
+| KF archive | framework | runtime | unknown | 1 |
+| KF coreaddons | framework | runtime | unknown | 1 |
+| KF desktoptojson | framework | runtime | unknown | 1 |
 | ada | package | runtime | unknown | 1 |
+| angle | package | runtime | unknown | 1 |
 | auto_updates | package | runtime | unknown | 1 |
 | boost | package | runtime | ported | 1 |
+| breakpad-client | package | runtime | unknown | 1 |
 | cmark-gfm | package | runtime | ported | 1 |
 | crash_reports | package | runtime | unknown | 1 |
 | ffmpeg | package | runtime | ported | 1 |
+| giomm-2.68 | package | runtime | unknown | 1 |
 | glib | package | runtime | ported | 1 |
-| libfido2 | package | runtime | ported | 1 |
+| glibmm | package | runtime | ported | 1 |
+| hunspell | package | runtime | ported | 1 |
+| jpeg-turbo | package | runtime | ported | 1 |
+| libavif | package | runtime | ported | 1 |
+| libdispatch | package | runtime | ported | 1 |
+| libheif | package | runtime | ported | 1 |
 | libiconv | package | runtime | ported | 1 |
+| libjxl | package | runtime | ported | 1 |
 | libqrcodegen | package | runtime | ported | 1 |
 | libudev | package | runtime | unknown | 1 |
+| libvpx | package | runtime | ported | 1 |
+| libxcb | package | runtime | ported | 1 |
+| libxkbcommon | package | runtime | ported | 1 |
+| libxxhash | package | runtime | ported | 1 |
+| lz4 | package | runtime | ported | 1 |
+| microsoft | package | runtime | unknown | 1 |
 | minizip | package | runtime | ported | 1 |
 | openal-soft | package | runtime | ported | 1 |
+| openh264 | package | runtime | ported | 1 |
 | openssl@3 | package | runtime | ported | 1 |
+| opus | package | runtime | ported | 1 |
+| pango | package | runtime | ported | 1 |
+| pangocairo | package | runtime | unknown | 1 |
+| pangoft2 | package | runtime | unknown | 1 |
+| protobuf | package | runtime | ported | 1 |
+| range | package | runtime | unknown | 1 |
+| ranges | package | runtime | unknown | 1 |
 | rnnoise | package | runtime | unknown | 1 |
 | tde2e | package | runtime | unknown | 1 |
+| tg_owt | package | runtime | unknown | 1 |
+| tl | package | runtime | unknown | 1 |
+| tlottie | package | runtime | unknown | 1 |
+| tmc | package | runtime | unknown | 1 |
+| toomanycooks | package | runtime | unknown | 1 |
 | webrtc | package | runtime | unknown | 1 |
 | xxhash | package | runtime | ported | 1 |
+| xz | package | runtime | ported | 1 |
 | zlib | package | runtime | ported | 1 |
 | Qt Core | qt-module | uses-module | ported | 1 |
+| Qt D-Bus | qt-module | uses-module | blocked | 1 |
 | Qt GUI | qt-module | uses-module | ported | 1 |
 | Qt Network | qt-module | uses-module | ported | 1 |
+| Qt Quick | qt-module | uses-module | ported | 1 |
+| Qt Quick Widgets | qt-module | uses-module | ported | 1 |
 | Qt SVG | qt-module | uses-module | ported | 1 |
+| Qt Wayland Compositor | qt-module | uses-module | blocked | 1 |
 | Qt Widgets | qt-module | uses-module | ported | 1 |
 
 ## 6. 方法说明
@@ -127,4 +211,4 @@
 - 对比口径：portgraph 直接依赖（depth-1 边）vs README/INSTALL 声明依赖；闭包仅做产物概览。
 - 归因证据：对未匹配项自动 grep 克隆仓库构建文件（find_package/pkg_check_modules/target_link_libraries/vcpkg 等）。
 - ★ 类（missed-dep / resolution-gap / false-positive）为 bug 候选，需人工确认；其余为预期差异。
-- agent 可读报告：`/root/harmony-workspace/worker1/portgraph/tests/e2e/reports/tdesktop.report.json`
+- agent 可读报告：`/root/harmony-workspace/worker4/portgraph/tests/e2e/reports/tdesktop.report.json`
