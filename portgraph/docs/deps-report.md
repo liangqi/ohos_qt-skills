@@ -200,6 +200,10 @@ flowchart TB
 
 ## 依赖闭包与扫描口径
 
+- **性能口径**：deps 报告内所有 runtime 闭包 BFS 共享同一份节点/出边缓存
+  （`_GraphCache`），图查询总量 O(V+E)；此前每个 link 依赖独立查库，
+  200 依赖 × 深链图实测 24 万次 SQL 查询
+
 - **版本信息来自构建文件原文**：`find_package` 参数、pkg-config spec、
   meson `version:`、autotools `PKG_CHECK_MODULES`、Conan/vcpkg 清单、
   `.gitmodules`；`deps` 传路径时自动入库（幂等重扫），传应用名时用
@@ -246,6 +250,11 @@ manifest 顶层新增 `roles` 计数。深度判定是**图口径**的近似；�
 REQUIRED/OPTIONAL 语义的精确分类用 `deps` 报告。
 
 ## 已知限制
+
+- **libav* 版本约束不可比**：`pkg_check_modules("libavcodec >= 58")` 的版本号是
+  **库主版本号**（58 ≈ ffmpeg 4.x），与 ffmpeg 发布版本（如 7.1）不同量纲。
+  跨名归并到 ffmpeg 后此类约束携带 `version_req_from`（约束来源库名），
+  `version_check` 记 `unknown` 而非误报 `conflict`
 
 - find_package 名称 → hb 包名的匹配依赖 `kb_seed.resolve_package` 别名表 +
   前缀/后缀规则，同名异义（如多精度库 MPC vs 音乐播放器 mpc）可能错配，

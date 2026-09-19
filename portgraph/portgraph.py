@@ -267,8 +267,8 @@ def cmd_fetch_deps(args) -> None:
         total = len(deps_fetch.dependency_closure(conn, app_id))
         done = {"n": 0}
         order = ["downloaded", "already_local", "failed", "covered",
-                 "provided", "cmd_only", "need_port", "would_download",
-                 "target"]
+                 "provided", "cmd_only", "need_port", "test",
+                 "would_download", "target"]
 
         def on_entry(e):
             done["n"] += 1
@@ -288,6 +288,9 @@ def cmd_fetch_deps(args) -> None:
             elif st == "cmd_only":
                 print("[%d/%d] %s 命令获取: %s"
                       % (done["n"], total, e["name"], e["artifact_cmd"]))
+            elif st == "test":
+                print("[%d/%d] %s 测试专用依赖（不进发行包，跳过）"
+                      % (done["n"], total, e["name"]))
             elif st == "need_port":
                 src = (e.get("repo_url") or e.get("source_url")
                        or e.get("homepage"))
@@ -337,9 +340,16 @@ def cmd_deps(args) -> None:
     db.init_db(conn)
     try:
         target = args.target
-        root = None
-        if Path(target).is_dir():
-            root = Path(target)
+        p = Path(target)
+        if p.is_dir():
+            root = p
+        elif p.exists() or "/" in target or "\\" in target \
+                or target.startswith("."):
+            # 用户传的是路径形态（含分隔符/存在但非目录），按路径报错
+            # 而非误导性的 "app not found"
+            print("[portgraph] 项目路径不存在或不是目录: %s"
+                  "（若想按已扫描应用分析，请传应用名如 tdesktop）" % target)
+            sys.exit(1)
         else:
             app_id = _resolve_app(conn, target)
             root_path = db.get_meta(conn, "root_%s" % app_id)

@@ -240,6 +240,11 @@ def _classify_special(entry: Dict, name_lower: str, node: Dict,
         entry["role"] = "test"
         entry["note"] = ("测试框架，不进发行包；"
                          "仅当需要在鸿蒙设备上跑测试时才处理")
+        # 无产物的幽灵节点直接标 test（无需鸿蒙产物，此前误报 need_port）；
+        # bottle 存在时 status 随产物可用性走（保留下载信息）
+        if not (node and (node.get("artifact_url")
+                          or node.get("artifact_cmd"))):
+            entry["status"] = "test"
         return
     if (depth == 1 and name_lower in deps_report.BUILD_TOOL_FINDPKG
             and not (node.get("artifact_url") or node.get("artifact_cmd"))):
