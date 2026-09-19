@@ -1207,6 +1207,174 @@ find_library(QUAZIP_LIBRARIES WIN32_DEBUG_POSTFIX d
             self.assertIsNone(_match_in_tree_dir(idx, "lager"))
             self.assertIsNone(_match_in_tree_dir(idx, "lcms"))
 
+    # ---- 6e) git 子模块 link 依赖（tdesktop kcoreaddons/microtex 实证）：
+    #          浅克隆未初始化时子模块目录为空，in-tree 索引不可见，
+    #          但 .gitmodules 已声明 → 未解析名归 in-tree，不误报
+    #          "无产物 → 需源码编译"；已解析到产物的同名依赖追加
+    #          "子模块可随项目编译"注记（cmark-gfm/xxhash 实证）
+    def test_submodule_link_classification(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            root.mkdir()
+            (root / ".gitmodules").write_text(
+                '[submodule "Telegram/ThirdParty/kcoreaddons"]\n'
+                "\tpath = Telegram/ThirdParty/kcoreaddons\n"
+                "\turl = https://github.com/KDE/kcoreaddons.git\n"
+                '[submodule "Telegram/ThirdParty/xxHash"]\n'
+                "\tpath = Telegram/ThirdParty/xxHash\n"
+                "\turl = https://github.com/Cyan4973/xxHash.git\n",
+                encoding="utf-8")
+            (root / "CMakeLists.txt").write_text(
+                "add_executable(app main.cpp)\n"
+                "target_link_libraries(app PRIVATE\n"
+                "  desktop-app::external_kcoreaddons\n"
+                "  desktop-app::external_xxhash)\n", encoding="utf-8")
+            (root / "main.cpp").write_text("int main(){}\n", encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:xxhash", "package", "xxhash",
+                           "harmonybrew", "ported", version="0.8.3",
+                           links={"artifact_url": "http://x/xxhash.tar.gz"})
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            # 未解析 + 子模块声明 → in-tree（源码随仓库自带）
+            self.assertEqual(link["kcoreaddons"]["kind"], "in-tree")
+            self.assertTrue(link["kcoreaddons"]["artifact"]["ready"])
+            self.assertIn("git 子模块",
+                          link["kcoreaddons"]["artifact"]["source"])
+            # 已解析到产物 + 子模块声明 → 产物可用，但注明子模块备选
+            self.assertEqual(link["xxhash"]["kind"], "package")
+            self.assertTrue(link["xxhash"]["artifact"]["ready"])
+            self.assertIn("子模块", link["xxhash"]["ohos_note"])
+            conn.close()
+
+    # ---- 6f) CPMAddPackage(NAME <name> ...) 名字提取（NotepadNext
+    #          实证：曾把字面量 NAME 当包名，vendored 段出现垃圾条目
+    #          "NAME"；真实名 ads/QSimpleUpdater 应被提取）
+    def test_cpm_name_keyword(self):
+        from port_graph.qt_scanner import _detect_fetched_deps
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "thirdparty").mkdir()
+            (root / "thirdparty" / "CMakeLists.txt").write_text(
+                "CPMAddPackage(\n"
+                "    NAME ads\n"
+                "    GITHUB_REPOSITORY githubuser0xFFFF/Qt-Advanced-Docking-System\n"
+                "    GIT_TAG 5.0.0)\n"
+                "CPMAddPackage(\n"
+                "    NAME QSimpleUpdater\n"
+                "    GITHUB_REPOSITORY alex-spataru/QSimpleUpdater\n"
+                "    GIT_TAG c5c136c)\n"
+                "FetchContent_Declare(foo GIT_REPOSITORY https://x/foo.git)\n",
+                encoding="utf-8")
+            out = _detect_fetched_deps(root, ["thirdparty/CMakeLists.txt"])
+            names = {d["name"] for d in out}
+            self.assertIn("ads", names)
+            self.assertIn("QSimpleUpdater", names)
+            self.assertIn("foo", names)
+            self.assertNotIn("NAME", names)
+
+    # ---- 6g) CPM/FetchContent 拉取的包：链接名命中（含宽松折叠，
+    #          qtadvanceddocking-qt6 ≡ ads 的 URL 末段）→ in-tree，
+    #          不再误报 need_port（NotepadNext 实证）
+    def test_fetched_dep_link_classification(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            root.mkdir()
+            (root / "thirdparty").mkdir()
+            (root / "thirdparty" / "CMakeLists.txt").write_text(
+                "CPMAddPackage(\n"
+                "    NAME ads\n"
+                "    GITHUB_REPOSITORY githubuser0xFFFF/Qt-Advanced-Docking-System\n"
+                "    GIT_TAG 5.0.0)\n"
+                "CPMAddPackage(\n"
+                "    NAME editorconfig_core_qt\n"
+                "    GITHUB_REPOSITORY editorconfig/editorconfig-core-qt\n"
+                "    GIT_TAG ab62f05)\n", encoding="utf-8")
+            (root / "CMakeLists.txt").write_text(
+                "add_executable(app main.cpp)\n"
+                "target_link_libraries(app PRIVATE\n"
+                "  qtadvanceddocking-qt6\n"
+                "  editorconfig-core-qt)\n", encoding="utf-8")
+            (root / "main.cpp").write_text("int main(){}\n", encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            for nm in ("qtadvanceddocking-qt6", "editorconfig-core-qt"):
+                self.assertEqual(link[nm]["kind"], "in-tree", nm)
+                self.assertTrue(link[nm]["artifact"]["ready"], nm)
+            conn.close()
+
+    # ---- 6h) find_package(<自身项目名>) 自引用（cutter 实证：曾误
+    #          解析到同名无关包 cmdpkgs:cutter）：根 project() 名跳过；
+    #          vendored 子目录里 project(fakevim) 不影响宿主声明
+    def test_find_package_self_reference(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "project(Cutter)\n"
+                "find_package(Cutter REQUIRED)\n"
+                "find_package(OpenSSL REQUIRED)\n", encoding="utf-8")
+            lib = root / "src" / "libraries" / "fakevim"
+            lib.mkdir(parents=True)
+            (lib / "CMakeLists.txt").write_text(
+                "project(fakevim)\nadd_library(fakevim f.cpp)\n",
+                encoding="utf-8")
+            (root / "src" / "CMakeLists.txt").write_text(
+                "find_package(fakevim REQUIRED)\n", encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            report = deps_report.analyze_dependencies(conn, root)
+            names = {d["name"].lower() for d in report["link_deps"]}
+            self.assertNotIn("cutter", names)     # 自引用不误入
+            self.assertIn("openssl", names)         # 正常外部包保留
+            conn.close()
+
+    # ---- 6i) meson 内部依赖与子项目（cutter/rizin 实证）：
+    #          override_dependency 定义的目标（rz_core）与
+    #          subprojects/ 自带子项目（zydis）→ in-tree；
+    #          外部依赖（pcre2）保留为 package
+    def test_meson_internal_dep_classification(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            librz = root / "librz" / "core"
+            librz.mkdir(parents=True)
+            (librz / "meson.build").write_text(
+                "rz_core_dep = declare_dependency(...\n"
+                "meson.override_dependency('rz_core', rz_core_dep)\n",
+                encoding="utf-8")
+            sp = root / "subprojects" / "zydis"
+            sp.mkdir(parents=True)
+            (sp / "meson.build").write_text(
+                "project('zydis')\n", encoding="utf-8")
+            (root / "meson.build").write_text(
+                "project('rizin', 'cpp')\n"
+                "rz_core_dep = dependency('rz_core')\n"
+                "zydis_dep = dependency('zydis')\n"
+                "pcre2_dep = dependency('libpcre2-@0@')\n",
+                encoding="utf-8")
+            from port_graph import qt_scanner
+            info = qt_scanner.scan_project(root)
+            md = {d["name"]: d for d in info["meson_deps"]}
+            self.assertTrue(md["rz_core"].get("internal"))
+            self.assertTrue(md["zydis"].get("internal"))
+            self.assertIn("libpcre2", md)      # @0@ 占位符已剥
+            self.assertNotIn("libpcre2-@0@", md)
+            self.assertFalse(md["libpcre2"].get("internal"))
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            report = deps_report.analyze_dependencies(conn, root, info)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            self.assertEqual(link["rz_core"]["kind"], "in-tree")
+            self.assertEqual(link["zydis"]["kind"], "in-tree")
+            conn.close()
+
     # ---- 7) 裸链接名命中测试框架 → test 角色
     def test_raw_lib_test_framework(self):
         with tempfile.TemporaryDirectory() as tmp:

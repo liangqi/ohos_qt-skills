@@ -49,8 +49,16 @@ PLATFORM_API_RULES: List[Dict] = [
                        r"#\s*include\s*<\s*QtDBus"),
      "pre": ("dbus/", "QDBusConnection", "QtDBus")},
     {"iface": "iface:alsa",
-     "re": re.compile(r"#\s*include\s*<\s*alsa/|\bsnd_"),
-     "pre": ("alsa/", "snd_")},
+     # 只认真实 ALSA API 前缀：裸 snd_ 会命中任意变量名
+     # （cutter/rizin 实证：生成的 scanner.c 里 snd_last_ch 变量名
+     # 曾导致整个应用被误判 blocked）
+     "re": re.compile(r"#\s*include\s*<\s*alsa/|\bsnd_(pcm|ctl|mixer|seq|"
+                       r"rawmidi|card|config|lib|hwdep|timer|input|output|"
+                       r"error)[_\w]*"),
+     "pre": ("alsa/", "snd_pcm", "snd_ctl", "snd_mixer", "snd_seq",
+             "snd_rawmidi", "snd_card", "snd_config", "snd_lib",
+             "snd_hwdep", "snd_timer", "snd_input", "snd_output",
+             "snd_error")},
     {"iface": "iface:pulseaudio",
      "re": re.compile(r"#\s*include\s*<\s*pulse/|\bpa_simple|\bpa_mainloop"),
      "pre": ("pulse/", "pa_simple", "pa_mainloop")},
@@ -505,6 +513,11 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
     for md in manifest:
         if md["mode"] == "link" and md["name"] not in names:
             names.append(md["name"])
+    # project() 自引用（如 Cutter 插件样例 find_package(Cutter)）：
+    # 不是外部依赖，避免误解析到同名无关包（cmdpkgs:cutter 实证）
+    self_names = {n.lower() for n in info.get("cmake_project_names", [])}
+    if self_names:
+        names = [n for n in names if n.lower() not in self_names]
 
     # optional 名单：全部声明点都在 OFF 默认选项守卫内的包
     # （scanner 层已保证必需优先：任一必需声明点即不入 optional 名单）
@@ -568,6 +581,10 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
 
     linked, unknown, optional = [], [], []
     seen = set()
+    # git 子模块折叠名（提前算：主名单与裸链接名共用）——
+    # find_package(Rizin) 而仓库自带 rizin/ 子模块（默认 bundled 构建）
+    # 不建幽灵：源码随项目（cutter 实证）
+    submodule_folds = _submodule_folds(info.get("git_submodules", []))
 
     # ---- 主名单：同库异名分组（组内代表名 = 能解析到已知包的 >
     #      带分隔符的（pkg-config/hb 命名口径）> 首个出现的）
@@ -605,12 +622,14 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
         if (rep_node is None and edge_type == "runtime"
                 and rep.lower() in _skip):
             continue
+        # 未解析且名折 Git 子模块（默认 bundled 随项目编译）：不建幽灵
+        if rep_node is None and _fold_dep_name(rep) in submodule_folds:
+            continue
         _emit(rep, rep_node, rep_alias, merged=merged, edge_type=edge_type)
 
     # ---- 裸链接名（含 ns::external_<name> 导入目标，剥前缀后标记
     #      ext_target）：能解析则连边；external-target 高置信声明
     #      在未解析且非 vendored 子模块时建幽灵节点
-    submodule_folds = _submodule_folds(info.get("git_submodules", []))
     for rl in info.get("raw_libs", []):
         name = rl["name"]
         if name.lower() in seen:

@@ -149,6 +149,9 @@ _FETCHED_HOW = {"FetchContent_Declare": "FetchContent",
 _QMAKE_PKGCONFIG_RE = re.compile(r"^\s*PKGCONFIG\s*\+=\s*(.+)$", re.M)
 # meson: dependency('name'[, version: '>=x'[, required: false[, modules: [...]]]])
 _MESON_DEP_RE = re.compile(r"dependency\s*\(\s*'([^']+)'([^)]*)\)", re.S)
+# meson 项目内定义的依赖（override_dependency）：不是外部包
+_MESON_OVERRIDE_RE = re.compile(
+    r"meson\s*\.\s*override_dependency\s*\(\s*'([^']+)'")
 _MESON_VER_RE = re.compile(r"version:\s*'([^']+)'")
 _MESON_OPT_RE = re.compile(r"required:\s*false")
 _MESON_MODS_RE = re.compile(r"modules:\s*\[([^\]]*)\]")
@@ -266,6 +269,9 @@ def scan_project(project_root) -> Dict:
     # 提取——find_package 常集中在被 include() 的 .cmake 里（如 qBittorrent
     # 的 CheckPackages.cmake）
     info["cmake_files"] = cmake_files
+    # project() 自身名（供 project_scanner 自引用过滤）
+    info["cmake_project_names"] = sorted(
+        _cmake_project_names(root, cmake_files))
     info["sources"] = sources
     info["binary_artifacts"] = binaries
     info["language_stats"] = lang_stats
@@ -534,7 +540,7 @@ WIN32_SYSTEM_LIBS = {
     "psapi", "version", "iphlfapi", "powrprof", "setupapi", "strmiids",
     "avifil32", "mfplat", "mfuuid", "strmbase", "strmbasd", "wtsapi32",
     "windowsapp", "delayimp", "opengl32", "glu32", "wintrust", "shcore",
-    "winscard", "bcrypt", "hid", "winusb", "cfgmgr32",
+    "winscard", "bcrypt", "hid", "winusb", "cfgmgr32", "dbghelp",
 }
 
 # find_package 名为构建工具/解释器（主机侧，非应用运行时依赖）。
@@ -691,6 +697,26 @@ def _find_module_optional_files(cmake_files: List[str],
             if Path(rel).name.lower() in wanted}
 
 
+def _cmake_project_names(root: Path, cmake_files: List[str]) -> set:
+    """根 CMakeLists.txt 的 project() 项目名（小写）：
+    find_package(<自身项目名>) 是自引用（如 Cutter 插件样例
+    find_package(Cutter REQUIRED)），不是外部依赖（曾误解析到
+    同名无关包 cmdpkgs:cutter）。
+
+    只收根目录 CMakeLists.txt：vendored 子目录里
+    project(fakevim)（QOwnNotes src/libraries 布局）声明的是子项目
+    自己的名字，其存在不代表宿主 find_package(fakevim) 是自引用。
+    """
+    names = set()
+    rx = re.compile(r"\bproject\s*\(\s*([A-Za-z][A-Za-z0-9_-]*)")
+    for rel in cmake_files:
+        if Path(rel).parts[:-1] or Path(rel).name != "CMakeLists.txt":
+            continue          # 仅根 CMakeLists.txt
+        for m in rx.finditer(_read_text(root / rel)):
+            names.add(m.group(1).lower())
+    return names
+
+
 def _detect_cmake_packages(root: Path, cmake_files: List[str]) -> Dict:
     """从 CMake 中提取第三方包：find_package(*) 和 pkg_check_modules。
 
@@ -708,6 +734,8 @@ def _detect_cmake_packages(root: Path, cmake_files: List[str]) -> Dict:
     vart = _collect_cmake_vars(root, cmake_files)
     guards = _cmake_guard_context(root, cmake_files)
     skip_prefixes = ("qt", "kf")
+    # project() 自身名：find_package(<项目名>) 是自引用，跳过
+    self_names = _cmake_project_names(root, cmake_files)
 
     def _line_of(text: str, pos: int) -> int:
         return text.count("\n", 0, pos) + 1
@@ -722,6 +750,7 @@ def _detect_cmake_packages(root: Path, cmake_files: List[str]) -> Dict:
             name = m.group(1).lower()
             if (name.startswith(skip_prefixes) or name in _CMAKE_KW
                     or name in _FINDPKG_SKIP
+                    or name in self_names
                     or name.replace(".", "").isdigit()):
                 continue
             if gmap.get(_line_of(text, m.start())):
@@ -1068,6 +1097,7 @@ def _detect_find_package_details(root: Path, info: Dict) -> List[Dict]:
     """
     vart = _collect_cmake_vars(root, info["cmake_files"])
     guards = _cmake_guard_context(root, info["cmake_files"])
+    self_names = _cmake_project_names(root, info["cmake_files"])
     out: List[Dict] = []
     for rel in info["cmake_files"]:
         if _is_vendored_path(rel):
@@ -1079,6 +1109,8 @@ def _detect_find_package_details(root: Path, info: Dict) -> List[Dict]:
             detail = _parse_findpkg_args(m.group(1),
                                          _subst_vars(m.group(2) or "", vart),
                                          rel, line)
+            if detail["name"].lower() in self_names:
+                continue    # project() 自引用（如 Cutter 插件样例）
             if gmap.get(line):
                 detail["optional"] = True
             out.append(detail)
@@ -1401,12 +1433,15 @@ def _detect_cmake_raw_links(root: Path, cmake_files: List[str]):
 
 def _detect_fetched_deps(root: Path, cmake_files: List[str]) -> List[Dict]:
     """FetchContent_Declare / ExternalProject_Add / CPMAddPackage：
-    configure 阶段拉取的源码依赖（GIT_REPOSITORY/URL + GIT_TAG/VERSION）。"""
+    configure 阶段拉取的源码依赖（GIT_REPOSITORY/URL + GIT_TAG/VERSION）。
+
+    不跳过 vendored 路径：thirdparty/CMakeLists.txt 常是宿主自己写的
+    拉取胶水（NotepadNext 实证：CPM 声明全在 thirdparty/，跳过导致
+    ads/QSimpleUpdater 等自带声明丢失，链接名无从归并为 in-tree）。
+    """
     out: List[Dict] = []
     seen = set()
     for rel in cmake_files:
-        if _is_vendored_path(rel):
-            continue
         text = _strip_cmake_comments(_read_text(root / rel))
         for m in _FETCHED_DECLARE_RE.finditer(text):
             cmd, name, args = m.group(1), m.group(2), m.group(3)
@@ -1415,6 +1450,15 @@ def _detect_fetched_deps(root: Path, cmake_files: List[str]) -> List[Dict]:
             url = um.group(1).strip('",') if um else None
             if name in ("GITHUB_REPOSITORY", "GIT_REPOSITORY", "URL"):
                 name = url.split("/")[-1] if url else name
+            elif name == "NAME":
+                # CPMAddPackage(NAME <name> ...)：首 token 是关键字 NAME，
+                # 实际包名在其后（NotepadNext 实证：曾把字面量 NAME 当包名）
+                nm = re.match(r"\s*\"?([A-Za-z0-9_.:+-]+)", args)
+                if not nm or nm.group(1).startswith("$"):
+                    # CPM 实现文件内部的 CPMAddPackage(NAME ${Name})：
+                    # 无法静态解析，跳过（曾产生垃圾条目 "NAME"）
+                    continue
+                name = nm.group(1)
             name = name.strip('",')
             key = name.lower()
             if key in seen:
@@ -1426,15 +1470,74 @@ def _detect_fetched_deps(root: Path, cmake_files: List[str]) -> List[Dict]:
     return out
 
 
+def _meson_internal_names(root: Path, meson_files: List[str]) -> set:
+    """meson 项目内部定义/自带的依赖名集合（折叠口径：小写、去非字母
+    数字、去 lib 前缀）：
+
+    - meson.override_dependency('name', ...) —— 项目自身 library() 定义
+      的依赖（rizin 的 rz_core/rz_util 等，cutter 实证：曾整批误报
+      need_port，实际由 vendored rizin 子模块随项目编译）
+    - <meson 项目根>/subprojects/ 下的目录名与 .wrap 文件名 —— meson
+      自带子项目（zydis/softfloat/ptrace-wrap 等）
+    """
+    internal: Dict[str, str] = {}
+
+    def fold(n: str) -> str:
+        f = re.sub(r"[^a-z0-9]+", "", (n or "").lower())
+        if f.startswith("lib") and len(f) > 3:
+            f = f[3:]
+        return f
+
+    for rel in meson_files:
+        text = _read_text(root / rel)
+        for m in _MESON_OVERRIDE_RE.finditer(text):
+            internal.setdefault(fold(m.group(1)), m.group(1))
+    # subprojects 目录（meson 项目根的 ./subprojects/）
+    roots = set()
+    for rel in meson_files:
+        parts = Path(rel).parts
+        if "subprojects" in parts:
+            # 子项目自身的 meson.build：取 subprojects/ 后的目录名
+            i = parts.index("subprojects")
+            if i + 1 < len(parts) and parts[i + 1] != "packagefiles":
+                internal.setdefault(fold(parts[i + 1]), parts[i + 1])
+            roots.add(str(Path(*parts[:i])))
+        else:
+            roots.add(str(Path(*parts[:-1])))
+    for r in roots:
+        sp = root / r / "subprojects"
+        if not sp.is_dir():
+            continue
+        try:
+            entries = list(sp.iterdir())
+        except OSError:
+            continue
+        for e in entries:
+            nm = e.name[:-5] if e.name.endswith(".wrap") else e.name
+            if nm and nm != "packagefiles":
+                internal.setdefault(fold(nm), nm)
+    return set(internal)
+
+
 def _absorb_meson(root: Path, info: Dict, meson_files: List[str]) -> None:
     """meson.build：dependency('name', version:) / cc.find_library /
     meson_version / cpp_std / subproject() / qt5|qt6 modules。
 
     结果合并进 info（meson_deps / meson / raw_libs / qt_modules）。
+    内部依赖（override_dependency/subprojects 自带）标 internal=True，
+    供 deps_report 归 in-tree 而非 need_port（cutter/rizin 实证）。
     """
     meson_info: Dict = {"version_min": None, "cxx_standard": None,
-                        "subprojects": []}
+                        "subprojects": [], "internal_deps": []}
     deps: Dict[str, Dict] = {}
+    internal = _meson_internal_names(root, meson_files)
+
+    def _fold(n: str) -> str:
+        f = re.sub(r"[^a-z0-9]+", "", (n or "").lower())
+        if f.startswith("lib") and len(f) > 3:
+            f = f[3:]
+        return f
+
     for rel in meson_files:
         text = _read_text(root / rel)
         if not meson_info["version_min"]:
@@ -1447,10 +1550,16 @@ def _absorb_meson(root: Path, info: Dict, meson_files: List[str]) -> None:
                 if sm:
                     meson_info["cxx_standard"] = int(sm.group(1))
         for sp in _MESON_SUBPROJECT_RE.finditer(text):
-            if sp.group(1) not in meson_info["subprojects"]:
-                meson_info["subprojects"].append(sp.group(1))
+            sp_name = sp.group(1).rstrip("-_+.")
+            if sp_name and sp_name not in meson_info["subprojects"]:
+                meson_info["subprojects"].append(sp_name)
         for m in _MESON_DEP_RE.finditer(text):
             name, args = m.group(1), m.group(2)
+            # meson 字符串插值（'libpcre2-@0@'）：剥占位符，否则
+            # "libpcre2-@0@" 之类垃圾名入报告（rizin/meson.build 实证）
+            name = name.replace("@0@", "").rstrip("-_.")
+            if not name:
+                continue
             if name in ("qt5", "qt6"):
                 info["qt_version_hint"] = info.get("qt_version_hint") or name[2]
                 mm = _MESON_MODS_RE.search(args)
@@ -1466,9 +1575,14 @@ def _absorb_meson(root: Path, info: Dict, meson_files: List[str]) -> None:
                 e["version"] = vm.group(1)
             if _MESON_OPT_RE.search(args):
                 e["required"] = False
+            if _fold(name) in internal:
+                e["internal"] = True
         for fl in _MESON_FINDLIB_RE.finditer(text):
+            if _fold(fl.group(1)) in internal:
+                continue    # 项目内部库（override_dependency 定义）
             _merge_raw_lib(info["raw_libs"], fl.group(1),
                            "cc.find_library", rel)
+    meson_info["internal_deps"] = sorted(internal)
     info["meson"] = meson_info
     info["meson_deps"] = sorted(deps.values(), key=lambda d: d["name"])
 

@@ -255,6 +255,70 @@ def _in_tree_dir_index(root: Path) -> Dict[str, str]:
     return out
 
 
+def _loose_folds(n: str) -> set:
+    """依赖名宽松折叠候选集：小写、去非字母数字、去 lib 前缀、
+    去尾部 qt5/qt6/system 变体 token。
+
+    editorconfig_core_qt ≡ editorconfig-core-qt；
+    Qt-Advanced-Docking-System ≡ qtadvanceddocking-qt6（CPM 名 ads
+    vs 链接目标名 qtadvanceddocking-qt6，NotepadNext 实证）。"""
+    toks = [t for t in re.split(r"[-_./]+", (n or "").lower()) if t]
+    while toks and toks[-1] in ("qt5", "qt6", "system"):
+        toks = toks[:-1]
+    out = set()
+    if toks:
+        f = "".join(toks)
+        out.add(f)
+        if f.startswith("lib") and len(f) > 3:
+            out.add(f[3:])
+    return {f for f in out if len(f) >= 3}
+
+
+def _vendored_declarations(info: Dict) -> Dict[str, tuple]:
+    """项目自带源码声明索引：宽松折叠名 → (标签, 详情)。
+
+    覆盖四类“随项目编译”的声明：
+    - git 子模块（.gitmodules；浅克隆未初始化时目录为空，
+      _in_tree_dir_index 不可见）——tdesktop kcoreaddons/microtex 实证
+    - CPM/FetchContent/ExternalProject 配置期拉取（fetched_deps；
+      名字或 URL 末段均可匹配）——NotepadNext ads/QSimpleUpdater 实证
+    - meson 自带子项目（subprojects/ 目录与 .wrap）与项目内部
+      override_dependency 目标——cutter/rizin 的 zydis/rz_* 实证
+    """
+    out: Dict[str, tuple] = {}
+
+    def add(nm: str, label: str, detail: str) -> None:
+        for f in _loose_folds(nm):
+            if f not in out:
+                out[f] = (label, detail)
+
+    for gm in info.get("git_submodules") or []:
+        cands = [gm.get("name") or "", gm.get("path") or ""]
+        url_last = ((gm.get("url") or "").rstrip("/").rsplit("/", 1)[-1])
+        if url_last.endswith(".git"):
+            url_last = url_last[:-4]
+        cands.append(url_last)
+        path = gm.get("path") or gm.get("name") or ""
+        for c in cands:
+            add(c, "git 子模块", path)
+    for fd in info.get("fetched_deps") or []:
+        nm = fd.get("name") or ""
+        how = fd.get("how") or "FetchContent"
+        add(nm, how, nm)
+        url = fd.get("url") or ""
+        last = url.rstrip("/").rsplit("/", 1)[-1]
+        if last.endswith(".git"):
+            last = last[:-4]
+        if last:
+            add(last, how, nm)
+    meson = info.get("meson") or {}
+    for nm in meson.get("internal_deps") or []:
+        add(nm, "meson 子项目/内部目标", nm)
+    for nm in meson.get("subprojects") or []:
+        add(nm, "meson 子项目", nm)
+    return out
+
+
 def _match_in_tree_dir(index: Dict[str, str], name: str) -> Optional[str]:
     """未解析的库名 → 项目内同名源码目录（去版本后缀/别名口径）。"""
     cands = [name.lower()]
@@ -713,6 +777,7 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
     graph_cache = _GraphCache(conn) if conn is not None else None
     resolve_cache: Dict[str, Optional[Dict]] = {}
     in_tree_index: Optional[Dict[str, str]] = None   # 惰性构建
+    vendored_decls = _vendored_declarations(info)
     link_list = link.values()
     for entry in link_list:
         skip_resolve = entry["kind"] in ("system-lib", "win32-system-lib",
@@ -737,6 +802,33 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                                      "source": "in-tree:%s" % hit}
                 entry["ohos_note"] = ("项目内自带源码目录（%s）：随项目"
                                       "编译，无需外部产物" % hit)
+        # 未解析且命中项目自带源码声明（git 子模块 / CPM-FetchContent
+        # / meson 子项目与内部目标）：源码随项目，不是外部 need_port
+        # 缺口（tdesktop kcoreaddons、NotepadNext QSimpleUpdater、
+        # cutter rz_*/zydis 实证）
+        if node is None and entry["kind"] == "package" and vendored_decls:
+            hit = next((vendored_decls[f]
+                        for f in _loose_folds(entry["name"])
+                        if f in vendored_decls), None)
+            if hit:
+                label, detail = hit
+                entry["kind"] = "in-tree"
+                entry["artifact"] = {"ready": True, "provided": True,
+                                     "source": "%s:%s" % (label, detail)}
+                entry["ohos_note"] = (
+                    "%s（%s）：源码随项目编译，无需外部产物" % (label, detail))
+        # 已解析到鸿蒙产物、但项目同时自带该库源码：bottle 为备选
+        if (node is not None and entry["kind"] == "package"
+                and vendored_decls):
+            hit = next((vendored_decls[f]
+                        for f in _loose_folds(entry["name"])
+                        if f in vendored_decls), None)
+            if hit:
+                label, detail = hit
+                entry["ohos_note"] = ((entry.get("ohos_note") or "")
+                                      + "；项目自带该库源码（%s %s），"
+                                        "可随项目编译，bottle 为备选"
+                                        % (label, detail)).lstrip("；")
         if entry["kind"] == "system-lib":
             entry["artifact"] = entry["artifact"] or {
                 "ready": True, "provided": True, "source": "ohos-system"}

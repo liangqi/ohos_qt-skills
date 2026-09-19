@@ -249,6 +249,8 @@ PKG_ALIASES: Dict[str, str] = {
     "chromaprint": "chromaprint", "mp3lame": "lame",
     # pkg-config 模块名无 lib 前缀 → hb 包名（e2e keepassxc 复核确认的缺口）
     "xkbcommon": "libxkbcommon", "x11": "libx11",
+    # graphviz 的链接库（cutter pkg_check_modules(libgvc) → graphviz 包）
+    "libgvc": "graphviz", "libcgraph": "graphviz", "libcdt": "graphviz",
     # PC/SC 智能卡栈：find_package(PCSC)/pkg-config libpcsclite/find_library
     # pcsclite → pcsc-lite
     "pcsc": "pcsc-lite", "libpcsclite": "pcsc-lite",
