@@ -1717,6 +1717,64 @@ class TestWin32LibNoFalseEdge(unittest.TestCase):
             conn.close()
 
 
+class TestMusescoreRegressTables(unittest.TestCase):
+    """musescore 回归轮（2026-09 worker2-deps-regress）暴露的表缺口：
+    gmock 测试框架 / win32 系统库 4 缺口 / macOS 框架 find_library 裸名
+    （修复前均被当普通包报“无鸿蒙预编译产物，需源码交叉编译”）。"""
+
+    CMAKE = """
+cmake_minimum_required(VERSION 3.16)
+project(RegressTables)
+add_library(drv STATIC src/x.cpp)
+if (OS_IS_WIN)
+    target_link_libraries(drv PRIVATE winmm mmdevapi msi taskschd userenv)
+endif()
+if (OS_IS_MAC)
+    find_library(AUDIOTOOLBOX_LIB AudioToolbox)
+    find_library(CARBON_LIB Carbon)
+    find_library(COREMIDI_LIB CoreMIDI)
+    target_link_libraries(drv PRIVATE ${AUDIOTOOLBOX_LIB} ${CARBON_LIB})
+endif()
+add_executable(t1 src/t1.cpp)
+target_link_libraries(t1 PRIVATE drv gmock)
+"""
+
+    def test_table_classifications(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "rt"
+            (root / "src").mkdir(parents=True)
+            (root / "CMakeLists.txt").write_text(self.CMAKE,
+                                                 encoding="utf-8")
+            (root / "src" / "x.cpp").write_text("", encoding="utf-8")
+            (root / "src" / "t1.cpp").write_text("", encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            # gmock → test 分类，不进 link 也不报“需源码交叉编译”
+            self.assertNotIn("gmock", link)
+            self.assertIn("gmock", {t["name"] for t in report["test_deps"]})
+            # win32 系统库 → win32-system-lib
+            for n in ("mmdevapi", "msi", "taskschd", "userenv"):
+                self.assertEqual(link[n]["kind"], "win32-system-lib", n)
+            # macOS 框架 find_library 裸名 → platform-iface + ohos_note
+            for n in ("audiotoolbox", "carbon", "coremidi"):
+                self.assertEqual(link[n]["kind"], "platform-iface", n)
+                self.assertTrue(link[n].get("ohos_note"), n)
+            # 不再出现“需源码交叉编译”误导警告
+            for w in report["warnings"]:
+                self.assertNotIn("需源码交叉编译",
+                                 "{} {}".format(w.get("msg", ""), w))
+            # 图侧：win32 裸名不建幽灵/误连边
+            scan = project_scanner.scan_project(conn, root)
+            hints = [d["hint"] for d in scan["deps_linked"]] + \
+                [d["hint"] for d in scan["deps_unknown"]]
+            for n in ("mmdevapi", "msi", "taskschd", "userenv"):
+                self.assertNotIn(n, hints)
+            conn.close()
+
+
 class TestPkgAliasesTdesktop(unittest.TestCase):
     """e2e tdesktop 复核确认的别名缺口（external_* 裸名 → 鸿蒙包）。"""
 

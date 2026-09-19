@@ -108,6 +108,13 @@ INTERFACE_BOUND_PACKAGES = {
     "security": "macOS Security 框架：鸿蒙不适用（APPLE 平台块）",
     "coreservices": "macOS CoreServices 框架：鸿蒙不适用（APPLE 平台块）",
     "corefoundation": "macOS CoreFoundation 框架：鸿蒙不适用（APPLE 平台块）",
+    # macOS 框架经 find_library 裸名引入（muse 实证：AudioToolbox/CoreMIDI
+    # 在 OS_IS_MAC 块内 find_library，未命中表时被当普通包报“需源码交叉编译”）
+    "audiotoolbox": "macOS AudioToolbox 框架：鸿蒙不可用，需改鸿蒙"
+                  " AudioRenderer/AudioCapturer（APPLE 平台块内引入）",
+    "coremidi": "macOS CoreMIDI 框架：鸿蒙不适用（APPLE 平台块内引入；"
+              "MIDI 需改鸿蒙 MIDI 能力）",
+    "carbon": "macOS Carbon 遗留框架：鸿蒙不适用（APPLE 平台块内引入）",
 }
 
 # find_package 命中的主机侧构建工具（原 _FINDPKG_SKIP 静默丢弃，现归入
@@ -118,6 +125,7 @@ INTERFACE_BOUND_PACKAGES = {
 TEST_FRAMEWORKS = {
     "gtest", "googletest", "catch2", "catch", "doctest", "qtest", "qttest",
     "testlib", "cppunit", "boosttest", "unittest++", "gtest_main", "qttest",
+    "gmock", "gmock_main",
 }
 
 # Qt 自带的构建工具（由 Qt SDK 提供，无需单独准备）

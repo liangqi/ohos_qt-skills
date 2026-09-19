@@ -535,6 +535,9 @@ WIN32_SYSTEM_LIBS = {
     "avifil32", "mfplat", "mfuuid", "strmbase", "strmbasd", "wtsapi32",
     "windowsapp", "delayimp", "opengl32", "glu32", "wintrust", "shcore",
     "winscard", "bcrypt", "hid", "winusb", "cfgmgr32",
+    # muse 实证：OS_IS_WIN 块内 target_link_libraries 的 4 个缺口
+    # （同块的 winmm/ole32/shell32/wintrust 等均已往表内）
+    "mmdevapi", "msi", "taskschd", "userenv",
 }
 
 # find_package 名为构建工具/解释器（主机侧，非应用运行时依赖）。
