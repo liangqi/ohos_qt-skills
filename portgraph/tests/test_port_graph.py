@@ -1062,6 +1062,101 @@ target_link_libraries(app PRIVATE cxxtest)
             self.assertIn("perl", tools)
             conn.close()
 
+    # ---- 0b) libopenshot 泛化轮：绑定生成工具链 + lib前缀+版本后缀组合剥离
+    def test_openshot_bindings_and_ladder(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "os"
+            (root / "bindings").mkdir(parents=True)
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\nproject(OsB)\n"
+                "add_subdirectory(bindings)\n", encoding="utf-8")
+            (root / "bindings" / "CMakeLists.txt").write_text(
+                "find_package(SWIG 3.0 REQUIRED)\n"
+                "find_package(Java REQUIRED)\n"
+                "find_package(JNI REQUIRED)\n"
+                "find_package(Ruby)\n"
+                "find_package(PythonLibs 3)\n"
+                "pkg_check_modules(PC_PIPEWIRE libpipewire-0.3)\n",
+                encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:ruby", "package", "ruby", "harmonybrew",
+                           "ported")
+            db.upsert_node(conn, "hb:pipewire", "package", "pipewire",
+                           "harmonybrew", "ported")
+            # 图侧：绑定工具不建运行时边（ruby 不再连 hb:ruby）
+            scan = project_scanner.scan_project(conn, root)
+            hints = [d["hint"] for d in scan["deps_linked"]] + \
+                [d["hint"] for d in scan["deps_unknown"]]
+            for n in ("swig", "ruby", "java", "jni", "pythonlibs"):
+                self.assertNotIn(n, hints, n)
+            # libpipewire-0.3 解析到 hb:pipewire（见 0c），无幽灵
+            self.assertEqual(scan["deps_unknown"], [])
+            # 报告侧：绑定工具归 build-tools
+            report = deps_report.analyze_dependencies(conn, root)
+            tools = {t["tool"] for t in report["toolchain"]["tools"]}
+            for n in ("swig", "ruby", "java", "jni", "pythonlibs"):
+                self.assertIn(n, tools, n)
+            link = {d["name"].lower() for d in report["link_deps"]}
+            self.assertNotIn("swig", link)
+            conn.close()
+
+    # ---- 0c) 图侧解析结果校验（hint 保留原名，节点应命中 hb:pipewire）
+    def test_openshot_ladder_node_resolution(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "os2"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\nproject(OsC)\n"
+                "pkg_check_modules(PC_PIPEWIRE libpipewire-0.3)\n",
+                encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:pipewire", "package", "pipewire",
+                           "harmonybrew", "ported")
+            scan = project_scanner.scan_project(conn, root)
+            linked = {d["hint"]: d["node"] for d in scan["deps_linked"]}
+            self.assertEqual(linked.get("libpipewire-0.3"), "hb:pipewire")
+            self.assertEqual(scan["deps_unknown"], [])
+            conn.close()
+
+    # ---- 0d) libopenshot 第二轮：win32 缺口库 + OpenCV 目标名归并
+    def test_openshot_win32_and_target_merge(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "os3"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text("""
+cmake_minimum_required(VERSION 3.16)
+project(OsD)
+add_library(osd STATIC a.c)
+if(WIN32)
+    target_link_libraries(osd PUBLIC imagehlp dbghelp ole32)
+endif()
+if(ENABLE_OPENCV)
+    target_link_libraries(osd PUBLIC opencv_core opencv_dnn)
+endif()
+pkg_check_modules(BABL babl-0.1)
+""", encoding="utf-8")
+            (root / "a.c").write_text("", encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "cmdpkgs:opencv", "package", "opencv",
+                           "cmdpkgs", "ported")
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            # win32 系统库
+            for n in ("imagehlp", "dbghelp"):
+                self.assertEqual(link[n]["kind"], "win32-system-lib", n)
+            # OpenCV 导入目标名归并到 opencv（不再 5 条独立幽灵）
+            self.assertIn("opencv", link)
+            for n in ("opencv_core", "opencv_dnn"):
+                self.assertNotIn(n, link, n)
+            # babl-0.1 版本后缀剥离到 babl（同一幽灵）
+            conn.close()
+
     # ---- 1) harmonybrew URL 版本提取（419 个 formula 无版本的根因）
     def test_url_version_extraction(self):
         cases = {

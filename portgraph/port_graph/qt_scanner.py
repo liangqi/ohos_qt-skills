@@ -541,6 +541,9 @@ WIN32_SYSTEM_LIBS = {
     # muse 实证：OS_IS_WIN 块内 target_link_libraries 的 4 个缺口
     # （同块的 winmm/ole32/shell32/wintrust 等均已往表内）
     "mmdevapi", "msi", "taskschd", "userenv",
+    # libopenshot 实证：WIN32 块异常处理/DirectShow（同块 ole32/strmiids
+    # /uuid 已在表内）
+    "dbghelp", "imagehlp",
 }
 
 # find_package 名为构建工具/解释器（主机侧，非应用运行时依赖）。
@@ -558,7 +561,12 @@ BUILD_TOOL_FINDPKG = {
     "python3": "Python 3",
     "python": "Python",
     "pythoninterp": "Python 解释器（CMake FindPythonInterp，主机侧）",
+    "pythonlibs": "Python 头文件/库（CMake FindPythonLibs，绑定生成，主机侧）",
     "perl": "Perl 解释器（主机侧，测试/代码生成脚本）",
+    "swig": "SWIG 绑定生成器（主机侧，libopenshot bindings 实证）",
+    "ruby": "Ruby 解释器（绑定生成/脚本，主机侧）",
+    "java": "JDK（CMake FindJava，绑定生成，主机侧）",
+    "jni": "JNI 头文件（CMake FindJNI，绑定编译，主机侧）",
     "flex": "flex 词法生成器",
     "bison": "bison 语法生成器",
     "gperf": "gperf 完美哈希生成器",
