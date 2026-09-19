@@ -290,6 +290,22 @@ REQUIRED/OPTIONAL 语义的精确分类用 `deps` 报告。
   跨名归并到 ffmpeg 后此类约束携带 `version_req_from`（约束来源库名），
   `version_check` 记 `unknown` 而非误报 `conflict`
 
+- **其他平台 if 块内的声明降级 required=False**：`if(APPLE)`/`if(WIN32)`/
+  `if(HAIKU)`/`if(ANDROID)`/`if(SYSTEM_NAME STREQUAL "Darwin"/"Windows")`
+  等平台专属块内的 target_link_libraries/find_library/pkg_check_modules
+  标注 `note="位于 if(…) 平台块"` 且不入 runtime 边；`UNIX`/`LINUX`/
+  `POSIX`/`OHOS` 视为鸿蒙活跃（`if(UNIX AND NOT APPLE)` 不降级），
+  `NOT WIN32` 等否定条件不降级，`else` 分支保守不判（2026-09 泛化轮：
+  qbittorrent Darwin/Windows 块、konsole HAIKU/FreeBSD 块、okular mobile
+  ANDROID 块、keepassxc FindQREncode WIN32 块、tdesktop APPLE 块实证）。
+  局限：平台块内的 find_package 对 Find<Name>.cmake 模块内容的平台继承
+  未实现（保守按必需处理）
+- **KF 组件解析到 kf:<comp> 节点而非包名阶梯**：KF Archive ≠ libarchive、
+  KF Config ≠ libconfig（同名异义），deps 表与 fetch-deps 闭包口径一致
+  （kf 节点 need_port，需源码交叉编译 KF6）
+- **in-tree 判定的容器名白名单**：仅 `libraries`/`libs` 父目录（或 vendored
+  路径段）计为自带库集合；`generators` 等功能分组目录（okular 的
+  generators/poppler 是格式生成器插件代码而非 poppler 源码）不判 in-tree
 - find_package 名称 → hb 包名的匹配依赖 `kb_seed.resolve_package` 别名表 +
   前缀/后缀规则，同名异义（如多精度库 MPC vs 音乐播放器 mpc）可能错配，
   产物 URL 落地前应人工核对

@@ -570,12 +570,16 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
     seen = set()
 
     # ---- 主名单：同库异名分组（组内代表名 = 能解析到已知包的 >
-    #      带分隔符的（pkg-config/hb 命名口径）> 首个出现的）
+    #      带分隔符的（pkg-config/hb 命名口径）> 首个出现的）。
+    #      分组键取别名表规范化后的去分隔符键：ddjvuapi→djvulibre、
+    #      usb-1.0→libusb 这类同库异名凭别名归入同组，不再产生重复
+    #      未知条目（okular 双 djvulibre 幽灵实证）
     dashless_index = kb_seed.build_dashless_index(conn)
     groups: Dict[str, List[str]] = {}
     order: List[str] = []
     for name in names:
-        key = kb_seed._dashless_key(name)
+        canon = kb_seed.PKG_ALIASES.get(name.lower()) or name
+        key = kb_seed._dashless_key(canon)
         if key not in groups:
             groups[key] = []
             order.append(key)
@@ -613,10 +617,15 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
     submodule_folds = _submodule_folds(info.get("git_submodules", []))
     for rl in info.get("raw_libs", []):
         name = rl["name"]
+        # 其他平台 if 块内的裸链接声明（konsole if(HAIKU) network、okular
+        # mobile if(ANDROID) -lsoftokn3 等）：默认鸿蒙构建不含，不连边
+        if rl.get("platform_block"):
+            continue
         if name.lower() in seen:
             continue
-        # 同库异名：压平名与主名单已分组处理的条目同库时跳过
-        if kb_seed._dashless_key(name) in groups:
+        # 同库异名：压平名/别名同库的条目已在主名单分组处理时跳过
+        canon = kb_seed.PKG_ALIASES.get(name.lower()) or name
+        if kb_seed._dashless_key(canon) in groups:
             continue
         seen.add(name.lower())
         # Windows 系统库（通常位于 win32 平台块）：跳过，防止同名 Unix

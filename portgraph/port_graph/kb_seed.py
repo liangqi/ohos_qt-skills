@@ -276,6 +276,11 @@ PKG_ALIASES: Dict[str, str] = {
     "intl": "gettext",           # CMake Intl 模块 → gettext(libintl)
     "utfcpp": "utf8cpp",         # require_source_dep(utfcpp) → hb utf8cpp
     "nlohmann_json": "nlohmann-json",  # require_dep 名 → hb nlohmann-json
+    # ── 泛化测试（okular KDE，2026-09）实证 ──
+    "ddjvuapi": "djvulibre",     # djvulibre 的 pkg-config 名（FindDjVuLibre
+                                  # 用 pkg_check_modules(ddjvuapi) 探测同库）
+    "libmarkdown": "discount",   # discount 的库名/pkg-config 名；hb markdown
+                                  # 是 daringfireball 的 Perl/PHP 版本，同名异义
     # ── 语料外泛化测试补充（QOwnNotes/strawberry/krita 实证，2026-09）──
     # glib 家族 pkg-config 模块（libgio/gobject/gthread/gmodule 随 glib
     # 包发布，cmd-pkgs glib 2.88.0 与 hb glib bottle 内均实测含对应 .pc）
