@@ -1,6 +1,6 @@
 # tdesktop 依赖对账报告（portgraph E2E）
 
-> 生成时间: 2026-09-19T14:21:26Z | 语料: corpus.json#tdesktop | 构建系统: cmake+qmake | 源文件: 6358
+> 生成时间: 2026-09-19T14:32:19Z | 语料: corpus.json#tdesktop | 构建系统: cmake+qmake | 源文件: 6358
 > Oracle: README.md（复核: 已复核，20 条；来源: README §Third-party 逐条人工复核：剥离许可后缀噪声；GYP/Ninja/CMake 改 build 型；Open Sans/Vazirmatn 字体与 Emoji alpha codes 为数据资产（非链接依赖）已删）
 
 ## 1. 结论速览

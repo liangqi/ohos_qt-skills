@@ -1,6 +1,6 @@
 # qbittorrent 依赖对账报告（portgraph E2E）
 
-> 生成时间: 2026-09-19T14:21:31Z | 语料: corpus.json#qbittorrent | 构建系统: cmake | 源文件: 710
+> 生成时间: 2026-09-19T14:32:24Z | 语料: corpus.json#qbittorrent | 构建系统: cmake | 源文件: 710
 > Oracle: INSTALL（复核: 已复核，7 条；来源: 手工编写：依赖清单在仓库根 INSTALL 文件（无扩展名，corpus oracle_files 误配为 INSTALL.md；且为纯文本编号列表非 markdown 标题，自动提取器无法解析）。已逐条对照 INSTALL 原文复核。）
 
 ## 1. 结论速览

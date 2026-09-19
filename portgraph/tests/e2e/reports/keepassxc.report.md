@@ -1,6 +1,6 @@
 # keepassxc 依赖对账报告（portgraph E2E）
 
-> 生成时间: 2026-09-19T14:21:30Z | 语料: corpus.json#keepassxc | 构建系统: cmake | 源文件: 884
+> 生成时间: 2026-09-19T14:32:24Z | 语料: corpus.json#keepassxc | 构建系统: cmake | 源文件: 884
 > Oracle: INSTALL.md（复核: 已复核，7 条；来源: agent 复核定稿：删除散文链接残留 set-up-build-environment；asciidoctor 依原文（build tools must exist within your PATH + KPXC_FEATURE_DOCS）改判 build；本版 INSTALL.md 仅声明 qt/botan/zlib 三个库，无 libgcrypt/argon2/libsodium/ykpers；vcpkg/xvfb-run 为 prose 提及的工具/测试辅助，不入 oracle）
 
 ## 1. 结论速览

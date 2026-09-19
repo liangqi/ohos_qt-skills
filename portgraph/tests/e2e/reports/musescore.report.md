@@ -1,6 +1,6 @@
 # musescore 依赖对账报告（portgraph E2E）
 
-> 生成时间: 2026-09-19T14:21:30Z | 语料: corpus.json#musescore | 构建系统: cmake+qmake | 源文件: 5729
+> 生成时间: 2026-09-19T14:32:23Z | 语料: corpus.json#musescore | 构建系统: cmake+qmake | 源文件: 5729
 > Oracle: buildscripts/cmake/DependencyManifest.cmake + muse/buildscripts/cmake/ExtDepsManifest.cmake + muse/framework/{midi,audio/driver}/CMakeLists.txt + muse/framework/cmake/MuseDeclareOptions.cmake（人工整理）（复核: 已复核，25 条；来源: 针对 master 2b540fe（muse_deps 依赖引擎时代）重写：README 无依赖段（指向 wiki.spatia... 外部 wiki），oracle 依仓库内依赖清单人工整理。口径=默认构建需外部产物的依赖：require_dep(...)（预编译/系统模式）与项目自身 find_package 为 runtime/optional；require_source_dep（liblouis/kddockwidgets/picojson/pugixml/utfcpp/googletest/crashpad_client/vst3sdk/lodepng/asiosdk）与 FetchContent 的 mnxdom 源码模式为 vendored，随项目源码编译、无需外部产物，不入 oracle；require_tool/find_package(Git) 为主机构建工具列 build。可选性依 MuseDeclareOptions.cmake 默认值：MUSE_MODULE_AUDIO_JACK OFF、MUSE_MODULE_AUDIO_PIPEWIRE OFF、MUSE_MODULE_DRAW_USE_QTTEXTDRAW ON（→ msdfgen 不启用）、MSS_USE_SYSTEM_MNXDOM OFF（→ mnxdom 默认源码自带，系统模式才 pkg_check）；MUSE_MODULE_AUDIO_EXPORT ON、MUSE_BUILD_IMPEXP_MNX_MODULE ON。旧 oracle（CI setup.sh + MUE_COMPILE_USE_SYSTEM_* 时代）的 pulseaudio/openssl/tinyxml/ffmpeg 在 master 已不存在：PulseAudio 直连仅存于内嵌 fluidsynth 可选驱动，openssl 无任何清单引用。）
 
 ## 1. 结论速览
