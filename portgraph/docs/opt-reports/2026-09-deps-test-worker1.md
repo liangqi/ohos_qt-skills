@@ -1,6 +1,6 @@
 # TEST-REPORT：portgraph 依赖分析 × tdesktop（e2e 语料 tier C）实测与优化
 
-> 分支 `worker1-deps-test`（基线 f98a2e7，44 单测全过）｜工作区 `/root/harmony-workspace/worker1`
+> 分支 `worker1-deps-test`（基线 f98a2e7，44 单测全过）｜工作区 `~/harmony-workspace/worker1`
 > 测试对象：`portgraph deps` / `fetch-deps` / e2e 对账 harness（`portgraph/tests/e2e/run_e2e.py`）
 > 语料：tdesktop（Telegram Desktop，tier C，真实项目，浅克隆 HEAD 2026-09-19）+ 全语料回归（keepassxc / musescore / qbittorrent）
 > 约束遵守：未改动 e2e 对账口径（recall/precision 公式、oracle 文件、BUG_CLASSES 定义均未动）；所有修复以构建文件取证定位根因，不以"凑指标"为目的。

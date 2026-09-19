@@ -1,7 +1,7 @@
 # REGRESS-REPORT：portgraph 依赖分析「回归 + 泛化」两阶段实测报告
 
 > 日期：2026-09-19 ｜ 分支：`worker2-deps-regress`（基线 `416ef8d` → 本次 6 个提交）
-> 工作区：`/root/harmony-workspace/worker2/portgraph/`
+> 工作区：`~/harmony-workspace/worker2/portgraph/`
 > 结论先行：**阶段1 回归一次通过（e2e musescore 报告与基线字节级一致，recall=100%/precision=95%/bug=0，闭包 89 各分类计数完全一致）；阶段2 泛化在 lmms + OpenShot/libopenshot 两个高星语料外项目暴露 4 类工具 bug（全部修复根因并补 6 个单测，87→93 全过），另定性 2 项数据源缺口与 10+ 项项目特有约定/观察项；全部修复后 e2e 四语料项目报告保持字节级不变（无跨项目回归）**。
 
 ---

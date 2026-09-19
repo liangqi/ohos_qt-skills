@@ -1,7 +1,7 @@
 # REGRESS-REPORT — portgraph 依赖分析回归 + 泛化测试
 
 > 分支：`worker3-deps-regress` | 基线：`416ef8d`（含全部集成修复，87 单测全过）
-> 日期：2026-09-19 | 工作区：`/root/harmony-workspace/worker3`
+> 日期：2026-09-19 | 工作区：`~/harmony-workspace/worker3`
 > 阶段 1 语料：qbittorrent + keepassxc（e2e corpus tier B，回归）
 > 阶段 2 泛化：**okular**（KDE/Qt 文档查看器，master 8662e426，500 源文件）
 > + **konsole**（KDE/Qt 终端，master a6ef17f7，382 源文件）——
@@ -175,7 +175,7 @@ kcmutils，但构建文件 `find_package(KF6 ...)` 并未声明（文档为打�
 ## 7. 复现
 
 ```bash
-cd /root/harmony-workspace/worker3/portgraph
+cd ~/harmony-workspace/worker3/portgraph
 python -m unittest discover -s tests        # 101 tests OK
 # 阶段 1 回归（fresh DB 流程）
 rm workspace/portgraph.db && python portgraph.py ingest all --offline

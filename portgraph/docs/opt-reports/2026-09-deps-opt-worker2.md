@@ -129,4 +129,4 @@
 ---
 
 *报告生成于 worker2-deps-opt 分支优化任务，所有改动已随 commit `8d4f446`
-提交，仅涉及 `/root/harmony-workspace/worker2` 目录。*
+提交，仅涉及 `~/harmony-workspace/worker2` 目录。*

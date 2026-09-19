@@ -1,7 +1,7 @@
 # TEST-REPORT — portgraph 依赖分析真实项目测试与优化（qbittorrent，tier B）
 
 > 分支：`worker3-deps-test` | 基线：`f98a2e7`（44 单测全过）| 本轮提交：`d8f32c3`（53 单测全过）
-> 日期：2026-09-19 | 工作区：`/root/harmony-workspace/worker3`（全新 workspace）
+> 日期：2026-09-19 | 工作区：`~/harmony-workspace/worker3`（全新 workspace）
 > 语料：`portgraph/tests/e2e/corpus.json#qbittorrent`（e2e tier B，README/INSTALL 有依赖段）
 
 ## 1. 执行摘要
@@ -76,7 +76,7 @@
 ## 5. 环境与复现
 
 ```bash
-cd /root/harmony-workspace/worker3/portgraph
+cd ~/harmony-workspace/worker3/portgraph
 git clone --filter=blob:none --sparse https://atomgit.com/Harmonybrew/homebrew-core.git workspace/hb-core
 (cd workspace/hb-core && git sparse-checkout set Formula)
 python portgraph.py ingest all          # hb 4758 formula + cmd-pkgs 1248
