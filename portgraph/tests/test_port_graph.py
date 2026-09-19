@@ -1002,6 +1002,45 @@ AC_CHECK_LIB([m], [sqrt])
             conn.close()
 
 
+class TestDbNameLookup(unittest.TestCase):
+    """find_node_by_name 大小写不敏感查找（回归：lower(name)=lower(?)
+    无法走索引 → 大库下 deps 报告全表扫描热点，2026-09 集成回退
+    性能修复：COLLATE NOCASE + 函数索引，语义等价仅折 ASCII）"""
+
+    def _conn(self):
+        conn = db.connect(":memory:")
+        db.init_db(conn)
+        db.upsert_node(conn, "hb:boost", "package", "Boost", "harmonybrew", "ported", version="1.92.0")
+        db.upsert_node(conn, "hb:zlib", "package", "zlib", "harmonybrew", "ported", version="1.3.1")
+        return conn
+
+    def test_case_insensitive_lookup(self):
+        conn = self._conn()
+        for probe in ("boost", "BOOST", "Boost", "bOoSt"):
+            node = db.find_node_by_name(conn, probe)
+            self.assertIsNotNone(node, probe)
+            self.assertEqual(node["id"], "hb:boost")
+        conn.close()
+
+    def test_exact_match_still_works(self):
+        conn = self._conn()
+        self.assertEqual(db.find_node_by_name(conn, "zlib")["version"], "1.3.1")
+        self.assertIsNone(db.find_node_by_name(conn, "no-such-pkg"))
+        conn.close()
+
+    def test_nocase_index_created_and_used(self):
+        conn = self._conn()
+        indexes = {r["name"] for r in
+                   conn.execute("PRAGMA index_list(nodes)").fetchall()}
+        self.assertIn("idx_nodes_name_nocase", indexes)
+        plan = conn.execute(
+            "EXPLAIN QUERY PLAN "
+            "SELECT * FROM nodes WHERE name='boost' COLLATE NOCASE LIMIT 1"
+        ).fetchall()
+        self.assertIn("idx_nodes_name_nocase", plan[0]["detail"])
+        conn.close()
+
+
 class TestGeneralizationFixes(unittest.TestCase):
     """语料外泛化测试（QOwnNotes/strawberry/krita，2026-09）暴露问题的
     回归测试：URL 版本提取 / 宏包装目标 / find_library 关键字 / env -y /
