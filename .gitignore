@@ -35,3 +35,7 @@ __pycache__/
 # 知识沉淀草稿（本地工作产物；晋升后进入 problems/ 与 knowledge/errors/）
 knowledge/drafts/
 drafts/
+# A/B 对照 worktree（REGRESS-REPORT.md 复现用，本地临时）
+.ab/
+# 根目录误生成的空 DB（真正的主库在 portgraph/workspace/ 下）
+/portgraph/portgraph.db

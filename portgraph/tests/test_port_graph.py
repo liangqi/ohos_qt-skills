@@ -1002,6 +1002,45 @@ AC_CHECK_LIB([m], [sqrt])
             conn.close()
 
 
+class TestDbNameLookup(unittest.TestCase):
+    """find_node_by_name 大小写不敏感查找（回归：lower(name)=lower(?)
+    无法走索引 → 大库下 deps 报告全表扫描热点，2026-09 集成回退
+    性能修复：COLLATE NOCASE + 函数索引，语义等价仅折 ASCII）"""
+
+    def _conn(self):
+        conn = db.connect(":memory:")
+        db.init_db(conn)
+        db.upsert_node(conn, "hb:boost", "package", "Boost", "harmonybrew", "ported", version="1.92.0")
+        db.upsert_node(conn, "hb:zlib", "package", "zlib", "harmonybrew", "ported", version="1.3.1")
+        return conn
+
+    def test_case_insensitive_lookup(self):
+        conn = self._conn()
+        for probe in ("boost", "BOOST", "Boost", "bOoSt"):
+            node = db.find_node_by_name(conn, probe)
+            self.assertIsNotNone(node, probe)
+            self.assertEqual(node["id"], "hb:boost")
+        conn.close()
+
+    def test_exact_match_still_works(self):
+        conn = self._conn()
+        self.assertEqual(db.find_node_by_name(conn, "zlib")["version"], "1.3.1")
+        self.assertIsNone(db.find_node_by_name(conn, "no-such-pkg"))
+        conn.close()
+
+    def test_nocase_index_created_and_used(self):
+        conn = self._conn()
+        indexes = {r["name"] for r in
+                   conn.execute("PRAGMA index_list(nodes)").fetchall()}
+        self.assertIn("idx_nodes_name_nocase", indexes)
+        plan = conn.execute(
+            "EXPLAIN QUERY PLAN "
+            "SELECT * FROM nodes WHERE name='boost' COLLATE NOCASE LIMIT 1"
+        ).fetchall()
+        self.assertIn("idx_nodes_name_nocase", plan[0]["detail"])
+        conn.close()
+
+
 class TestGeneralizationFixes(unittest.TestCase):
     """语料外泛化测试（QOwnNotes/strawberry/krita，2026-09）暴露问题的
     回归测试：URL 版本提取 / 宏包装目标 / find_library 关键字 / env -y /
@@ -1913,8 +1952,6 @@ class TestE2ENameVariants(unittest.TestCase):
         self.assertIn("openssl", e2e.name_variants("OpenSSL >= 3.0"))
 
 
-if __name__ == "__main__":
-    unittest.main()
 
 
 # =====================================================================
@@ -2348,6 +2385,104 @@ class TestVendoredCmakeSkip(unittest.TestCase):
             self.assertEqual(info["cmake_packages"]["pkg_check_modules"], [])
             hints = {h["name"] for h in info["third_party_hints"]}
             self.assertNotIn("libuuid", hints)
+
+
+class TestWrapperCmakePassthrough(unittest.TestCase):
+    """vendored 路径下的 wrapper 声明文件（add_library(external_X)）
+    不是 vendored 源码：其内的 find_package / pkg_check_modules 是应用
+    自身依赖，应透传计入（tdesktop 复盘：submodule 初始化后 external_X
+    成为项目内目标，叠加 vendored 跳过把 openal/ada/rnnoise 全部藏掉）。"""
+
+    def _project(self, tmp: Path):
+        root = tmp / "wrap"
+        # cmake_helpers 风格 wrapper：定义 external_openal + find_package
+        p = root / "cmake/external/openal/CMakeLists.txt"
+        p.parent.mkdir(parents=True)
+        p.write_text(
+            "add_library(external_openal INTERFACE IMPORTED GLOBAL)\n"
+            "add_library(desktop-app::external_openal ALIAS external_openal)\n"
+            "if (DESKTOP_APP_USE_PACKAGED)\n"
+            "    find_package(OpenAL REQUIRED CONFIG)\n"
+            "endif()\n",
+            encoding="utf-8")
+        # wrapper 的 pkg_check_modules 变体（rnnoise）
+        p = root / "cmake/external/rnnoise/CMakeLists.txt"
+        p.parent.mkdir(parents=True)
+        p.write_text(
+            "add_library(external_rnnoise INTERFACE IMPORTED GLOBAL)\n"
+            "find_package(PkgConfig REQUIRED)\n"
+            "pkg_check_modules(RNNOISE IMPORTED_TARGET rnnoise)\n",
+            encoding="utf-8")
+        # 反例 1：真 vendored 源码树（无 external_ 目标定义）→ 仍跳过
+        p = root / "thirdparty/fluidsynth/CMakeLists.txt"
+        p.parent.mkdir(parents=True)
+        p.write_text(
+            "find_package(GLib2 REQUIRED)\n"
+            "target_link_libraries(fluidsynth PRIVATE glib-2.0)\n",
+            encoding="utf-8")
+        # 应用自身声明：链接 wrapper 目标（wrapper 定义在 vendored 路径下，
+        # external_X 不因 in-tree 定义而跳过，底层库名透传）
+        (root / "CMakeLists.txt").write_text(
+            "cmake_minimum_required(VERSION 3.16)\nproject(Wrap)\n"
+            "add_subdirectory(cmake/external/openal)\n"
+            "target_link_libraries(app PRIVATE desktop-app::external_openal)\n",
+            encoding="utf-8")
+        return root
+
+    def test_wrapper_findpkg_and_pkgconf_passthrough(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            info = qt_scanner.scan_project(root)
+            fp = info["cmake_packages"]["find_package"]
+            # wrapper 的 find_package 透传；PkgConfig 本身是主机工具跳过
+            self.assertIn("openal", fp)
+            self.assertNotIn("pkgconfig", fp)
+            # 真 vendored 源码树仍跳过
+            self.assertNotIn("glib2", fp)
+            # wrapper 的 pkg_check_modules 透传
+            pm = info["cmake_packages"]["pkg_check_modules"]
+            self.assertIn("rnnoise", pm)
+            self.assertNotIn("lilv-0", pm)
+            # wrapper 定义的 external_X 目标被链接时不因 in-tree 定义跳过：
+            # 底层库名经 external-target 证据透传（ada/zlib/openal 复盘根因）
+            raw = {x["name"]: x for x in info["raw_libs"]}
+            self.assertIn("openal", raw)
+            self.assertTrue(any("external-target" in h
+                                for h in raw["openal"]["hows"]))
+            # 反例：真 vendored 源码树内定义的目标（非 external_ wrapper）
+            # 仍属项目内目标，不进 raw_libs
+            self.assertNotIn("fluidsynth", raw)
+
+
+class TestDynamicLoadPlatformGuard(unittest.TestCase):
+    """非鸿蒙平台守卫（#if defined(Q_OS_WIN)）内的 QLibrary/dlopen
+    加载不编译、不计入 dynamic_loads（notepadqq 复盘：kernel32 误报）。"""
+
+    def test_win_guarded_qlibrary_excluded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "app"
+            (root / "src").mkdir(parents=True)
+            (root / "src" / "main.cpp").write_text(
+                "#if defined(Q_OS_WIN)\n"
+                "    QLibrary lib(\"kernel32\");\n"
+                "#endif\n"
+                "void init() { QLibrary l(\" genuine_plugin \"); }\n",
+                encoding="utf-8")
+            info = qt_scanner.scan_project(root)
+            names = [d["name"] for d in info["dynamic_loads"]]
+            self.assertNotIn("kernel32", names)
+            self.assertIn("genuine_plugin", names)
+
+    def test_unconditional_load_kept(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "app"
+            (root / "src").mkdir(parents=True)
+            (root / "src" / "main.cpp").write_text(
+                "void init() { QLibrary l(\"plainlib\"); }\n",
+                encoding="utf-8")
+            info = qt_scanner.scan_project(root)
+            self.assertEqual([d["name"] for d in info["dynamic_loads"]],
+                             ["plainlib"])
 
 
 class TestRequireDepManifest(unittest.TestCase):
@@ -2983,3 +3118,40 @@ class TestPkgAliasesOkular(unittest.TestCase):
                  for d in scan["deps_linked"]],
                 [("discount", "hb:discount", ["libmarkdown"])])
             conn.close()
+
+    def test_init_cmd_uses_dash_init_flag(self):
+        """回玺：`git submodule update init ...` 裸 init 被 git 当 pathspec，
+        报错但旧版静默吞掉 → 复用克隆的 submodule 永远拉不起来
+        （musescore 扫描范围缺失、deps 大面积漏检）。必须用 --init。"""
+        from port_graph import cloner
+        captured = {}
+
+        class FakeResult:
+            returncode = 0
+            stderr = ""
+
+        def fake_run(cmd, **kw):
+            captured["cmd"] = cmd
+            return FakeResult()
+
+        orig_run = cloner.subprocess.run
+        cloner.subprocess.run = fake_run
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp) / "proj"
+                root.mkdir()
+                (root / ".git").mkdir()
+                (root / ".gitmodules").write_text(
+                    '[submodule "x"]\n\tpath = x\n\turl = https://e.invalid/x.git\n',
+                    encoding="utf-8")
+                cloner._init_submodules(root, 10)
+        finally:
+            cloner.subprocess.run = orig_run
+        cmd = captured["cmd"]
+        self.assertIn("--init", cmd)
+        # 裸 init（无 --）不得再出现在命令里
+        self.assertNotIn("init", [c for c in cmd if not c.startswith("-")])
+
+
+if __name__ == "__main__":
+    unittest.main()

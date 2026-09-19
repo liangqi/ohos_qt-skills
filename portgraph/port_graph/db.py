@@ -61,6 +61,8 @@ CREATE TABLE IF NOT EXISTS meta (
 CREATE INDEX IF NOT EXISTS idx_edges_src ON edges(src);
 CREATE INDEX IF NOT EXISTS idx_edges_dst ON edges(dst);
 CREATE INDEX IF NOT EXISTS idx_nodes_name ON nodes(name);
+CREATE INDEX IF NOT EXISTS idx_nodes_name_nocase
+    ON nodes(name COLLATE NOCASE);
 """
 
 
@@ -152,8 +154,11 @@ def get_node(conn, node_id: str) -> Optional[Dict]:
 
 
 def find_node_by_name(conn, name: str) -> Optional[Dict]:
+    # name COLLATE NOCASE 走 idx_nodes_name_nocase 索引；
+    # 与 lower(name)=lower(?) 语义等价（SQLite lower()/NOCASE 均仅折 ASCII），
+    # 但后者对 nodes 全表扫描，大库下是 deps 报告的热点。
     row = conn.execute(
-        "SELECT * FROM nodes WHERE lower(name)=lower(?) LIMIT 1", (name,)
+        "SELECT * FROM nodes WHERE name=? COLLATE NOCASE LIMIT 1", (name,)
     ).fetchone()
     return dict(row) if row else None
 

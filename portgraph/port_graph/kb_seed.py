@@ -206,6 +206,8 @@ def seed_interfaces(conn) -> None:
 ALIASES: Dict[str, List[str]] = {
     "openssl": ["openssl@3", "openssl"],
     "libjpeg": ["jpeg-turbo", "libjpeg-turbo"],
+    "liblzma": ["xz", "lzma", "liblzma"],
+    "lzma": ["xz", "lzma", "liblzma"],
     "icu": ["icu4c", "icu"],
     "libuuid": ["util-linux", "libuuid", "uuid"],
     "freetype": ["freetype"],
@@ -242,6 +244,9 @@ PKG_ALIASES: Dict[str, str] = {
     "avutil": "ffmpeg", "swresample": "ffmpeg", "postproc": "ffmpeg",
     "libswscale": "ffmpeg", "libavcodec": "ffmpeg", "libavformat": "ffmpeg",
     "libavutil": "ffmpeg", "libavdevice": "ffmpeg",
+    # xz 工具链提供 liblzma（find_package(LibLZMA) 是 CMake 官方模块名，
+    # tdesktop cmake/external/auto_updates/xz wrapper 实证）
+    "liblzma": "xz",
     "ssl": "openssl", "crypto": "openssl",
     "sqlite3": "sqlite", "curl": "curl", "gcrypt": "libgcrypt",
     "tag": "taglib", "mtp": "libmtp", "usb-1.0": "libusb",

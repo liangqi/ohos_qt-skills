@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import re
+import warnings
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -572,6 +573,23 @@ def _is_vendored_path(rel: str) -> bool:
             return True
     return False
 
+
+# wrapper CMake 文件签名：定义 add_library(external_<X> ...) 导入目标
+#（cmake_helpers / desktop-app 约定，tdesktop 全部三方库都走这条路）。
+# 这类文件不是 vendored 源码，而是应用外部依赖的声明层：其内的
+# find_package / pkg_check_modules 就是应用自身的依赖（例：
+# cmake/external/openal/CMakeLists.txt 定义 external_openal 并
+# find_package(OpenAL REQUIRED)）。submodule 初始化后 external_X 成为
+# 项目内目标，若同时跳过 wrapper 文件，真实依赖会被两条规则叠加藏掉
+#（tdesktop 复盘：openal/ada/rnnoise 漏检）。
+_WRAPPER_TARGET_RE = re.compile(
+    r"add_library\s*\(\s*external_[A-Za-z0-9_.:-]+", re.I)
+
+
+def _is_wrapper_cmake(root: Path, rel: str, text: str) -> bool:
+    """vendored 路径下的 wrapper 声明文件（非 vendored 源码，不跳过）。"""
+    return bool(_WRAPPER_TARGET_RE.search(text))
+
 # Windows 系统库（qmake win32 块 / MSVC 链接）：鸿蒙不适用（代码通常被
 # 平台守卫包裹）。project_scanner 扫描期按它过滤 win32 链接名（防止
 # 同名 Unix 库误连边，如 bcrypt→OpenBSD bcrypt）；deps_report 标注而非
@@ -754,19 +772,75 @@ def _collect_option_defaults(cmake_texts: List[str]) -> Dict[str, bool]:
     return out
 
 
+# 对鸿蒙目标恒真的平台条件（Q_OS_OHOS 隐含 Q_OS_LINUX）：
+# 含这些析取项的 if 分支在 OHOS 构建下必然激活，不能标 optional
+_PLATFORM_TRUE_DISJUNCTS = frozenset({
+    "LINUX", "UNIX", "NOT WIN32", "NOT APPLE", "NOT MSVC", "NOT IOS",
+    "NOT MACOS", "NOT WINDOWS",
+})
+_PLATFORM_TRUE_RE = re.compile(
+    r"CMAKE_SYSTEM_NAME\s+(?:STREQUAL|MATCHES)\s+\"?Linux", re.I)
+
+
+def _disjunct_always_true(d: str) -> bool:
+    """单个 OR 析取项对鸿蒙目标是否恒真。"""
+    d = d.strip().upper()
+    if d in _PLATFORM_TRUE_DISJUNCTS:
+        return True
+    if _PLATFORM_TRUE_RE.search(d):
+        return True
+    # 去括号后再试（(NOT WIN32) 形式）
+    inner = d.strip("() ").strip()
+    return inner in _PLATFORM_TRUE_DISJUNCTS
+
+
+def _split_top_level_or(cond: str) -> List[str]:
+    """按括号外顶层的 OR 切分条件（不处理 AND 混合的复杂嵌套，
+    切不开时返回整串，退回旧行为）。"""
+    parts, depth, cur, i = [], 0, "", 0
+    up = cond.upper()
+    while i < len(cond):
+        c = cond[i]
+        if c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+        elif depth == 0 and up[i:i + 3] == " OR":
+            nxt = cond[i:i + 4]
+            if nxt[-1] in (" ", "\t") or i + 3 == len(cond):
+                parts.append(cur)
+                cur = ""
+                i += 3
+                while i < len(cond) and cond[i] in " \t":
+                    i += 1
+                continue
+        cur += c
+        i += 1
+    parts.append(cur)
+    return parts if len(parts) > 1 else [cond]
+
+
 def _frame_positively_guarded(cond: str, off_options: Dict[str, bool]) -> bool:
     """if 条件是否含 OFF 默认选项的裸正向引用（未被 NOT 修饰）。
 
     `if (SYSTEMD)` → True（SYSTEMD 默认 OFF）；
     `if (NOT SYSTEMD)` / `if (DBUS)`（默认 ON）→ False。
+    OR 析取语义（tdesktop 复盘）：`if (X OR LINUX)` 在鸿蒙下
+    因 LINUX 恒真必然激活，不能标 optional——仅当全部析取项都是
+    OFF 选项正向引用（或含 OFF 选项且无恒真项）时才标 optional。
     """
     if not off_options:
         return False
-    stripped = _NOT_TOKEN_RE.sub(" ", cond)
-    for tok in re.findall(r"\w+", stripped):
-        if off_options.get(tok) is False:
-            return True
-    return False
+    disjuncts = _split_top_level_or(cond)
+    guarded = False
+    for d in disjuncts:
+        if _disjunct_always_true(d):
+            return False
+        stripped = _NOT_TOKEN_RE.sub(" ", d)
+        for tok in re.findall(r"\w+", stripped):
+            if off_options.get(tok) is False:
+                guarded = True
+    return guarded
 
 
 def _cmake_optional_line_map(text: str,
@@ -866,10 +940,17 @@ def _detect_cmake_packages(root: Path, cmake_files: List[str]) -> Dict:
 
     # pass 1: find_package（先收集，供 Find<Name>.cmake 模块继承判定）
     for rel in cmake_files:
-        if _is_vendored_path(rel):
-            continue
         text = _strip_cmake_comments(_read_text(root / rel))
-        gmap = guards.get(rel, {})
+        text = _strip_cmake_comments(_read_text(root / rel))
+        if _is_vendored_path(rel):
+            if not _is_wrapper_cmake(root, rel, text):
+                continue
+            # wrapper 文件：external_X 被应用无条件链接，内部守卫
+            # （DESKTOP_APP_USE_PACKAGED 等）只切换获取方式（find_package
+            # vs 预编译路径），不是是否使用 → 不套 optional 守卫
+            gmap = {}
+        else:
+            gmap = guards.get(rel, {})
         pmap = _cmake_platform_line_map(text)
         for m in _FINDPKG_ANY_RE.finditer(text):
             name = m.group(1).lower()
@@ -891,12 +972,16 @@ def _detect_cmake_packages(root: Path, cmake_files: List[str]) -> Dict:
 
     # pass 2: pkg_check_modules
     for rel in cmake_files:
-        if _is_vendored_path(rel):
-            continue
         text = _strip_cmake_comments(_read_text(root / rel))
-        gmap = guards.get(rel, {})
+        text = _strip_cmake_comments(_read_text(root / rel))
+        if _is_vendored_path(rel):
+            if not _is_wrapper_cmake(root, rel, text):
+                continue
+            gmap = {}   # wrapper：同 pass 1，不套 optional 守卫
+        else:
+            gmap = guards.get(rel, {})
         pmap = _cmake_platform_line_map(text)
-        file_opt = rel in opt_files
+        file_opt = (rel in opt_files) and not _is_vendored_path(rel)
         for m in _PKGCHECK_RE.finditer(text):
             line_opt = file_opt or gmap.get(_line_of(text, m.start()))
             line_plat = pmap.get(_line_of(text, m.start()))
@@ -1346,11 +1431,165 @@ def _ver_key(v):
     return tuple(int(p) for p in parts)
 
 
+# 平台宏分类（用于宏栈追踪）
+NON_OHOS_PLATFORM_MACROS = {
+    "_WIN32", "WIN32", "_WIN64", "Q_OS_WIN", "Q_OS_WIN32", "Q_OS_WINRT",
+    "__APPLE__", "Q_OS_MAC", "Q_OS_MACOS", "Q_OS_MACX", "Q_OS_DARWIN",
+    "__MACH__", "Q_OS_AIX", "Q_OS_SOLARIS", "Q_OS_BSD", "Q_OS_FREEBSD",
+    "Q_OS_ANDROID", "Q_OS_IOS", "Q_OS_TVOS", "Q_OS_WATCHOS",
+    "Q_OS_QNX", "Q_OS_VXWORKS", "Q_OS_INTEGRITY",
+}
+OHOS_OR_GENERAL_MACROS = {
+    "Q_OS_LINUX", "__linux__", "linux", "Q_OS_UNIX", "Q_OS_OHOS",
+    "Q_OS_POSIX", "_POSIX_SOURCE", "__USE_POSIX",
+}
+# 功能宏（由 CMake/qmake 注入）保守视为"可能在鸿蒙编译"
+FEATURE_MACROS = {
+    "HAVE_X11", "USE_DBUS", "USE_PULSEAUDIO", "USE_ALSA", "USE_COREAUDIO",
+    "HAVE_DBUS", "HAVE_ALSA", "HAVE_PULSEAUDIO", "HAVE_SYSTEMD",
+    "USE_OPENGL", "HAVE_OPENGL", "PLATFORM_LINUX", "PLATFORM_OHOS",
+}
+
+_IFDEF_RE = re.compile(r"#\s*ifdef\s+(\w+)")
+_IFNDEF_RE = re.compile(r"#\s*ifndef\s+(\w+)")
+_IF_DEFINED_RE = re.compile(r"#\s*if\s+(.+)$")
+_DEFINED_RE = re.compile(r"defined\s*\(\s*(\w+)\s*\)|defined\s+(\w+)")
+_ELSE_RE = re.compile(r"#\s*else\b")
+_ELIF_RE = re.compile(r"#\s*elif\s+(.+)$")
+_ENDIF_RE = re.compile(r"#\s*endif\b")
+
+
+def _extract_defined_macros(expr: str) -> List[str]:
+    """从 #if 表达式中提取 defined(X) 宏名。"""
+    return [m[0] or m[1] for m in _DEFINED_RE.findall(expr)]
+
+
+def _macro_compiles_on_ohos(macro: str) -> bool:
+    """单个宏在鸿蒙构建时是否为真（保守估计）。
+
+    - 鸿蒙/通用宏 → True（确定为真或保守视为真）
+    - 非鸿蒙平台宏 → False（确定为假）
+    - 未知宏 → True（保守，可能由构建系统注入）
+    """
+    if macro in NON_OHOS_PLATFORM_MACROS:
+        return False
+    return True  # ohos/general/feature/unknown 都保守视为真
+
+
+def _expr_compiles_on_ohos(expr: str) -> Optional[bool]:
+    """对 #if/#elif 表达式做粗略求值，判断在鸿蒙是否为真。
+
+    仅处理 defined(X) 与 && / || / ! 的组合；无法解析时返回 None（保守视为真）。
+    """
+    # 提取所有 defined(X) → 布尔值
+    def repl(m):
+        name = m.group(1) or m.group(2)
+        return "1" if _macro_compiles_on_ohos(name) else "0"
+    simplified = _DEFINED_RE.sub(repl, expr)
+    # 也处理裸宏名（如 #if Q_OS_WIN）——保守视为宏名即条件
+    for tok in re.findall(r"\b[A-Z_]\w*\b", simplified):
+        if tok in ("1", "0", "defined", "true", "false"):
+            continue
+        simplified = simplified.replace(tok,
+            "1" if _macro_compiles_on_ohos(tok) else "0")
+    try:
+        # 用 Python 求值（&& → and, || → or, ! → not）
+        py = simplified.replace("&&", " and ").replace("||", " or ")
+        py = re.sub(r"!(?=[01(])", " not ", py)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            return bool(eval(py, {"__builtins__": {}}, {}))
+    except Exception:
+        return None
+
+
+def _guard_status(active_macros: List[str]) -> str:
+    """根据活动宏判断接口命中行的编译守卫状态（遗留兼容接口）。
+
+    注意：#if 表达式可能是 AND/OR 混合，无法精确求值。
+    新代码应使用帧级 compiles_on_ohos 追踪，此函数仅保留用于简单场景。
+    """
+    if not active_macros:
+        return "unconditional"
+    if all(m in NON_OHOS_PLATFORM_MACROS for m in active_macros):
+        return "platform-excluded"
+    return "ohos-active"
+
+
+def _macro_stack_status(text: str) -> Dict[int, str]:
+    """逐行宏栈追踪，返回 {line_no: guard_status}。
+
+    每个栈帧记录 (compiles_on_ohos: Optional[bool])。
+    行的编译状态 = 所有帧 compiles_on_ohos 的 AND：
+      - 任意帧为 False → platform-excluded（确定不编译）
+      - 所有帧为 True → ohos-active（确定编译）
+      - 含 None（无法判断）→ ohos-active（保守）
+      - 无帧 → unconditional
+    """
+    result: Dict[int, str] = {}
+    # 栈元素: compiles_on_ohos (True/False/None)
+    stack: List[Optional[bool]] = []
+
+    def current_guard() -> str:
+        if not stack:
+            return "unconditional"
+        if any(f is False for f in stack):
+            return "platform-excluded"
+        return "ohos-active"
+
+    for lineno, line in enumerate(text.splitlines(), 1):
+        s = line.strip()
+        # 快路径：绝大多数行不是预处理指令，不影响宏栈
+        if not s.startswith("#"):
+            result[lineno] = current_guard()
+            continue
+        m = _IFDEF_RE.match(s)
+        if m:
+            stack.append(_macro_compiles_on_ohos(m.group(1)))
+            result[lineno] = current_guard()
+            continue
+        m = _IFNDEF_RE.match(s)
+        if m:
+            # ifndef MACRO: 在鸿蒙编译当且仅当 MACRO 在鸿蒙为假
+            val = _macro_compiles_on_ohos(m.group(1))
+            stack.append(None if val is None else (not val))
+            result[lineno] = current_guard()
+            continue
+        m = _IF_DEFINED_RE.match(s)
+        if m:
+            stack.append(_expr_compiles_on_ohos(m.group(1)))
+            result[lineno] = current_guard()
+            continue
+        if _ELSE_RE.match(s) and stack:
+            val = stack[-1]
+            stack[-1] = None if val is None else (not val)
+            result[lineno] = current_guard()
+            continue
+        m = _ELIF_RE.match(s)
+        if m and stack:
+            stack[-1] = _expr_compiles_on_ohos(m.group(1))
+            result[lineno] = current_guard()
+            continue
+        if _ENDIF_RE.match(s) and stack:
+            stack.pop()
+            result[lineno] = current_guard()
+            continue
+        result[lineno] = current_guard()
+    return result
+
+
+
 def _detect_dynamic_loads(root: Path, info: Dict) -> List[Dict]:
-    """源码中的运行时动态加载目标（仅字符串字面量，变量拼接无法静态确定）。"""
+    """源码中的运行时动态加载目标（仅字符串字面量，变量拼接无法静态确定）。
+
+    非鸿蒙平台守卫（#if defined(Q_OS_WIN) 等）内的加载不编译，
+    不计入（notepadqq 复盘：singleapplication.cpp 的 QLibrary("kernel32")
+    在 Q_OS_WIN 块内被误报为运行时动态加载）。
+    """
     targets: Dict[str, List[str]] = {}
     # 子串预过滤：三个目标 API 名至少出现一个才跑正则（大仓库实测占
-    # 扫描总耗时 1/3，多数文件不含任何动态加载）
+    # 扫描总耗时 1/3，多数文件不含任何动态加载）；宏栈追踪同样仅对
+    # 预过滤命中的稀有文件执行，不损性能
     prefilter = ("dlopen", "QLibrary", "QPluginLoader")
     for src in info["sources"]:
         if src["ext"] not in TEXT_SCAN_EXTS:
@@ -1358,9 +1597,13 @@ def _detect_dynamic_loads(root: Path, info: Dict) -> List[Dict]:
         text = _read_text(root / src["path"])
         if not any(k in text for k in prefilter):
             continue
+        guard = _macro_stack_status(text)
         for rx, how in ((_DLOPEN_RE, "dlopen"), (_QLIBRARY_RE, "QLibrary"),
                         (_QPLUGINLOADER_RE, "QPluginLoader")):
             for m in rx.finditer(text):
+                line = text.count("\n", 0, m.start()) + 1
+                if guard.get(line) == "platform-excluded":
+                    continue
                 t = m.group(1).strip()
                 if not t or "$" in t or "://" in t or t.startswith("/"):
                     continue
@@ -1515,7 +1758,10 @@ def _detect_cmake_raw_links(root: Path, cmake_files: List[str]):
     # 目标定义收集（含 vendored 文件）：vendored 源码内
     # add_library(fluidsynth) 定义的是项目内目标，应用侧
     # target_link_libraries(fluidsynth) 链的是内部目标而非外部包
+    wrapper_defined = set()   # wrapper 文件里定义的 external_* 目标
     for rel, text in all_texts.items():
+        is_wrapper = (_is_vendored_path(rel)
+                      and _WRAPPER_TARGET_RE.search(text))
         for m in _ADD_TARGET_RE.finditer(text):
             tgt = m.group(1)
             if tgt.startswith("${"):
@@ -1523,6 +1769,8 @@ def _detect_cmake_raw_links(root: Path, cmake_files: List[str]):
                 tgt = vart.get(tgt[2:-1].strip(), "")
             if tgt:
                 defined.add(tgt.lower())
+                if is_wrapper and tgt.lower().startswith("external_"):
+                    wrapper_defined.add(tgt.lower())
         if lib_macros:
             for mw in lib_macros:
                 for m in re.finditer(
@@ -1563,8 +1811,9 @@ def _detect_cmake_raw_links(root: Path, cmake_files: List[str]):
                     if (ns.lower() == "pkgconfig"
                             or not re.fullmatch(r"[A-Za-z0-9_.+-]+", tgt)
                             or not tl.startswith("external_")
-                            or tl in defined
-                            or tgt.lower() in defined
+                            or (tl in defined and tl not in wrapper_defined)
+                            or (tgt.lower() in defined
+                                and tl not in wrapper_defined)
                             or tl[len("external_"):].startswith(("qt", "kf"))):
                         continue
                     base = tgt[len("external_"):]
@@ -1720,6 +1969,10 @@ def _absorb_meson(root: Path, info: Dict, meson_files: List[str]) -> None:
 
     for rel in meson_files:
         text = _read_text(root / rel)
+        # vendored 三方子树自己的 meson 声明不算应用依赖（与 CMake 检测器
+        # 同口径；tdesktop 复盘：ThirdParty/xdg-desktop-portal 的
+        # libgeoclue/pipewire 泄漏进应用 depth-1）
+        vendored = _is_vendored_path(rel)
         if not meson_info["version_min"]:
             pm = _MESON_PROJECT_RE.search(text)
             if pm:
@@ -1734,6 +1987,8 @@ def _absorb_meson(root: Path, info: Dict, meson_files: List[str]) -> None:
             if sp_name and sp_name not in meson_info["subprojects"]:
                 meson_info["subprojects"].append(sp_name)
         for m in _MESON_DEP_RE.finditer(text):
+            if vendored:
+                continue
             name, args = m.group(1), m.group(2)
             # meson 字符串插值（'libpcre2-@0@'）：剥占位符，否则
             # "libpcre2-@0@" 之类垃圾名入报告（rizin/meson.build 实证）
@@ -1758,6 +2013,8 @@ def _absorb_meson(root: Path, info: Dict, meson_files: List[str]) -> None:
             if _fold(name) in internal:
                 e["internal"] = True
         for fl in _MESON_FINDLIB_RE.finditer(text):
+            if vendored:
+                continue    # vendored 三方子树自己的声明不算应用依赖
             if _fold(fl.group(1)) in internal:
                 continue    # 项目内部库（override_dependency 定义）
             _merge_raw_lib(info["raw_libs"], fl.group(1),
@@ -1789,6 +2046,11 @@ def _absorb_autotools(root: Path, info: Dict,
     deps: Dict[str, Dict] = {}
     for rel in autotools_files:
         text = _read_text(root / rel)
+        # vendored 三方子树自己的 configure.ac 不算应用依赖（与 CMake
+        # 检测器同口径；tdesktop 复盘：ThirdParty/nimf 的
+        # anthy/gtk+/m17n 泄漏进应用 depth-1）
+        if _is_vendored_path(rel):
+            continue
         for m in _PKGCHK_MOD_RE.finditer(text):
             # 模块列表以逗号或空白分隔；单个 spec 可为 "name" 或
             # "name >= ver"
