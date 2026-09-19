@@ -271,6 +271,8 @@ PKG_ALIASES: Dict[str, str] = {
     "dbus1": "dbus",             # CMake DBus1 模块名
     "ogg": "libogg",             # require_dep(ogg) / pkg-config ogg
     "vorbis": "libvorbis",       # require_dep(vorbis)
+    "oggvorbis": "libvorbis",    # lmms FindOggVorbis 复合模块名（模块内
+                                  # 部实为 find_package(Ogg/Vorbis)）
     "png": "libpng",             # CMake PNG 模块名
     "brotlidec": "brotli",       # pkg-config 组件名
     "intl": "gettext",           # CMake Intl 模块 → gettext(libintl)

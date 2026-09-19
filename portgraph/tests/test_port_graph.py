@@ -1007,6 +1007,61 @@ class TestGeneralizationFixes(unittest.TestCase):
     回归测试：URL 版本提取 / 宏包装目标 / find_library 关键字 / env -y /
     共享解析阶梯 / in-tree 判定 / raw 链接名的 test 角色。"""
 
+    # ---- 0) lmms 泛化轮（2026-09 worker2-deps-regress）暴露的表缺口
+    def test_lmms_regress_classifications(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "lm"
+            (root / "src").mkdir(parents=True)
+            (root / "CMakeLists.txt").write_text("""
+cmake_minimum_required(VERSION 3.16)
+project(LmRegress)
+find_package(PackageHandleStandardArgs)
+find_package(PythonInterp)
+find_package(Perl)
+find_package(OpenGL)
+find_package(OggVorbis)
+pkg_check_modules(PULSE libpulse)
+find_package(CxxTest)
+add_library(app STATIC src/x.cpp)
+target_link_libraries(app PRIVATE cxxtest)
+""", encoding="utf-8")
+            (root / "src" / "x.cpp").write_text("", encoding="utf-8")
+            info = qt_scanner.scan_project(root)
+            fp = set(info["cmake_packages"]["find_package"])
+            # CMake 机械模块 / OpenGL 系统能力：不进包清单
+            for n in ("packagehandlestandardargs", "opengl"):
+                self.assertNotIn(n, fp, n)
+            # 主机解释器保留在清单中（报告侧归 build-tool，图侧不建边）
+            for n in ("perl", "pythoninterp"):
+                self.assertIn(n, fp, n)
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:libvorbis", "package", "libvorbis",
+                           "harmonybrew", "ported")
+            # 图侧：主机解释器 / CMake 模块 / opengl 不建运行时边也不建幽灵
+            scan = project_scanner.scan_project(conn, root)
+            hints = [d["hint"] for d in scan["deps_linked"]] + \
+                [d["hint"] for d in scan["deps_unknown"]]
+            for n in ("perl", "pythoninterp", "packagehandlestandardargs",
+                      "opengl"):
+                self.assertNotIn(n, hints, n)
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            # oggvorbis 复合模块名经别名归并到 libvorbis
+            self.assertIn("libvorbis", link)
+            self.assertNotIn("oggvorbis", link)
+            # libpulse → 平台接口（PulseAudio 无鸿蒙服务）
+            self.assertEqual(link["libpulse"]["kind"], "platform-iface")
+            # cxxtest → 测试框架，不进 link 也不需移植
+            self.assertNotIn("cxxtest", link)
+            self.assertIn("cxxtest",
+                          {t["name"] for t in report["test_deps"]})
+            tools = {t["tool"] for t in report["toolchain"]["tools"]}
+            # 主机解释器归 build-tool（若经其他路径进入报告）
+            self.assertIn("perl", tools)
+            conn.close()
+
     # ---- 1) harmonybrew URL 版本提取（419 个 formula 无版本的根因）
     def test_url_version_extraction(self):
         cases = {
