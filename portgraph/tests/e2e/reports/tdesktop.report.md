@@ -1,6 +1,6 @@
 # tdesktop 依赖对账报告（portgraph E2E）
 
-> 生成时间: 2026-09-19T14:53:38Z | 语料: corpus.json#tdesktop | 构建系统: cmake+qmake | 源文件: 6358
+> 生成时间: 2026-09-19T15:12:59Z | 语料: corpus.json#tdesktop | 构建系统: cmake+qmake | 源文件: 6358
 > Oracle: README.md（复核: 已复核，20 条；来源: README §Third-party 逐条人工复核：剥离许可后缀噪声；GYP/Ninja/CMake 改 build 型；Open Sans/Vazirmatn 字体与 Emoji alpha codes 为数据资产（非链接依赖）已删）
 
 ## 1. 结论速览
@@ -24,10 +24,10 @@
 
 | 阻塞类型 | 节点 | 原因 |
 |---|---|---|
-| unsupported-interface | app:tdesktop | 使用鸿蒙不支持的平台接口 macOS Cocoa/AppKit（os-api）macOS 专属 UI/系统框架；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-ac |
+| unsupported-interface | app:tdesktop | 使用鸿蒙不支持的平台接口 macOS Cocoa/AppKit（os-api）macOS 专属 UI/系统框架；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-ac |
 | unsupported-interface | app:tdesktop | 使用鸿蒙不支持的平台接口 D-Bus IPC（ipc）鸿蒙无 D-Bus（Qt D-Bus 模块 Out of scope）；需改用系统服务/IPC；同类鸿蒙替代接口: 鸿蒙 IPC/系统服务能力［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (54 处无条件 / 7 处鸿蒙可编译 / 5 |
-| unsupported-interface | app:tdesktop | 使用鸿蒙不支持的平台接口 systemd（os-api）鸿蒙无 systemd 服务管理；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (0 处无条 |
-| unsupported-interface | app:tdesktop | 使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (107 处 |
+| unsupported-interface | app:tdesktop | 使用鸿蒙不支持的平台接口 systemd（os-api）鸿蒙无 systemd 服务管理；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (0 处无条 |
+| unsupported-interface | app:tdesktop | 使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (107 处 |
 | unsupported-interface | app:tdesktop | 使用鸿蒙不支持的平台接口 X11/Xlib 直连（display）鸿蒙无 X11 显示服务；Qt 应用应走 QPA，直连 X11 代码不可移植；同类鸿蒙替代接口: 鸿蒙 WindowStage/XComponent［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (34 处无条件 / 3 处 |
 | unsupported-module | qtmod:dbus | Qt for HarmonyOS 模块适配表: 不支持 - 鸿蒙无 D-Bus |
 | unsupported-module | qtmod:waylandcompositor | Qt for HarmonyOS 模块适配表: 不支持 - Linux/Wayland 合成器框架，鸿蒙窗口模型非 Wayland |
@@ -203,4 +203,4 @@
 - 对比口径：portgraph 直接依赖（depth-1 边）vs README/INSTALL 声明依赖；闭包仅做产物概览。
 - 归因证据：对未匹配项自动 grep 克隆仓库构建文件（find_package/pkg_check_modules/target_link_libraries/vcpkg 等）。
 - ★ 类（missed-dep / resolution-gap / false-positive）为 bug 候选，需人工确认；其余为预期差异。
-- agent 可读报告：`/root/harmony-workspace/worker1/portgraph/tests/e2e/reports/tdesktop.report.json`
+- agent 可读报告：`tests/e2e/reports/tdesktop.report.json`

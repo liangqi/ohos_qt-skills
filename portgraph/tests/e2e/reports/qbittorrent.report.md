@@ -1,6 +1,6 @@
 # qbittorrent 依赖对账报告（portgraph E2E）
 
-> 生成时间: 2026-09-19T14:53:28Z | 语料: corpus.json#qbittorrent | 构建系统: cmake | 源文件: 710
+> 生成时间: 2026-09-19T15:12:49Z | 语料: corpus.json#qbittorrent | 构建系统: cmake | 源文件: 710
 > Oracle: INSTALL（复核: 已复核，7 条；来源: 手工编写：依赖清单在仓库根 INSTALL 文件（无扩展名，corpus oracle_files 误配为 INSTALL.md；且为纯文本编号列表非 markdown 标题，自动提取器无法解析）。已逐条对照 INSTALL 原文复核。）
 
 ## 1. 结论速览
@@ -24,9 +24,9 @@
 
 | 阻塞类型 | 节点 | 原因 |
 |---|---|---|
-| unsupported-interface | app:qbittorrent | 使用鸿蒙不支持的平台接口 macOS Cocoa/AppKit（os-api）macOS 专属 UI/系统框架；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-ac |
+| unsupported-interface | app:qbittorrent | 使用鸿蒙不支持的平台接口 macOS Cocoa/AppKit（os-api）macOS 专属 UI/系统框架；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-ac |
 | unsupported-interface | app:qbittorrent | 使用鸿蒙不支持的平台接口 D-Bus IPC（ipc）鸿蒙无 D-Bus（Qt D-Bus 模块 Out of scope）；需改用系统服务/IPC；同类鸿蒙替代接口: 鸿蒙 IPC/系统服务能力［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (10 处无条件 / 11 处鸿蒙可编译 /  |
-| unsupported-interface | app:qbittorrent | 使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (3 处无条 |
+| unsupported-interface | app:qbittorrent | 使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (3 处无条 |
 | unsupported-module | qtmod:dbus | Qt for HarmonyOS 模块适配表: 不支持 - 鸿蒙无 D-Bus |
 
 未确认项 1 个：
@@ -83,4 +83,4 @@
 - 对比口径：portgraph 直接依赖（depth-1 边）vs README/INSTALL 声明依赖；闭包仅做产物概览。
 - 归因证据：对未匹配项自动 grep 克隆仓库构建文件（find_package/pkg_check_modules/target_link_libraries/vcpkg 等）。
 - ★ 类（missed-dep / resolution-gap / false-positive）为 bug 候选，需人工确认；其余为预期差异。
-- agent 可读报告：`/root/harmony-workspace/worker1/portgraph/tests/e2e/reports/qbittorrent.report.json`
+- agent 可读报告：`tests/e2e/reports/qbittorrent.report.json`

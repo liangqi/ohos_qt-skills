@@ -1,6 +1,6 @@
 # keepassxc 依赖对账报告（portgraph E2E）
 
-> 生成时间: 2026-09-19T14:53:27Z | 语料: corpus.json#keepassxc | 构建系统: cmake | 源文件: 884
+> 生成时间: 2026-09-19T15:13:09Z | 语料: corpus.json#keepassxc | 构建系统: cmake | 源文件: 884
 > Oracle: INSTALL.md（复核: 已复核，7 条；来源: agent 复核定稿：删除散文链接残留 set-up-build-environment；asciidoctor 依原文（build tools must exist within your PATH + KPXC_FEATURE_DOCS）改判 build；本版 INSTALL.md 仅声明 qt/botan/zlib 三个库，无 libgcrypt/argon2/libsodium/ykpers；vcpkg/xvfb-run 为 prose 提及的工具/测试辅助，不入 oracle）
 
 ## 1. 结论速览
@@ -23,9 +23,9 @@
 
 | 阻塞类型 | 节点 | 原因 |
 |---|---|---|
-| unsupported-interface | app:keepassxc | 使用鸿蒙不支持的平台接口 macOS Cocoa/AppKit（os-api）macOS 专属 UI/系统框架；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-ac |
+| unsupported-interface | app:keepassxc | 使用鸿蒙不支持的平台接口 macOS Cocoa/AppKit（os-api）macOS 专属 UI/系统框架；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-ac |
 | unsupported-interface | app:keepassxc | 使用鸿蒙不支持的平台接口 D-Bus IPC（ipc）鸿蒙无 D-Bus（Qt D-Bus 模块 Out of scope）；需改用系统服务/IPC；同类鸿蒙替代接口: 鸿蒙 IPC/系统服务能力［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (24 处无条件 / 2 处鸿蒙可编译 / 1 |
-| unsupported-interface | app:keepassxc | 使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (12 处无 |
+| unsupported-interface | app:keepassxc | 使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (12 处无 |
 | unsupported-interface | app:keepassxc | 使用鸿蒙不支持的平台接口 X11/Xlib 直连（display）鸿蒙无 X11 显示服务；Qt 应用应走 QPA，直连 X11 代码不可移植；同类鸿蒙替代接口: 鸿蒙 WindowStage/XComponent［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (5 处无条件 / 2 处鸿 |
 | unsupported-module | qtmod:dbus | Qt for HarmonyOS 模块适配表: 不支持 - 鸿蒙无 D-Bus |
 
@@ -101,4 +101,4 @@
 - 对比口径：portgraph 直接依赖（depth-1 边）vs README/INSTALL 声明依赖；闭包仅做产物概览。
 - 归因证据：对未匹配项自动 grep 克隆仓库构建文件（find_package/pkg_check_modules/target_link_libraries/vcpkg 等）。
 - ★ 类（missed-dep / resolution-gap / false-positive）为 bug 候选，需人工确认；其余为预期差异。
-- agent 可读报告：`/root/harmony-workspace/worker1/portgraph/tests/e2e/reports/keepassxc.report.json`
+- agent 可读报告：`tests/e2e/reports/keepassxc.report.json`

@@ -217,7 +217,10 @@ def get_interface(conn, iface_id: str) -> Optional[Dict]:
 
 
 def all_interfaces(conn) -> List[Dict]:
-    return [dict(r) for r in conn.execute("SELECT * FROM interfaces").fetchall()]
+    # ORDER BY id：行序确定（无序时 SQLite 行序随查询计划漂移，合入
+    # NOCASE 函数索引后即出现基线报告“替代接口”顺序抖动，e2e 实证）
+    return [dict(r) for r in conn.execute(
+        "SELECT * FROM interfaces ORDER BY id").fetchall()]
 
 
 def add_node_interface(conn, node_id: str, iface_id: str,

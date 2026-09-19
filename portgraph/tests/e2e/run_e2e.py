@@ -55,6 +55,15 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from port_graph import (DB_PATH, WORKSPACE, cloner, db, deps_fetch,  # noqa: E402
                         engine, kb_seed, project_scanner, qt_scanner)
 
+
+def _rel(p) -> str:
+    """相对 portgraph 根的路径：基线报告不落本机绝对路径（可移植、
+    不泄露机器信息；报告属于工具回归资产，仅存相对位置）。"""
+    try:
+        return str(Path(p).resolve().relative_to(PROJECT_ROOT))
+    except ValueError:
+        return str(p)
+
 E2E_DIR = Path(__file__).resolve().parent
 ORACLE_DIR = E2E_DIR / "oracle"
 OVERRIDES_DIR = E2E_DIR / "overrides"
@@ -857,7 +866,7 @@ def assemble_result(proj, app_id, scan, analysis, manifest, direct, oracle,
                 "tier": proj.get("tier"),
                 "build_system": scan.get("build_system"),
                 "sources": scan.get("sources"),
-                "repo_path": str(repo_path)},
+                "repo_path": _rel(repo_path)},
         "generated_at": now_iso(),
         "verdict": analysis["verdict"],
         "blockers": [{"kind": b["kind"], "node": b["node"],
@@ -1023,7 +1032,7 @@ def write_md_report(r: Dict, path: Path) -> None:
     a("- ★ 类（missed-dep / resolution-gap / false-positive）为 bug 候选，"
       "需人工确认；其余为预期差异。")
     a("- agent 可读报告：`%s`" % (
-        REPORTS_DIR / ("%s.report.json" % r["app"]["key"])))
+        _rel(REPORTS_DIR / ("%s.report.json" % r["app"]["key"]))))
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 

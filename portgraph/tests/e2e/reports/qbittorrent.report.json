@@ -8,15 +8,15 @@
   "tier": "B",
   "build_system": "cmake",
   "sources": 710,
-  "repo_path": "/root/harmony-workspace/worker1/portgraph/workspace/qbittorrent"
+  "repo_path": "workspace/qbittorrent"
  },
- "generated_at": "2026-09-19T14:53:28Z",
+ "generated_at": "2026-09-19T15:12:49Z",
  "verdict": "blocked",
  "blockers": [
   {
    "kind": "unsupported-interface",
    "node": "app:qbittorrent",
-   "reason": "使用鸿蒙不支持的平台接口 macOS Cocoa/AppKit（os-api）macOS 专属 UI/系统框架；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (19 处无条件 / 0 处鸿蒙可编译 / 0 处宏守卫排除 / 0 处文件级排除) | src/gui/macutilities.mm:31[unconditional] #import <Cocoa/Cocoa.h>; src/gui/macutilities.mm:32[unconditional] #import <Foundation/Foundation.h>; src/gui/macutilities.mm:69[unconditional] NSApplication *appInst = [NSApplication sharedApplication];］"
+   "reason": "使用鸿蒙不支持的平台接口 macOS Cocoa/AppKit（os-api）macOS 专属 UI/系统框架；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (19 处无条件 / 0 处鸿蒙可编译 / 0 处宏守卫排除 / 0 处文件级排除) | src/gui/macutilities.mm:31[unconditional] #import <Cocoa/Cocoa.h>; src/gui/macutilities.mm:32[unconditional] #import <Foundation/Foundation.h>; src/gui/macutilities.mm:69[unconditional] NSApplication *appInst = [NSApplication sharedApplication];］"
   },
   {
    "kind": "unsupported-interface",
@@ -26,7 +26,7 @@
   {
    "kind": "unsupported-interface",
    "node": "app:qbittorrent",
-   "reason": "使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (3 处无条件 / 2 处鸿蒙可编译 / 20 处宏守卫排除 / 0 处文件级排除) | src/gui/utils.cpp:36[platform-excluded] #include <shlobj.h>; src/gui/utils.cpp:37[platform-excluded] #include <shellapi.h>; src/gui/powermanagement/inhibitorwindows.cpp:32[unconditional] #include <windows.h>］"
+   "reason": "使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (3 处无条件 / 2 处鸿蒙可编译 / 20 处宏守卫排除 / 0 处文件级排除) | src/gui/utils.cpp:36[platform-excluded] #include <shlobj.h>; src/gui/utils.cpp:37[platform-excluded] #include <shellapi.h>; src/gui/powermanagement/inhibitorwindows.cpp:32[unconditional] #include <windows.h>］"
   },
   {
    "kind": "unsupported-module",

@@ -8,9 +8,9 @@
   "tier": "C",
   "build_system": "cmake+qmake",
   "sources": 5729,
-  "repo_path": "/root/harmony-workspace/worker1/portgraph/workspace/musescore"
+  "repo_path": "workspace/musescore"
  },
- "generated_at": "2026-09-19T14:53:32Z",
+ "generated_at": "2026-09-19T15:12:53Z",
  "verdict": "blocked",
  "blockers": [
   {
@@ -36,12 +36,12 @@
   {
    "kind": "unsupported-interface",
    "node": "app:musescore",
-   "reason": "使用鸿蒙不支持的平台接口 systemd（os-api）鸿蒙无 systemd 服务管理；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (0 处无条件 / 3 处鸿蒙可编译 / 0 处宏守卫排除 / 0 处文件级排除) | muse/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/fluidsynth.c:41[ohos-active] #include <systemd/sd-daemon.h>; muse/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/fluidsynth.c:1098[ohos-active] sd_notify(0, \"READY=1\");; muse/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/fluidsynth.c:1180[ohos-active] sd_notify(0, \"STOPPING=1\");］"
+   "reason": "使用鸿蒙不支持的平台接口 systemd（os-api）鸿蒙无 systemd 服务管理；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (0 处无条件 / 3 处鸿蒙可编译 / 0 处宏守卫排除 / 0 处文件级排除) | muse/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/fluidsynth.c:41[ohos-active] #include <systemd/sd-daemon.h>; muse/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/fluidsynth.c:1098[ohos-active] sd_notify(0, \"READY=1\");; muse/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/fluidsynth.c:1180[ohos-active] sd_notify(0, \"STOPPING=1\");］"
   },
   {
    "kind": "unsupported-interface",
    "node": "app:musescore",
-   "reason": "使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (30 处无条件 / 8 处鸿蒙可编译 / 39 处宏守卫排除 / 45 处文件级排除) | src/project/internal/platform/windows/windowsrecentfilescontroller.cpp:25[platform-file-excluded] #include <shlobj.h>; muse/framework/vst/qml/Muse/Vst/vstview.cpp:29[platform-excluded] #include <windows.h>; muse/framework/vst/qml/Muse/Vst/vstview.cpp:46[platform-excluded] static void removeMinMaxButtons(HWND window)］"
+   "reason": "使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (30 处无条件 / 8 处鸿蒙可编译 / 39 处宏守卫排除 / 45 处文件级排除) | src/project/internal/platform/windows/windowsrecentfilescontroller.cpp:25[platform-file-excluded] #include <shlobj.h>; muse/framework/vst/qml/Muse/Vst/vstview.cpp:29[platform-excluded] #include <windows.h>; muse/framework/vst/qml/Muse/Vst/vstview.cpp:46[platform-excluded] static void removeMinMaxButtons(HWND window)］"
   },
   {
    "kind": "unsupported-module",
@@ -86,6 +86,27 @@
    "reason": "接口 macOS Cocoa/AppKit 被非鸿蒙平台条件编译守卫包裹（鸿蒙不编译），功能类别=os-api",
    "alternatives": [
     {
+     "id": "iface:dylib",
+     "name": "dlopen 动态加载",
+     "category": "os-api",
+     "ohos_status": "convertible",
+     "note": "鸿蒙支持 dlopen，但库路径/打包方式受限，需适配 HAP 内 native 目录"
+    },
+    {
+     "id": "iface:glib-event",
+     "name": "glib 事件循环",
+     "category": "os-api",
+     "ohos_status": "convertible",
+     "note": "可用 Qt 事件循环替代或移植 glib 主循环"
+    },
+    {
+     "id": "iface:macos-system",
+     "name": "macOS 系统库绑定",
+     "category": "os-api",
+     "ohos_status": "convertible",
+     "note": "formula 依赖 macOS 系统自带库；鸿蒙上需改为显式打包依赖（多为可转化的开源库）"
+    },
+    {
      "id": "iface:posix",
      "name": "POSIX/musl C 库",
      "category": "os-api",
@@ -98,27 +119,6 @@
      "category": "os-api",
      "ohos_status": "supported",
      "note": "musl 提供 pthread"
-    },
-    {
-     "id": "iface:dylib",
-     "name": "dlopen 动态加载",
-     "category": "os-api",
-     "ohos_status": "convertible",
-     "note": "鸿蒙支持 dlopen，但库路径/打包方式受限，需适配 HAP 内 native 目录"
-    },
-    {
-     "id": "iface:macos-system",
-     "name": "macOS 系统库绑定",
-     "category": "os-api",
-     "ohos_status": "convertible",
-     "note": "formula 依赖 macOS 系统自带库；鸿蒙上需改为显式打包依赖（多为可转化的开源库）"
-    },
-    {
-     "id": "iface:glib-event",
-     "name": "glib 事件循环",
-     "category": "os-api",
-     "ohos_status": "convertible",
-     "note": "可用 Qt 事件循环替代或移植 glib 主循环"
     }
    ],
    "evidence": "[被非鸿蒙平台守卫包裹（不编译）] guard=platform-excluded (0 处无条件 / 0 处鸿蒙可编译 / 0 处宏守卫排除 / 25 处文件级排除) | src/project/internal/platform/macos/macosrecentfilescontroller.mm:22[platform-file-excluded] #include <Cocoa/Cocoa.h>; src/appshell/internal/platform/macos/macosappmenumodelhook.mm:25[platform-file-excluded] #include <Cocoa/Cocoa.h>; muse/framework/uicomponents/qml/Muse/UiComponents/internal/platform/macos/macospopupviewclosecontroller.mm:25[platform-file-excluded] #include <AppKit/NSEvent.h>",

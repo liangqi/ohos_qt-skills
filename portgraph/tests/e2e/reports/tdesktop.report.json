@@ -8,15 +8,15 @@
   "tier": "C",
   "build_system": "cmake+qmake",
   "sources": 6358,
-  "repo_path": "/root/harmony-workspace/worker1/portgraph/workspace/tdesktop"
+  "repo_path": "workspace/tdesktop"
  },
- "generated_at": "2026-09-19T14:53:38Z",
+ "generated_at": "2026-09-19T15:12:59Z",
  "verdict": "blocked",
  "blockers": [
   {
    "kind": "unsupported-interface",
    "node": "app:tdesktop",
-   "reason": "使用鸿蒙不支持的平台接口 macOS Cocoa/AppKit（os-api）macOS 专属 UI/系统框架；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (7 处无条件 / 0 处鸿蒙可编译 / 0 处宏守卫排除 / 621 处文件级排除) | Telegram/lib_webview/webview/platform/mac/webview_mac.mm:26[platform-file-excluded] #import <Foundation/Foundation.h>; Telegram/lib_webview/webview/platform/mac/webview_mac.mm:31[platform-file-excluded] @protocol WebviewWKFeature <NSObject>; Telegram/lib_webview/webview/platform/mac/webview_mac.mm:35[platform-file-excluded] @interface WKPreferences (WebviewPrivate)］"
+   "reason": "使用鸿蒙不支持的平台接口 macOS Cocoa/AppKit（os-api）macOS 专属 UI/系统框架；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (7 处无条件 / 0 处鸿蒙可编译 / 0 处宏守卫排除 / 621 处文件级排除) | Telegram/lib_webview/webview/platform/mac/webview_mac.mm:26[platform-file-excluded] #import <Foundation/Foundation.h>; Telegram/lib_webview/webview/platform/mac/webview_mac.mm:31[platform-file-excluded] @protocol WebviewWKFeature <NSObject>; Telegram/lib_webview/webview/platform/mac/webview_mac.mm:35[platform-file-excluded] @interface WKPreferences (WebviewPrivate)］"
   },
   {
    "kind": "unsupported-interface",
@@ -26,12 +26,12 @@
   {
    "kind": "unsupported-interface",
    "node": "app:tdesktop",
-   "reason": "使用鸿蒙不支持的平台接口 systemd（os-api）鸿蒙无 systemd 服务管理；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (0 处无条件 / 2 处鸿蒙可编译 / 0 处宏守卫排除 / 0 处文件级排除) | Telegram/ThirdParty/xdg-desktop-portal/src/xdp-app-info-host.c:23[ohos-active] #include <systemd/sd-login.h>; Telegram/ThirdParty/xdg-desktop-portal/src/xdp-app-info.c:38[ohos-active] #include <systemd/sd-login.h>］"
+   "reason": "使用鸿蒙不支持的平台接口 systemd（os-api）鸿蒙无 systemd 服务管理；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (0 处无条件 / 2 处鸿蒙可编译 / 0 处宏守卫排除 / 0 处文件级排除) | Telegram/ThirdParty/xdg-desktop-portal/src/xdp-app-info-host.c:23[ohos-active] #include <systemd/sd-login.h>; Telegram/ThirdParty/xdg-desktop-portal/src/xdp-app-info.c:38[ohos-active] #include <systemd/sd-login.h>］"
   },
   {
    "kind": "unsupported-interface",
    "node": "app:tdesktop",
-   "reason": "使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (107 处无条件 / 9 处鸿蒙可编译 / 59 处宏守卫排除 / 187 处文件级排除) | cmake/win_directx_helper/win_directx_helper.cpp:25[unconditional] using Handle = HINSTANCE;; cmake/win_directx_helper/win_directx_helper.cpp:84[unconditional] ? reinterpret_cast<Function>(GetProcAddress(handle, name)); cmake/win_directx_helper/win_directx_helper.cpp:96[unconditional] const auto file = CreateFile(］"
+   "reason": "使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (107 处无条件 / 9 处鸿蒙可编译 / 59 处宏守卫排除 / 187 处文件级排除) | cmake/win_directx_helper/win_directx_helper.cpp:25[unconditional] using Handle = HINSTANCE;; cmake/win_directx_helper/win_directx_helper.cpp:84[unconditional] ? reinterpret_cast<Function>(GetProcAddress(handle, name)); cmake/win_directx_helper/win_directx_helper.cpp:96[unconditional] const auto file = CreateFile(］"
   },
   {
    "kind": "unsupported-interface",
