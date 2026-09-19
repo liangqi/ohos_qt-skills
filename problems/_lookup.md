@@ -1,6 +1,6 @@
 ---
-updated: 2026-09-12
-total_problems: 41
+updated: 2026-09-19
+total_problems: 46
 description: >
   错误速查索引（从 problem 页 frontmatter 重建）。
 ---
@@ -25,6 +25,11 @@ description: >
 | N/A | [runtime-hap-missing-so-closure](runtime-hap-missing-so-closure.md) | HAP 启动 64ms 即死无 cppcrash、jscrash TypeError handleAbilityStageOnCreate of undefined——libqohos 依赖 .so 闭包缺失（libbz2/libz/libdav1d/libaom）+ aom 源码编译/dav1d 静态转 so |
 | N/A | [build-qt612-ohos-plugin-rebuild](build-qt612-ohos-plugin-rebuild.md) | 重编 Qt 6.12 ohos 平台插件五连坑：qt-cmake 拒绝构建 qtbase 本体→cmake BUILD_SUBMODULES；缺 NODE_ADDON_API_ROOT；FIND_ROOT_PATH_MODE_INCLUDE=ONLY 重根化致 find 失败→预填 cache 变量；缺 OHOS_SDK_ROOT→QtPriHelpers TO_CMAKE_PATH 报错；QT_FEATURE_fontconfig 条件作用域看不到 Fontconfig_FOUND→patch gui CMakeLists；产物须替换 kit（deploy 从 kit 复制） |
 | N/A | [runtime-ohos-ime-reset-detach](runtime-ohos-ime-reset-detach.md) | Qt ohos 插件 QOhosInputContext::reset() 的 Detach/Attach 使拼音组合中键盘收起+拼音字母污染文本；修复=只 finalize preedit；含 IMF 探针排查法（IMEPROBE）与「中文搜索无结果」三角验证定性（服务器不索引中文短词，非移植 bug） |
+| N/A | [build-fail-configure-exec-bit-crlf](build-fail-configure-exec-bit-crlf.md) | Linux/macOS 下 sh configure 报 Permission denied / bad interpreter ^M：开源镜像初始导入丢执行位 + CRLF；src-clone 已默认 POSIX 构建分支并自动恢复执行位（QOH037） |
+| N/A | [build-fail-python-not-found](build-fail-python-not-found.md) | qtdeclarative 报 `sh: 1: python: not found` / Building QtQml requires Python：Linux 无 python 别名；CLI 已内置 .qtsdk/pyshim 自动 shim（QOH038） |
+| N/A | [build-fail-qtdbus-deprecated-copy](build-fail-qtdbus-deprecated-copy.md) | qdbusreply.h -Wdeprecated-copy 类警告被 -Werror 拦下：鸿蒙无 DBus，configure 必须 -no-dbus（CLI 已内置，QOH039） |
+| N/A | [build-fail-stale-build-state](build-fail-stale-build-state.md) | 改 -no-dbus / 换 SDK 后 ibus 插件仍构建报 unknown type name QDBusArgument：旧模块 pri 残留，qtHaveModule 误判；CLI 已加 configure 指纹防护自动清目录（QOH040） |
+| N/A | [build-fail-ohos-sdk-api-too-old](build-fail-ohos-sdk-api-too-old.md) | qarkui/input.cpp 报 no member named OH_ArkUI_PointerEvent_GetGlobalDisplayX 等：SDK API 版本过旧，需 OpenHarmony ≥ 6.1（API 23，QOH041） |
 
 ## 按症状速查
 

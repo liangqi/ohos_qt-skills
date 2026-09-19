@@ -29,6 +29,14 @@
 - **MINOR** 故障库新增**处置分类**派生视图（`faults-build.py` 从 nature×responsible 自动计算，不入真源）：鸿蒙必须适配（limitation）/ Qt 问题（defect+qt 侧）/ 系统问题（defect+ohos 侧）/ 应用使用问题（responsible=app，配套放宽为允许薄 C 页）/ 三方库问题 / 待定性；登记表新增 §按处置分类，`_graph.yaml` 增 disposition 字段
 - **MINOR** 故障库**历史问题导入批次 1**（10 个问题，3 个并行子 agent 分析 + 主编审核合入）：QDialog blockedByModal（C-0009+patch）、@ohos.deviceInfo 裸 eval 模板崩溃（C-0010）、mainthread Q_ASSERT（C-0011，undetermined）、dlopen 可写路径（C-0012+QTBUG-146624）、沙箱只读写崩溃（C-0013）、跨屏闪烁（C-0014）、hvigor CLI/IDE 打包分歧（C-0015，undetermined）、QFileDialog 误加守卫（C-0016，应用使用问题首例）、curl 中文乱码（C-0017）、ZINK RGBA8 mipmap 黑纹理（C-0018，三方库首例）；图规模 S 7→17 / C 8→18 / W 6→15 / T 4→5，14 处源页 refs 回填
 - **MINOR** 故障库新增**链路完备性（闭环规则）**：defect（外部责任）的"临时解决"必须同时具备采用中方案（W adopted）与在跟单（T）——缺一即未闭环（missing-ticket/missing-workaround/both-missing，`faults-build.py` 派生 `chain_state`/`gaps`）；limitation 与应用问题必须有采用中方案；**缺口向上传播**（S 的了结宣称受 causes 聚合约束：S=resolved 而链有缺 → ERROR，S=mitigated 无 adopted W → ERROR，C=workaround 未闭环 → WARN）；`_registry.md` 新增 §未闭环清单（缺单/缺方案/双缺分组）+ 症状索引闭环列 + 统计"链路闭环"行，`_graph.yaml` S/C 节点增 chain_state/gaps，`review` 增"未闭环（待补齐）"段；数据修正 W-0004 targets 扩至 C-0005+C-0006（换构建组合同时绕开两根因）
+- **MINOR** qt-sdk-forge **Linux 全链路支持 + 实测验证**（Ubuntu 22.04 x86_64：Qt 5.12.12 GLES release + OpenHarmony SDK 6.1.0.35 → SV0-SV6/SV8 PASS，2026-09-19）。沉淀自一次完整 Linux 编译实战，五坑全部转为机器级预防（错误发生前拦截）：
+  - **QOH037 源码快照缺陷**：GitCode 开源镜像初始导入丢全部执行位（620 个 shebang 脚本）、`main`/`5.12.12` 快照带 CRLF、且无 `tqtc/*` 商业分支名——`src-clone --method opensource` 现默认检出 POSIX 构建分支 `build/macos-arm64-qt5.12.12`（新增 `OPENSOURCE_BRANCHES` 映射 + `--branch` 覆盖），克隆后自动恢复执行位并以 git 提交固化，CRLF 树直接拒绝
+  - **QOH038 python 别名缺失**：qtdeclarative 调 `python` 而 Linux 只有 `python3`——`build_env()` 自动创建 `.qtsdk/pyshim/python`（不污染宿主）；SV0 新增 `python3`/`python_alias` 检查
+  - **QOH039 QtDBus 编不过**：clang 15 的 `-Wdeprecated-copy` × mkspec `-Werror`；且鸿蒙运行时无 DBus（QOH002）——CLI configure 内置 `-no-dbus`（对齐官方预构建与 semantic 页）
+  - **QOH040 脏构建目录（增量第四坑）**：改配置/换 SDK 后旧 `qt_lib_dbus.pri` 残留使 `qtHaveModule(dbus)` 误真、ibus 插件照常构建——configure 新增指纹防护（configure 参数 + OHOS SDK 版本指纹），变化即自动清构建目录
+  - **QOH041 SDK API 过旧**：qarkui QPA 编译期取 ArkUI NDK 符号地址，需 apiVersion ≥ 23（OpenHarmony ≥ 6.1；官方构建 API 24）——`build-matrix.md` 新增 §2.1「Linux 获取 OHOS SDK」：OpenHarmony 公开镜像 URL 规律、版本选择表、解压登记步骤、低内存 jobs 建议
+  - 配套：`problems/` 新增 5 页（事实源）、`knowledge/errors/` 36→41 条、`_lookup.md` 重建、kb-init `qt-src-acquisition.md` 修正开源分支说明（同 QOH037 根因）
+- **PATCH** qt-sdk-forge CLI 修复：`env` 子命令现尊重 `config set qt_src/ohos_sdk_native`（原先只读 ENV.local.md，配置 apparent 失效）；`building.py` configure 失败路径 `key` 未赋值崩溃；`run_git()` 调用签名错误 7 处（releasing/srctree/patching，`release`/`upstream-check` 必崩）；`-no-dbus` 加入内置 configure 参数
 - note: `RELEASE-MANIFEST.yaml` 的 `content_tree_sha256` 将在下次发版时由发版脚本重新生成
 
 ## v2.2.1 — 2026-08-29

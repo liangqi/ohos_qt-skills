@@ -231,7 +231,7 @@ def apply(st: ForgeState, patch_id: str) -> Dict:
 
     entry["status"] = "applied"
     entry["base_commit"] = envcheck.run_git(
-        "rev-parse", "HEAD", cwd=src).stdout.strip()
+        ["rev-parse", "HEAD"], src).stdout.strip()
     _update_entry(st, entry)
     return {"ok": True, "id": patch_id, "base_commit": entry["base_commit"]}
 

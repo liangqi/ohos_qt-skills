@@ -11,7 +11,7 @@
 #      depends_on C→C（仅实证阻塞）｜manifests 为 causes 的派生反查索引
 
 schema: 2
-updated: 2026-09-15
+updated: 2026-09-19
 
 counts:
   symptoms: 17

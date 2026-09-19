@@ -82,7 +82,7 @@ def release(st: ForgeState, note: str = "", release_type: str = "release",
     qtbase = src / "qtbase" if src else None
     dirty = []
     if qtbase and qtbase.is_dir():
-        out = envcheck.run_git("status", "--porcelain", cwd=qtbase).stdout
+        out = envcheck.run_git(["status", "--porcelain"], qtbase).stdout
         dirty = sorted(l[3:].strip().split(" -> ")[-1]
                        for l in out.splitlines() if l.strip())
     registered = patching.applied_files(st)
@@ -112,7 +112,7 @@ def release(st: ForgeState, note: str = "", release_type: str = "release",
         "build_dir": ctx.get("build_dir"),
         "base_commit": patching.applied_entries(st) and
         patching.applied_entries(st)[0].get("base_commit") or
-        (envcheck.run_git("rev-parse", "HEAD", cwd=qtbase).stdout.strip()
+        (envcheck.run_git(["rev-parse", "HEAD"], qtbase).stdout.strip()
          if qtbase and qtbase.is_dir() else None),
         "created": time.strftime("%Y-%m-%d %H:%M:%S"),
         "note": note,

@@ -15,7 +15,7 @@
 | 目标 | 获取方式 | 渠道与坐标 | CLI 命令 |
 |------|----------|-----------|----------|
 | Qt 5.15.16（推荐源码线） | 源码编译 | **仅商业**：`https://codereview.qt-project.org/qt/tqtc-qt5`，分支 `tqtc/harmonyos-5.15.16` | `src-clone --method commercial --version 5.15 --dest <dir> --user <U> --pass <P>` |
-| Qt 5.12.12（LTS 维护线） | 源码编译 | 商业：同仓库，分支 `tqtc/harmonyos-5.12.12`；**开源**：`https://gitcode.com/ohos-qt/qt-harmonyos-src`（当前快照 `qt-harmonyos-src-5.12.12-20260625`） | `src-clone --method commercial\|opensource --version 5.12 --dest <dir>` |
+| Qt 5.12.12（LTS 维护线） | 源码编译 | 商业：同仓库，分支 `tqtc/harmonyos-5.12.12`；**开源**：`https://gitcode.com/ohos-qt/qt-harmonyos-src`，POSIX 构建分支 `build/macos-arm64-qt5.12.12`（LF + 构建使能补丁，macOS/Linux 默认；`main`/`5.12.12` 快照为 CRLF+丢执行位，仅 Windows 可用，见 QOH037） | `src-clone --method commercial\|opensource --version 5.12 --dest <dir>` |
 | Qt 5.12.12（不改框架） | 预构建 SDK | `https://gitcode.com/ohos-qt/qt-harmonyos-src/releases`（Windows/macOS × GL/GLES，HarmonyOS × GLES） | 手动下载解压，或 `bash skills/kb-init/scripts/download-qt-sdk.sh --platform=<os> --dest <dir>` |
 | Qt 6.12 | 官方预构建安装器 | Qt 在线安装器，自定义安装勾选 **HarmonyOS** target；kit 路径形如 `C:\Qt\Qt6.12-beta3\6.12.0\harmonyos_arm64_v8a` | ❌ **agent 无法自动下载**：安装器需登录 Qt 账号交互式操作，须**提示用户手动安装**，完成后 `config set sdk_root` 登记接入 |
 
@@ -49,12 +49,38 @@ libqohos QPA 与 HarmonyExtras，**缺 WebEngine/DBus/Pdf/Script**
 |------|--------|-------------|---------|
 | **Windows**（主力） | MinGW（推荐 `llvm-mingw-20230919-ucrt-x86_64`） | Strawberry Perl | `MINGW_ROOT`、`PERL_ROOT` 进 PATH。mingw32-make 必须带 `SHELL=cmd.exe`——**CLI 已内置**，任何宿主 shell 下安全 |
 | **macOS** (Sonoma 14+) | Xcode/clang | git ≥ 2.39.3、python ≥ 3.12 | `make -j$(sysctl -n hw.ncpu)`；configure 用 `sh <src>/configure` |
-| **Linux** | OHOS SDK llvm | perl、DevEco **Command Line Tools**（无 GUI 需要） | 编译流程与 macOS 相同（POSIX 分支） |
+| **Linux** | OHOS SDK llvm | python3（CLI 自动 shim `python` 别名，QOH038）+ make | 编译流程与 macOS 相同（POSIX 分支）。**已实测验证**（Ubuntu 22.04 x86_64）：src-clone 默认 POSIX 构建分支 + 自动恢复执行位；configure 内置 `-no-dbus`（QOH039）+ 指纹防护自动清脏构建目录（QOH040）；`python` 由 `.qtsdk/pyshim` 自动提供 |
 | **HarmonyOS PC**（鸿蒙 PC/开发板/容器） | OHOS SDK llvm | [HarmonyBrew](https://gitcode.com/Harmonybrew)（brew 的鸿蒙移植版） | `zsh -c "$(curl -fsSL https://harmonybrew.atomgit.com/install.sh)"` 后 `brew install git cmake` 等 |
 
 CLI 平台适配已内置（`tools/qt_sdk/building.py`）：
 - Windows：`cmd.exe /c configure.bat` + `mingw32-make.exe SHELL=cmd.exe`，自动注入 `NATIVE_OHOS_SDK`/`OHOS_SDK_SYSROOT`/`LLVM_INSTALL_DIR` 及 `-device-option CROSS_COMPILE=<llvm>/bin`
 - POSIX（macOS/Linux/HarmonyOS）：`sh configure` + `make`
+
+### 2.1 Linux 获取 OHOS SDK（公开渠道，无需登录）
+
+DevEco **Command Line Tools** 需华为官网登录获取；Linux 可改用 **OpenHarmony
+官方公开镜像**的 native 工具链（与 DevEco SDK 同源同构，实测可用）：
+
+```bash
+# 路径规律：https://repo.huaweicloud.com/openharmony/os/<版本>/ohos-sdk-windows_linux-public.tar.gz
+# 版本选择：QOH041——Qt 移植层要求 apiVersion ≥ 23（即 ≥ 6.1）；
+#   5.0.3（API 15）缺 OH_ArkUI_PointerEvent_GetGlobalDisplayX 等符号，编不过 qarkui
+curl -L -o ohos-sdk.tar.gz \
+  "https://repo.huaweicloud.com/openharmony/os/6.1-LTS/ohos-sdk-windows_linux-public.tar.gz"
+tar xzf ohos-sdk.tar.gz ohos-sdk/linux/native-linux-x64-*.zip   # 只解 native
+unzip native-linux-x64-*.zip -d . && mv native/native native-sdk
+python3 tools/qt-sdk-run.py config set ohos_sdk_native <绝对路径>/native-sdk
+python3 tools/qt-sdk-run.py env      # SV0 验证 llvm/bin + sysroot
+```
+
+实测基准（2026-09-19，Ubuntu 22.04）：OpenHarmony 6.1.0.35（API 23，clang 15.0.4
+与官方预构建同版本）+ 本仓库 POSIX 构建分支 → SV0-SV6/SV8 全 PASS。
+
+**低内存机器**（≤ 8GB RAM）：`config set jobs <N>`（建议 N ≈ 核数 × 2/3，实测
+12 核 / 7.7GB 用 `-j8` 稳定）。
+
+**换 SDK 后**：CLI 指纹防护会自动清构建目录（QOH040）；手动操作时务必先删
+`build-<变体>` 目录。
 
 ---
 
@@ -143,9 +169,19 @@ make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu) install
 ## 5. 编译排障入口
 
 1. CLI 每步退出码非 0 → 先看 `.qtsdk/logs/<时间戳>-<步骤>.log` 尾部（state.json 里也有 tail 证据）
-2. `python tools/qt-ohos-run.py analyze-log <日志>`——36 条 QOH 错误模式机器匹配，沿命中条目 `refs` 读 problems/ 知识页
+2. `python tools/qt-ohos-run.py analyze-log <日志>`——41 条 QOH 错误模式机器匹配，沿命中条目 `refs` 读 problems/ 知识页
 3. `problems/_lookup.md` 按错误信息检索
-4. 增量编译三坑（只 build 不 install / bash 跑 mingw32-make / install 后 demo 未重编）由 SV4/SV7 门禁兜底
+4. 增量编译三坑（只 build 不 install / bash 跑 mingw32-make / install 后 demo 未重编）由 SV4/SV7 门禁兜底；**第四坑**（跨配置/换 SDK 复用脏构建目录，QOH040）由 CLI configure 指纹防护兜底
+
+Linux/macOS 源码编译常见坑（均已内置预防，analyze-log 可命中）：
+
+| QOH | 症状 | 内置预防 |
+|-----|------|---------|
+| QOH037 | `configure: Permission denied` / `bad interpreter ^M` / 开源镜像无 tqtc 分支 | src-clone 默认 POSIX 构建分支 + 自动恢复执行位 + CRLF 拒绝 |
+| QOH038 | `python: not found`（QtQml 阶段） | build_env 自动 shim `.qtsdk/pyshim` |
+| QOH039 | qdbusreply.h -Wdeprecated-copy 被 -Werror 拦 | configure 内置 `-no-dbus` |
+| QOH040 | ibus 插件残留构建（unknown QDBusArgument） | configure 指纹变化自动清构建目录 |
+| QOH041 | qarkui 缺 OH_ArkUI_* 符号 | 见 §2.1，SDK 需 apiVersion ≥ 23 |
 
 ---
 

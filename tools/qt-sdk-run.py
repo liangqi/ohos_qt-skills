@@ -147,7 +147,16 @@ def cmd_init(args) -> int:
 
 
 def cmd_env(args) -> int:
-    report = envcheck.check()
+    # respect forge config (config set qt_src / ohos_sdk_native) in addition
+    # to ENV.local.md - previously the CLI only read ENV.local.md here, which
+    # made `config set` appear to have no effect on the SV0 report
+    cfg = {}
+    try:
+        cfg = _state(args).env()
+    except SystemExit:
+        pass                                   # no forge state yet - fine
+    report = envcheck.check(qt_src=cfg.get("qt_src", ""),
+                            ohos_sdk_native=cfg.get("ohos_sdk_native", ""))
     _print_checks(report)
     return 0 if report["ok"] else 1
 
@@ -168,7 +177,8 @@ def cmd_config(args) -> int:
 def cmd_src_clone(args) -> int:
     dest = Path(args.dest)
     result = srctree.clone(args.method, args.version, dest,
-                           user=args.user, password=args.password)
+                           user=args.user, password=args.password,
+                           branch=args.branch)
     for step in result.get("steps", []):
         print("  %-10s rc=%s" % (step["step"], step["rc"]))
         if step["rc"] != 0:
@@ -560,6 +570,9 @@ def main(argv=None) -> int:
                    choices=["commercial", "opensource"])
     p.add_argument("--version", required=True, choices=["5.12", "5.15"])
     p.add_argument("--dest", required=True)
+    p.add_argument("--branch", default="",
+                   help="override branch (opensource default: POSIX build "
+                        "branch, see OPENSOURCE_BRANCHES)")
     p.add_argument("--user", default="")
     p.add_argument("--pass", dest="password", default="")
     p.set_defaults(func=cmd_src_clone)

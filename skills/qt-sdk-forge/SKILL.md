@@ -53,6 +53,16 @@ description: |
    无 license 怎么办、要不要预构建）：先查本 skill 的
    `references/build-matrix.md`——版本×渠道决策表、平台×工具链矩阵、
    CLI 参数与 configure 差异对照、CLI 不可用时的各平台手动等价命令都在该页
+5. **Linux 支持状态**：✅ 已实测验证（Ubuntu 22.04 x86_64，2026-09-19，
+   Qt 5.12.12 GLES release → SV0-SV6/SV8 PASS）。CLI 已内置全部 Linux 适配：
+   - `src-clone --method opensource` 默认检出 POSIX 构建分支并自动恢复
+     执行位（QOH037）；CRLF 快照会被拒绝
+   - OHOS SDK 从 OpenHarmony 公开镜像获取（无需华为账号登录），需
+     apiVersion ≥ 23，见 `references/build-matrix.md` §2.1（QOH041）
+   - configure 内置 `-no-dbus`（QOH039）与脏构建目录指纹防护（QOH040）
+   - `python` 别名由 `.qtsdk/pyshim` 自动提供（QOH038），SV0 检查
+     `python3` / `python_alias`
+   - 低内存机器（≤ 8GB）用 `config set jobs <N>` 限并发
 
 ## 状态平面（State Plane）
 

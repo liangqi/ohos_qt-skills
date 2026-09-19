@@ -6,6 +6,7 @@ super-repositories (tqtc-qt5) where qtbase / qtohosextras are submodules.
 
 from __future__ import annotations
 
+import os
 import time
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -22,6 +23,17 @@ BRANCHES = {
     "5.15": "tqtc/harmonyos-5.15.16",
 }
 
+# The GitCode opensource mirror does NOT carry the tqtc/* branch names.
+# Its plain snapshots (`main` / `5.12.12`) additionally carry Windows CRLF
+# line endings and lost executable bits (initial import), which break POSIX
+# configure (QOH037). The `build/macos-arm64-*` branches are the POSIX
+# build branches (LF endings + build-enabling warning-suppression patches)
+# that produced the official prebuilt SDKs - the correct default for
+# macOS/Linux source builds even though they are named "macos".
+OPENSOURCE_BRANCHES = {
+    "5.12": "build/macos-arm64-qt5.12.12",
+}
+
 # Directories whose changes matter most for the OHOS port (upstream report).
 WATCH_DIRS = [
     "qtbase/src/plugins/platforms/ohos",
@@ -31,13 +43,21 @@ WATCH_DIRS = [
 
 
 def clone(method: str, version: str, dest: Path,
-          user: str = "", password: str = "",
+          user: str = "", password: str = "", branch: str = "",
           timeout: float = 7200.0) -> Dict:
-    """Clone a Qt harmony branch + submodules. method: commercial|opensource."""
+    """Clone a Qt harmony branch + submodules. method: commercial|opensource.
+
+    opensource defaults to the GitCode mirror's POSIX build branch
+    (OPENSOURCE_BRANCHES); override with `branch` at your own risk - the
+    plain `main`/`5.12.12` snapshots are CRLF + non-exec and fail on
+    macOS/Linux (QOH037)."""
     if version not in BRANCHES:
         raise ValueError("unsupported version %r (valid: %s)"
                          % (version, ", ".join(BRANCHES)))
-    branch = BRANCHES[version]
+    if method == "opensource":
+        branch = branch or OPENSOURCE_BRANCHES.get(version) or BRANCHES[version]
+    else:
+        branch = branch or BRANCHES[version]
     if method == "commercial":
         repo = COMMERCIAL_REPO
         if user and password:
@@ -71,7 +91,68 @@ def clone(method: str, version: str, dest: Path,
                         COMMERCIAL_REPO], cwd=str(dest),
                        capture_output=True, text=True)
     res["ok"] = bool((dest / "qtbase").is_dir())
+    if not res["ok"]:
+        return res
+
+    # ---- POSIX post-clone fixups (opensource mirror quirks, QOH037) ----
+    if os.name != "nt":
+        crlf = _crlf_check(dest / "qtbase" / "configure")
+        res["steps"].append({"step": "crlf_check", "rc": 0 if not crlf else 1,
+                             "tail": ("qtbase/configure uses CRLF line "
+                                      "endings - `sh configure` will fail "
+                                      "(bad interpreter: /bin/sh^M). Re-clone "
+                                      "with the default POSIX build branch "
+                                      "(OPENSOURCE_BRANCHES)."
+                                      if crlf else "LF ok")})
+        if crlf:
+            res["ok"] = False
+            return res
+        fixed = _restore_exec_bits(dest)
+        res["steps"].append({"step": "exec_bits", "rc": 0,
+                             "tail": ("restored +x on %d shebang scripts"
+                                      % fixed) if fixed else "already ok"})
     return res
+
+
+def _crlf_check(script: Path) -> bool:
+    """True if the file carries CRLF line endings (Windows snapshots)."""
+    try:
+        with script.open("rb") as fh:
+            return b"\r\n" in fh.read(4096)
+    except OSError:
+        return False
+
+
+def _restore_exec_bits(dest: Path) -> int:
+    """The opensource mirror's initial import stored every file as 100644,
+    so `sh qtbase/configure` dies with 'Permission denied' (QOH037).
+    Restore +x on all shebang scripts and record it as a git commit so the
+    working tree stays clean for the SV1 unregistered-changes gate."""
+    import subprocess
+    ls = subprocess.run(["git", "ls-files"], cwd=str(dest),
+                        capture_output=True, text=True, errors="replace")
+    fixed: List[str] = []
+    for rel in ls.stdout.splitlines():
+        path = dest / rel
+        try:
+            with path.open("rb") as fh:
+                shebang = fh.read(2) == b"#!"
+            if shebang and not os.access(path, os.X_OK):
+                path.chmod(path.stat().st_mode | 0o111)
+                fixed.append(rel)
+        except OSError:
+            continue
+    if not fixed:
+        return 0
+    for i in range(0, len(fixed), 200):          # dodge ARG_MAX
+        batch = fixed[i:i + 200]
+        subprocess.run(["git", "update-index", "--chmod=+x", "--"] + batch,
+                       cwd=str(dest), capture_output=True, text=True)
+    subprocess.run(["git", "commit", "-q", "-m",
+                    "fix: restore executable bits lost in initial import "
+                    "(shebang scripts) [auto: qt-sdk-forge src-clone]"],
+                   cwd=str(dest), capture_output=True, text=True)
+    return len(fixed)
 
 
 def inspect(src: Path) -> Dict:
@@ -123,7 +204,7 @@ def upstream_check(src: Path, applied_patch_files: List[str],
         return info
 
     branch = envcheck.run_git(
-        "rev-parse", "--abbrev-ref", "HEAD", cwd=src).stdout.strip()
+        ["rev-parse", "--abbrev-ref", "HEAD"], src).stdout.strip()
     info["branch"] = branch
 
     runner = st.run_cmd if st else _no_state_runner()
@@ -134,8 +215,8 @@ def upstream_check(src: Path, applied_patch_files: List[str],
         return info
 
     log = envcheck.run_git(
-        "log", "--oneline", "--no-decorate", "-50",
-        "HEAD..origin/%s" % branch, cwd=src).stdout.strip()
+        ["log", "--oneline", "--no-decorate", "-50",
+         "HEAD..origin/%s" % branch], src).stdout.strip()
     info["new_commits"] = [l for l in log.splitlines() if l.strip()]
 
     # per-commit file overlap with locally applied patches
@@ -144,8 +225,8 @@ def upstream_check(src: Path, applied_patch_files: List[str],
     for line in info["new_commits"]:
         sha = line.split(maxsplit=1)[0]
         files_out = envcheck.run_git(
-            "diff-tree", "--no-commit-id", "--name-only", "-r", sha,
-            cwd=src).stdout.split()
+            ["diff-tree", "--no-commit-id", "--name-only", "-r", sha],
+            src).stdout.split()
         hit = sorted(patch_files & set(files_out))
         if hit:
             overlap[line] = hit
@@ -155,8 +236,8 @@ def upstream_check(src: Path, applied_patch_files: List[str],
     for line in info["new_commits"]:
         sha = line.split(maxsplit=1)[0]
         files_out = envcheck.run_git(
-            "diff-tree", "--no-commit-id", "--name-only", "-r", sha,
-            cwd=src).stdout.split()
+            ["diff-tree", "--no-commit-id", "--name-only", "-r", sha],
+            src).stdout.split()
         if any(f.startswith(w) or w in f for w in WATCH_DIRS
                for f in files_out):
             watch_hits.append(line)

@@ -126,6 +126,18 @@ def check(qt_src: str = "", ohos_sdk_native: str = "") -> Dict:
     else:
         make = _tool("make") or _tool("gmake")
         add("make", bool(make), make)
+        # qtdeclarative invokes `python` (not `python3`) from its qmake
+        # scripts (QOH038). The forge CLI auto-shims python -> python3 in
+        # build_env (tools/qt_sdk/building.py), so only python3 itself is
+        # a hard requirement here.
+        py3 = _tool("python3") or _tool("python")
+        py_alias = _tool("python")
+        add("python3", bool(py3), py3 or
+            "install python3 - qtdeclarative cannot build without it")
+        add("python_alias", True,
+            py_alias or
+            "`python` alias not found - the CLI will auto-shim it "
+            "(.qtsdk/pyshim) or: ln -s /usr/bin/python3 /usr/local/bin/python")
 
     return {"checks": checks,
             "ok": all(c["ok"] for c in checks),

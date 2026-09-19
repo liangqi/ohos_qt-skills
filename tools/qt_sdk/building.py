@@ -14,8 +14,11 @@ Directory layout (compile-qt-sdk.sh conventions):
 
 from __future__ import annotations
 
+import hashlib
 import os
+import re
 import shutil
+import sys
 import time
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -138,6 +141,25 @@ def variant_paths(st: ForgeState, qt_version: str, render: str,
 
 # ---------------------------------------------------------------- env
 
+def _ensure_python_shim(st: ForgeState) -> Optional[Path]:
+    """qtdeclarative's qmake scripts invoke `python` (not `python3`), but
+    most Linux distros ship only python3 - the build dies at QtQml with
+    `sh: 1: python: not found` (QOH038). Provide a forge-local shim dir
+    with a `python` symlink instead of touching the host system."""
+    if os.name == "nt":
+        return None
+    shim = st.state_dir / "pyshim"
+    shim.mkdir(parents=True, exist_ok=True)
+    link = shim / "python"
+    target = Path(sys.executable or "/usr/bin/python3")
+    if not link.exists():
+        try:
+            link.symlink_to(target)
+        except OSError:
+            return None
+    return shim
+
+
 def build_env(st: ForgeState) -> Dict[str, str]:
     """Cross-compile environment for configure/make (envcheck resolution)."""
     cfg = st.env()
@@ -157,7 +179,34 @@ def build_env(st: ForgeState) -> Dict[str, str]:
             bin_dir = Path(base)
             bin_dir = bin_dir / "bin" if (bin_dir / "bin").is_dir() else bin_dir
             env["PATH"] = str(bin_dir) + os.pathsep + env.get("PATH", "")
+    # forge-local `python` -> python3 shim (QOH038, POSIX only)
+    shim = _ensure_python_shim(st)
+    if shim:
+        env["PATH"] = str(shim) + os.pathsep + env.get("PATH", "")
     return env
+
+
+def _sdk_version(native: Path) -> str:
+    """Version string from the SDK's oh-uni-package.json ("" if unknown)."""
+    try:
+        text = (native / "oh-uni-package.json").read_text(
+            encoding="utf-8", errors="replace")
+        m = re.search(r'"version"\s*:\s*"([^"]+)"', text)
+        return m.group(1) if m else ""
+    except OSError:
+        return ""
+
+
+def _config_fingerprint(args: List[str], env: Dict[str, str]) -> str:
+    """Fingerprint of everything that shapes the build dir: configure args
+    plus the OHOS SDK identity (path + package version). Swapping the SDK
+    behind the CLI's back (e.g. API 15 -> API 23) with a reused build dir
+    leaves stale generated files behind (QOH040: qt_lib_dbus.pri kept ibus
+    alive after -no-dbus)."""
+    native = env.get("NATIVE_OHOS_SDK", "")
+    seed = " ".join(args) + "|sdk=%s@%s" % (
+        native, _sdk_version(Path(native)) if native else "?")
+    return hashlib.sha1(seed.encode("utf-8")).hexdigest()
 
 
 def _make_program() -> List[str]:
@@ -200,7 +249,7 @@ def configure(st: ForgeState, qt_version: str, render: str = "gl",
         args += ["-opengl", "es2"]
     else:
         args += ["-opengl", "desktop"]
-    args += ["-no-use-gold-linker", "-no-gcc-sysroot",
+    args += ["-no-use-gold-linker", "-no-gcc-sysroot", "-no-dbus",
              "-ohos-arch", "arm64-v8a",
              "-c++std", "c++14",
              "-nomake", "examples", "-nomake", "tests"]
@@ -214,6 +263,27 @@ def configure(st: ForgeState, qt_version: str, render: str = "gl",
         cmd = ["cmd.exe", "/c", str(src / "configure.bat")] + args
     else:
         cmd = ["sh", str(src / "configure")] + args
+
+    # ---- stale-build-state guard (QOH040) --------------------------------
+    # Reusing a build dir that was configured with different args or a
+    # different OHOS SDK leaves stale generated files behind (classic:
+    # qt_lib_dbus.pri survives a -no-dbus reconfigure, so qtHaveModule(dbus)
+    # stays true and the ibus plugin still builds). Wipe and reconfigure.
+    key = variant_key(qt_version, render, build_type)
+    fp = _config_fingerprint(args, env)
+    ensure_variants(st)
+    prev = st.section("build")["variants"].get(key) or {}
+    if build_dir.exists() and any(build_dir.iterdir()):
+        prev_fp = prev.get("fingerprint")
+        if prev_fp != fp:
+            reason = ("configure fingerprint changed (args or OHOS SDK %s)"
+                      % (_sdk_version(Path(env["NATIVE_OHOS_SDK"])) or "?")) \
+                if prev_fp else \
+                ("build dir has no recorded configure (previous run crashed?)")
+            shutil.rmtree(build_dir)
+            build_dir.mkdir(parents=True, exist_ok=True)
+            print("[qt-sdk-run] wiped stale build dir (%s) - clean "
+                  "reconfigure, see QOH040" % reason)
 
     st.begin_stage("configure")
     res = st.run_cmd(cmd, "configure-%s" % qt_version,
@@ -229,12 +299,12 @@ def configure(st: ForgeState, qt_version: str, render: str = "gl",
         shutil.copy2(summary, dest)
 
     if res.status == "PASS":
-        key = variant_key(qt_version, render, build_type)
         ensure_variants(st)
         st.section("build")["variants"][key] = {
             "qt_version": qt_version, "render": render,
             "build_type": build_type, "sdk_dir": str(sdk_dir),
-            "build_dir": str(build_dir), "configured": _now()}
+            "build_dir": str(build_dir), "configured": _now(),
+            "fingerprint": fp}
         st.section("build")["active"] = key
         st.complete_stage("configure", next_action="build")
     else:
