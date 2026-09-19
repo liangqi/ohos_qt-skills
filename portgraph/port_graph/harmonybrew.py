@@ -15,6 +15,7 @@ import os
 import re
 import shutil
 import stat
+import subprocess
 import tarfile
 import time
 import urllib.request
@@ -264,9 +265,48 @@ def iter_formula_files(formula_dir: Path = HB_CORE):
     return sorted(Path(formula_dir).glob("*/*.rb"))
 
 
-def ingest(conn, formula_dir: Path = HB_CORE, limit: int = 0) -> Dict:
-    """解析全部 formula 并写库。返回统计。"""
+# Harmonybrew formula 主仓（sparse checkout 仅 Formula/，避免拉全量 git 历史）
+HB_REPO_URL = "https://atomgit.com/Harmonybrew/homebrew-core.git"
+
+
+def ensure_core(repo_dir: Path = None) -> Path:
+    """克隆或更新 Harmonybrew hb-core（blob:none 浅克隆 + sparse checkout
+    仅 Formula/）。此前 ingest 在目录缺失时静默返回 0 文件（多轮实测反复
+    通到的坑），现改为自动获取或显式报错。"""
+    dest = Path(repo_dir) if repo_dir else HB_CORE.parent
+    if (dest / ".git").exists():
+        subprocess.run(["git", "-C", str(dest), "pull", "--ff-only"],
+                       capture_output=True, text=True, timeout=300)
+    else:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        r = subprocess.run(
+            ["git", "clone", "--depth", "1", "--filter=blob:none",
+             "--sparse", HB_REPO_URL, str(dest)],
+            capture_output=True, text=True, timeout=1800)
+        if r.returncode != 0:
+            raise RuntimeError(
+                "hb-core 克隆失败（%s）：%s" % (HB_REPO_URL,
+                                                 (r.stderr or "").strip()[:200]))
+        subprocess.run(["git", "-C", str(dest), "sparse-checkout", "set",
+                        "Formula"], capture_output=True, text=True,
+                       timeout=300, check=True)
+    return dest
+
+
+def ingest(conn, formula_dir: Path = HB_CORE, limit: int = 0,
+           pull: bool = False) -> Dict:
+    """解析全部 formula 并写库。返回统计。
+
+    pull=True 或 formula 目录缺失时自动克隆/更新 hb-core（--offline 时
+    仅在目录缺失时报错退出，不再静默返回 0 文件）。"""
     db.init_db(conn)
+    if pull or not Path(formula_dir).exists():
+        try:
+            ensure_core(Path(formula_dir).parent
+                        if formula_dir != HB_CORE else None)
+        except RuntimeError:
+            if not iter_formula_files(formula_dir):
+                raise   # 目录仍缺失且无本地数据：显式失败
     files = iter_formula_files(formula_dir)
     if limit:
         files = files[:limit]

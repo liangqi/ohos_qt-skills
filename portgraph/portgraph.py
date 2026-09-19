@@ -55,14 +55,15 @@ def cmd_ingest(args) -> None:
     db.init_db(conn)
     try:
         if args.source == "harmonybrew":
-            _emit(harmonybrew.ingest(conn), args)
+            _emit(harmonybrew.ingest(conn, pull=not args.offline), args)
         elif args.source == "cmdpkgs":
             _emit(cmdpkgs.ingest(conn, pull=not args.offline), args)
         elif args.source == "kb":
             _emit(kb_seed.ingest(conn), args)
         elif args.source == "all":
             out = {"kb": kb_seed.ingest(conn),
-                   "harmonybrew": harmonybrew.ingest(conn),
+                   "harmonybrew": harmonybrew.ingest(
+                       conn, pull=not args.offline),
                    "cmdpkgs": cmdpkgs.ingest(conn, pull=not args.offline)}
             _emit(out, args)
         else:
