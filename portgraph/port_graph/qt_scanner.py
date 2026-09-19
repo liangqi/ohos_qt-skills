@@ -522,6 +522,23 @@ def _is_vendored_path(rel: str) -> bool:
             return True
     return False
 
+
+# wrapper CMake 文件签名：定义 add_library(external_<X> ...) 导入目标
+#（cmake_helpers / desktop-app 约定，tdesktop 全部三方库都走这条路）。
+# 这类文件不是 vendored 源码，而是应用外部依赖的声明层：其内的
+# find_package / pkg_check_modules 就是应用自身的依赖（例：
+# cmake/external/openal/CMakeLists.txt 定义 external_openal 并
+# find_package(OpenAL REQUIRED)）。submodule 初始化后 external_X 成为
+# 项目内目标，若同时跳过 wrapper 文件，真实依赖会被两条规则叠加藏掉
+#（tdesktop 复盘：openal/ada/rnnoise 漏检）。
+_WRAPPER_TARGET_RE = re.compile(
+    r"add_library\s*\(\s*external_[A-Za-z0-9_.:-]+", re.I)
+
+
+def _is_wrapper_cmake(root: Path, rel: str, text: str) -> bool:
+    """vendored 路径下的 wrapper 声明文件（非 vendored 源码，不跳过）。"""
+    return bool(_WRAPPER_TARGET_RE.search(text))
+
 # Windows 系统库（qmake win32 块 / MSVC 链接）：鸿蒙不适用（代码通常被
 # 平台守卫包裹）。project_scanner 扫描期按它过滤 win32 链接名（防止
 # 同名 Unix 库误连边，如 bcrypt→OpenBSD bcrypt）；deps_report 标注而非
@@ -625,19 +642,75 @@ def _collect_option_defaults(cmake_texts: List[str]) -> Dict[str, bool]:
     return out
 
 
+# 对鸿蒙目标恒真的平台条件（Q_OS_OHOS 隐含 Q_OS_LINUX）：
+# 含这些析取项的 if 分支在 OHOS 构建下必然激活，不能标 optional
+_PLATFORM_TRUE_DISJUNCTS = frozenset({
+    "LINUX", "UNIX", "NOT WIN32", "NOT APPLE", "NOT MSVC", "NOT IOS",
+    "NOT MACOS", "NOT WINDOWS",
+})
+_PLATFORM_TRUE_RE = re.compile(
+    r"CMAKE_SYSTEM_NAME\s+(?:STREQUAL|MATCHES)\s+\"?Linux", re.I)
+
+
+def _disjunct_always_true(d: str) -> bool:
+    """单个 OR 析取项对鸿蒙目标是否恒真。"""
+    d = d.strip().upper()
+    if d in _PLATFORM_TRUE_DISJUNCTS:
+        return True
+    if _PLATFORM_TRUE_RE.search(d):
+        return True
+    # 去括号后再试（(NOT WIN32) 形式）
+    inner = d.strip("() ").strip()
+    return inner in _PLATFORM_TRUE_DISJUNCTS
+
+
+def _split_top_level_or(cond: str) -> List[str]:
+    """按括号外顶层的 OR 切分条件（不处理 AND 混合的复杂嵌套，
+    切不开时返回整串，退回旧行为）。"""
+    parts, depth, cur, i = [], 0, "", 0
+    up = cond.upper()
+    while i < len(cond):
+        c = cond[i]
+        if c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+        elif depth == 0 and up[i:i + 3] == " OR":
+            nxt = cond[i:i + 4]
+            if nxt[-1] in (" ", "\t") or i + 3 == len(cond):
+                parts.append(cur)
+                cur = ""
+                i += 3
+                while i < len(cond) and cond[i] in " \t":
+                    i += 1
+                continue
+        cur += c
+        i += 1
+    parts.append(cur)
+    return parts if len(parts) > 1 else [cond]
+
+
 def _frame_positively_guarded(cond: str, off_options: Dict[str, bool]) -> bool:
     """if 条件是否含 OFF 默认选项的裸正向引用（未被 NOT 修饰）。
 
     `if (SYSTEMD)` → True（SYSTEMD 默认 OFF）；
     `if (NOT SYSTEMD)` / `if (DBUS)`（默认 ON）→ False。
+    OR 析取语义（tdesktop 复盘）：`if (X OR LINUX)` 在鸿蒙下
+    因 LINUX 恒真必然激活，不能标 optional——仅当全部析取项都是
+    OFF 选项正向引用（或含 OFF 选项且无恒真项）时才标 optional。
     """
     if not off_options:
         return False
-    stripped = _NOT_TOKEN_RE.sub(" ", cond)
-    for tok in re.findall(r"\w+", stripped):
-        if off_options.get(tok) is False:
-            return True
-    return False
+    disjuncts = _split_top_level_or(cond)
+    guarded = False
+    for d in disjuncts:
+        if _disjunct_always_true(d):
+            return False
+        stripped = _NOT_TOKEN_RE.sub(" ", d)
+        for tok in re.findall(r"\w+", stripped):
+            if off_options.get(tok) is False:
+                guarded = True
+    return guarded
 
 
 def _cmake_optional_line_map(text: str,
@@ -714,10 +787,16 @@ def _detect_cmake_packages(root: Path, cmake_files: List[str]) -> Dict:
 
     # pass 1: find_package（先收集，供 Find<Name>.cmake 模块继承判定）
     for rel in cmake_files:
-        if _is_vendored_path(rel):
-            continue
         text = _strip_cmake_comments(_read_text(root / rel))
-        gmap = guards.get(rel, {})
+        if _is_vendored_path(rel):
+            if not _is_wrapper_cmake(root, rel, text):
+                continue
+            # wrapper 文件：external_X 被应用无条件链接，内部守卫
+            # （DESKTOP_APP_USE_PACKAGED 等）只切换获取方式（find_package
+            # vs 预编译路径），不是是否使用 → 不套 optional 守卫
+            gmap = {}
+        else:
+            gmap = guards.get(rel, {})
         for m in _FINDPKG_ANY_RE.finditer(text):
             name = m.group(1).lower()
             if (name.startswith(skip_prefixes) or name in _CMAKE_KW
@@ -735,11 +814,14 @@ def _detect_cmake_packages(root: Path, cmake_files: List[str]) -> Dict:
 
     # pass 2: pkg_check_modules
     for rel in cmake_files:
-        if _is_vendored_path(rel):
-            continue
         text = _strip_cmake_comments(_read_text(root / rel))
-        gmap = guards.get(rel, {})
-        file_opt = rel in opt_files
+        if _is_vendored_path(rel):
+            if not _is_wrapper_cmake(root, rel, text):
+                continue
+            gmap = {}   # wrapper：同 pass 1，不套 optional 守卫
+        else:
+            gmap = guards.get(rel, {})
+        file_opt = (rel in opt_files) and not _is_vendored_path(rel)
         for m in _PKGCHECK_RE.finditer(text):
             line_opt = file_opt or gmap.get(_line_of(text, m.start()))
             # pkg-config spec 可带版本约束："glib-2.0 >= 2.50" / glib-2.0>=2.50
@@ -1310,7 +1392,10 @@ def _detect_cmake_raw_links(root: Path, cmake_files: List[str]):
     # 目标定义收集（含 vendored 文件）：vendored 源码内
     # add_library(fluidsynth) 定义的是项目内目标，应用侧
     # target_link_libraries(fluidsynth) 链的是内部目标而非外部包
+    wrapper_defined = set()   # wrapper 文件里定义的 external_* 目标
     for rel, text in all_texts.items():
+        is_wrapper = (_is_vendored_path(rel)
+                      and _WRAPPER_TARGET_RE.search(text))
         for m in _ADD_TARGET_RE.finditer(text):
             tgt = m.group(1)
             if tgt.startswith("${"):
@@ -1318,6 +1403,8 @@ def _detect_cmake_raw_links(root: Path, cmake_files: List[str]):
                 tgt = vart.get(tgt[2:-1].strip(), "")
             if tgt:
                 defined.add(tgt.lower())
+                if is_wrapper and tgt.lower().startswith("external_"):
+                    wrapper_defined.add(tgt.lower())
         if lib_macros:
             for mw in lib_macros:
                 for m in re.finditer(
@@ -1354,8 +1441,9 @@ def _detect_cmake_raw_links(root: Path, cmake_files: List[str]):
                     if (ns.lower() == "pkgconfig"
                             or not re.fullmatch(r"[A-Za-z0-9_.+-]+", tgt)
                             or not tl.startswith("external_")
-                            or tl in defined
-                            or tgt.lower() in defined
+                            or (tl in defined and tl not in wrapper_defined)
+                            or (tgt.lower() in defined
+                                and tl not in wrapper_defined)
                             or tl[len("external_"):].startswith(("qt", "kf"))):
                         continue
                     base = tgt[len("external_"):]
@@ -1437,6 +1525,10 @@ def _absorb_meson(root: Path, info: Dict, meson_files: List[str]) -> None:
     deps: Dict[str, Dict] = {}
     for rel in meson_files:
         text = _read_text(root / rel)
+        # vendored 三方子树自己的 meson 声明不算应用依赖（与 CMake 检测器
+        # 同口径；tdesktop 复盘：ThirdParty/xdg-desktop-portal 的
+        # libgeoclue/pipewire 泄漏进应用 depth-1）
+        vendored = _is_vendored_path(rel)
         if not meson_info["version_min"]:
             pm = _MESON_PROJECT_RE.search(text)
             if pm:
@@ -1450,6 +1542,8 @@ def _absorb_meson(root: Path, info: Dict, meson_files: List[str]) -> None:
             if sp.group(1) not in meson_info["subprojects"]:
                 meson_info["subprojects"].append(sp.group(1))
         for m in _MESON_DEP_RE.finditer(text):
+            if vendored:
+                continue
             name, args = m.group(1), m.group(2)
             if name in ("qt5", "qt6"):
                 info["qt_version_hint"] = info.get("qt_version_hint") or name[2]
@@ -1467,8 +1561,9 @@ def _absorb_meson(root: Path, info: Dict, meson_files: List[str]) -> None:
             if _MESON_OPT_RE.search(args):
                 e["required"] = False
         for fl in _MESON_FINDLIB_RE.finditer(text):
-            _merge_raw_lib(info["raw_libs"], fl.group(1),
-                           "cc.find_library", rel)
+            if not vendored:
+                _merge_raw_lib(info["raw_libs"], fl.group(1),
+                               "cc.find_library", rel)
     info["meson"] = meson_info
     info["meson_deps"] = sorted(deps.values(), key=lambda d: d["name"])
 
@@ -1495,6 +1590,11 @@ def _absorb_autotools(root: Path, info: Dict,
     deps: Dict[str, Dict] = {}
     for rel in autotools_files:
         text = _read_text(root / rel)
+        # vendored 三方子树自己的 configure.ac 不算应用依赖（与 CMake
+        # 检测器同口径；tdesktop 复盘：ThirdParty/nimf 的
+        # anthy/gtk+/m17n 泄漏进应用 depth-1）
+        if _is_vendored_path(rel):
+            continue
         for m in _PKGCHK_MOD_RE.finditer(text):
             # 模块列表以逗号或空白分隔；单个 spec 可为 "name" 或
             # "name >= ver"

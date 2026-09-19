@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+import sys
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -70,13 +71,23 @@ def clone_repo(url: str, name: Optional[str] = None,
 
 
 def _init_submodules(target: Path, timeout: int) -> None:
-    """浅层初始化 submodule（无 submodule 或失败时静默跳过，不阻断克隆）。"""
+    """浅层初始化 submodule（无 submodule 时跳过；失败时警告，不阻断克隆）。"""
     if not (target / ".gitmodules").is_file():
         return
-    cmd = ["git", "-C", str(target), "submodule", "update", "init",
+    # --init 必须带 -- 前缀：裸 init 会被 git 当 pathspec（回归：
+    # 旧版裸 init 导致复用克隆的 submodule 永远拉不起来，
+    # musescore 扫描范围缺失、deps 大面积漏检，且静默无报错）
+    cmd = ["git", "-C", str(target), "submodule", "update", "--init",
            "--depth", "1", "--recursive"]
     try:
-        subprocess.run(cmd, capture_output=True, text=True,
-                       timeout=max(timeout, 1800))
-    except (subprocess.TimeoutExpired, OSError):
-        pass  # 网络受限/无 submodule 工具时降级：只扫主仓
+        r = subprocess.run(cmd, capture_output=True, text=True,
+                           timeout=max(timeout, 1800))
+    except (subprocess.TimeoutExpired, OSError) as e:
+        # 网络受限/无 submodule 工具时降级：只扫主仓（可见警告）
+        print("[cloner] submodule 初始化降级（%s）: %s" % (type(e).__name__, e),
+              file=sys.stderr)
+        return
+    if r.returncode != 0:
+        tail = (r.stderr or "").strip().replace("\n", " ")[-300:]
+        print("[cloner] submodule 初始化失败（降级只扫主仓）: %s" % (tail or "unknown"),
+              file=sys.stderr)
