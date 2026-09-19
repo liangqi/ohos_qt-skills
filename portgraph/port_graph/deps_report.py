@@ -103,9 +103,13 @@ INTERFACE_BOUND_PACKAGES = {
     "xext": "X11 扩展：鸿蒙不支持直连",
     "xcb": "XCB：鸿蒙不支持直连",
     "alsa": "ALSA 音频：鸿蒙不可用，需改鸿蒙 AudioRenderer",
+    "asound": "ALSA 客户端库名（-lasound / find_library）：鸿蒙不可用，"
+            "需改鸿蒙 AudioRenderer/AudioCapturer（lmms FindAlsa 实证）",
     "pulseaudio": "PulseAudio：鸿蒙无此服务",
     "libpulse": "PulseAudio 客户端库（pkg-config 名 libpulse）：鸿蒙无此服务，"
               "需改鸿蒙 AudioRenderer/AudioCapturer（lmms 实证）",
+    "pulse": "PulseAudio 客户端库名（find_library pulse / -lpulse）：鸿蒙无此"
+           "服务（lmms FindPulseAudio 实证）",
     "dbus": "D-Bus IPC：鸿蒙无 D-Bus（Qt D-Bus 模块 Out of scope）",
     "cocoa": "macOS Cocoa：鸿蒙不适用",
     "appkit": "macOS AppKit：鸿蒙不适用",

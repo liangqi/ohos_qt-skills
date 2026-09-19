@@ -247,6 +247,13 @@ PKG_ALIASES: Dict[str, str] = {
     "tag": "taglib", "mtp": "libmtp", "usb-1.0": "libusb",
     "magic": "libmagic", "exif": "libexif", "discid": "libdiscid",
     "chromaprint": "chromaprint", "mp3lame": "lame",
+    # lmms 实证：find_library/AC_CHECK_LIB 的版本化库名归并（veal
+    # FindFluidSynth 的 macOS dylib 变体 / swh 的单精度 fftw）
+    "fluidsynth-1": "fluidsynth", "fluidsynth-2": "fluidsynth",
+    "fluidsynth-3": "fluidsynth",
+    "fluidsynth": "fluid-synth",  # cmd-pkgs 包名（lmms 实证：图侧靠
+                                   # dashless 兑底而报告侧不可见，口径分裂）
+    "sfftw": "fftw",
     # libopenshot 实证：OpenCV 4 导入目标名（非 OpenCV::core 命名形态）
     # 归并到 opencv；jsoncppd 为 Findjsoncpp 的 debug 变体名
     "opencv_core": "opencv", "opencv_video": "opencv",

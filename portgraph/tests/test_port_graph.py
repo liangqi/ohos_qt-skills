@@ -1102,6 +1102,38 @@ target_link_libraries(app PRIVATE cxxtest)
             self.assertNotIn("swig", link)
             conn.close()
 
+    # ---- 0e) lmms 第二轮：平台接口库名 / 版本化库名归并
+    def test_lmms_iface_libnames_and_merge(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "lm2"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text("""
+cmake_minimum_required(VERSION 3.16)
+project(Lm2)
+find_library(ASOUND asound)
+find_library(PULSE pulse)
+find_library(FS1 fluidsynth-1)
+add_library(p STATIC a.c)
+target_link_libraries(p PRIVATE ${ASOUND} ${PULSE} ${FS1} sfftw)
+""", encoding="utf-8")
+            (root / "a.c").write_text("", encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "cmdpkgs:fftw", "package", "fftw",
+                           "cmdpkgs", "ported", version="3.3.10")
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            # ALSA / PulseAudio 库名形态 → platform-iface
+            self.assertEqual(link["asound"]["kind"], "platform-iface")
+            self.assertEqual(link["pulse"]["kind"], "platform-iface")
+            # fluidsynth-1 / sfftw 归并到基础名
+            self.assertNotIn("fluidsynth-1", link)
+            self.assertNotIn("sfftw", link)
+            self.assertIn("fftw", link)
+            self.assertEqual(link["fftw"]["available_version"], "3.3.10")
+            conn.close()
+
     # ---- 0c) 图侧解析结果校验（hint 保留原名，节点应命中 hb:pipewire）
     def test_openshot_ladder_node_resolution(self):
         with tempfile.TemporaryDirectory() as tmp:
