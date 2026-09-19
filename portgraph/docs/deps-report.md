@@ -231,8 +231,11 @@ flowchart TB
   函数名须由项目 function()/macro() 定义、调用处带 `PACKAGE <名>` 才
   识别；其他自定义包装形式不保证覆盖
 - `target_link_libraries` 排除项目内目标（add_library/add_executable）、
-  `Foo::Bar` 导入目标、`${VAR}`/生成器表达式、路径与链接 flag，只留
-  裸库名并按 `.lib/.so/.a` 归一
+  `${VAR}`/生成器表达式、路径与链接 flag，只留裸库名并按 `.lib/.so/.a` 归一；
+  `ns::external_<name>` 导入目标（cmake_helpers 等外部包装层约定）剥
+  `external_` 前缀后作为高置信外部依赖收录（`ext_target` 标记；tdesktop
+  全部三方库都走这条路）；其余 `Foo::Bar`（Qt5::/PkgConfig::/项目内
+  lib_*）不当作外部包声明
 
 ## fetch-deps manifest 的 role 字段
 
@@ -262,6 +265,11 @@ REQUIRED/OPTIONAL 语义的精确分类用 `deps` 报告。
 - Conan 范围检查为近似（取首个 `>=x`）；`<y` 上界不参与比较
 - `target_link_libraries` 裸名无法区分"外部库"与"由自定义 Find 模块提供
   的目标"；`${VAR}` 引用的链接项完全不可见（CI 清单交叉核对可部分补漏）
+- **未初始化子模块盲区**：shallow clone 不拉取 submodule 时，子模块内的
+  find_package/集成选择逻辑不可见（tdesktop 的 cmake/ 即 cmake_helpers：
+  breakpad/crashpad 的二选一集成在其内部实现，主仓库只能看到
+  external_crash_reports 包装目标）。完整方案需 clone --recurse-submodules
+  或按 .gitmodules 提示的缺失路径降级标注，当前版本作为已知残留
 - CI 环境清单是发行版打包名（libfoo-dev），映射回库名为近似；且只在
   `.github/`、`.ci/`、顶层 `*.sh` 范围内收集
 - meson `subproject()` 只有名字，版本取决于 subprojects/*.wrap 内容（未

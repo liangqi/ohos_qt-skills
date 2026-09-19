@@ -244,14 +244,42 @@ PKG_ALIASES: Dict[str, str] = {
     "pcsclite": "pcsc-lite",
     # pkg-config 名 → CMake find_package 名（同库双声明合并）
     "libtorrent-rasterbar": "LibtorrentRasterbar",
+    # ---- e2e tdesktop（tier C）复核确认的缺口 ----
+    # external_* 导入目标链接名（cmake_helpers 约定，剥前缀后的裸名）→ 包名
+    "openal": "openal-soft",          # OpenAL Soft（kcat），pkg-config 名 openal
+    "iconv": "libiconv",              # libiconv 包（musl 内置 iconv 亦可）
+    "boost_regex": "boost",           # boost::regex 组件链接 → boost 包
+    "cmark_gfm": "cmark-gfm",         # 分隔符差异（_ vs -）
+    "qr_code_generator": "libqrcodegen",  # nayuki QR-Code-generator（cmd-pkgs 版本 1.8.0 同源）
 }
 
 
 def resolve_package(conn, hint_name: str) -> Optional[Dict]:
-    """第三方库线索 -> 已入库的包节点（hb 优先，ported 优先）。"""
-    candidates = ALIASES.get(hint_name.lower(), [hint_name])
+    """第三方库线索 -> 已入库的包节点（hb 优先，ported 优先）。
+
+    近似对齐依次尝试：原名 / 补 lib 前缀（xkbcommon→libxkbcommon）/
+    去 lib 前缀 / 去 pkg-config 版本后缀（lilv-0→lilv、glib-2.0→glib）
+    及其组合；与 deps_report._resolve 口径一致（此前仅 deps 侧支持，
+    图侧缺口导致 e2e musescore lilv-0/zix-0 幽灵节点）。
+    """
+    name = (hint_name or "").lower()
+    if not name:
+        return None
+    stripped = re.sub(r"-\d+(\.\d+)*$", "", name)
+    cands = list(ALIASES.get(name, []))
+    for c in (name, "lib" + name if not name.startswith("lib") else None,
+              name[3:] if name.startswith("lib") and len(name) > 3 else None,
+              stripped if stripped != name else None,
+              "lib" + stripped
+              if stripped != name and not stripped.startswith("lib") else None):
+        if c and c not in cands:
+            cands.append(c)
+    if not cands:
+        return None
     best: Optional[Dict] = None
-    for cand in candidates:
+    for cand in cands:
+        if not cand:
+            continue
         for prefix in ("hb:", "cmdpkgs:"):
             node = db.get_node(conn, prefix + cand.lower())
             if node is None and prefix == "cmdpkgs:":

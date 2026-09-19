@@ -1,6 +1,6 @@
 # keepassxc 依赖对账报告（portgraph E2E）
 
-> 生成时间: 2026-09-19T11:31:09Z | 语料: corpus.json#keepassxc | 构建系统: cmake | 源文件: 884
+> 生成时间: 2026-09-19T12:36:05Z | 语料: corpus.json#keepassxc | 构建系统: cmake | 源文件: 884
 > Oracle: INSTALL.md（复核: 已复核，7 条；来源: agent 复核定稿：删除散文链接残留 set-up-build-environment；asciidoctor 依原文（build tools must exist within your PATH + KPXC_FEATURE_DOCS）改判 build；本版 INSTALL.md 仅声明 qt/botan/zlib 三个库，无 libgcrypt/argon2/libsodium/ykpers；vcpkg/xvfb-run 为 prose 提及的工具/测试辅助，不入 oracle）
 
 ## 1. 结论速览
@@ -56,9 +56,9 @@
 | 粒度折叠 | — | Qt SVG | qt-module d1 | Qt 模块粒度：README 通常只写 'Qt' |
 | 粒度折叠 | — | Qt Widgets | qt-module d1 | Qt 模块粒度：README 通常只写 'Qt' |
 | 一致 | qt | Qt Concurrent | qt-module d1 |  |
-| 一致 | botan | botan | package d1 | ⚠ 匹配到幽灵节点（pkg-unknown）——名字未解析到已知鸿蒙包，实为解析缺口，需复核 【agent: 复核⚠注记：hb-core Formula 与 cmd-pkgs 均确无 botan 包（find_package(Botan REQUIRED)，CMakeLists.txt:511），pkg-unknown/need_port 定性正确——检出与状态均准确，非解析缺口，需自行交叉编译属 |
+| 一致 | botan | botan | package d1 | 匹配到幽灵节点：真实外部依赖且无已知鸿蒙包（fetch-deps 报 need_port/需源码移植，检出正确） 【agent: 复核⚠注记：hb-core Formula 与 cmd-pkgs 均确无 botan 包（find_package(Botan REQUIRED)，CMakeLists.txt:511），pkg-unknown/need_port 定性正确——检出与状态均准确，非解析缺 |
 | 一致 | zlib | zlib | package d1 |  |
-| 未知包(正常) | — | openmp | package d1 | pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口） 【agent: CMakeLists.txt:259 find_package(OpenMP)（无 REQUIRED，命中后仅追加 OpenMP_C(_XX)_FLAGS）是 CMake 内置编译器特性探测而非三方包；OHOS clang 工具链自带 OpenMP runtime，hb-cor |
+| 未知包(正常) | — | openmp | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
 
 归类统计：构建工具×4，一致×3，粒度折叠×4，README漏列×10，未知包(正常)×1
 

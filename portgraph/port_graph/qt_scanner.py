@@ -422,6 +422,46 @@ _FINDPKG_SKIP = {"ecm", "pkgconfig", "threads", "sharedmimeinfo",
                  "findpackagehandlestandardargs", "selectlibrary",
                  "pkg_check_modules"}  # noqa: keep explicit
 
+# Windows 系统库（qmake win32 块 / MSVC 链接）：鸿蒙不适用（代码通常被
+# 平台守卫包裹）。project_scanner 扫描期按它过滤 win32 链接名（防止
+# 同名 Unix 库误连边，如 bcrypt→OpenBSD bcrypt）；deps_report 标注而非
+# 当作"需源码编译"的缺口
+WIN32_SYSTEM_LIBS = {
+    "user32", "kernel32", "gdi32", "shell32", "ole32", "oleaut32", "uuid",
+    "advapi32", "ws2_32", "mswsock", "winmm", "dsound", "ddraw", "dxgi",
+    "d3d9", "d3d11", "dwmapi", "shlwapi", "comctl32", "comdlg32",
+    "imm32", "wininet", "winhttp", "crypt32", "secur32", "netapi32",
+    "psapi", "version", "iphlfapi", "powrprof", "setupapi", "strmiids",
+    "avifil32", "mfplat", "mfuuid", "strmbase", "strmbasd", "wtsapi32",
+    "windowsapp", "delayimp", "opengl32", "glu32", "wintrust", "shcore",
+    "winscard", "bcrypt", "hid", "winusb", "cfgmgr32",
+}
+
+# find_package 名为构建工具/解释器（主机侧，非应用运行时依赖）。
+# project_scanner 用它过滤运行时边（deps_report 也消费，保证两侧口径一致）。
+BUILD_TOOL_FINDPKG = {
+    "ecm": "extra-cmake-modules（KDE CMake 模块，主机侧）",
+    "pkgconfig": "pkg-config（主机侧）",
+    "pkgconf": "pkgconf（主机侧 pkg-config 兼容）",
+    "gettext": "gettext 工具链（msgfmt/xgettext，主机侧）",
+    "intltool": "intltool（主机侧）",
+    "doxygen": "Doxygen 文档生成器（主机侧）",
+    "sharedmimeinfo": "update-mime-database（主机侧）",
+    "cmake": "CMake",
+    "ninja": "Ninja 构建器",
+    "python3": "Python 3",
+    "python": "Python",
+    "flex": "flex 词法生成器",
+    "bison": "bison 语法生成器",
+    "gperf": "gperf 完美哈希生成器",
+    "git": "git",
+    "ccache": "ccache 编译缓存",
+    "sccache": "sccache 编译缓存",
+    "linguisttools": "Qt Linguist 工具（lupdate/lrelease，随 Qt SDK）",
+    "lxqt2-build-tools": "LXQt CMake 构建模块（主机侧，类似 ECM）",
+    "lxqt-build-tools": "LXQt CMake 构建模块（主机侧，类似 ECM）",
+}
+
 
 # pkg_check_modules 专属关键字（IMPORTED_TARGET/GLOBAL 等），非模块名
 _PKGCHECK_KW = {"IMPORTED_TARGET", "GLOBAL", "STATIC", "SHARED", "MODULE",
@@ -829,11 +869,17 @@ def _norm_lib_name(name: str) -> str:
     return re.sub(r"\.(lib|so|a|dylib)(\.\d+)*$", "", name)
 
 
-def _add_raw_lib(out: Dict[str, Dict], name: str, how: str, rel: str) -> None:
+def _add_raw_lib(out: Dict[str, Dict], name: str, how: str, rel: str,
+                 ext_target: bool = False) -> None:
     n = _norm_lib_name(name).strip('"\'')
     if not n or not re.fullmatch(r"[A-Za-z0-9_.+-]+", n):
         return
     e = out.setdefault(n.lower(), {"name": n, "hows": [], "evidence": []})
+    if ext_target:
+        # 名字来自 ns::external_<name> 导入目标（如 desktop-app::external_zlib）：
+        # 真正的 find_package 位于外部构建模块（cmake_helpers 等），
+        # 链接名是唯一可见的声明——标记为高置信外部依赖
+        e["ext_target"] = True
     if how not in e["hows"]:
         e["hows"].append(how)
     if rel not in e["evidence"] and len(e["evidence"]) < 3:
@@ -895,9 +941,31 @@ def _detect_cmake_raw_links(root: Path, cmake_files: List[str]):
                 _add_raw_lib(raw, lm.group(1), "target_link_libraries -l", rel)
             for tok in body[1].split():
                 t = tok.strip()
-                if (not t or t.startswith("$") or "::" in t
-                        or "/" in t or "\\" in t
-                        or t.upper() in _TLL_KEYWORDS or t.startswith("-")):
+                if not t or t.startswith("$") or t.upper() in _TLL_KEYWORDS \
+                        or t.startswith("-"):
+                    continue
+                if "::" in t:
+                    # 导入目标 ns::name：external_ 前缀是 cmake_helpers 等
+                    # 外部包装层的通用约定——剥前缀后的名字是高置信外部库
+                    # 声明（tdesktop 全部三方库都走这条路，find_package 不可见）。
+                    # PkgConfig::X 已由 pkg_check_modules 覆盖；Qt6::/项目内
+                    # lib_* 目标不是外部包声明，跳过。
+                    ns, _, tgt = t.partition("::")
+                    tgt = tgt.strip('"')
+                    tl = tgt.lower()
+                    if (ns.lower() == "pkgconfig"
+                            or not re.fullmatch(r"[A-Za-z0-9_.+-]+", tgt)
+                            or not tl.startswith("external_")
+                            or tl in defined
+                            or tgt.lower() in defined
+                            or tl[len("external_"):].startswith(("qt", "kf"))):
+                        continue
+                    base = tgt[len("external_"):]
+                    _add_raw_lib(raw, base,
+                                 "target_link_libraries external-target", rel,
+                                 ext_target=True)
+                    continue
+                if ("/" in t or "\\" in t):
                     continue
                 _add_raw_lib(raw, t, "target_link_libraries", rel)
         for m in _FINDLIB_RE.finditer(text):

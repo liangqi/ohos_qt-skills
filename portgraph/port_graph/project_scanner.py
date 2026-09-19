@@ -374,15 +374,46 @@ def _link_kf_components(conn, app_id: str, components: List[str]) -> None:
             queue.append((kf_id, k2))
 
 
+def _fold_dep_name(n: str) -> str:
+    """依赖名折叠：小写、去非字母数字（分隔符/大小写差异归一）。"""
+    return re.sub(r"[^a-z0-9]+", "", (n or "").lower())
+
+
+def _submodule_folds(git_submodules: List[Dict]) -> set:
+    """git 子模块名折叠集合（name/path 末段/url 末段）：用于识别 vendored 依赖。"""
+    folds = set()
+    for gm in git_submodules or []:
+        cands = [gm.get("name") or ""]
+        path = gm.get("path") or ""
+        cands.append(path.rsplit("/", 1)[-1])
+        url = (gm.get("url") or "").rstrip("/")
+        last = url.rsplit("/", 1)[-1]
+        if last.endswith(".git"):
+            last = last[:-4]
+        cands.append(last)
+        for c in cands:
+            f = _fold_dep_name(c)
+            if len(f) >= 3:
+                folds.add(f)
+    return folds
+
+
 def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
     """把 CMake find_package/pkg_check_modules + Conan/vcpkg 清单发现的第三方包
     连边到已知包节点；未匹配的记为 unknown 包节点。
 
+    另含两轮增强（e2e tdesktop tier C 复核驱动）：
+    - find_package 命中的构建工具/解释器（python3 等）不建运行时边——
+      那是构建期依赖，deps_report 侧归 build-tool 分类
+    - target_link_libraries 的 ns::external_<name> 导入目标名（剥前缀后
+      在 raw_libs 里，ext_target=True）：能解析则连边，不能解析且非
+      vendored 子模块则建幽灵节点（高置信声明，如 tdesktop 的全部三方库）
     返回 {linked: [...], unknown: [...]}。
     """
-    names: List[str] = []
     cp = info.get("cmake_packages", {})
-    names.extend(cp.get("find_package", []))
+    # find_package 构建工具（python3/cmake/...）不是应用运行时依赖
+    names: List[str] = [n for n in cp.get("find_package", [])
+                        if n not in qt_scanner.BUILD_TOOL_FINDPKG]
     names.extend(cp.get("pkg_check_modules", []))
     pm = info.get("pkg_manifests", {})
     for c in pm.get("conan", []):
@@ -396,10 +427,8 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
 
     seen = set()
     linked, unknown = [], []
-    for name in names:
-        if name in seen:
-            continue
-        seen.add(name)
+
+    def _resolve_one(name: str):
         node = kb_seed.resolve_package(conn, name)
         alias_used = None
         if node is None:
@@ -414,21 +443,61 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
                 if node:
                     alias_used = alias
                     break
+        return node, alias_used
+
+    def _link(name: str, node, alias_used=None, via=None):
+        db.upsert_edge(conn, app_id, node["id"], "runtime")
+        item = {"hint": name, "node": node["id"],
+                "status": node["port_status"]}
+        if alias_used:
+            item["alias"] = alias_used
+        if via:
+            item["via"] = via
+        linked.append(item)
+
+    def _ghost(name: str):
+        ghost_id = "pkg-unknown:%s" % normalize_app_name(name)
+        db.upsert_node(
+            conn, ghost_id, "package", name, "scan", "unknown",
+            description="扫描发现的第三方库，未匹配到已知包源",
+            port_evidence="不在 Harmonybrew/cmd-pkgs 已知清单")
+        db.upsert_edge(conn, app_id, ghost_id, "runtime")
+        unknown.append({"hint": name, "node": ghost_id})
+
+    for name in names:
+        if name.lower() in seen:
+            continue
+        seen.add(name.lower())
+        node, alias_used = _resolve_one(name)
         if node:
-            db.upsert_edge(conn, app_id, node["id"], "runtime")
-            item = {"hint": name, "node": node["id"],
-                    "status": node["port_status"]}
-            if alias_used:
-                item["alias"] = alias_used
-            linked.append(item)
+            _link(name, node, alias_used)
         else:
-            ghost_id = "pkg-unknown:%s" % normalize_app_name(name)
-            db.upsert_node(
-                conn, ghost_id, "package", name, "scan", "unknown",
-                description="扫描发现的第三方库，未匹配到已知包源",
-                port_evidence="不在 Harmonybrew/cmd-pkgs 已知清单")
-            db.upsert_edge(conn, app_id, ghost_id, "runtime")
-            unknown.append({"hint": name, "node": ghost_id})
+            _ghost(name)
+
+    # ---- 裸链接名（含 ns::external_<name> 导入目标，剥前缀后标记
+    #      ext_target）：能解析则连边；external-target 高置信声明
+    #      在未解析且非 vendored 子模块时建幽灵节点
+    submodule_folds = _submodule_folds(info.get("git_submodules", []))
+    for rl in info.get("raw_libs", []):
+        name = rl["name"]
+        if name.lower() in seen:
+            continue
+        seen.add(name.lower())
+        # Windows 系统库（通常位于 win32 平台块）：跳过，防止同名 Unix
+        # 库误连边（bcrypt → OpenBSD bcrypt）
+        if name.lower() in qt_scanner.WIN32_SYSTEM_LIBS:
+            continue
+        node, alias_used = _resolve_one(name)
+        if node:
+            _link(name, node, alias_used,
+                  via="external-target" if rl.get("ext_target") else None)
+        elif rl.get("ext_target"):
+            # vendored 子模块（.gitmodules 声明，随项目编译）不建幽灵：
+            # 依赖由项目源码自足，不是需获取/移植的外部包
+            if _fold_dep_name(name) in submodule_folds:
+                continue
+            if len(name) >= 3:
+                _ghost(name)
     return {"linked": linked, "unknown": unknown}
 
 

@@ -23,13 +23,18 @@
 差异归因类（by_design=true 为预期行为，不计 bug）:
     matched / matched-optional      oracle 与 portgraph 一致
     missed-dep           ★ bug候选  README 声明且构建文件引用，portgraph 未检出
-    resolution-gap       ★ bug候选  扫描出 pkg-unknown:* 幽灵节点（名字解析缺口）
+    resolution-gap       ★ bug候选  扫描出 pkg-unknown 幽灵节点，且库里其实
+                                    存在同库异名的已知鸿蒙包（真解析缺口）
     false-positive       ★ bug候选  portgraph 检出但构建文件无引用
     readme-stale                    README 声明但构建文件不引用（README 过时）
     readme-omitted                  构建文件引用但 README 未列（portgraph 正确）
     qt-granularity                  Qt/KF 模块粒度折叠（README 只写 "Qt"）
     build-only                      构建工具（fetch-deps 不收 build 依赖）
     optional-not-built              可选依赖，默认构建不含
+    vendored                        README 声明但为 .gitmodules 自带子模块
+                                    （随项目编译，不作为外部包获取）
+    unknown-ok                      幽灵节点无任何形近已知包：真实外部依赖、
+                                    无鸿蒙包，need_port 为正确结论
 """
 
 from __future__ import annotations
@@ -48,7 +53,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from port_graph import (DB_PATH, WORKSPACE, cloner, db, deps_fetch,  # noqa: E402
-                        engine, kb_seed, project_scanner)
+                        engine, kb_seed, project_scanner, qt_scanner)
 
 E2E_DIR = Path(__file__).resolve().parent
 ORACLE_DIR = E2E_DIR / "oracle"
@@ -61,7 +66,8 @@ DRYRUN_OUT = WORKSPACE / "e2e" / "ohos-libs-dryrun"
 BUG_CLASSES = {"missed-dep", "resolution-gap", "false-positive"}
 BY_DESIGN_CLASSES = {"matched", "matched-optional", "readme-stale",
                      "readme-omitted", "qt-granularity", "build-only",
-                     "optional-not-built", "unknown-ok", "unclassified"}
+                     "optional-not-built", "unknown-ok", "vendored",
+                     "unclassified"}
 
 # ---------------------------------------------------------------- 常量表
 
@@ -101,6 +107,9 @@ README_ALIASES = {
     "libxkb": "libxkbcommon", "xkbcommon": "libxkbcommon",
     "qt5-webengine": "qt", "qt6-webengine": "qt",
     "qt5-quickcontrols2": "qt", "qt6-quickcontrols2": "qt",
+    # 同库异名（e2e tdesktop 复核确认）：nayuki QR-Code-generator
+    # = cmd-pkgs libqrcodegen（版本序列同源，1.8.0）
+    "qr-code-generator": "libqrcodegen",
 }
 
 _VERSION_TOK_RE = re.compile(r"^[\d<>=~^]|^v?\d+(\.\d+)*\+?$")
@@ -172,7 +181,8 @@ def pg_canon(node: Dict) -> str:
     name = (node["name"] or "").lower()
     if "@" in name and not name.startswith("openssl@"):
         name = name.split("@", 1)[0]
-    return name or node["id"].split(":", 1)[-1].lower()
+    # 分隔符口径统一（_ 与 - 视为同名：crash_reports / crash-reports）
+    return name.replace("_", "-") or node["id"].split(":", 1)[-1].lower()
 
 
 def names_match(oracle_name: str, pg_name: str, pg_node: Dict) -> bool:
@@ -190,6 +200,54 @@ def names_match(oracle_name: str, pg_name: str, pg_node: Dict) -> bool:
     if len(oc) >= 5 and len(pc) >= 5 and (oc in pc or pc in oc):
         return True
     return False
+
+
+def _fold_pkg_name(n: str) -> str:
+    """包名折叠：小写、去 @变体、去 lib 前缀、分隔符归一。"""
+    n = (n or "").lower().strip()
+    at = n.find("@")
+    if at > 0:
+        n = n[:at]
+    if n.startswith("lib") and len(n) > 3:
+        n = n[3:]
+    return n.replace("_", "-").strip("-")
+
+
+def ghost_plausible_package(conn, ghost_name: str) -> Optional[Dict]:
+    """幽灵节点名是否存在"本应解析到"的已知鸿蒙包。
+
+    判据（任一命中即存在）：
+    - kb_seed.PKG_ALIASES 指向的目标包在库里存在
+    - 已入库 hb/cmd-pkgs 包名折叠后相等，或互为子串且共享完整分隔分量
+      （openal ⊂ openal-soft；udev ⊄ uudeview——无分量交集）
+    返回 {id, name} 或 None。None → 幽灵是正确检出（unknown-ok）。
+    """
+    raw = (ghost_name or "").strip()
+    g = _fold_pkg_name(raw)
+    if not g or len(g) < 3:
+        return None
+    alias = kb_seed.PKG_ALIASES.get(raw.lower())
+    if isinstance(alias, str):
+        node = kb_seed.resolve_package(conn, alias)
+        if node:
+            return {"id": node["id"], "name": node["name"]}
+    g_parts = set(p for p in g.split("-") if p)
+    try:
+        rows = conn.execute(
+            "SELECT id, name FROM nodes WHERE kind='package' "
+            "AND (id LIKE 'hb:%' OR id LIKE 'cmdpkgs:%')").fetchall()
+    except sqlite3.Error:
+        return None
+    for r in rows:
+        p = _fold_pkg_name(r["name"] or "")
+        if not p:
+            continue
+        if p == g:
+            return {"id": r["id"], "name": r["name"]}
+        p_parts = set(x for x in p.split("-") if x)
+        if (g in p or p in g) and (g_parts & p_parts):
+            return {"id": r["id"], "name": r["name"]}
+    return None
 
 
 # ---------------------------------------------------------------- oracle 提取
@@ -319,6 +377,16 @@ def _collect_build_files(repo: Path, max_files: int = 4000) -> List[Path]:
     return out
 
 
+def _word_guard(e: str) -> str:
+    """词界保护：字母数字之外均算边界（_:.-@ 等分隔符也算）。
+
+    \b 无法命中 external_openal / lib_zlib / ns::openal 这类下划线/
+    冒号连写形式（e2e tdesktop 复核：external_* 前缀目标名曾被漏判），
+    改用环视断言实现分隔符敏感的边界。
+    """
+    return r"(?<![A-Za-z0-9])" + e + r"(?![A-Za-z0-9])"
+
+
 def grep_dep_refs(repo: Path, name_variants: List[str],
                   max_hits: int = 5) -> Dict:
     """在克隆仓库构建文件中搜索依赖引用，返回强/弱证据。
@@ -335,12 +403,13 @@ def grep_dep_refs(repo: Path, name_variants: List[str],
     strict, loose = [], []
     for v in variants:
         e = re.escape(v)
-        strict.append(re.compile(r"(?i)find_package\s*\(\s*%s\b" % e))
-        strict.append(re.compile(r"(?i)pkg_check_modules\s*\([^)]*\b%s\b" % e))
-        strict.append(re.compile(r"(?i)find_library\s*\([^)]*\b%s\b" % e))
-        strict.append(re.compile(r"(?is)target_link_libraries\s*\([^)]*?\b%s\b"
-                                 % e))
-        loose.append(re.compile(r"(?i)\b%s\b" % e))
+        b = _word_guard(e)
+        strict.append(re.compile(r"(?i)find_package\s*\(\s*%s" % b))
+        strict.append(re.compile(r"(?i)pkg_check_modules\s*\([^)]*%s" % b))
+        strict.append(re.compile(r"(?i)find_library\s*\([^)]*%s" % b))
+        strict.append(re.compile(r"(?is)target_link_libraries\s*\([^)]*?%s"
+                                 % b))
+        loose.append(re.compile(r"(?i)%s" % b))
     hits: List[Dict] = []
     n_strong = n_weak = 0
     try:
@@ -357,18 +426,26 @@ def grep_dep_refs(repo: Path, name_variants: List[str],
         except OSError:
             continue
         rel = str(f.relative_to(repo)).replace("\\", "/")
-        for i, line in enumerate(text.splitlines(), 1):
-            if any(p.search(line) for p in strict):
+        # 强证据：全文本匹配（CMake 命令常跨多行——tdesktop 的
+        # target_link_libraries 每个链接项独占一行，逐行匹配会漏证据）
+        for pat in strict:
+            for m in pat.finditer(text):
                 n_strong += 1
+                line_no = text.count("\n", 0, m.end()) + 1
                 if len(hits) < max_hits:
-                    hits.append({"file": rel, "line": i, "strong": True,
-                                 "text": line.strip()[:120]})
-            elif is_loose_only and any(p.search(line) for p in loose):
-                n_weak += 1
-                if len(hits) < max_hits and not any(
-                        h["file"] == rel and h["line"] == i for h in hits):
-                    hits.append({"file": rel, "line": i, "strong": False,
-                                 "text": line.strip()[:120]})
+                    snippet = text[m.start():m.end()]
+                    snippet = snippet[snippet.rfind("\n") + 1:][:120]
+                    hits.append({"file": rel, "line": line_no,
+                                 "strong": True, "text": snippet})
+        if is_loose_only:
+            for i, line in enumerate(text.splitlines(), 1):
+                if any(p.search(line) for p in loose):
+                    n_weak += 1
+                    if len(hits) < max_hits and not any(
+                            h["file"] == rel and h["line"] == i
+                            for h in hits):
+                        hits.append({"file": rel, "line": i, "strong": False,
+                                     "text": line.strip()[:120]})
     return {"strong": n_strong, "weak": n_weak, "hits": hits}
 
 
@@ -400,6 +477,50 @@ def name_variants(disp_or_name: str, node: Optional[Dict] = None) -> List[str]:
             if alias_target.lower() == node_nm:
                 out.append(alias_key)
     return list(dict.fromkeys(v for v in out if v and len(v) >= 3))
+
+
+def vendored_submodule_match(repo_path: Path,
+                             oracle_names: List[str]) -> Optional[Dict]:
+    """oracle 依赖名（name/display 均尝试）是否是 .gitmodules 自带子模块
+    （vendored，随项目编译）。
+
+    匹配：折叠名（去分隔符/大小写）与子模块 name/path 末段/url 末段相等，
+    或互为子串（≥5 字符）。返回 {path, url} 或 None。
+    """
+    try:
+        submodules = qt_scanner._detect_gitmodules(repo_path)
+    except OSError:
+        return None
+    if not submodules:
+        return None
+
+    def fold(s: str) -> str:
+        return re.sub(r"[^a-z0-9]+", "", (s or "").lower())
+
+    wants = []
+    for nm in oracle_names:
+        w = fold(canon_of(nm))
+        if w and len(w) >= 3 and w not in wants:
+            wants.append(w)
+    if not wants:
+        return None
+    for gm in submodules:
+        url = (gm.get("url") or "").rstrip("/")
+        url_last = url.rsplit("/", 1)[-1]
+        if url_last.endswith(".git"):
+            url_last = url_last[:-4]
+        cands = [gm.get("name") or "",
+                 (gm.get("path") or "").rsplit("/", 1)[-1],
+                 url_last]
+        for c in cands:
+            f = fold(c)
+            if not f or len(f) < 3:
+                continue
+            for want in wants:
+                if f == want or (len(want) >= 5 and
+                                 (want in f or f in want)):
+                    return {"path": gm.get("path"), "url": gm.get("url")}
+    return None
 
 
 # ---------------------------------------------------------------- 主流程
@@ -552,8 +673,12 @@ def reconcile(conn, oracle: Dict, direct: List[Dict], repo_path: Path,
                    else "matched")
             ev = None
             if hit["id"].startswith("pkg-unknown:"):
-                ev = {"note": "⚠ 匹配到幽灵节点（pkg-unknown）——"
-                      "名字未解析到已知鸿蒙包，实为解析缺口，需复核"}
+                cand = ghost_plausible_package(conn, hit["name"])
+                ev = ({"note": "⚠ 匹配到幽灵节点：库里存在形近已知包 %s（%s）"
+                       "→ 名字解析缺口，需复核" % (cand["name"], cand["id"])}
+                      if cand else
+                      {"note": "匹配到幽灵节点：真实外部依赖且无已知鸿蒙包"
+                       "（fetch-deps 报 need_port/需源码移植，检出正确）"})
             diffs.append({"class": cls, "side": "oracle", "by_design": True,
                           "oracle_name": o.get("name"),
                           "oracle_type": o.get("type"),
@@ -580,7 +705,21 @@ def reconcile(conn, oracle: Dict, direct: List[Dict], repo_path: Path,
                           "evidence": {"note": "可选依赖，默认构建未启用"},
                           "agent_note": None})
             continue
-        # runtime 且未匹配 → 取证：构建文件是否引用
+        # runtime 且未匹配 → 取证：是否 vendored 子模块（随项目编译，
+        # 不作为外部包获取），否则构建文件是否引用
+        vend = vendored_submodule_match(
+            repo_path, [odisp, o.get("name") or ""])
+        if vend:
+            diffs.append({"class": "vendored", "side": "oracle",
+                          "by_design": True, "oracle_name": o.get("name"),
+                          "oracle_type": "runtime", "pg_id": None,
+                          "pg_name": None, "pg_kind": None,
+                          "pg_status": None, "depth": None,
+                          "evidence": {"note": " .gitmodules 自带子模块"
+                            "（%s → %s）：随项目源码一起编译，不作为外部包"
+                            "获取/检测" % (vend["path"], vend["url"])},
+                          "agent_note": None})
+            continue
         ev = grep_dep_refs(repo_path, name_variants(odisp))
         if ev["strong"] or ev["weak"]:
             cls, note = "missed-dep", (
@@ -619,10 +758,19 @@ def reconcile(conn, oracle: Dict, direct: List[Dict], repo_path: Path,
             diffs.append(base)
             continue
         if d["id"].startswith("pkg-unknown:"):
-            base["class"] = "resolution-gap"
-            base["by_design"] = False
-            base["evidence"] = {"note": "pkg-unknown 幽灵节点："
-                              "find_package 名未解析到已知鸿蒙包（ALIASES 缺口）"}
+            cand = ghost_plausible_package(conn, d["name"])
+            if cand:
+                base["class"] = "resolution-gap"
+                base["by_design"] = False
+                base["evidence"] = {"note": "pkg-unknown 幽灵节点："
+                                  "库里存在同库异名的已知鸿蒙包 %s（%s）→ "
+                                  "名字解析缺口（ALIASES 缺条目）"
+                                  % (cand["name"], cand["id"])}
+            else:
+                base["class"] = "unknown-ok"
+                base["evidence"] = {"note": "未匹配到已知鸿蒙包：真实外部"
+                                  "依赖，幽灵节点为正确检出"
+                                  "（fetch-deps 报 need_port/需源码移植）"}
             diffs.append(base)
             continue
         ev = grep_dep_refs(repo_path, name_variants(None, d))
@@ -737,7 +885,8 @@ _CLASS_LABEL = {
     "false-positive": "★误报", "readme-stale": "README过时",
     "readme-omitted": "README漏列", "qt-granularity": "粒度折叠",
     "build-only": "构建工具", "optional-not-built": "可选未启用",
-    "unknown-ok": "未知包(正常)", "unclassified": "未归类",
+    "unknown-ok": "未知包(正常)", "vendored": "自带子模块",
+    "unclassified": "未归类",
 }
 
 

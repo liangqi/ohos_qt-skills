@@ -6,11 +6,11 @@
   "name": "qbittorrent",
   "url": "https://github.com/qbittorrent/qBittorrent",
   "tier": "B",
-  "build_system": "?",
-  "sources": "?",
-  "repo_path": "./portgraph\\workspace\\qbittorrent"
+  "build_system": "cmake",
+  "sources": 710,
+  "repo_path": "/root/harmony-workspace/worker1/portgraph/workspace/qbittorrent"
  },
- "generated_at": "2026-09-18T02:44:26Z",
+ "generated_at": "2026-09-19T12:36:18Z",
  "verdict": "blocked",
  "blockers": [
   {
@@ -27,25 +27,73 @@
    "kind": "unsupported-interface",
    "node": "app:qbittorrent",
    "reason": "使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (3 处无条件 / 2 处鸿蒙可编译 / 20 处宏守卫排除 / 0 处文件级排除) | src/gui/utils.cpp:36[platform-excluded] #include <shlobj.h>; src/gui/utils.cpp:37[platform-excluded] #include <shellapi.h>; src/gui/powermanagement/inhibitorwindows.cpp:32[unconditional] #include <windows.h>］"
+  },
+  {
+   "kind": "unsupported-module",
+   "node": "qtmod:dbus",
+   "reason": "Qt for HarmonyOS 模块适配表: 不支持 - 鸿蒙无 D-Bus"
   }
  ],
- "unknowns": [],
+ "unknowns": [
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:libtorrentrasterbar",
+   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:libtorrent-rasterbar",
+   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:systemd",
+   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
+  }
+ ],
  "platform_excluded": [],
  "closure": {
-  "size": 14,
+  "size": 21,
   "summary": {
    "target": 1,
-   "provided": 4,
-   "cmd_only": 2,
-   "would_download": 6,
-   "already_local": 1
+   "provided": 8,
+   "cmd_only": 3,
+   "need_port": 3,
+   "would_download": 6
   },
-  "need_port": [],
+  "need_port": [
+   {
+    "id": "pkg-unknown:libtorrentrasterbar",
+    "name": "libtorrentrasterbar",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:libtorrent-rasterbar",
+    "name": "libtorrent-rasterbar",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:systemd",
+    "name": "systemd",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   }
+  ],
   "cmd_only": [
    {
     "id": "hb:boost",
     "name": "boost",
     "artifact_cmd": "brew install boost"
+   },
+   {
+    "id": "hb:icu4c@78",
+    "name": "icu4c@78",
+    "artifact_cmd": "brew install icu4c@78"
    },
    {
     "id": "hb:ca-certificates",
@@ -72,11 +120,35 @@
    "depth": 1
   },
   {
+   "id": "pkg-unknown:libtorrent-rasterbar",
+   "name": "libtorrent-rasterbar",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:libtorrentrasterbar",
+   "name": "libtorrentrasterbar",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
    "id": "hb:openssl@3",
    "name": "openssl@3",
    "kind": "package",
    "edge": "runtime",
    "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:systemd",
+   "name": "systemd",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
    "depth": 1
   },
   {
@@ -90,6 +162,30 @@
   {
    "id": "qtmod:core",
    "name": "Qt Core",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:dbus",
+   "name": "Qt D-Bus",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "blocked",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:network",
+   "name": "Qt Network",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:sql",
+   "name": "Qt SQL",
    "kind": "qt-module",
    "edge": "uses-module",
    "port_status": "ported",
@@ -114,6 +210,14 @@
   {
    "id": "qtmod:widgets",
    "name": "Qt Widgets",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:xml",
+   "name": "Qt XML",
    "kind": "qt-module",
    "edge": "uses-module",
    "port_status": "ported",
@@ -186,38 +290,18 @@
    "agent_note": null
   },
   {
-   "class": "missed-dep",
+   "class": "matched",
    "side": "oracle",
-   "by_design": false,
+   "by_design": true,
    "oracle_name": "libtorrent-rasterbar",
    "oracle_type": "runtime",
-   "pg_id": null,
-   "pg_name": null,
-   "pg_kind": null,
-   "pg_status": null,
-   "depth": null,
+   "pg_id": "pkg-unknown:libtorrent-rasterbar",
+   "pg_name": "libtorrent-rasterbar",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
    "evidence": {
-    "note": "README 声明且构建文件引用（strong=3 weak=0），portgraph 未检出 → 扫描器漏检候选",
-    "grep": [
-     {
-      "file": "cmake/Modules/CheckPackages.cmake",
-      "line": 6,
-      "strong": true,
-      "text": "find_package(LibtorrentRasterbar QUIET ${version} COMPONENTS torrent-rasterbar)"
-     },
-     {
-      "file": "cmake/Modules/CheckPackages.cmake",
-      "line": 9,
-      "strong": true,
-      "text": "pkg_check_modules(LibtorrentRasterbar IMPORTED_TARGET GLOBAL \"libtorrent-rasterbar>=${version}\")"
-     },
-     {
-      "file": "cmake/Modules/CheckPackages.cmake",
-      "line": 35,
-      "strong": true,
-      "text": "find_package(LibtorrentRasterbar ${version} REQUIRED COMPONENTS torrent-rasterbar)"
-     }
-    ]
+    "note": "匹配到幽灵节点：真实外部依赖且无已知鸿蒙包（fetch-deps 报 need_port/需源码移植，检出正确）"
    },
    "agent_note": null
   },
@@ -296,6 +380,86 @@
    "agent_note": null
   },
   {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:libtorrentrasterbar",
+   "pg_name": "libtorrentrasterbar",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植）"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:systemd",
+   "pg_name": "systemd",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植）"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:dbus",
+   "pg_name": "Qt D-Bus",
+   "pg_kind": "qt-module",
+   "pg_status": "blocked",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt 模块粒度：README 通常只写 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:network",
+   "pg_name": "Qt Network",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt 模块粒度：README 通常只写 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:sql",
+   "pg_name": "Qt SQL",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt 模块粒度：README 通常只写 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
    "class": "qt-granularity",
    "side": "pg",
    "by_design": true,
@@ -342,27 +506,43 @@
     "note": "Qt 模块粒度：README 通常只写 'Qt'"
    },
    "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:xml",
+   "pg_name": "Qt XML",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt 模块粒度：README 通常只写 'Qt'"
+   },
+   "agent_note": null
   }
  ],
  "metrics": {
   "oracle_runtime": 5,
   "oracle_optional": 1,
-  "matched": 4,
+  "matched": 5,
   "matched_optional": 0,
-  "recall": "80%",
+  "recall": "100%",
   "precision": "100%",
-  "bug_candidates": 1,
+  "bug_candidates": 0,
   "bug_by_class": {
    "false-positive": 0,
-   "missed-dep": 1,
+   "missed-dep": 0,
    "resolution-gap": 0
   },
   "class_counts": {
    "build-only": 1,
-   "matched": 4,
-   "missed-dep": 1,
+   "matched": 5,
    "optional-not-built": 1,
-   "qt-granularity": 3
+   "qt-granularity": 7,
+   "unknown-ok": 2
   }
  },
  "agent_notes": [

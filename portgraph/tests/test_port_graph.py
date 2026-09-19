@@ -1017,3 +1017,305 @@ class TestCLICompact(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# =====================================================================
+# e2e tdesktop（tier C）deps-test 轮新增：external_* 导入目标链接解析、
+# 构建工具过滤、vendored 子模块抑制、win32 系统库防误连、harness 取证
+# =====================================================================
+
+def _load_e2e_harness():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "run_e2e", PROJECT_ROOT / "tests" / "e2e" / "run_e2e.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class TestExternalTargetLinks(unittest.TestCase):
+    """target_link_libraries 的 ns::external_<name> 导入目标解析
+    （tdesktop 全部三方库走这条路，find_package 位于 cmake_helpers）。"""
+
+    CMAKE = """
+cmake_minimum_required(VERSION 3.16)
+project(Ext)
+add_library(app STATIC src/main.cpp)
+add_library(external_foo STATIC src/foo.cpp)
+target_link_libraries(app PRIVATE
+  desktop-app::external_zlib
+  desktop-app::external_openal
+  desktop-app::external_webrtc
+  desktop-app::lib_base
+  desktop-app::external_qt_static_plugins
+  Qt5::Core
+  PkgConfig::TDESKTOP_UDEV
+  external_foo
+  z
+)
+"""
+
+    def _project(self, tmp: Path):
+        root = tmp / "extproj"
+        (root / "src").mkdir(parents=True)
+        (root / "CMakeLists.txt").write_text(self.CMAKE, encoding="utf-8")
+        return root
+
+    def test_external_targets_extracted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            info = qt_scanner.scan_project(self._project(Path(tmp)))
+            raw = {e["name"].lower(): e for e in info["raw_libs"]}
+            # external_ 前缀剥除 + ext_target 高置信标记
+            for n in ("zlib", "openal", "webrtc"):
+                self.assertIn(n, raw, "missing %s" % n)
+                self.assertTrue(raw[n].get("ext_target"))
+                self.assertIn("external-target",
+                              " ".join(raw[n]["hows"]))
+            # 非 external_ 的命名空间目标 / Qt / PkgConfig / 项目内目标跳过
+            for n in ("lib_base", "qt5::core", "qt_static_plugins",
+                      "external_foo", "foo", "pkgconfig"):
+                self.assertNotIn(n, raw)
+            # 裸名仍走原通道
+            self.assertIn("z", raw)
+            self.assertFalse(raw["z"].get("ext_target"))
+
+    def test_graph_links_and_ghosts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            # vendored 子模块：external_cmark_gfm 对应 .gitmodules 条目
+            (root / ".gitmodules").write_text(
+                '[submodule "ThirdParty/cmark-gfm"]\n'
+                "\tpath = Telegram/ThirdParty/cmark-gfm\n"
+                "\turl = https://github.com/github/cmark-gfm.git\n",
+                encoding="utf-8")
+            (root / "CMakeLists.txt").write_text(
+                self.CMAKE.replace(
+                    "desktop-app::external_webrtc",
+                    "desktop-app::external_webrtc\n"
+                    "  desktop-app::external_cmark_gfm"),
+                encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:zlib", "package", "zlib", "harmonybrew",
+                           "ported")
+            db.upsert_node(conn, "cmdpkgs:openal-soft", "package",
+                           "openal-soft", "cmdpkgs", "ported")
+            db.upsert_node(conn, "cmdpkgs:bcrypt", "package", "bcrypt",
+                           "cmdpkgs", "ported")
+            scan = project_scanner.scan_project(conn, root)
+            linked = {d["hint"]: d for d in scan["deps_linked"]}
+            # 已知包连边（openal 经 PKG_ALIASES → openal-soft）
+            self.assertEqual(linked["zlib"]["node"], "hb:zlib")
+            self.assertEqual(linked["openal"]["node"], "cmdpkgs:openal-soft")
+            self.assertEqual(linked["openal"]["alias"], "openal-soft")
+            self.assertEqual(linked["openal"]["via"], "external-target")
+            unknown = {d["hint"] for d in scan["deps_unknown"]}
+            # 未解析的 external_ 声明 → 幽灵节点（高置信）
+            self.assertIn("webrtc", unknown)
+            # vendored 子模块命中 → 不建幽灵（随项目编译）
+            self.assertNotIn("cmark_gfm", unknown)
+
+
+class TestBuildToolFindpkgFilter(unittest.TestCase):
+    """find_package(Python3) 等构建工具不建运行时边（此前产生
+    pkg-unknown:python3 幽灵，e2e 报假 resolution-gap）。"""
+
+    def test_python3_not_runtime_edge(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "codegen"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\nproject(Gen)\n"
+                "find_package(Python3 REQUIRED)\n"
+                "pkg_check_modules(UDEV REQUIRED IMPORTED_TARGET libudev)\n",
+                encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            scan = project_scanner.scan_project(conn, root)
+            hints = {d["hint"] for d in scan["deps_unknown"]}
+            self.assertNotIn("python3", hints)
+            edges = {e["dst"] for e in db.out_edges(conn, scan["app_id"])}
+            self.assertNotIn("pkg-unknown:python3", edges)
+            # 真实运行时依赖（pkg-config 名）仍建幽灵
+            self.assertIn("libudev", hints)
+            self.assertIn("pkg-unknown:libudev", edges)
+            conn.close()
+
+
+class TestWin32LibNoFalseEdge(unittest.TestCase):
+    """win32 系统库名（bcrypt/hid/...）不因同名 Unix 库误连边。"""
+
+    def test_bcrypt_win32_skipped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "w32"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\nproject(W32)\n"
+                "add_library(f2 STATIC f2.c)\n"
+                "target_link_libraries(f2 PRIVATE bcrypt hid ws2_32)\n",
+                encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "cmdpkgs:bcrypt", "package", "bcrypt",
+                           "cmdpkgs", "ported")
+            scan = project_scanner.scan_project(conn, root)
+            hints = [d["hint"] for d in scan["deps_linked"]] + \
+                [d["hint"] for d in scan["deps_unknown"]]
+            self.assertNotIn("bcrypt", hints)
+            self.assertNotIn("hid", hints)
+            conn.close()
+
+
+class TestPkgAliasesTdesktop(unittest.TestCase):
+    """e2e tdesktop 复核确认的别名缺口（external_* 裸名 → 鸿蒙包）。"""
+
+    def test_aliases_resolve(self):
+        conn = db.connect(":memory:")
+        db.init_db(conn)
+        kb_seed.seed_interfaces(conn)
+        db.upsert_node(conn, "cmdpkgs:openal-soft", "package", "openal-soft",
+                       "cmdpkgs", "ported")
+        db.upsert_node(conn, "hb:libiconv", "package", "libiconv",
+                       "harmonybrew", "ported")
+        db.upsert_node(conn, "hb:boost", "package", "boost", "harmonybrew",
+                       "ported")
+        db.upsert_node(conn, "hb:cmark-gfm", "package", "cmark-gfm",
+                       "harmonybrew", "ported")
+        db.upsert_node(conn, "cmdpkgs:libqrcodegen", "package", "libqrcodegen",
+                       "cmdpkgs", "ported")
+        for name, want in (("openal", "cmdpkgs:openal-soft"),
+                           ("iconv", "hb:libiconv"),
+                           ("boost_regex", "hb:boost"),
+                           ("cmark_gfm", "hb:cmark-gfm"),
+                           ("qr_code_generator", "cmdpkgs:libqrcodegen")):
+            alias = kb_seed.PKG_ALIASES[name]
+            node = kb_seed.resolve_package(conn, alias)
+            self.assertIsNotNone(node, "%s 未解析" % name)
+            self.assertEqual(node["id"], want)
+        conn.close()
+
+
+class TestE2eHarnessDepsTest(unittest.TestCase):
+    """harness（run_e2e）取证与归类修正：
+    词界环视、分隔符折叠、幽灵判定（resolution-gap vs unknown-ok）、
+    vendored 子模块归类。"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.h = _load_e2e_harness()
+
+    def test_grep_boundary_matches_prefixed_target(self):
+        # \b 词界匹配不到 external_xxhash / lib_zlib；环视边界可以
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            (repo / "CMakeLists.txt").write_text(
+                "target_link_libraries(Telegram PRIVATE "
+                "desktop-app::external_xxhash lib_zlib)\n",
+                encoding="utf-8")
+            ev = self.h.grep_dep_refs(repo, self.h.name_variants("xxHash"))
+            self.assertGreaterEqual(ev["strong"], 1)
+            ev2 = self.h.grep_dep_refs(repo, ["zlib"])
+            self.assertGreaterEqual(ev2["strong"], 1)
+            # 词界保护不能误伤：zlib 不得命中 zlibng 之类连写
+            (repo / "CMakeLists.txt").write_text(
+                "target_link_libraries(x PRIVATE zlibng)\n", encoding="utf-8")
+            ev3 = self.h.grep_dep_refs(repo, ["zlib"])
+            self.assertEqual(ev3["strong"], 0)
+
+    def test_grep_multiline_tll(self):
+        # tll 每个链接项独占一行：逐行匹配会漏证据，需全文匹配
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            (repo / "CMakeLists.txt").write_text(
+                "target_link_libraries(Telegram\nPRIVATE\n"
+                "    desktop-app::external_boost_regex\n"
+                "    desktop-app::external_minizip\n)\n",
+                encoding="utf-8")
+            ev = self.h.grep_dep_refs(repo, ["boost"])
+            self.assertGreaterEqual(ev["strong"], 1)
+            self.assertEqual(ev["hits"][0]["line"], 3)
+
+    def test_names_match_underscore_folding(self):
+        node = {"kind": "package", "name": "crash_reports", "id":
+                "pkg-unknown:crash-reports"}
+        self.assertTrue(self.h.names_match("Crash reports", "crash_reports",
+                                           node))
+
+    def test_ghost_plausible_package(self):
+        conn = db.connect(":memory:")
+        db.init_db(conn)
+        db.upsert_node(conn, "hb:openal-soft", "package", "openal-soft",
+                       "harmonybrew", "ported")
+        db.upsert_node(conn, "hb:uudeview", "package", "uudeview",
+                       "harmonybrew", "ported")
+        db.upsert_node(conn, "hb:libxkbcommon", "package", "libxkbcommon",
+                       "harmonybrew", "ported")
+        # 形近包存在（openal ⊂ openal-soft，分量交集）→ 真解析缺口
+        hit = self.h.ghost_plausible_package(conn, "openal")
+        self.assertIsNotNone(hit)
+        self.assertEqual(hit["id"], "hb:openal-soft")
+        # lib 前缀折叠后相等 → 真解析缺口
+        hit2 = self.h.ghost_plausible_package(conn, "xkbcommon")
+        self.assertIsNotNone(hit2)
+        # 无形近包（udev ⊄ uudeview：无分隔分量交集）→ 幽灵为正确检出
+        self.assertIsNone(self.h.ghost_plausible_package(conn, "libudev"))
+        self.assertIsNone(self.h.ghost_plausible_package(conn, "webrtc"))
+        conn.close()
+
+    def test_vendored_submodule_match(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            (repo / ".gitmodules").write_text(
+                '[submodule "ThirdParty/GSL"]\n'
+                "\tpath = Telegram/ThirdParty/GSL\n"
+                "\turl = https://github.com/Microsoft/GSL.git\n"
+                '[submodule "ThirdParty/xxHash"]\n'
+                "\tpath = Telegram/ThirdParty/xxHash\n"
+                "\turl = https://github.com/Cyan4973/xxHash.git\n",
+                encoding="utf-8")
+            m1 = self.h.vendored_submodule_match(
+                repo, ["Guideline Support Library", "gsl"])
+            self.assertIsNotNone(m1)
+            self.assertEqual(m1["url"],
+                             "https://github.com/Microsoft/GSL.git")
+            m2 = self.h.vendored_submodule_match(repo, ["xxHash"])
+            self.assertIsNotNone(m2)
+            self.assertIsNone(
+                self.h.vendored_submodule_match(repo, ["OpenSSL"]))
+            self.assertIsNone(
+                self.h.vendored_submodule_match(repo, ["opus"]))
+
+    def test_readme_alias_qr_code_generator(self):
+        # nayuki QR-Code-generator = cmd-pkgs libqrcodegen（版本同源 1.8.0）
+        self.assertEqual(self.h.canon_of("QR Code generator"),
+                         "libqrcodegen")
+
+
+class TestPkgConfigVersionSuffixResolve(unittest.TestCase):
+    """pkg-config 版本后缀名（lilv-0/glib-2.0）在图侧也解析到包
+    （此前仅 deps_report._resolve 支持，图侧产生幽灵节点，
+    e2e musescore 复核确认）。"""
+
+    def test_version_suffix_stripped(self):
+        conn = db.connect(":memory:")
+        db.init_db(conn)
+        kb_seed.seed_interfaces(conn)
+        db.upsert_node(conn, "hb:lilv", "package", "lilv", "harmonybrew",
+                       "ported")
+        db.upsert_node(conn, "hb:glib", "package", "glib", "harmonybrew",
+                       "ported")
+        db.upsert_node(conn, "hb:libxkbcommon", "package", "libxkbcommon",
+                       "harmonybrew", "ported")
+        self.assertEqual(kb_seed.resolve_package(conn, "lilv-0")["id"],
+                         "hb:lilv")
+        self.assertEqual(kb_seed.resolve_package(conn, "glib-2.0")["id"],
+                         "hb:glib")
+        # lib 前缀近似也统一到 resolve_package
+        self.assertEqual(kb_seed.resolve_package(conn, "xkbcommon")["id"],
+                         "hb:libxkbcommon")
+        # 无形近包仍返回 None（保持幽灵行为）
+        self.assertIsNone(kb_seed.resolve_package(conn, "suil-0"))
+        conn.close()

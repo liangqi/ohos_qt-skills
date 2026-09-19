@@ -34,6 +34,7 @@ from typing import Dict, List, Optional
 
 from . import db, engine, kb_seed, project_scanner, qt_scanner
 from .kb_seed import PKG_ALIASES as LIB_NAME_ALIASES
+from .qt_scanner import BUILD_TOOL_FINDPKG, WIN32_SYSTEM_LIBS
 
 # OHOS 系统自带库（NDK sysroot / 系统镜像）：链接无需自带产物
 # （KB: semantic/qt-harmonyos-third-party-libs §系统库直链）
@@ -58,17 +59,9 @@ OHOS_SYSTEM_LIBS = {
 }
 
 # Windows 系统库（qmake win32 块 / MSVC 链接）：鸿蒙不适用（代码通常被
-# 平台守卫包裹），标注而非当作"需源码编译"的缺口
-WIN32_SYSTEM_LIBS = {
-    "user32", "kernel32", "gdi32", "shell32", "ole32", "oleaut32", "uuid",
-    "advapi32", "ws2_32", "mswsock", "winmm", "dsound", "ddraw", "dxgi",
-    "d3d9", "d3d11", "dwmapi", "shlwapi", "comctl32", "comdlg32",
-    "imm32", "wininet", "winhttp", "crypt32", "secur32", "netapi32",
-    "psapi", "version", "iphlpapi", "powrprof", "setupapi", "strmiids",
-    "avifil32", "mfplat", "mfuuid", "strmbase", "strmbasd", "wtsapi32",
-    "windowsapp", "delayimp", "opengl32", "glu32", "wintrust", "shcore",
-    "winscard",
-}
+# 平台守卫包裹），标注而非当作“需源码编译”的缺口。
+# 表本体在 qt_scanner（project_scanner 扫描期也需按它过滤 win32 系统库
+# 名，防止同名 Unix 库（如 bcrypt）误连边）
 
 # -l 链接名 → 常见包名对齐（hb 包名口径）：见 kb_seed.PKG_ALIASES
 # （deps_report 与 project_scanner 共享同一张表，保证 deps 与
@@ -108,29 +101,8 @@ INTERFACE_BOUND_PACKAGES = {
 }
 
 # find_package 命中的主机侧构建工具（原 _FINDPKG_SKIP 静默丢弃，现归入
-# build-tool 分类，不再丢失信息）
-BUILD_TOOL_FINDPKG = {
-    "ecm": "extra-cmake-modules（KDE CMake 模块，主机侧）",
-    "pkgconfig": "pkg-config（主机侧）",
-    "pkgconf": "pkgconf（主机侧 pkg-config 兼容）",
-    "gettext": "gettext 工具链（msgfmt/xgettext，主机侧）",
-    "intltool": "intltool（主机侧）",
-    "doxygen": "Doxygen 文档生成器（主机侧）",
-    "sharedmimeinfo": "update-mime-database（主机侧）",
-    "cmake": "CMake",
-    "ninja": "Ninja 构建器",
-    "python3": "Python 3",
-    "python": "Python",
-    "flex": "flex 词法生成器",
-    "bison": "bison 语法生成器",
-    "gperf": "gperf 完美哈希生成器",
-    "git": "git",
-    "ccache": "ccache 编译缓存",
-    "sccache": "sccache 编译缓存",
-    "linguisttools": "Qt Linguist 工具（lupdate/lrelease，随 Qt SDK）",
-    "lxqt2-build-tools": "LXQt CMake 构建模块（主机侧，类似 ECM）",
-    "lxqt-build-tools": "LXQt CMake 构建模块（主机侧，类似 ECM）",
-}
+# build-tool 分类，不再丢失信息）。表本体在 qt_scanner（project_scanner
+# 也需按它过滤运行时边；deps_report 不能被 project_scanner 反向依赖）
 
 # 测试框架（find_package/QT 模块名命中 → test 分类）
 TEST_FRAMEWORKS = {
@@ -558,9 +530,16 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
         else:
             aliased = LIB_NAME_ALIASES.get(n.lower())
             e = link.add(aliased or n, evidence=ev)
-            e.setdefault("ohos_note",
-                         "裸链接名（未用 find_package/pkg-config 声明），"
-                         "产物获取途径取决于名称匹配结果")
+            if rl.get("ext_target"):
+                e.setdefault(
+                    "ohos_note",
+                    "external_* 导入目标链接（find_package 声明位于外部"
+                    "构建模块/未初始化子模块，如 cmake_helpers），"
+                    "产物获取途径取决于名称匹配结果")
+            else:
+                e.setdefault("ohos_note",
+                             "裸链接名（未用 find_package/pkg-config 声明），"
+                             "产物获取途径取决于名称匹配结果")
 
     # ---- 6c) macOS 框架（-framework X）
     for fw in info.get("macos_frameworks", []):
