@@ -4,6 +4,8 @@
 - app:<name> 节点（普通属性）
 - uses-module 边 -> qtmod:*（Qt 模块）
 - runtime 边 -> 已入库包节点 / pkg-unknown:* 幽灵节点（第三方库）
+- optional 边 -> 默认构建不含的依赖（OFF 默认 CMake 选项守卫内声明；
+  不进入 runtime 闭包/可移植性分析，仅供展示层与人工复核）
 - node_interfaces 记录（平台接口使用 + 证据）
 """
 
@@ -28,37 +30,59 @@ PLATFORM_API_RULES: List[Dict] = [
                       r"\b(CreateWindow|SendMessage|PostMessage|GetMessage|"
                       r"LoadLibrary|GetProcAddress|CreateFile|ReadFile|WriteFile|"
                       r"VirtualAlloc|HeapAlloc|RegOpenKey|RegQueryValue|CoCreateInstance|"
-                      r"IDispatch|IUnknown|HWND|HDC|HINSTANCE)\b")},
+                      r"IDispatch|IUnknown|HWND|HDC|HINSTANCE)\b"),
+     "pre": ("windows.h", "shellapi", "shlobj", "winuser", "wingdi",
+             "winbase", "winsock2", "commctrl", "commdlg", "CreateWindow",
+             "SendMessage", "PostMessage", "GetMessage", "LoadLibrary",
+             "GetProcAddress", "CreateFile", "ReadFile", "WriteFile",
+             "VirtualAlloc", "HeapAlloc", "RegOpenKey", "RegQueryValue",
+             "CoCreateInstance", "IDispatch", "IUnknown", "HWND", "HDC",
+             "HINSTANCE")},
     {"iface": "iface:x11",
-     "re": re.compile(r"#\s*include\s*<\s*(X11|xcb|Xlib)\b")},
+     "re": re.compile(r"#\s*include\s*<\s*(X11|xcb|Xlib)\b"),
+     "pre": ("X11", "xcb", "Xlib")},
     {"iface": "iface:wayland",
-     "re": re.compile(r"#\s*include\s*<\s*wayland-client")},
+     "re": re.compile(r"#\s*include\s*<\s*wayland-client"),
+     "pre": ("wayland-client",)},
     {"iface": "iface:dbus",
      "re": re.compile(r"#\s*include\s*<\s*dbus/|\bQDBusConnection\b|"
-                       r"#\s*include\s*<\s*QtDBus")},
+                       r"#\s*include\s*<\s*QtDBus"),
+     "pre": ("dbus/", "QDBusConnection", "QtDBus")},
     {"iface": "iface:alsa",
-     "re": re.compile(r"#\s*include\s*<\s*alsa/|\bsnd_")},
+     "re": re.compile(r"#\s*include\s*<\s*alsa/|\bsnd_"),
+     "pre": ("alsa/", "snd_")},
     {"iface": "iface:pulseaudio",
-     "re": re.compile(r"#\s*include\s*<\s*pulse/|\bpa_simple|\bpa_mainloop")},
+     "re": re.compile(r"#\s*include\s*<\s*pulse/|\bpa_simple|\bpa_mainloop"),
+     "pre": ("pulse/", "pa_simple", "pa_mainloop")},
     {"iface": "iface:coreaudio",
      "re": re.compile(r"#\s*include\s*<\s*(CoreAudio|AudioToolbox|"
-                      r"CoreAudioTypes|CoreMIDI)\b|\bAudioUnit\b|\bMIDIPortRef\b")},
+                      r"CoreAudioTypes|CoreMIDI)\b|\bAudioUnit\b|\bMIDIPortRef\b"),
+     "pre": ("CoreAudio", "AudioToolbox", "CoreMIDI", "AudioUnit",
+             "MIDIPortRef")},
     {"iface": "iface:cocoa",
      "re": re.compile(r"#\s*(include|import)\s*<\s*(Cocoa|AppKit|Foundation|IOKit)/"
                       r"|\bNS(Window|View|Application|Responder|Object)\b|"
-                      r"@interface\b|@implementation\b|^\s*@\w+\b")},
+                      r"@interface\b|@implementation\b|^\s*@\w+\b"),
+     # "@" 单独作锚：覆盖 ^\s*@\w+ 分支（文本起始），宁误跑不漏检
+     "pre": ("Cocoa", "AppKit", "Foundation", "IOKit", "NSWindow", "NSView",
+             "NSApplication", "NSResponder", "NSObject", "@")},
     {"iface": "iface:systemd",
      "re": re.compile(r"#\s*include\s*<\s*systemd/|"
                       r"\b(sd_listen_fds|sd_notify|sd_notifyf|sd_watchdog|"
-                      r"sd_booted|sd_journal_)\b")},
+                      r"sd_booted|sd_journal_)\b"),
+     "pre": ("systemd/", "sd_listen", "sd_notify", "sd_watchdog",
+             "sd_booted", "sd_journal_")},
     {"iface": "iface:dylib",
      "re": re.compile(r"\bdlopen\s*\(|\bLoadLibrary[AW]?\s*\(|"
-                      r"\bdlsym\s*\(|\bdlclose\s*\(")},
+                      r"\bdlsym\s*\(|\bdlclose\s*\("),
+     "pre": ("dlopen", "dlsym", "dlclose", "LoadLibrary")},
     {"iface": "iface:gpu-desktop-gl",
      "re": re.compile(r"#\s*include\s*<\s*GL/gl\.h|\bglBegin\s*\(|\bglClear\s*\(")
-     },
+     ,
+     "pre": ("GL/gl.h", "glBegin", "glClear")},
     {"iface": "iface:fork-exec",
-     "re": re.compile(r"\bfork\s*\(\s*\)")},
+     "re": re.compile(r"\bfork\s*\(\s*\)"),
+     "pre": ("fork",)},
 ]
 
 # 平台宏分类（用于宏栈追踪）
@@ -192,6 +216,10 @@ def _macro_stack_status(text: str) -> Dict[int, str]:
 
     for lineno, line in enumerate(text.splitlines(), 1):
         s = line.strip()
+        # 快路径：绝大多数行不是预处理指令，不影响宏栈
+        if not s.startswith("#"):
+            result[lineno] = current_guard()
+            continue
         m = _IFDEF_RE.match(s)
         if m:
             stack.append(_macro_compiles_on_ohos(m.group(1)))
@@ -256,13 +284,24 @@ def _detect_platform_interfaces(root: Path, scan_info: Dict) -> List[Dict]:
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
+        # 先跑接口规则：无命中则跳过逐行宏栈追踪（多数文件无平台 API
+        # 调用，此前对每个源文件全量逐行正则占扫描总耗时的 3/4）
+        file_matches: List = []
+        for rule in PLATFORM_API_RULES:
+            # 字面量锚点前置：无锚点必无匹配（正则分支均含这些必要子串），
+            # 35MB 源码实测正则扫描 7s → 锚点过滤后 <1s
+            if not any(a in text for a in rule.get("pre", ())):
+                continue
+            for m in rule["re"].finditer(text):
+                file_matches.append((rule, m))
+        if not file_matches:
+            continue
         file_plat = _file_platform_excluded(src["path"])
         guard_by_line = _macro_stack_status(text)
         lines = text.splitlines()
         # 预计算换行偏移，用二分查找定位行号（O(n log n) 替代 O(n*m)）
         nl_offsets = [i for i, ch in enumerate(text) if ch == "\n"]
-        for rule in PLATFORM_API_RULES:
-            for m in rule["re"].finditer(text):
+        for rule, m in file_matches:
                 # 行号 = 前面换行符数量 + 1
                 line_no = bisect_right(nl_offsets, m.start()) + 1
                 # 文件级平台隔离优先于行级守卫
@@ -374,16 +413,84 @@ def _link_kf_components(conn, app_id: str, components: List[str]) -> None:
             queue.append((kf_id, k2))
 
 
-def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
-    """把 CMake find_package/pkg_check_modules + Conan/vcpkg 清单发现的第三方包
-    连边到已知包节点；未匹配的记为 unknown 包节点。
+def _fold_dep_name(n: str) -> str:
+    """依赖名折叠：小写、去非字母数字（分隔符/大小写差异归一）。"""
+    return re.sub(r"[^a-z0-9]+", "", (n or "").lower())
 
-    返回 {linked: [...], unknown: [...]}。
+
+def _submodule_folds(git_submodules: List[Dict]) -> set:
+    """git 子模块名折叠集合（name/path 末段/url 末段）：用于识别 vendored 依赖。"""
+    folds = set()
+    for gm in git_submodules or []:
+        cands = [gm.get("name") or ""]
+        path = gm.get("path") or ""
+        cands.append(path.rsplit("/", 1)[-1])
+        url = (gm.get("url") or "").rstrip("/")
+        last = url.rsplit("/", 1)[-1]
+        if last.endswith(".git"):
+            last = last[:-4]
+        cands.append(last)
+        for c in cands:
+            f = _fold_dep_name(c)
+            if len(f) >= 3:
+                folds.add(f)
+    return folds
+
+
+def _resolve_pkg_node(conn, name: str) -> tuple:
+    """包名 -> (节点, 别名)：直接名失败后按 kb_seed.PKG_ALIASES 重试。
+
+    避免同库异名产生 pkg-unknown 幽灵节点（fetch-deps 会误报 need_port，
+    而别名指向的 bottle 实际存在）。
     """
-    names: List[str] = []
+    node = kb_seed.resolve_package(conn, name)
+    alias_used = None
+    if node is None:
+        aliases = kb_seed.PKG_ALIASES.get(name.lower())
+        if isinstance(aliases, str):
+            aliases = [aliases]
+        for alias in aliases or []:
+            node = kb_seed.resolve_package(conn, alias.lower())
+            if node:
+                alias_used = alias
+                break
+    return node, alias_used
+
+
+def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
+    """把 CMake find_package/pkg_check_modules + Conan/vcpkg 清单 + 依赖清单
+    函数（require_dep 等）发现的第三方包连边到已知包节点；未匹配的记为
+    unknown 包节点。require_source_dep（源码自带）→ vendored 边；
+    require_tool（主机构建工具）不连边。
+
+    集三轮实测增强（e2e tdesktop/musescore/qbittorrent 复核驱动）：
+    - find_package 命中的构建工具/解释器（python3 等）不建运行时边——
+      那是构建期依赖，deps_report 侧归 build-tool 分类；
+    - target_link_libraries 的 ns::external_<name> 导入目标名（剥前缀后
+      在 raw_libs 里，ext_target=True）：能解析则连边，不能解析且非
+      vendored 子模块则建幽灵节点（高置信声明，如 tdesktop 的全部三方库）；
+    - 同库异名归并：find_package 的 CamelCase 压平名（LibtorrentRasterbar →
+      libtorrentrasterbar）与 pkg-config 连字符名（libtorrent-rasterbar）按
+      去分隔符键分组，组内选代表名，避免同库产生重复幽灵节点/重复下载；
+    - OFF 默认 CMake 选项守卫内的声明（默认构建不含）连 optional 边，
+      不进入 runtime 闭包/可移植性分析。
+
+    返回 {linked: [...], unknown: [...], optional: [...], vendored: [...]}。
+    """
+    # 构建工具/平台接口名不建包节点也不建幽灵（python3/ecm/gettext 是
+    # 主机侧工具，systemd/alsa 是平台接口，由 analyze/deps 分类覆盖；
+    # 此前 pkg-unknown:python3 幽灵被 fetch-deps 计入 need_port）
+    from . import deps_report as _dr      # 函数内 import 避免循环依赖
+    _skip = (_dr.BUILD_TOOL_FINDPKG.keys() | _dr.INTERFACE_BOUND_PACKAGES.keys()
+             | _dr.QT_TOOL_NAMES)
     cp = info.get("cmake_packages", {})
-    names.extend(cp.get("find_package", []))
+    # find_package 构建工具（python3/cmake/...）不是应用运行时依赖
+    names: List[str] = [n for n in cp.get("find_package", [])
+                        if n not in qt_scanner.BUILD_TOOL_FINDPKG]
+    names.extend(n for n in cp.get("find_package_optional", [])
+                 if n not in qt_scanner.BUILD_TOOL_FINDPKG)
     names.extend(cp.get("pkg_check_modules", []))
+    names.extend(cp.get("pkg_check_modules_optional", []))
     pm = info.get("pkg_manifests", {})
     for c in pm.get("conan", []):
         names.append(c["name"])
@@ -393,43 +500,169 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
     for h in info.get("third_party_hints", []):
         if h["name"] not in names:
             names.append(h["name"])
+    # 依赖清单函数（require_dep）：与 find_package 同等参与解析
+    manifest = info.get("manifest_deps", [])
+    for md in manifest:
+        if md["mode"] == "link" and md["name"] not in names:
+            names.append(md["name"])
 
-    seen = set()
-    linked, unknown = [], []
-    for name in names:
-        if name in seen:
-            continue
-        seen.add(name)
-        node = kb_seed.resolve_package(conn, name)
+    # optional 名单：全部声明点都在 OFF 默认选项守卫内的包
+    # （scanner 层已保证必需优先：任一必需声明点即不入 optional 名单）
+    optional_names = set(cp.get("find_package_optional", []))
+    optional_names.update(cp.get("pkg_check_modules_optional", []))
+    optional_names.update(spec["name"] for spec in
+                          cp.get("pkg_modules", []) if spec.get("optional"))
+
+    def _resolve(name: str, dashless_index: Dict[str, str]):
+        # 与 deps_report._resolve 共享解析阶梯（别名优先 → 原名 → lib
+        # 前缀变体 → 去版本后缀）：扫描期不再因缺少 lib 前缀剥离而建
+        # pkg-unknown 幽灵节点（libsparsehash/gstreamer-1.0 实证）
+        node = kb_seed.resolve_pkg_name(conn, name)
         alias_used = None
-        if node is None:
-            # 直接名未解析时按别名表重试（libavcodec → ffmpeg 等），
-            # 避免同库异名产生 pkg-unknown 幽灵节点（fetch-deps 会误报
-            # need_port，而别名指向的 bottle 实际存在）
-            aliases = kb_seed.PKG_ALIASES.get(name.lower())
-            if isinstance(aliases, str):
-                aliases = [aliases]
-            for alias in aliases or []:
-                node = kb_seed.resolve_package(conn, alias.lower())
-                if node:
-                    alias_used = alias
-                    break
-        if node:
-            db.upsert_edge(conn, app_id, node["id"], "runtime")
-            item = {"hint": name, "node": node["id"],
-                    "status": node["port_status"]}
-            if alias_used:
-                item["alias"] = alias_used
-            linked.append(item)
+        canon = kb_seed.PKG_ALIASES.get(name.lower())
+        if node is not None:
+            # 标记经别名表归并的解析（libavcodec → ffmpeg）
+            if canon and canon.lower() == (node.get("name") or "").lower():
+                alias_used = canon
         else:
-            ghost_id = "pkg-unknown:%s" % normalize_app_name(name)
+            # 兜底：去分隔符匹配（CamelCase 压平名 → 连字符包名）
+            node = kb_seed.resolve_package_dashless(conn, name, dashless_index)
+            if node:
+                alias_used = "dashless"
+        return node, alias_used
+
+    def _emit(name: str, node, alias_used=None, via=None, merged=None,
+              edge_type="runtime"):
+        """解析结果落图：node 为 None 时建幽灵节点（用别名表规范名，
+        使同库异名 botan3/botan-3 归并到同一幽灵而非双份 need_port）。"""
+        if node is not None:
+            target_id = node["id"]
+            status = node["port_status"]
+        else:
+            # 幽灵节点用别名表规范名（同库异名 botan3/botan-3 归并到
+            # 同一幽灵，而非双份 need_port）
+            canon = kb_seed.PKG_ALIASES.get(name.lower())
+            if canon and canon.lower() != name.lower():
+                name = canon
+            target_id = "pkg-unknown:%s" % normalize_app_name(name)
+            status = "unknown"
             db.upsert_node(
-                conn, ghost_id, "package", name, "scan", "unknown",
+                conn, target_id, "package", name, "scan", "unknown",
                 description="扫描发现的第三方库，未匹配到已知包源",
                 port_evidence="不在 Harmonybrew/cmd-pkgs 已知清单")
-            db.upsert_edge(conn, app_id, ghost_id, "runtime")
-            unknown.append({"hint": name, "node": ghost_id})
-    return {"linked": linked, "unknown": unknown}
+        db.upsert_edge(conn, app_id, target_id, edge_type)
+        item = {"hint": name, "node": target_id, "status": status}
+        if alias_used:
+            item["alias"] = alias_used
+        if via:
+            item["via"] = via
+        if merged:
+            item["merged_from"] = merged
+        if edge_type == "optional":
+            item["optional"] = True
+            optional.append(item)
+        elif node is not None:
+            linked.append(item)
+        else:
+            unknown.append(item)
+
+    linked, unknown, optional = [], [], []
+    seen = set()
+
+    # ---- 主名单：同库异名分组（组内代表名 = 能解析到已知包的 >
+    #      带分隔符的（pkg-config/hb 命名口径）> 首个出现的）
+    dashless_index = kb_seed.build_dashless_index(conn)
+    groups: Dict[str, List[str]] = {}
+    order: List[str] = []
+    for name in names:
+        key = kb_seed._dashless_key(name)
+        if key not in groups:
+            groups[key] = []
+            order.append(key)
+        if name not in groups[key]:
+            groups[key].append(name)
+        seen.add(name.lower())
+
+    for key in order:
+        members = groups[key]
+        dashed = [n for n in members if re.search(r"[-_.]", n)]
+        rep, rep_node, rep_alias = None, None, None
+        for cand in dashed + [m for m in members if m not in dashed]:
+            node, alias = _resolve(cand, dashless_index)
+            if node:
+                rep, rep_node, rep_alias = cand, node, alias
+                break
+        if rep is None:
+            rep = dashed[0] if dashed else members[0]
+        merged = [m for m in members if m != rep]
+        # 任一成员必需 → 必需（保守：可选声明点与必需声明点并存时按必需）
+        edge_type = ("runtime" if any(m not in optional_names
+                                      for m in members) else "optional")
+        # 构建工具/平台接口名（python3/ecm/systemd）且无可解析产物时
+        # 不建节点也不建幽灵（由 analyze/deps 分类覆盖）；可解析的
+        # （如 alsa → cmdpkgs:alsa-lib）正常连边；可选声明的幽灵保留
+        # optional 边（不入闭包，仅信息呈现）
+        if (rep_node is None and edge_type == "runtime"
+                and rep.lower() in _skip):
+            continue
+        _emit(rep, rep_node, rep_alias, merged=merged, edge_type=edge_type)
+
+    # ---- 裸链接名（含 ns::external_<name> 导入目标，剥前缀后标记
+    #      ext_target）：能解析则连边；external-target 高置信声明
+    #      在未解析且非 vendored 子模块时建幽灵节点
+    submodule_folds = _submodule_folds(info.get("git_submodules", []))
+    for rl in info.get("raw_libs", []):
+        name = rl["name"]
+        if name.lower() in seen:
+            continue
+        # 同库异名：压平名与主名单已分组处理的条目同库时跳过
+        if kb_seed._dashless_key(name) in groups:
+            continue
+        seen.add(name.lower())
+        # Windows 系统库（通常位于 win32 平台块）：跳过，防止同名 Unix
+        # 库误连边（bcrypt → OpenBSD bcrypt）
+        if name.lower() in qt_scanner.WIN32_SYSTEM_LIBS:
+            continue
+        node, alias_used = _resolve(name, dashless_index)
+        if node:
+            _emit(name, node, alias_used,
+                  via="external-target" if rl.get("ext_target") else None)
+        elif rl.get("ext_target"):
+            # vendored 子模块（.gitmodules 声明，随项目编译）不建幽灵：
+            # 依赖由项目源码自足，不是需获取/移植的外部包
+            if _fold_dep_name(name) in submodule_folds:
+                continue
+            if len(name) >= 3:
+                _emit(name, None)
+
+    # require_source_dep：源码自带依赖 → vendored 边（随项目编译，
+    # fetch-deps 标 role=vendored，不进入 need_port）
+    vendored = []
+    for md in manifest:
+        if md["mode"] != "source":
+            continue
+        name = md["name"]
+        node, alias_used = _resolve(name, dashless_index)
+        if node:
+            vid = node["id"]
+            status = node["port_status"]
+        else:
+            vid = "pkg-unknown:%s" % normalize_app_name(name)
+            status = "unknown"
+            db.upsert_node(
+                conn, vid, "package", name, "scan", "unknown",
+                description="依赖清单声明的源码自带依赖（require_source_dep），"
+                            "随项目源码编译",
+                port_evidence="不在 Harmonybrew/cmd-pkgs 已知清单（vendored，"
+                              "无需外部产物）")
+        db.upsert_edge(conn, app_id, vid, "vendored")
+        item = {"hint": name, "node": vid, "status": status,
+                "evidence": md["evidence"][:1]}
+        if alias_used:
+            item["alias"] = alias_used
+        vendored.append(item)
+    return {"linked": linked, "unknown": unknown, "optional": optional,
+            "vendored": vendored}
 
 
 def scan_project(conn, project_root, info: Dict = None) -> Dict:
@@ -469,9 +702,11 @@ def scan_project(conn, project_root, info: Dict = None) -> Dict:
         else:
             modules_missing.append(mod)
 
-    # 第三方库依赖边（find_package/pkg_check_modules/Conan/vcpkg/include）
+    # 第三方库依赖边（find_package/pkg_check_modules/Conan/vcpkg/include/
+    # require_dep；require_source_dep → vendored 边）
     tp = _link_third_party(conn, app_id, info)
     deps_linked, deps_unknown = tp["linked"], tp["unknown"]
+    deps_optional = tp.get("optional", [])
 
     # KDE Frameworks 组件 → 作为子项目节点递归分析（不再整体判 blocked）
     _link_kf_components(conn, app_id, info.get("kf_components", []))
@@ -510,5 +745,7 @@ def scan_project(conn, project_root, info: Dict = None) -> Dict:
         "sources": len(info["sources"]),
         "modules_linked": modules_linked, "modules_missing": modules_missing,
         "deps_linked": deps_linked, "deps_unknown": deps_unknown,
+        "deps_vendored": tp["vendored"],
+        "deps_optional": deps_optional,
         "interfaces": ifaces,
     }

@@ -28,12 +28,14 @@ deps 回答"依赖全景是什么、各自扮演什么角色、版本要求是�
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 from typing import Dict, List, Optional
 
 from . import db, engine, kb_seed, project_scanner, qt_scanner
 from .kb_seed import PKG_ALIASES as LIB_NAME_ALIASES
+from .qt_scanner import BUILD_TOOL_FINDPKG, WIN32_SYSTEM_LIBS
 
 # OHOS 系统自带库（NDK sysroot / 系统镜像）：链接无需自带产物
 # （KB: semantic/qt-harmonyos-third-party-libs §系统库直链）
@@ -48,6 +50,8 @@ OHOS_SYSTEM_LIBS = {
     "dl": "musl libc 内置 dlopen",
     "m": "musl libc 数学库",
     "rt": "musl libc",
+    "atomic": "编译器运行时 libatomic（OHOS NDK clang 自带）",
+    "gcov": "GCC 覆盖率运行时（clang 用 --coverage；通常仅测试/覆盖率构建使用）",
     "stdc++": "OHOS NDK libc++",
     "c++": "OHOS NDK libc++",
     "c++_shared": "OHOS NDK libc++_shared（随 SDK 提供）",
@@ -55,20 +59,15 @@ OHOS_SYSTEM_LIBS = {
     "EGL": "OHOS 系统 EGL（libEGL_ndk.z.so）",
     "GLESv3": "OHOS 系统 OpenGL ES（libGLESv3_ndk.z.so）",
     "GLESv2": "OHOS 系统 OpenGL ES",
+    "intl": "musl libc 内置 gettext/libintl",
 }
+# 键统一小写：裸链接名经 .lower() 匹配（GLESv3/glesv3 等）
+OHOS_SYSTEM_LIBS = {k.lower(): v for k, v in OHOS_SYSTEM_LIBS.items()}
 
 # Windows 系统库（qmake win32 块 / MSVC 链接）：鸿蒙不适用（代码通常被
-# 平台守卫包裹），标注而非当作"需源码编译"的缺口
-WIN32_SYSTEM_LIBS = {
-    "user32", "kernel32", "gdi32", "shell32", "ole32", "oleaut32", "uuid",
-    "advapi32", "ws2_32", "mswsock", "winmm", "dsound", "ddraw", "dxgi",
-    "d3d9", "d3d11", "dwmapi", "shlwapi", "comctl32", "comdlg32",
-    "imm32", "wininet", "winhttp", "crypt32", "secur32", "netapi32",
-    "psapi", "version", "iphlpapi", "powrprof", "setupapi", "strmiids",
-    "avifil32", "mfplat", "mfuuid", "strmbase", "strmbasd", "wtsapi32",
-    "windowsapp", "delayimp", "opengl32", "glu32", "wintrust", "shcore",
-    "winscard",
-}
+# 平台守卫包裹），标注而非当作“需源码编译”的缺口。
+# 表本体在 qt_scanner（project_scanner 扫描期也需按它过滤 win32 系统库
+# 名，防止同名 Unix 库（如 bcrypt）误连边）
 
 # -l 链接名 → 常见包名对齐（hb 包名口径）：见 kb_seed.PKG_ALIASES
 # （deps_report 与 project_scanner 共享同一张表，保证 deps 与
@@ -105,32 +104,15 @@ INTERFACE_BOUND_PACKAGES = {
     "systemd": "systemd：鸿蒙无 systemd",
     "network": "macOS Network 框架（裸链接名形态）：通常位于 APPLE "
               "平台块，鸿蒙不适用",
+    "foundation": "macOS Foundation 框架：鸿蒙不适用（APPLE 平台块）",
+    "security": "macOS Security 框架：鸿蒙不适用（APPLE 平台块）",
+    "coreservices": "macOS CoreServices 框架：鸿蒙不适用（APPLE 平台块）",
+    "corefoundation": "macOS CoreFoundation 框架：鸿蒙不适用（APPLE 平台块）",
 }
 
 # find_package 命中的主机侧构建工具（原 _FINDPKG_SKIP 静默丢弃，现归入
-# build-tool 分类，不再丢失信息）
-BUILD_TOOL_FINDPKG = {
-    "ecm": "extra-cmake-modules（KDE CMake 模块，主机侧）",
-    "pkgconfig": "pkg-config（主机侧）",
-    "pkgconf": "pkgconf（主机侧 pkg-config 兼容）",
-    "gettext": "gettext 工具链（msgfmt/xgettext，主机侧）",
-    "intltool": "intltool（主机侧）",
-    "doxygen": "Doxygen 文档生成器（主机侧）",
-    "sharedmimeinfo": "update-mime-database（主机侧）",
-    "cmake": "CMake",
-    "ninja": "Ninja 构建器",
-    "python3": "Python 3",
-    "python": "Python",
-    "flex": "flex 词法生成器",
-    "bison": "bison 语法生成器",
-    "gperf": "gperf 完美哈希生成器",
-    "git": "git",
-    "ccache": "ccache 编译缓存",
-    "sccache": "sccache 编译缓存",
-    "linguisttools": "Qt Linguist 工具（lupdate/lrelease，随 Qt SDK）",
-    "lxqt2-build-tools": "LXQt CMake 构建模块（主机侧，类似 ECM）",
-    "lxqt-build-tools": "LXQt CMake 构建模块（主机侧，类似 ECM）",
-}
+# build-tool 分类，不再丢失信息）。表本体在 qt_scanner（project_scanner
+# 也需按它过滤运行时边；deps_report 不能被 project_scanner 反向依赖）
 
 # 测试框架（find_package/QT 模块名命中 → test 分类）
 TEST_FRAMEWORKS = {
@@ -195,40 +177,15 @@ def _check_req(version_req: Optional[str], available: Optional[str]) -> str:
 def _resolve(conn, name: str, cache: Optional[Dict] = None) -> Optional[Dict]:
     """包名（find_package/pkg-config/include 线索）→ 已入库包节点。
 
-    近似对齐依次尝试：原名 / 补 lib 前缀（xkbcommon→libxkbcommon）/
-    去 lib 前缀 / 去 pkg-config 版本后缀（glib-2.0→glib）及其组合；
-    仍未命中时按共享别名表（kb_seed.PKG_ALIASES，pcsc→pcsc-lite 等）
-    兜底——与扫描期（project_scanner）口径一致。
+    委托 kb_seed.resolve_pkg_name 共享解析阶梯（别名优先 → 原名 →
+    lib 前缀变体 → 去 pkg-config 版本后缀），与扫描期（project_scanner）
+    口径一致——扫描期建幽灵节点而报告期能解析的口径分裂由此消除
+    （libsparsehash/gio-2.0 实证）。
     cache: 单次分析内的解析结果缓存（含 None 未命中；分析期间图不变）。
     """
     if conn is None:
         return None
-    key = name.lower()
-    if cache is not None and key in cache:
-        return cache[key]
-    name = key
-    stripped = re.sub(r"-\d+(\.\d+)*$", "", name)
-    cands = [name]
-    if not name.startswith("lib"):
-        cands.append("lib" + name)
-    if name.startswith("lib"):
-        cands.append(name[3:])
-    if stripped != name:
-        cands.append(stripped)
-        if not stripped.startswith("lib"):
-            cands.append("lib" + stripped)
-    node = None
-    for cand in cands:
-        node = kb_seed.resolve_package(conn, cand)
-        if node:
-            break
-    else:
-        alias = LIB_NAME_ALIASES.get(name)
-        if alias and alias.lower() not in cands:
-            node = kb_seed.resolve_package(conn, alias.lower())
-    if cache is not None:
-        cache[key] = node
-    return node
+    return kb_seed.resolve_pkg_name(conn, name, cache)
 
 
 def _artifact_of(node: Optional[Dict]) -> Optional[Dict]:
@@ -245,6 +202,74 @@ def _artifact_of(node: Optional[Dict]) -> Optional[Dict]:
             "source": src,
             "source_url": art.get("source_url"),
             "repo_url": art.get("repo_url")}
+
+
+def _in_tree_dir_index(root: Path) -> Dict[str, str]:
+    """项目内自带源码目录索引：目录名（小写）→ 相对路径。
+
+    用于判定未解析的裸链接名/find_package 名是否其实是项目自带源码
+    （QOwnNotes 的 src/libraries/fakevim、botan、litehtml 实证：报告
+    误报 need_port，而源码就在仓库内随项目编译）。
+
+    只收「像三方库」的目录，避免把项目自身代码目录（krita 的
+    libs/flake/text/lager、plugins/impex/jpeg/3rdparty/lcms 里的
+    iccjpeg 胶水）误判成 in-tree：
+      - 目录含构建文件（CMakeLists/Makefile.am/.pri/.pro）（无构建文件的
+        胶水目录如 iccjpeg 由此排除）
+      - 且满足其一：路径含 vendored 目录段（3rdparty/external/…）、
+        父目录是依赖集合（≥5 个子目录各自含构建文件，如 src/libraries）、
+        目录含 README/LICENSE/COPYING（上游源码包特征）
+    """
+    vendored_names = set(qt_scanner.VENDORED_DIR_NAMES)
+    lib_dirs: Dict[str, list] = {}      # dirpath -> (basename, relpath, nfiles)
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames
+                       if d not in (".git", "node_modules", "build",
+                                    "build_ohos")]
+        d = Path(dirpath)
+        base = d.name.lower()
+        if not base or len(base) < 3 or base in lib_dirs:
+            continue
+        has_build = any(f in filenames for f in
+                        ("CMakeLists.txt", "Makefile.am")) or any(
+            f.rsplit(".", 1)[-1] in ("pri", "pro") for f in filenames)
+        if not has_build:
+            continue
+        lib_dirs[dirpath] = [base, d.relative_to(root).as_posix(), 0,
+                             filenames]
+    # 父目录的“依赖集合”判定：≥5 个子目录各自像库目录
+    children: Dict[str, int] = {}
+    for dirpath in lib_dirs:
+        parent = str(Path(dirpath).parent)
+        children[parent] = children.get(parent, 0) + 1
+    out: Dict[str, str] = {}
+    for dirpath, (base, rel, _n, filenames) in lib_dirs.items():
+        parts = Path(rel).parts[:-1]
+        parent = str(Path(dirpath).parent)
+        parent_is_collection = children.get(parent, 0) >= 5
+        has_readme = any(f.upper().startswith(("README", "LICENSE", "COPYING"))
+                         for f in filenames)
+        if (vendored_names.intersection(parts) or parent_is_collection
+                or has_readme):
+            out.setdefault(base, rel)
+    return out
+
+
+def _match_in_tree_dir(index: Dict[str, str], name: str) -> Optional[str]:
+    """未解析的库名 → 项目内同名源码目录（去版本后缀/别名口径）。"""
+    cands = [name.lower()]
+    canon = LIB_NAME_ALIASES.get(name.lower())
+    if canon:
+        cands.append(canon.lower())
+    for c in list(cands):
+        stripped = re.sub(r"-\d+(\.\d+)*$", "", c)
+        if stripped != c:
+            cands.append(stripped)
+    for c in cands:
+        hit = index.get(c)
+        if hit:
+            return hit
+    return None
 
 
 class _GraphCache:
@@ -465,11 +490,22 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                          required=fp["required"], evidence=ev)
             e["ohos_note"] = INTERFACE_BOUND_PACKAGES[name]
             continue
-        entry = link.add(fp["name"], required=fp["required"],
+        # 同库异名归并：find_package 名按别名表改写（KDcrawQt6→kdcraw、
+        # QuaZip-Qt→quazip），使无包源时与 pkg-config/裸链接声明合为一条
+        aliased = LIB_NAME_ALIASES.get(name)
+        entry = link.add(aliased or fp["name"],
+                         required=(fp["required"] and not fp.get("optional")),
                          min_version=fp["version"],
                          components=(fp["components"]
                                      + fp["optional_components"]) or None,
                          evidence=ev)
+        if fp.get("optional"):
+            entry["note"] = ("CMake 选项守卫（默认 OFF）："
+                              "默认构建不含此依赖")
+        if aliased:
+            entry.setdefault("ohos_note",
+                             "find_package 名 %s 归并为包 %s"
+                             % (fp["name"], aliased))
         if fp["exact"]:
             entry["version_req"] = "== %s" % fp["version"]
 
@@ -489,7 +525,10 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
         # 版本约束挂在被归并的原名下（version_req_from）：libavcodec 的
         # “>= 58”是库主版本口径，与 ffmpeg 包版本不可直接比较。
         aliased = LIB_NAME_ALIASES.get(pm["name"], pm["name"])
-        e = link.add(aliased, version_req=pm["version_req"], evidence=ev)
+        e = link.add(aliased, version_req=pm["version_req"], evidence=ev,
+                     required=not pm.get("optional"))
+        if pm.get("optional"):
+            e["note"] = "CMake 选项守卫（默认 OFF）：默认构建不含此依赖"
         if pm["version_req"] and aliased != pm["name"]:
             e["version_req_from"] = pm["name"]
 
@@ -546,6 +585,12 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
         n = rl["name"]
         ev = "%s (%s)" % ("+".join(rl.get("hows", [])),
                           rl["evidence"][0] if rl.get("evidence") else "?")
+        if n.lower() in TEST_FRAMEWORKS:
+            # target_link_libraries 裸名命中测试框架（如 QOwnNotes 的
+            # gtest_main）：归入 test 而非 need_port 的 link
+            test_deps.append({"name": n, "source": ev,
+                              "note": "测试框架，不进发行包"})
+            continue
         if n.lower() in OHOS_SYSTEM_LIBS:
             e = link.add(n, kind="system-lib", evidence=ev)
             e["ohos_note"] = OHOS_SYSTEM_LIBS[n.lower()]
@@ -558,9 +603,16 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
         else:
             aliased = LIB_NAME_ALIASES.get(n.lower())
             e = link.add(aliased or n, evidence=ev)
-            e.setdefault("ohos_note",
-                         "裸链接名（未用 find_package/pkg-config 声明），"
-                         "产物获取途径取决于名称匹配结果")
+            if rl.get("ext_target"):
+                e.setdefault(
+                    "ohos_note",
+                    "external_* 导入目标链接（find_package 声明位于外部"
+                    "构建模块/未初始化子模块，如 cmake_helpers），"
+                    "产物获取途径取决于名称匹配结果")
+            else:
+                e.setdefault("ohos_note",
+                             "裸链接名（未用 find_package/pkg-config 声明），"
+                             "产物获取途径取决于名称匹配结果")
 
     # ---- 6c) macOS 框架（-framework X）
     for fw in info.get("macos_frameworks", []):
@@ -631,10 +683,36 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
         if aliased:
             e.setdefault("ohos_note", "包装声明 %s 归并为包 %s" % (n, aliased))
 
+    # ---- 6h) 依赖清单函数（muse_deps 引擎等）：require_dep / require_source_dep /
+    #          require_tool。link → 常规 link 依赖；source → vendored；tool → 工具链
+    manifest_vendored: List[Dict] = []
+    for md in info.get("manifest_deps", []):
+        n = md["name"]
+        ev = "require_dep 系清单声明 %s (%s)" % (
+            n, md["evidence"][0] if md.get("evidence") else "?")
+        if md.get("conditional"):
+            ev += " [条件块 if(%s)，默认构建未必启用]" % (md.get("condition") or "?")
+        if md["mode"] == "tool":
+            build_tools.append({"tool": n, "how": [ev],
+                                "note": "依赖清单声明的主机构建工具"
+                                        "（require_tool），构建机安装即可",
+                                "provided_by": "host"})
+        elif md["mode"] == "source":
+            manifest_vendored.append({"name": n, "path": None, "url": None,
+                                      "note": "require_source_dep：源码自带，"
+                                              "随项目一起编译"})
+        else:
+            e = link.add(n, required=not md.get("conditional"), evidence=ev)
+            if md.get("conditional"):
+                e.setdefault("ohos_note",
+                             "条件块 if(%s) 内声明，默认构建未必启用"
+                             % (md.get("condition") or "?"))
+
     # ---- 7) 解析产物 + 版本检查 + 传递 runtime
     runtime_book: Dict[str, Dict] = {}
     graph_cache = _GraphCache(conn) if conn is not None else None
     resolve_cache: Dict[str, Optional[Dict]] = {}
+    in_tree_index: Optional[Dict[str, str]] = None   # 惰性构建
     link_list = link.values()
     for entry in link_list:
         skip_resolve = entry["kind"] in ("system-lib", "win32-system-lib",
@@ -646,6 +724,19 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
         entry["port_status"] = node["port_status"] if node else None
         entry["available_version"] = node["version"] if node else None
         entry["artifact"] = _artifact_of(node)
+        # 未解析且项目内存在同名源码目录：自带源码随项目编译，
+        # 不是外部 need_port 缺口（fakevim/litehtml/botan 实证）
+        if (node is None and entry["kind"] == "package" and root
+                and Path(root).is_dir()):
+            if in_tree_index is None:
+                in_tree_index = _in_tree_dir_index(Path(root))
+            hit = _match_in_tree_dir(in_tree_index, entry["name"])
+            if hit:
+                entry["kind"] = "in-tree"
+                entry["artifact"] = {"ready": True, "provided": True,
+                                     "source": "in-tree:%s" % hit}
+                entry["ohos_note"] = ("项目内自带源码目录（%s）：随项目"
+                                      "编译，无需外部产物" % hit)
         if entry["kind"] == "system-lib":
             entry["artifact"] = entry["artifact"] or {
                 "ready": True, "provided": True, "source": "ohos-system"}
@@ -788,6 +879,10 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
     vendored.extend({"name": sp, "path": "subprojects/%s" % sp, "url": None,
                      "note": "meson subproject：随项目一起编译"}
                     for sp in meson_info.get("subprojects", []))
+    # require_source_dep 声明的源码自带依赖（去重后并入）
+    vendored_names = {v["name"].lower() for v in vendored}
+    vendored.extend(v for v in manifest_vendored
+                    if v["name"].lower() not in vendored_names)
 
     # ---- 11b) 环境依赖（CI / 安装脚本 apt/brew/pacman install 清单）
     env_deps = []
@@ -984,7 +1079,8 @@ def render_text(report: Dict) -> str:
 
     # 分组排序：真正的外部包优先，其后 framework/系统库/平台接口
     _kind_rank = {"package": 0, "framework": 1, "system-lib": 2,
-                  "win32-system-lib": 3, "platform-iface": 4}
+                  "win32-system-lib": 3, "platform-iface": 4,
+                  "in-tree": 5}
     lines.append("")
     lines.append("── 编译产物依赖 (link) %d 个：目标侧 headers+libs，"
                  "交叉编译/链接时必须存在 ──" % len(report["link_deps"]))

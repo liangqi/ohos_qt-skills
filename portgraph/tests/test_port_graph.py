@@ -1002,6 +1002,276 @@ AC_CHECK_LIB([m], [sqrt])
             conn.close()
 
 
+class TestGeneralizationFixes(unittest.TestCase):
+    """语料外泛化测试（QOwnNotes/strawberry/krita，2026-09）暴露问题的
+    回归测试：URL 版本提取 / 宏包装目标 / find_library 关键字 / env -y /
+    共享解析阶梯 / in-tree 判定 / raw 链接名的 test 角色。"""
+
+    # ---- 1) harmonybrew URL 版本提取（419 个 formula 无版本的根因）
+    def test_url_version_extraction(self):
+        cases = {
+            # 版本后带 -b2-nodocs / -bin / -complete 等名称后缀段（boost/ant/antlr）
+            "https://github.com/boostorg/boost/releases/download/boost-1.92.0/boost-1.92.0-b2-nodocs.tar.xz": "1.92.0",
+            "https://www.apache.org/dyn/closer.lua?path=ant/binaries/apache-ant-1.10.18-bin.tar.xz": "1.10.18",
+            "https://www.antlr.org/download/antlr-4.13.2-complete.jar": "4.13.2",
+            # Rust crate 扩展名
+            "https://static.crates.io/crates/action-validator/action-validator-0.9.0.crate": "0.9.0",
+            # 大写 V 前缀 / 字母尾缀无数字
+            "https://github.com/CycoPH/atasm/archive/refs/tags/V1.30.tar.gz": "1.30",
+            "https://loop-aes.sourceforge.net/aespipe/aespipe-v2.4j.tar.bz2": "2.4j",
+            "https://www.harding.motd.ca/autossh/autossh-1.4g.tgz": "1.4g",
+            # 回归：原有形态不变
+            "https://www.zlib.net/zlib-1.3.1.tar.gz": "1.3.1",
+            "https://github.com/i/indi/archive/refs/tags/v2.0.9.tar.gz": "2.0.9",
+            "https://ftp.gnu.org/gnu/gzip/gzip-1.14.tar.xz": "1.14",
+            # 版本是独立路径段（兑底规则）
+            "https://chiselapp.com/user/moinejf/repository/abcm2ps/tarball/v8.14.18/download.tar.gz": "8.14.18",
+        }
+        for url, want in cases.items():
+            m = harmonybrew._URL_VER_RE.search(url)
+            got = m.group(1) if m else None
+            if not got:
+                m2 = harmonybrew._URL_VER_SEG_RE.search(url)
+                got = m2.group(1) if m2 else None
+            self.assertEqual(got, want, "version of %s" % url)
+
+    # ---- 2) 宏包装的 add_library（krita kis_add_library 实证）
+    def test_macro_wrapped_add_library(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text("""
+cmake_minimum_required(VERSION 3.16)
+project(MacroWrap)
+macro(kis_add_library)
+    add_library(${REAL_UNPARSED_ARGUMENTS})
+endmacro()
+kis_add_library(kritaui SHARED src/x.cpp)
+add_executable(app src/main.cpp)
+target_link_libraries(app PRIVATE kritaui zlib)
+""", encoding="utf-8")
+            (root / "src").mkdir()
+            (root / "src" / "x.cpp").write_text("", encoding="utf-8")
+            (root / "src" / "main.cpp").write_text("", encoding="utf-8")
+            info = qt_scanner.scan_project(root)
+            raw = {e["name"].lower() for e in info["raw_libs"]}
+            self.assertNotIn("kritaui", raw)   # 宏定义的项目内目标
+            self.assertIn("zlib", raw)
+
+    # ---- 2b) set() 变量间接的 add_library（fakevim 实证）
+    def test_var_indirect_add_library(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text("""
+cmake_minimum_required(VERSION 3.16)
+project(VarIndirect)
+set(bin fakevim)
+add_library(${bin} STATIC fakevim.cpp)
+add_executable(app main.cpp)
+target_link_libraries(app PRIVATE ${bin} libgit2)
+""", encoding="utf-8")
+            (root / "fakevim.cpp").write_text("", encoding="utf-8")
+            (root / "main.cpp").write_text("", encoding="utf-8")
+            info = qt_scanner.scan_project(root)
+            raw = {e["name"].lower() for e in info["raw_libs"]}
+            self.assertNotIn("fakevim", raw)
+            self.assertIn("libgit2", raw)
+
+    # ---- 3) find_library 参数列表里的 CMake 变量名/单字符垃圾
+    def test_find_library_skips_keyword_junk(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text("""
+cmake_minimum_required(VERSION 3.16)
+project(FindJunk)
+find_library(QUAZIP_LIBRARIES WIN32_DEBUG_POSTFIX d
+    NAMES quazip5 quazip HINTS /usr/lib)
+""", encoding="utf-8")
+            info = qt_scanner.scan_project(root)
+            raw = {e["name"].lower() for e in info["raw_libs"]}
+            self.assertNotIn("win32_debug_postfix", raw)
+            self.assertNotIn("d", raw)
+            self.assertIn("quazip5", raw)
+            self.assertIn("quazip", raw)
+
+    # ---- 4) CI 脚本 apt install -y 的选项 token 不入清单
+    def test_env_install_dash_y(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            (root / ".github" / "workflows").mkdir(parents=True)
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\nproject(EnvY)\n",
+                encoding="utf-8")
+            (root / ".github" / "workflows" / "ci.yml").write_text(
+                "run: apt install -y libtag-dev\n"
+                "run: apt upgrade -y\n", encoding="utf-8")
+            info = qt_scanner.scan_project(root)
+            env = {e["name"] for e in info["env_installs"]}
+            self.assertEqual(env, {"libtag-dev"})
+
+    # ---- 5) 共享解析阶梯（扫描期与报告期口径一致）
+    def test_resolve_pkg_ladder(self):
+        conn = db.connect(":memory:")
+        db.init_db(conn)
+        kb_seed.seed_interfaces(conn)
+        for nid, name in (("hb:sqlite", "sqlite"), ("hb:fftw", "fftw"),
+                          ("hb:glib", "glib"), ("cmdpkgs:gstreamer", "gstreamer"),
+                          ("hb:jpeg-turbo", "jpeg-turbo")):
+            db.upsert_node(conn, nid, "package", name, "harmonybrew",
+                           "ported", version="1.0")
+        # 同库异名（hb 包名口径别名优先，消除 sqlite3/sqlite 双产物）
+        self.assertEqual(kb_seed.resolve_pkg_name(conn, "sqlite3")["id"],
+                         "hb:sqlite")
+        # lib 前缀剥离 + 变体后缀（libfftw3f_omp → fftw）
+        self.assertEqual(kb_seed.resolve_pkg_name(conn, "libfftw3f_omp")["id"],
+                         "hb:fftw")
+        # pkg-config 组件名（gio-2.0 → glib；gstreamer-base → gstreamer）
+        self.assertEqual(kb_seed.resolve_pkg_name(conn, "gio-2.0")["id"],
+                         "hb:glib")
+        self.assertEqual(kb_seed.resolve_pkg_name(conn, "gstreamer-base-1.0")["id"],
+                         "cmdpkgs:gstreamer")
+        # 构建形态后缀（jpeg-static → jpeg-turbo）
+        self.assertEqual(kb_seed.resolve_pkg_name(conn, "jpeg-static")["id"],
+                         "hb:jpeg-turbo")
+        # 未命中返回 None
+        self.assertIsNone(kb_seed.resolve_pkg_name(conn, "no-such-pkg"))
+        conn.close()
+
+    # ---- 5b) 扫描期幽灵节点用别名规范名（botan3/botan-3 归并）
+    def test_scan_ghost_canonical_name(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text(
+                'pkg_check_modules(B REQUIRED botan-3)\n'
+                'find_package(Botan3 REQUIRED)\n', encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            scan = project_scanner.scan_project(conn, root)
+            unknown = {u["hint"] for u in scan["deps_unknown"]}
+            self.assertEqual(unknown, {"botan-3"})   # 两条声明同一幽灵
+            conn.close()
+
+    # ---- 6) in-tree 判定：未解析名命中项目内自带源码目录
+    def test_in_tree_dir_classification(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            lib = root / "src" / "libraries" / "fakevim"
+            lib.mkdir(parents=True)
+            for i in range(4):
+                (lib / ("f%d.cpp" % i)).write_text("", encoding="utf-8")
+            (lib / "CMakeLists.txt").write_text(
+                "project(fakevim)\n", encoding="utf-8")
+            # 依赖集合父目录需要 ≥5 个库子目录
+            for k in ("qtcsv", "qhotkey", "md4c", "botan", "sonnet"):
+                d = root / "src" / "libraries" / k
+                d.mkdir(parents=True)
+                (d / "CMakeLists.txt").write_text("", encoding="utf-8")
+                (d / "x.cpp").write_text("", encoding="utf-8")
+            (root / "CMakeLists.txt").write_text(
+                "find_package(fakevim REQUIRED)\n"
+                "find_package(Lager REQUIRED)\n", encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            self.assertEqual(link["fakevim"]["kind"], "in-tree")
+            self.assertTrue(link["fakevim"]["artifact"]["ready"])
+            # 无同名源码目录的未解析名仍是 need_port 缺口
+            self.assertEqual(link["lager"]["kind"], "package")
+            self.assertFalse((link["lager"].get("artifact") or {}).get("ready"))
+            conn.close()
+
+    # ---- 6b) in-tree 不误收项目自身代码目录（krita lager/lcms 实证）
+    def test_in_tree_rejects_project_code_dirs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            d = root / "libs" / "flake" / "text" / "lager"
+            d.mkdir(parents=True)
+            (d / "CMakeLists.txt").write_text("", encoding="utf-8")
+            (d / "CssLength.cpp").write_text("", encoding="utf-8")
+            # 胶水目录（无构建文件）
+            g = root / "plugins" / "jpeg" / "3rdparty" / "lcms"
+            g.mkdir(parents=True)
+            (g / "iccjpeg.c").write_text("", encoding="utf-8")
+            (g / "iccjpeg.h").write_text("", encoding="utf-8")
+            (root / "CMakeLists.txt").write_text(
+                "find_package(Lager REQUIRED)\n", encoding="utf-8")
+            from port_graph.deps_report import (_in_tree_dir_index,
+                                                _match_in_tree_dir)
+            idx = _in_tree_dir_index(root)
+            self.assertIsNone(_match_in_tree_dir(idx, "lager"))
+            self.assertIsNone(_match_in_tree_dir(idx, "lcms"))
+
+    # ---- 7) 裸链接名命中测试框架 → test 角色
+    def test_raw_lib_test_framework(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text("""
+add_executable(app main.cpp)
+target_link_libraries(app PRIVATE gtest_main libgit2)
+""", encoding="utf-8")
+            (root / "main.cpp").write_text("", encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            report = deps_report.analyze_dependencies(conn, root)
+            tests = {t["name"] for t in report["test_deps"]}
+            links = {d["name"] for d in report["link_deps"]}
+            self.assertIn("gtest_main", tests)
+            self.assertNotIn("gtest_main", links)
+            self.assertIn("libgit2", links)
+            conn.close()
+
+    # ---- 8) 编译器运行时库 → system-lib（atomic/gcov）
+    def test_compiler_runtime_system_lib(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text("""
+add_executable(app main.cpp)
+target_link_libraries(app PRIVATE atomic)
+""", encoding="utf-8")
+            (root / "app.pro").write_text("LIBS += -lgcov\n",
+                                          encoding="utf-8")
+            (root / "main.cpp").write_text("", encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            report = deps_report.analyze_dependencies(conn, root)
+            link = {d["name"].lower(): d for d in report["link_deps"]}
+            self.assertEqual(link["atomic"]["kind"], "system-lib")
+            self.assertEqual(link["gcov"]["kind"], "system-lib")
+            # 系统库不产生 need_port 警告
+            warn = [w for w in report["warnings"]
+                    if "atomic" in w["msg"] or "gcov" in w["msg"]]
+            self.assertEqual(warn, [])
+            conn.close()
+
+    # ---- 9) find_package 名经别名归并（KDcrawQt6/kdcraw 合一）
+    def test_find_package_alias_rename(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "find_package(KDcrawQt6 REQUIRED)\n"
+                "pkg_check_modules(KD REQUIRED kdcraw)\n",
+                encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            report = deps_report.analyze_dependencies(conn, root)
+            names = [d["name"] for d in report["link_deps"]]
+            self.assertEqual(names.count("kdcraw"), 1)
+            self.assertNotIn("KDcrawQt6", names)
+            conn.close()
+
+
 class TestCLICompact(unittest.TestCase):
     """--compact 后置：`portgraph.py <cmd> --compact` 应与前置等效可用。"""
 
@@ -1015,5 +1285,896 @@ class TestCLICompact(unittest.TestCase):
         self.assertTrue(r.stdout.strip())
 
 
+# ------------------------------------------------- e2e qbittorrent 复盘修复
+
+class TestCmakeOptionGuard(unittest.TestCase):
+    """OFF 默认 CMake 选项守卫内的 find_package/pkg_check_modules 标 optional。
+
+    取证样本：qBittorrent dist/unix/CMakeLists.txt 的 if (SYSTEMD)
+    （SYSTEMD 由 feature_option_dependent 声明且默认 OFF）。同时覆盖
+    dist/ 目录不再被排除（add_subdirectory(dist) 是真实构建子目录）。
+    """
+
+    ROOT_CMAKE = """cmake_minimum_required(VERSION 3.16)
+project(GuardProj)
+feature_option(GUI "Build GUI" ON)
+feature_option_dependent(SYSTEMD "Install systemd unit" OFF "NOT GUI" OFF)
+option(WEBUI "Enable WebUI" ON)
+option(STACKTRACE "Stacktrace" OFF)
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    feature_option_dependent(DBUS "D-Bus" ON "GUI" OFF)
+endif()
+"""
+
+    DIST_CMAKE = """if (SYSTEMD)
+    if (NOT SYSTEMD_DIR)
+        find_package(Systemd)
+    endif()
+endif()
+if (DBUS)
+    find_package(Qt6 6.6 REQUIRED COMPONENTS DBus)
+endif()
+if (STACKTRACE)
+    find_package(LibunwindStacktrace QUIET)
+endif()
+find_package(Boost 1.76 REQUIRED)
+"""
+
+    FIND_MODULE_CMAKE = """
+find_package(PkgConfig QUIET)
+if (NOT GUARDPROJ_FOUND)
+    pkg_check_modules(GUARDPROJ "systemd")
+endif()
+"""
+
+    MACRO_CMAKE = """
+macro(find_lib version)
+    find_package(LibtorrentRasterbar QUIET ${version})
+endmacro()
+find_lib(2.0)
+"""
+
+    def _project(self, tmp: Path):
+        root = tmp / "guardproj"
+        (root / "dist" / "unix").mkdir(parents=True)
+        (root / "cmake" / "Modules").mkdir(parents=True)
+        (root / "CMakeLists.txt").write_text(self.ROOT_CMAKE,
+                                              encoding="utf-8")
+        # dist/ 内的 CMakeLists 不应再被排除
+        (root / "dist" / "unix" / "CMakeLists.txt").write_text(
+            self.DIST_CMAKE, encoding="utf-8")
+        # Find 模块文件：find_package(Systemd) optional → 整个模块继承
+        (root / "cmake" / "Modules" / "FindSystemd.cmake").write_text(
+            self.FIND_MODULE_CMAKE, encoding="utf-8")
+        # macro 体内的声明：调用点生效，不标 optional
+        (root / "cmake" / "Modules" / "CheckPackages.cmake").write_text(
+            self.MACRO_CMAKE, encoding="utf-8")
+        return root
+
+    def _packages(self, tmp: Path):
+        root = self._project(tmp)
+        info = qt_scanner.scan_project(root)
+        return info["cmake_packages"], info
+
+    def test_optional_flagging(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cp, info = self._packages(Path(tmp))
+            # SYSTEMD 默认 OFF → find_package(Systemd) optional
+            self.assertIn("systemd", cp["find_package_optional"])
+            self.assertNotIn("systemd", cp["find_package"])
+            # Find<systemd>.cmake 模块继承 optional（pkg_check_modules）
+            self.assertIn("systemd", cp["pkg_check_modules_optional"])
+            self.assertNotIn("systemd", cp["pkg_check_modules"])
+            # pkg_modules 条目带 optional 标志
+            pm = {d["name"]: d for d in cp["pkg_modules"]}
+            self.assertTrue(pm["systemd"].get("optional"))
+            # 默认 ON 的选项（DBUS/WEBUI）与无条件声明 → 必需
+            self.assertIn("boost", cp["find_package"])
+            self.assertNotIn("boost", cp["find_package_optional"])
+            self.assertNotIn("dbus", cp["find_package"])
+            # STACKTRACE 默认 OFF → optional
+            self.assertIn("libunwindstacktrace",
+                          cp["find_package_optional"])
+            # macro 体内的声明不标 optional（调用点上下文未知）
+            self.assertIn("libtorrentrasterbar", cp["find_package"])
+            self.assertNotIn("libtorrentrasterbar",
+                             cp["find_package_optional"])
+
+    def test_find_package_details_optional(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            info = qt_scanner.scan_project(root)
+            details = {(d["name"], d["file"].endswith("unix/CMakeLists.txt"))
+                       : d for d in info["find_package_details"]}
+            systemd = next(d for (n, _), d in details.items()
+                           if n == "Systemd")
+            self.assertTrue(systemd.get("optional"))
+            boost = next(d for (n, _), d in details.items()
+                         if n == "Boost")
+            self.assertFalse(boost.get("optional", False))
+
+
+class TestOptionalEdgeExcludedFromClosure(unittest.TestCase):
+    """optional 边不进入 runtime 闭包与可移植性分析（e2e systemd 误报修复）。"""
+
+    def test_optional_edge_semantics(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "optproj"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\n"
+                "project(OptProj)\n"
+                'option(SYSTEMD "Install unit" OFF)\n'
+                "if (SYSTEMD)\n"
+                "    find_package(Systemd)\n"
+                "endif()\n"
+                "find_package(ZLIB 1.2 REQUIRED)\n",
+                encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:zlib", "package", "zlib",
+                           "harmonybrew", "ported", version="1.3.1")
+            scan = project_scanner.scan_project(conn, root)
+            edges = {e["type"]: e["dst"]
+                     for e in db.out_edges(conn, scan["app_id"])}
+            self.assertEqual(edges.get("optional"),
+                             "pkg-unknown:systemd")
+            self.assertEqual(edges.get("runtime"), "hb:zlib")
+            # 可移植性分析不沿 optional 边递归（不产生 unknown）
+            analysis = engine.analyze(conn, scan["app_id"])
+            self.assertEqual(
+                [u["node"] for u in analysis["unknowns"]], [])
+            # fetch-deps 闭包不含 optional 依赖
+            closure = deps_fetch.dependency_closure(conn, scan["app_id"])
+            ids = [n["id"] for n in closure]
+            self.assertNotIn("pkg-unknown:systemd", ids)
+            self.assertIn("hb:zlib", ids)
+            # 扫描摘要区分 optional / unknown
+            self.assertEqual(scan["deps_unknown"], [])
+            self.assertEqual([d["hint"] for d in scan["deps_optional"]],
+                             ["systemd"])
+            conn.close()
+
+
+class TestDashlessSameLibMerge(unittest.TestCase):
+    """同库异名归并：find_package CamelCase 压平名与 pkg-config 连字符名
+    不产生重复幽灵节点；包库有对应包时能兑底解析（e2e libtorrentrasterbar
+    幽灵节点修复）。"""
+
+    CMAKE = """cmake_minimum_required(VERSION 3.16)
+project(DashlessProj)
+find_package(LibtorrentRasterbar 2.0 REQUIRED)
+pkg_check_modules(LT IMPORTED_TARGET "libtorrent-rasterbar>=2.0.10")
+find_package(Boost REQUIRED)
+"""
+
+    def _project(self, tmp: Path):
+        root = tmp / "dashless"
+        root.mkdir()
+        (root / "CMakeLists.txt").write_text(self.CMAKE, encoding="utf-8")
+        return root
+
+    def test_ghost_merge_when_unresolvable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            scan = project_scanner.scan_project(conn, root)
+            # 只产生一个 libtorrent 幽灵节点（boost 无包源，另算一个），
+            # 代表名为 pkg-config 连字符口径
+            self.assertEqual(
+                [d["node"] for d in scan["deps_unknown"]
+                if "torrent" in d["node"]],
+                ["pkg-unknown:libtorrent-rasterbar"])
+            lt = next(d for d in scan["deps_unknown"]
+                      if d["node"] == "pkg-unknown:libtorrent-rasterbar")
+            self.assertEqual(lt["merged_from"], ["libtorrentrasterbar"])
+            edges = [e for e in db.out_edges(conn, scan["app_id"])
+                     if e["dst"].startswith("pkg-unknown:")]
+            self.assertEqual(len(edges), 2)   # boost + 合并后的 libtorrent
+            conn.close()
+
+    def test_dashless_resolve_when_package_exists(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:libtorrent-rasterbar", "package",
+                           "libtorrent-rasterbar", "harmonybrew",
+                           "ported", version="2.0.10")
+            scan = project_scanner.scan_project(conn, root)
+            # 压平名兑底解析到连字符包名 → 无 libtorrent 幽灵节点
+            self.assertEqual(
+                [d for d in scan["deps_unknown"]
+                 if "torrent" in d["node"]], [])
+            linked = {d["hint"]: d for d in scan["deps_linked"]}
+            self.assertEqual(linked["libtorrent-rasterbar"]["node"],
+                             "hb:libtorrent-rasterbar")
+            conn.close()
+
+    def test_dashless_alias_for_collapsed_only_name(self):
+        """仅有 find_package 压平名时，兑底解析到连字符包名并标注 alias。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "dashless2"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\n"
+                "project(Dashless2)\n"
+                "find_package(LibtorrentRasterbar 2.0 REQUIRED)\n",
+                encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:libtorrent-rasterbar", "package",
+                           "libtorrent-rasterbar", "harmonybrew",
+                           "ported", version="2.0.10")
+            scan = project_scanner.scan_project(conn, root)
+            self.assertEqual(scan["deps_unknown"], [])
+            self.assertEqual(
+                [(d["hint"], d["node"], d.get("alias"))
+                 for d in scan["deps_linked"]],
+                [("libtorrentrasterbar", "hb:libtorrent-rasterbar",
+                  "dashless")])
+            conn.close()
+
+    def test_dashless_resolve_no_short_name_collision(self):
+        """短名（<6 字符）不走兑底匹配，避免碰撞误映射。"""
+        node = kb_seed.resolve_package_dashless(None, "zlib")
+        self.assertIsNone(node)
+
+    def test_dashless_index_excludes_ghost_nodes(self):
+        """pkg-unknown 幽灵节点不入索引：避免上一次扫描的幽灵
+        被下一次扫描当作已知包解析（deps CLI 写主库后复现）。"""
+        conn = db.connect(":memory:")
+        db.init_db(conn)
+        db.upsert_node(conn, "pkg-unknown:libtorrent-rasterbar", "package",
+                       "libtorrent-rasterbar", "scan", "unknown")
+        node = kb_seed.resolve_package_dashless(conn, "libtorrentrasterbar")
+        self.assertIsNone(node)
+        conn.close()
+
+
+class TestE2ENameVariants(unittest.TestCase):
+    """e2e harness 取证变体：含 @version 的节点名（openssl@3）需追加剥离
+    变体，否则 grep 不到 find_package(OpenSSL) 原始声明（误判 false-positive）。"""
+
+    def _load_e2e(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "run_e2e", PROJECT_ROOT / "tests" / "e2e" / "run_e2e.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_at_version_stripped(self):
+        e2e = self._load_e2e()
+        node = {"name": "openssl@3", "id": "hb:openssl@3"}
+        variants = e2e.name_variants(None, node)
+        self.assertIn("openssl@3", variants)
+        self.assertIn("openssl", variants)
+        # oracle 侧不变：仅节点侧追加剥离变体
+        self.assertIn("openssl", e2e.name_variants("OpenSSL >= 3.0"))
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
+# =====================================================================
+# e2e tdesktop（tier C）deps-test 轮新增：external_* 导入目标链接解析、
+# 构建工具过滤、vendored 子模块抑制、win32 系统库防误连、harness 取证
+# =====================================================================
+
+def _load_e2e_harness():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "run_e2e", PROJECT_ROOT / "tests" / "e2e" / "run_e2e.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class TestExternalTargetLinks(unittest.TestCase):
+    """target_link_libraries 的 ns::external_<name> 导入目标解析
+    （tdesktop 全部三方库走这条路，find_package 位于 cmake_helpers）。"""
+
+    CMAKE = """
+cmake_minimum_required(VERSION 3.16)
+project(Ext)
+add_library(app STATIC src/main.cpp)
+add_library(external_foo STATIC src/foo.cpp)
+target_link_libraries(app PRIVATE
+  desktop-app::external_zlib
+  desktop-app::external_openal
+  desktop-app::external_webrtc
+  desktop-app::lib_base
+  desktop-app::external_qt_static_plugins
+  Qt5::Core
+  PkgConfig::TDESKTOP_UDEV
+  external_foo
+  z
+)
+"""
+
+    def _project(self, tmp: Path):
+        root = tmp / "extproj"
+        (root / "src").mkdir(parents=True)
+        (root / "CMakeLists.txt").write_text(self.CMAKE, encoding="utf-8")
+        return root
+
+    def test_external_targets_extracted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            info = qt_scanner.scan_project(self._project(Path(tmp)))
+            raw = {e["name"].lower(): e for e in info["raw_libs"]}
+            # external_ 前缀剥除 + ext_target 高置信标记
+            for n in ("zlib", "openal", "webrtc"):
+                self.assertIn(n, raw, "missing %s" % n)
+                self.assertTrue(raw[n].get("ext_target"))
+                self.assertIn("external-target",
+                              " ".join(raw[n]["hows"]))
+            # 非 external_ 的命名空间目标 / Qt / PkgConfig / 项目内目标跳过
+            for n in ("lib_base", "qt5::core", "qt_static_plugins",
+                      "external_foo", "foo", "pkgconfig"):
+                self.assertNotIn(n, raw)
+            # 裸名仍走原通道
+            self.assertIn("z", raw)
+            self.assertFalse(raw["z"].get("ext_target"))
+
+    def test_graph_links_and_ghosts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            # vendored 子模块：external_cmark_gfm 对应 .gitmodules 条目
+            (root / ".gitmodules").write_text(
+                '[submodule "ThirdParty/cmark-gfm"]\n'
+                "\tpath = Telegram/ThirdParty/cmark-gfm\n"
+                "\turl = https://github.com/github/cmark-gfm.git\n",
+                encoding="utf-8")
+            (root / "CMakeLists.txt").write_text(
+                self.CMAKE.replace(
+                    "desktop-app::external_webrtc",
+                    "desktop-app::external_webrtc\n"
+                    "  desktop-app::external_cmark_gfm"),
+                encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:zlib", "package", "zlib", "harmonybrew",
+                           "ported")
+            db.upsert_node(conn, "cmdpkgs:openal-soft", "package",
+                           "openal-soft", "cmdpkgs", "ported")
+            db.upsert_node(conn, "cmdpkgs:bcrypt", "package", "bcrypt",
+                           "cmdpkgs", "ported")
+            scan = project_scanner.scan_project(conn, root)
+            linked = {d["hint"]: d for d in scan["deps_linked"]}
+            # 已知包连边（openal 经 PKG_ALIASES → openal-soft）
+            self.assertEqual(linked["zlib"]["node"], "hb:zlib")
+            self.assertEqual(linked["openal"]["node"], "cmdpkgs:openal-soft")
+            self.assertEqual(linked["openal"]["alias"], "openal-soft")
+            self.assertEqual(linked["openal"]["via"], "external-target")
+            unknown = {d["hint"] for d in scan["deps_unknown"]}
+            # 未解析的 external_ 声明 → 幽灵节点（高置信）
+            self.assertIn("webrtc", unknown)
+            # vendored 子模块命中 → 不建幽灵（随项目编译）
+            self.assertNotIn("cmark_gfm", unknown)
+
+
+class TestBuildToolFindpkgFilter(unittest.TestCase):
+    """find_package(Python3) 等构建工具不建运行时边（此前产生
+    pkg-unknown:python3 幽灵，e2e 报假 resolution-gap）。"""
+
+    def test_python3_not_runtime_edge(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "codegen"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\nproject(Gen)\n"
+                "find_package(Python3 REQUIRED)\n"
+                "pkg_check_modules(UDEV REQUIRED IMPORTED_TARGET libudev)\n",
+                encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            scan = project_scanner.scan_project(conn, root)
+            hints = {d["hint"] for d in scan["deps_unknown"]}
+            self.assertNotIn("python3", hints)
+            edges = {e["dst"] for e in db.out_edges(conn, scan["app_id"])}
+            self.assertNotIn("pkg-unknown:python3", edges)
+            # 真实运行时依赖（pkg-config 名）仍建幽灵
+            self.assertIn("libudev", hints)
+            self.assertIn("pkg-unknown:libudev", edges)
+            conn.close()
+
+
+class TestWin32LibNoFalseEdge(unittest.TestCase):
+    """win32 系统库名（bcrypt/hid/...）不因同名 Unix 库误连边。"""
+
+    def test_bcrypt_win32_skipped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "w32"
+            root.mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\nproject(W32)\n"
+                "add_library(f2 STATIC f2.c)\n"
+                "target_link_libraries(f2 PRIVATE bcrypt hid ws2_32)\n",
+                encoding="utf-8")
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "cmdpkgs:bcrypt", "package", "bcrypt",
+                           "cmdpkgs", "ported")
+            scan = project_scanner.scan_project(conn, root)
+            hints = [d["hint"] for d in scan["deps_linked"]] + \
+                [d["hint"] for d in scan["deps_unknown"]]
+            self.assertNotIn("bcrypt", hints)
+            self.assertNotIn("hid", hints)
+            conn.close()
+
+
+class TestPkgAliasesTdesktop(unittest.TestCase):
+    """e2e tdesktop 复核确认的别名缺口（external_* 裸名 → 鸿蒙包）。"""
+
+    def test_aliases_resolve(self):
+        conn = db.connect(":memory:")
+        db.init_db(conn)
+        kb_seed.seed_interfaces(conn)
+        db.upsert_node(conn, "cmdpkgs:openal-soft", "package", "openal-soft",
+                       "cmdpkgs", "ported")
+        db.upsert_node(conn, "hb:libiconv", "package", "libiconv",
+                       "harmonybrew", "ported")
+        db.upsert_node(conn, "hb:boost", "package", "boost", "harmonybrew",
+                       "ported")
+        db.upsert_node(conn, "hb:cmark-gfm", "package", "cmark-gfm",
+                       "harmonybrew", "ported")
+        db.upsert_node(conn, "cmdpkgs:libqrcodegen", "package", "libqrcodegen",
+                       "cmdpkgs", "ported")
+        for name, want in (("openal", "cmdpkgs:openal-soft"),
+                           ("iconv", "hb:libiconv"),
+                           ("boost_regex", "hb:boost"),
+                           ("cmark_gfm", "hb:cmark-gfm"),
+                           ("qr_code_generator", "cmdpkgs:libqrcodegen")):
+            alias = kb_seed.PKG_ALIASES[name]
+            node = kb_seed.resolve_package(conn, alias)
+            self.assertIsNotNone(node, "%s 未解析" % name)
+            self.assertEqual(node["id"], want)
+        conn.close()
+
+
+class TestE2eHarnessDepsTest(unittest.TestCase):
+    """harness（run_e2e）取证与归类修正：
+    词界环视、分隔符折叠、幽灵判定（resolution-gap vs unknown-ok）、
+    vendored 子模块归类。"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.h = _load_e2e_harness()
+
+    def test_grep_boundary_matches_prefixed_target(self):
+        # \b 词界匹配不到 external_xxhash / lib_zlib；环视边界可以
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            (repo / "CMakeLists.txt").write_text(
+                "target_link_libraries(Telegram PRIVATE "
+                "desktop-app::external_xxhash lib_zlib)\n",
+                encoding="utf-8")
+            ev = self.h.grep_dep_refs(repo, self.h.name_variants("xxHash"))
+            self.assertGreaterEqual(ev["strong"], 1)
+            ev2 = self.h.grep_dep_refs(repo, ["zlib"])
+            self.assertGreaterEqual(ev2["strong"], 1)
+            # 词界保护不能误伤：zlib 不得命中 zlibng 之类连写
+            (repo / "CMakeLists.txt").write_text(
+                "target_link_libraries(x PRIVATE zlibng)\n", encoding="utf-8")
+            ev3 = self.h.grep_dep_refs(repo, ["zlib"])
+            self.assertEqual(ev3["strong"], 0)
+
+    def test_grep_multiline_tll(self):
+        # tll 每个链接项独占一行：逐行匹配会漏证据，需全文匹配
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            (repo / "CMakeLists.txt").write_text(
+                "target_link_libraries(Telegram\nPRIVATE\n"
+                "    desktop-app::external_boost_regex\n"
+                "    desktop-app::external_minizip\n)\n",
+                encoding="utf-8")
+            ev = self.h.grep_dep_refs(repo, ["boost"])
+            self.assertGreaterEqual(ev["strong"], 1)
+            self.assertEqual(ev["hits"][0]["line"], 3)
+
+    def test_names_match_underscore_folding(self):
+        node = {"kind": "package", "name": "crash_reports", "id":
+                "pkg-unknown:crash-reports"}
+        self.assertTrue(self.h.names_match("Crash reports", "crash_reports",
+                                           node))
+
+    def test_ghost_plausible_package(self):
+        conn = db.connect(":memory:")
+        db.init_db(conn)
+        db.upsert_node(conn, "hb:openal-soft", "package", "openal-soft",
+                       "harmonybrew", "ported")
+        db.upsert_node(conn, "hb:uudeview", "package", "uudeview",
+                       "harmonybrew", "ported")
+        db.upsert_node(conn, "hb:libxkbcommon", "package", "libxkbcommon",
+                       "harmonybrew", "ported")
+        # 形近包存在（openal ⊂ openal-soft，分量交集）→ 真解析缺口
+        hit = self.h.ghost_plausible_package(conn, "openal")
+        self.assertIsNotNone(hit)
+        self.assertEqual(hit["id"], "hb:openal-soft")
+        # lib 前缀折叠后相等 → 真解析缺口
+        hit2 = self.h.ghost_plausible_package(conn, "xkbcommon")
+        self.assertIsNotNone(hit2)
+        # 无形近包（udev ⊄ uudeview：无分隔分量交集）→ 幽灵为正确检出
+        self.assertIsNone(self.h.ghost_plausible_package(conn, "libudev"))
+        self.assertIsNone(self.h.ghost_plausible_package(conn, "webrtc"))
+        conn.close()
+
+    def test_vendored_submodule_match(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            (repo / ".gitmodules").write_text(
+                '[submodule "ThirdParty/GSL"]\n'
+                "\tpath = Telegram/ThirdParty/GSL\n"
+                "\turl = https://github.com/Microsoft/GSL.git\n"
+                '[submodule "ThirdParty/xxHash"]\n'
+                "\tpath = Telegram/ThirdParty/xxHash\n"
+                "\turl = https://github.com/Cyan4973/xxHash.git\n",
+                encoding="utf-8")
+            m1 = self.h.vendored_submodule_match(
+                repo, ["Guideline Support Library", "gsl"])
+            self.assertIsNotNone(m1)
+            self.assertEqual(m1["url"],
+                             "https://github.com/Microsoft/GSL.git")
+            m2 = self.h.vendored_submodule_match(repo, ["xxHash"])
+            self.assertIsNotNone(m2)
+            self.assertIsNone(
+                self.h.vendored_submodule_match(repo, ["OpenSSL"]))
+            self.assertIsNone(
+                self.h.vendored_submodule_match(repo, ["opus"]))
+
+    def test_readme_alias_qr_code_generator(self):
+        # nayuki QR-Code-generator = cmd-pkgs libqrcodegen（版本同源 1.8.0）
+        self.assertEqual(self.h.canon_of("QR Code generator"),
+                         "libqrcodegen")
+
+
+class TestPkgConfigVersionSuffixResolve(unittest.TestCase):
+    """pkg-config 版本后缀名（lilv-0/glib-2.0）在图侧也解析到包
+    （此前仅 deps_report._resolve 支持，图侧产生幽灵节点，
+    e2e musescore 复核确认）。"""
+
+    def test_version_suffix_stripped(self):
+        conn = db.connect(":memory:")
+        db.init_db(conn)
+        kb_seed.seed_interfaces(conn)
+        db.upsert_node(conn, "hb:lilv", "package", "lilv", "harmonybrew",
+                       "ported")
+        db.upsert_node(conn, "hb:glib", "package", "glib", "harmonybrew",
+                       "ported")
+        db.upsert_node(conn, "hb:libxkbcommon", "package", "libxkbcommon",
+                       "harmonybrew", "ported")
+        self.assertEqual(kb_seed.resolve_package(conn, "lilv-0")["id"],
+                         "hb:lilv")
+        self.assertEqual(kb_seed.resolve_package(conn, "glib-2.0")["id"],
+                         "hb:glib")
+        # lib 前缀近似也统一到 resolve_package
+        self.assertEqual(kb_seed.resolve_package(conn, "xkbcommon")["id"],
+                         "hb:libxkbcommon")
+        # 无形近包仍返回 None（保持幽灵行为）
+        self.assertIsNone(kb_seed.resolve_package(conn, "suil-0"))
+        conn.close()
+
+class TestBuildscriptsDirNotExcluded(unittest.TestCase):
+    """build* 前缀误排除修复：buildscripts/buildtools 是源码目录必须扫描，
+    build/build-Debug 等构建输出目录仍排除（e2e musescore 根因）。"""
+
+    def _project(self, tmp: Path):
+        root = tmp / "bs"
+        for rel in ("buildscripts/cmake/Setup.cmake", "buildtools/x.cmake",
+                    "build/out.cmake", "build-Debug/out.cmake"):
+            p = root / rel
+            p.parent.mkdir(parents=True, exist_ok=True)
+            name = rel.split("/")[-1].replace("out.cmake", "Out").replace(
+                ".cmake", "").replace("Setup", "SetupDep")
+            p.write_text("find_package(%s REQUIRED)\n" % name,
+                         encoding="utf-8")
+        (root / "CMakeLists.txt").write_text(
+            "cmake_minimum_required(VERSION 3.16)\nproject(BS)\n",
+            encoding="utf-8")
+        return root
+
+    def test_buildscripts_scanned_build_output_skipped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            info = qt_scanner.scan_project(root)
+            fp = set(info["cmake_packages"]["find_package"])
+            self.assertIn("setupdep", fp)     # buildscripts/cmake/Setup.cmake
+            self.assertIn("x", fp)            # buildtools/x.cmake
+            self.assertNotIn("out", fp)       # build/ 与 build-Debug/ 排除
+
+
+class TestVendoredCmakeSkip(unittest.TestCase):
+    """vendored/依赖引擎目录内的 CMake 声明与注释行不算应用依赖
+    （e2e musescore：thirdparty/fluidsynth、KDDockWidgets/python、
+    muse_deps/recipes 污染 depth-1；注释行 find_package 误匹配）。"""
+
+    def _project(self, tmp: Path):
+        root = tmp / "vend"
+        # 内嵌三方自己的 find_package（不应计入）
+        p = root / "framework/audio/thirdparty/fluidsynth/CMakeLists.txt"
+        p.parent.mkdir(parents=True)
+        p.write_text(
+            "find_package(GLib2 REQUIRED)\n"
+            "find_package(Lash)\n"
+            "# Exported targets for cmake: find_package(FluidSynth)\n",
+            encoding="utf-8")
+        # 依赖引擎子模块 recipes 的系统模式回退（不应计入）
+        p = root / "muse_deps/recipes/lv2sdk/meta.cmake"
+        p.parent.mkdir(parents=True)
+        p.write_text(
+            "pkg_check_modules(lv2sdk_system REQUIRED IMPORTED_TARGET "
+            "lilv-0 suil-0 lv2)\n", encoding="utf-8")
+        # 内嵌三方的 include 也不算 hint 证据
+        p = root / "thirdparty/kdw/util.h"
+        p.parent.mkdir(parents=True)
+        p.write_text("#include <uuid/uuid.h>\n", encoding="utf-8")
+        # 应用自身声明（应计入）
+        (root / "CMakeLists.txt").write_text(
+            "cmake_minimum_required(VERSION 3.16)\nproject(Vend)\n"
+            "find_package(Jack REQUIRED)\n"
+            "# find_package(Commented)\n"
+            "find_package(Git REQUIRED)\n",   # VCS 构建工具应跳过
+            encoding="utf-8")
+        return root
+
+    def test_vendored_and_comments_skipped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            info = qt_scanner.scan_project(root)
+            fp = info["cmake_packages"]["find_package"]
+            self.assertEqual(fp, ["jack"])
+            self.assertEqual(info["cmake_packages"]["pkg_check_modules"], [])
+            hints = {h["name"] for h in info["third_party_hints"]}
+            self.assertNotIn("libuuid", hints)
+
+
+class TestRequireDepManifest(unittest.TestCase):
+    """依赖清单函数检测（muse_deps 引擎）：require_dep/require_source_dep/
+    require_tool → link/vendored/tool 三种角色；条件块标注。"""
+
+    ENGINE = """
+function(require_dep name)
+  # resolve prebuilt / system / source
+endfunction()
+function(require_source_dep name)
+endfunction()
+function(require_tool name)
+endfunction()
+"""
+    MANIFEST = """
+require_dep(zlib)
+require_dep(freetype STATIC)
+require_source_dep(kddockwidgets)
+require_tool(crashpad_handler)
+if (MUSE_MODULE_AUDIO_PIPEWIRE)
+    require_dep(pipewire)
+endif()
+"""
+
+    def _project(self, tmp: Path):
+        root = tmp / "mdep"
+        # 引擎定义在依赖子模块（vendored 路径）：定义可用，但其中调用不扫
+        p = root / "muse_deps/buildtools/manifest.cmake"
+        p.parent.mkdir(parents=True)
+        p.write_text(self.ENGINE +
+                     "require_dep(internal_only_in_engine)\n",
+                     encoding="utf-8")
+        p = root / "buildscripts/cmake/ExtDepsManifest.cmake"
+        p.parent.mkdir(parents=True)
+        p.write_text(self.MANIFEST, encoding="utf-8")
+        (root / "CMakeLists.txt").write_text(
+            "cmake_minimum_required(VERSION 3.16)\nproject(MDep)\n",
+            encoding="utf-8")
+        return root
+
+    def test_manifest_deps_extracted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            info = qt_scanner.scan_project(root)
+            md = {d["name"]: d for d in info["manifest_deps"]}
+            self.assertEqual(md["zlib"]["mode"], "link")
+            self.assertFalse(md["zlib"]["conditional"])
+            self.assertEqual(md["freetype"]["mode"], "link")
+            self.assertEqual(md["kddockwidgets"]["mode"], "source")
+            self.assertEqual(md["crashpad_handler"]["mode"], "tool")
+            # 条件块标注：不求值，只标注
+            self.assertTrue(md["pipewire"]["conditional"])
+            self.assertIn("MUSE_MODULE_AUDIO_PIPEWIRE",
+                          md["pipewire"]["condition"])
+            # STATIC 等模式参数不是依赖名；引擎内部调用不扫
+            self.assertNotIn("static", md)
+            self.assertNotIn("internal_only_in_engine", md)
+
+    def test_manifest_graph_edges(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            db.upsert_node(conn, "hb:zlib", "package", "zlib",
+                           "harmonybrew", "ported")
+            scan = project_scanner.scan_project(conn, root)
+            edges = {e["dst"]: e["type"]
+                     for e in db.out_edges(conn, scan["app_id"])}
+            # require_dep → runtime 边（已解析包）
+            self.assertEqual(edges.get("hb:zlib"), "runtime")
+            # require_source_dep → vendored 边（幽灵节点 + vendored 描述）
+            self.assertEqual(edges.get("pkg-unknown:kddockwidgets"),
+                             "vendored")
+            # require_tool 不连边
+            self.assertNotIn("pkg-unknown:crashpad-handler", edges)
+            self.assertEqual([v["hint"] for v in scan["deps_vendored"]],
+                             ["kddockwidgets"])
+            conn.close()
+
+    def test_manifest_report_roles(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            report = deps_report.analyze_dependencies(None, root)
+            link = {d["name"] for d in report["link_deps"]}
+            self.assertIn("zlib", link)
+            self.assertIn("freetype", link)
+            vend = {v["name"] for v in report["vendored"]}
+            self.assertIn("kddockwidgets", vend)
+            tools = {t["tool"] for t in report["toolchain"]["tools"]}
+            self.assertIn("crashpad_handler", tools)
+            # 条件块声明的 required=False
+            by_name = {d["name"]: d for d in report["link_deps"]}
+            self.assertFalse(by_name["pipewire"]["required"])
+
+
+class TestFetchVendoredRole(unittest.TestCase):
+    """fetch-deps：vendored 边（require_source_dep）→ status/role=vendored，
+    不下载、不下钻其传递依赖。"""
+
+    def test_vendored_not_need_port(self):
+        conn = db.connect(":memory:")
+        db.init_db(conn)
+        kb_seed.seed_interfaces(conn)
+        db.upsert_node(conn, "app:x", "app", "x", "scan", "unknown")
+        db.upsert_node(conn, "hb:vend1", "package", "vend1",
+                       "harmonybrew", "ported")
+        db.upsert_node(conn, "pkg-unknown:vend2", "package", "vend2",
+                       "scan", "unknown")
+        # vend2 自身的 runtime 依赖（闭包不应包含）
+        db.upsert_node(conn, "pkg-unknown:vend2child", "package",
+                       "vend2child", "scan", "unknown")
+        db.upsert_edge(conn, "app:x", "hb:vend1", "vendored")
+        db.upsert_edge(conn, "app:x", "pkg-unknown:vend2", "vendored")
+        db.upsert_edge(conn, "pkg-unknown:vend2",
+                       "pkg-unknown:vend2child", "runtime")
+        manifest = deps_fetch.fetch_app_deps(
+            conn, "app:x", Path(tempfile.gettempdir()) / "x-out",
+            dry_run=True)
+        by_name = {e["name"]: e for e in manifest["deps"]}
+        self.assertEqual(by_name["vend1"]["status"], "vendored")
+        self.assertEqual(by_name["vend1"]["role"], "vendored")
+        self.assertEqual(by_name["vend2"]["status"], "vendored")
+        self.assertNotIn("vend2child", by_name)   # vendored 不下钻
+        self.assertEqual(manifest["summary"].get("vendored"), 2)
+        conn.close()
+
+
+class TestQtComponentsListVar(unittest.TestCase):
+    """set(<var> Core Gui ...) + list(APPEND) + find_package(Qt6 COMPONENTS
+    ${var}) 的组件展开（muse SetupQt6.cmake 形式）；同名变量跨文件并集，
+    与目录遍历顺序无关。"""
+
+    def _project(self, tmp: Path):
+        root = tmp / "qtcomp"
+        root.mkdir(parents=True)
+        (root / "CMakeLists.txt").write_text(
+            "cmake_minimum_required(VERSION 3.16)\nproject(QtComp)\n"
+            "set(qt_components\n    Core\n    Gui\n    Widgets\n)\n"
+            "list(APPEND qt_components Network)\n"
+            "find_package(Qt6 6.8 REQUIRED COMPONENTS ${qt_components})\n",
+            encoding="utf-8")
+        # sandbox 等旁支目录的同名变量：并集去重，不遮蔽主声明
+        p = root / "sandbox/web_sandbox/CMakeLists.txt"
+        p.parent.mkdir(parents=True)
+        p.write_text(
+            "set(qt_components Core Gui Quick Qml Widgets)\n"
+            "list(APPEND qt_components Svg)\n", encoding="utf-8")
+        return root
+
+    def test_components_from_list_var(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            info = qt_scanner.scan_project(root)
+            for m in ("core", "gui", "widgets", "network", "quick",
+                      "qml", "svg"):
+                self.assertIn(m, info["qt_modules"], "missing %s" % m)
+            self.assertEqual(info["qt_version_hint"], "6")
+
+
+class TestMusescoreAliasResolution(unittest.TestCase):
+    """e2e musescore 确认的别名缺口：CMake 模块名/依赖清单名 → hb 包名，
+    扫描期解析不产生幽灵节点。"""
+
+    def _project(self, tmp: Path):
+        root = tmp / "msalias"
+        root.mkdir(parents=True)
+        (root / "CMakeLists.txt").write_text(
+            "cmake_minimum_required(VERSION 3.16)\nproject(MSAlias)\n"
+            "find_package(ALSA REQUIRED)\n"
+            "find_package(SndFile REQUIRED)\n"
+            "find_package(PNG REQUIRED)\n"
+            "find_package(DBus1)\n"
+            "find_package(GLib2 REQUIRED)\n"
+            "find_package(TinyXml REQUIRED)\n",
+            encoding="utf-8")
+        return root
+
+    def test_aliases_resolve(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._project(Path(tmp))
+            conn = db.connect(":memory:")
+            db.init_db(conn)
+            kb_seed.seed_interfaces(conn)
+            for nid, name in [("cmdpkgs:alsa-lib", "alsa-lib"),
+                              ("hb:libsndfile", "libsndfile"),
+                              ("cmdpkgs:libpng", "libpng"),
+                              ("cmdpkgs:dbus", "dbus"),
+                              ("cmdpkgs:glib", "glib"),
+                              ("cmdpkgs:tinyxml2", "tinyxml2")]:
+                db.upsert_node(conn, nid, "package", name, "test", "ported")
+            scan = project_scanner.scan_project(conn, root)
+            linked = {d["hint"]: d["node"] for d in scan["deps_linked"]}
+            self.assertEqual(linked["alsa"], "cmdpkgs:alsa-lib")
+            self.assertEqual(linked["sndfile"], "hb:libsndfile")
+            self.assertEqual(linked["png"], "cmdpkgs:libpng")
+            self.assertEqual(linked["dbus1"], "cmdpkgs:dbus")
+            self.assertEqual(linked["glib2"], "cmdpkgs:glib")
+            self.assertEqual(linked["tinyxml"], "cmdpkgs:tinyxml2")
+            self.assertEqual(scan["deps_unknown"], [])
+            conn.close()
+
+
+class TestClonerSubmodules(unittest.TestCase):
+    """clone 复用时应补拉 submodule（musescore 依赖清单在 muse_deps/muse
+    submodule 内，不初始化则扫描不到）；无 submodule/失败时静默降级。"""
+
+    def test_reused_clone_inits_submodules_silently(self):
+        from port_graph import cloner
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "subproj"
+            root.mkdir()
+            # 伪造已有克隆：.git 目录 + .gitmodules（内容指向不存在的子模块）
+            (root / ".git").mkdir()
+            (root / "CMakeLists.txt").write_text(
+                "project(Sub)\n", encoding="utf-8")
+            (root / ".gitmodules").write_text(
+                '[submodule "muse_deps"]\n'
+                '\tpath = muse_deps\n'
+                '\turl = https://example.invalid/muse_deps.git\n',
+                encoding="utf-8")
+            orig_ws = cloner.WORKSPACE
+            cloner.WORKSPACE = Path(tmp)   # 克隆目标指到临时 workspace
+            try:
+                info = cloner.clone_repo("https://github.com/x/subproj",
+                                         name="subproj")
+            finally:
+                cloner.WORKSPACE = orig_ws
+            # 目录已存在 → 复用，且 submodule init 失败（无效 URL）不抛异常
+            self.assertFalse(info["cloned"])
+            self.assertEqual(info["path"], str(root))
+
+    def test_no_gitmodules_noop(self):
+        from port_graph import cloner
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "plain"
+            root.mkdir()
+            (root / ".git").mkdir()
+            # 无 .gitmodules → 直接返回，不执行 git 命令
+            cloner._init_submodules(root, 10)
+            self.assertTrue((root / ".git").is_dir())

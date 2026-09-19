@@ -37,9 +37,14 @@ def validate_url(url: str) -> Optional[str]:
 
 def clone_repo(url: str, name: Optional[str] = None,
                depth: int = 1, timeout: int = 900) -> Dict:
-    """shallow clone 到 workspace/<name>。返回 {path, cloned, reason?}。
+    """shallow clone 到 workspace/<name>，并浅层初始化 submodule。
 
-    已存在则复用（cloned=False）。失败抛 RuntimeError。
+    返回 {path, cloned, reason?}。已存在则复用（cloned=False）。
+    失败抛 RuntimeError。
+
+    submodule 浅拉（--depth 1）：musescore 等项目的依赖清单/框架在
+    submodule（muse_deps、muse），不初始化则扫描不到依赖声明
+    （e2e musescore 复核确认）；已有克隆且 submodule 未初始化时也会补拉。
     """
     err = validate_url(url)
     if err:
@@ -48,6 +53,7 @@ def clone_repo(url: str, name: Optional[str] = None,
     name = _NAME_RE.sub("-", name.lower()).strip("-") or "repo"
     target = WORKSPACE / name
     if (target / ".git").exists() or any(target.glob("*")):
+        _init_submodules(target, timeout)
         return {"path": str(target), "name": name, "cloned": False,
                 "reason": "目录已存在，复用本地副本"}
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -59,4 +65,18 @@ def clone_repo(url: str, name: Optional[str] = None,
     if r.returncode != 0:
         tail = (r.stderr or "").strip().replace("\n", " ")[-400:]
         raise RuntimeError("git clone 失败: %s" % (tail or "unknown error"))
+    _init_submodules(target, timeout)
     return {"path": str(target), "name": name, "cloned": True}
+
+
+def _init_submodules(target: Path, timeout: int) -> None:
+    """浅层初始化 submodule（无 submodule 或失败时静默跳过，不阻断克隆）。"""
+    if not (target / ".gitmodules").is_file():
+        return
+    cmd = ["git", "-C", str(target), "submodule", "update", "init",
+           "--depth", "1", "--recursive"]
+    try:
+        subprocess.run(cmd, capture_output=True, text=True,
+                       timeout=max(timeout, 1800))
+    except (subprocess.TimeoutExpired, OSError):
+        pass  # 网络受限/无 submodule 工具时降级：只扫主仓

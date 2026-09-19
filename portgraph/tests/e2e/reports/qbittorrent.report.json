@@ -6,11 +6,11 @@
   "name": "qbittorrent",
   "url": "https://github.com/qbittorrent/qBittorrent",
   "tier": "B",
-  "build_system": "?",
-  "sources": "?",
-  "repo_path": "./portgraph\\workspace\\qbittorrent"
+  "build_system": "cmake",
+  "sources": 710,
+  "repo_path": "/root/harmony-workspace/worker1/portgraph/workspace/qbittorrent"
  },
- "generated_at": "2026-09-18T02:44:26Z",
+ "generated_at": "2026-09-19T13:32:12Z",
  "verdict": "blocked",
  "blockers": [
   {
@@ -27,26 +27,40 @@
    "kind": "unsupported-interface",
    "node": "app:qbittorrent",
    "reason": "使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: POSIX/musl C 库、pthread 多线程、dlopen 动态加载、macOS 系统库绑定、glib 事件循环［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (3 处无条件 / 2 处鸿蒙可编译 / 20 处宏守卫排除 / 0 处文件级排除) | src/gui/utils.cpp:36[platform-excluded] #include <shlobj.h>; src/gui/utils.cpp:37[platform-excluded] #include <shellapi.h>; src/gui/powermanagement/inhibitorwindows.cpp:32[unconditional] #include <windows.h>］"
+  },
+  {
+   "kind": "unsupported-module",
+   "node": "qtmod:dbus",
+   "reason": "Qt for HarmonyOS 模块适配表: 不支持 - 鸿蒙无 D-Bus"
   }
  ],
- "unknowns": [],
+ "unknowns": [
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:libtorrent-rasterbar",
+   "reason": "无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单"
+  }
+ ],
  "platform_excluded": [],
  "closure": {
-  "size": 14,
+  "size": 19,
   "summary": {
    "target": 1,
-   "provided": 4,
-   "cmd_only": 2,
-   "would_download": 6,
-   "already_local": 1
+   "provided": 8,
+   "would_download": 8,
+   "need_port": 1,
+   "cmd_only": 1
   },
-  "need_port": [],
-  "cmd_only": [
+  "need_port": [
    {
-    "id": "hb:boost",
-    "name": "boost",
-    "artifact_cmd": "brew install boost"
-   },
+    "id": "pkg-unknown:libtorrent-rasterbar",
+    "name": "libtorrent-rasterbar",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   }
+  ],
+  "cmd_only": [
    {
     "id": "hb:ca-certificates",
     "name": "ca-certificates",
@@ -54,8 +68,10 @@
    }
   ],
   "would_download": [
+   "boost",
    "openssl@3",
    "zlib",
+   "icu4c@78",
    "xz",
    "zstd",
    "zlib-ng-compat",
@@ -69,6 +85,14 @@
    "kind": "package",
    "edge": "runtime",
    "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:libtorrent-rasterbar",
+   "name": "libtorrent-rasterbar",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
    "depth": 1
   },
   {
@@ -96,6 +120,30 @@
    "depth": 1
   },
   {
+   "id": "qtmod:dbus",
+   "name": "Qt D-Bus",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "blocked",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:network",
+   "name": "Qt Network",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:sql",
+   "name": "Qt SQL",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
    "id": "qtmod:svg",
    "name": "Qt SVG",
    "kind": "qt-module",
@@ -114,6 +162,14 @@
   {
    "id": "qtmod:widgets",
    "name": "Qt Widgets",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:xml",
+   "name": "Qt XML",
    "kind": "qt-module",
    "edge": "uses-module",
    "port_status": "ported",
@@ -186,38 +242,18 @@
    "agent_note": null
   },
   {
-   "class": "missed-dep",
+   "class": "matched",
    "side": "oracle",
-   "by_design": false,
+   "by_design": true,
    "oracle_name": "libtorrent-rasterbar",
    "oracle_type": "runtime",
-   "pg_id": null,
-   "pg_name": null,
-   "pg_kind": null,
-   "pg_status": null,
-   "depth": null,
+   "pg_id": "pkg-unknown:libtorrent-rasterbar",
+   "pg_name": "libtorrent-rasterbar",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
    "evidence": {
-    "note": "README 声明且构建文件引用（strong=3 weak=0），portgraph 未检出 → 扫描器漏检候选",
-    "grep": [
-     {
-      "file": "cmake/Modules/CheckPackages.cmake",
-      "line": 6,
-      "strong": true,
-      "text": "find_package(LibtorrentRasterbar QUIET ${version} COMPONENTS torrent-rasterbar)"
-     },
-     {
-      "file": "cmake/Modules/CheckPackages.cmake",
-      "line": 9,
-      "strong": true,
-      "text": "pkg_check_modules(LibtorrentRasterbar IMPORTED_TARGET GLOBAL \"libtorrent-rasterbar>=${version}\")"
-     },
-     {
-      "file": "cmake/Modules/CheckPackages.cmake",
-      "line": 35,
-      "strong": true,
-      "text": "find_package(LibtorrentRasterbar ${version} REQUIRED COMPONENTS torrent-rasterbar)"
-     }
-    ]
+    "note": "匹配到幽灵节点：真实外部依赖且无已知鸿蒙包（fetch-deps 报 need_port/需源码移植，检出正确）"
    },
    "agent_note": null
   },
@@ -301,6 +337,54 @@
    "by_design": true,
    "oracle_name": null,
    "oracle_type": null,
+   "pg_id": "qtmod:dbus",
+   "pg_name": "Qt D-Bus",
+   "pg_kind": "qt-module",
+   "pg_status": "blocked",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt 模块粒度：README 通常只写 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:network",
+   "pg_name": "Qt Network",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt 模块粒度：README 通常只写 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:sql",
+   "pg_name": "Qt SQL",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt 模块粒度：README 通常只写 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
    "pg_id": "qtmod:svg",
    "pg_name": "Qt SVG",
    "pg_kind": "qt-module",
@@ -342,33 +426,48 @@
     "note": "Qt 模块粒度：README 通常只写 'Qt'"
    },
    "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:xml",
+   "pg_name": "Qt XML",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt 模块粒度：README 通常只写 'Qt'"
+   },
+   "agent_note": null
   }
  ],
  "metrics": {
   "oracle_runtime": 5,
   "oracle_optional": 1,
-  "matched": 4,
+  "matched": 5,
   "matched_optional": 0,
-  "recall": "80%",
+  "recall": "100%",
   "precision": "100%",
-  "bug_candidates": 1,
+  "bug_candidates": 0,
   "bug_by_class": {
    "false-positive": 0,
-   "missed-dep": 1,
+   "missed-dep": 0,
    "resolution-gap": 0
   },
   "class_counts": {
    "build-only": 1,
-   "matched": 4,
-   "missed-dep": 1,
+   "matched": 5,
    "optional-not-built": 1,
-   "qt-granularity": 3
+   "qt-granularity": 7
   }
  },
  "agent_notes": [
-  "missed-dep libtorrent-rasterbar 复核确认为 portgraph 真漏检：全部 find_package/pkg_check_modules 集中在 cmake/Modules/CheckPackages.cmake（L6 find_package(LibtorrentRasterbar QUIET...)、L9 pkg_check_modules(...libtorrent-rasterbar>=...)、L35 find_package(...REQUIRED)），而 port_graph/qt_scanner.py L120-121 把 cmake_files 过滤为仅 CMakeLists.txt、丢弃全部 .cmake 模块文件；include 启发式 THIRD_PARTY_HINTS 亦无 libtorrent 模式（源码大量 #include <libtorrent/...>）。libtorrent-rasterbar 是 qBittorrent 核心 BT 引擎库，漏检导致闭包与 need_port 清单缺失最大项，保留 ★ 不改判。",
-  "首跑 false-positive openssl@3 为 harness 取证缺陷而非 portgraph 误报：name_variants 对节点名 openssl@3 未生成去 @3 变体，grep 不到 CheckPackages.cmake:47 的 find_package(OpenSSL)；oracle 复核补全后 pass1 正确匹配（precision 0%→100%）。建议 name_variants 对含 @ 的节点名追加剥离 @version 的变体。",
-  "解析层预备缺口：hb-core Formula 与 cmd-pkgs 均无 libtorrent-rasterbar（cmd-pkgs 仅同名异库 libtorrent-rakshasa，即 INSTALL 原文警告的 rTorrent 用库）——即使修复 .cmake 扫描，该包仍会落入 pkg-unknown/need_port，且 resolve 不应误映射到 rakshasa。",
-  "oracle 自动提取失败根因：依赖清单在仓库根 INSTALL 文件（无扩展名），corpus oracle_files 误配为 INSTALL.md；且 INSTALL 为纯文本编号列表（非 markdown 标题），即使文件名配对启发式也解析不了。本 oracle 为 agent 逐条对照 INSTALL 原文手工编写（7 条：5 runtime + 1 build + 1 optional）。"
+  "第二轮复核（worker3-deps-test，基线 f98a2e7）：首轮 2 个 resolution-gap（libtorrentrasterbar / systemd）均已确认根因并修复。1) libtorrentrasterbar 幽灵节点 = find_package(LibtorrentRasterbar)（CheckPackages.cmake:6，CamelCase 压平名）与 pkg_check_modules(libtorrent-rasterbar)（同文件 L9，连字符名）同库异名未归并——修复：project_scanner._link_third_party 按去分隔符键分组归并 + kb_seed.build_dashless_index 兜底解析（CamelCase 压平名 → 已知连字符包名，键长≥6 防碰撞）。libtorrent-rasterbar 确实不在 hb-core/cmd-pkgs（cmd-pkgs 仅异库 libtorrent-rakshasa，dashless 键不同不会误映射），保留单个 pkg-unknown:libtorrent-rasterbar 幽灵节点是正确结论（need_port），其版本约束 >= 2.0.10 因 CMake 宏参 ${version} 无法静态解析（残留项）。",
+  "2) systemd 幽灵节点 = find_package(Systemd)（dist/unix/CMakeLists.txt:3）被 if (SYSTEMD) 守卫，而 SYSTEMD 由 feature_option_dependent(... OFF \"NOT GUI\" OFF) 声明且默认 OFF（GUI 默认 ON），且该 find_package 仅用于探测服务文件安装目录（不链接）——修复：qt_scanner 新增 CMake 选项守卫分析（option/feature_option[_dependent]/cmake_dependent_option 默认值收集 + if 栈逐行追踪 + Find<Name>.cmake 模块继承调用处守卫），守卫内声明连 optional 边；optional 边不进入 runtime 闭包/可移植性分析/fetch-deps。前置根因：dist 目录被 EXCLUDE_DIRS 排除导致守卫上下文丢失（qBittorrent add_subdirectory(dist) 是真实构建子目录），已移除该排除。",
+  "上轮遗留的 harness 取证缺陷已修复：name_variants 对含 @version 的节点名（openssl@3）追加剥离变体，避免 grep 不到 find_package(OpenSSL) 而误判 false-positive。",
+  "oracle 说明（沿首轮）：依赖清单在仓库根 INSTALL 文件（纯文本编号列表，corpus oracle_files 曾误配 INSTALL.md），本 oracle 为 agent 逐条对照 INSTALL 原文手工编写（7 条：5 runtime + 1 build + 1 optional），已复核。"
  ]
 }

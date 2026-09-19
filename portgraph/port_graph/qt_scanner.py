@@ -23,9 +23,19 @@ SOURCE_EXTS = {".c", ".cc", ".cpp", ".cxx", ".c++", ".h", ".hh", ".hpp", ".hxx",
 TEXT_SCAN_EXTS = {".c", ".cc", ".cpp", ".cxx", ".c++", ".h", ".hh", ".hpp",
                   ".hxx", ".m", ".mm", ".qml"}
 BINARY_EXTS = {".so", ".a", ".dll", ".dylib", ".lib", ".dll.a"}
+# 排除目录：仅排除确定非源码的（VCS/IDE 缓存/构建产物）。
+# 注意：dist 不排除——C++/CMake 项目中常为源控的打包/安装子目录
+# （如 qBittorrent 的 add_subdirectory(dist)，内含真实依赖声明与
+# 选项守卫，e2e 复盘曾因排除 dist 漏掉 if(SYSTEMD) 守卫上下文）。
 EXCLUDE_DIRS = {".git", ".hg", ".svn", ".qt-ohos", "node_modules", "__pycache__",
-                ".idea", ".vs", ".vscode", ".gradle", "out", "dist"}
-EXCLUDE_DIR_PREFIXES = ("build",)
+                ".idea", ".vs", ".vscode", ".gradle", "out"}
+# dist 不在排除清单：C++ 项目中 dist 多为源控打包/安装目录（qbittorrent
+# 的 dist/unix/CMakeLists.txt 是真实构建子目录，e2e 复核确认）
+# 构建输出目录（build / build-Debug / build.123 / build2）：排除以免扫到生成物；
+# 注意 buildscripts / buildtools 是源码目录（muse、musescore 的依赖清单
+# ExtDepsManifest.cmake / SetupQt6.cmake 都在其中），不能按 build 前缀排除
+# （e2e musescore 复核确认的前缀误排除 bug）。
+_BUILD_DIR_RE = re.compile(r"^build(?:[-._].+|\d+)?$")
 MAX_FILE_BYTES = 2 * 1024 * 1024
 
 _PRO_QT_RE = re.compile(r"^\s*QT\s*([+\-]?=)\s*(.*)$", re.M)
@@ -111,6 +121,11 @@ VENDORED_DIR_NAMES = ("3rdparty", "thirdparty", "third_party", "third-party",
 _TARGET_LINK_RE = re.compile(r"target_link_libraries\s*\(([^)]*)\)", re.I | re.S)
 _ADD_TARGET_RE = re.compile(
     r"\b(?:qt\d+_)?add_(?:library|executable)\s*\(\s*([A-Za-z0-9_.:-]+)")
+# macro/函数名定义（body 内调用 add_library 的包装器，如 krita 的
+# kis_add_library(kritaui SHARED ...)：其首参即目标名）
+_MACRO_DEF_RE = re.compile(
+    r"\b(?:macro|function)\s*\(\s*([A-Za-z0-9_.:-]+)", re.I)
+_END_BLOCK_RE = re.compile(r"^\s*end(?:macro|function)\b", re.I | re.M)
 _TLL_KEYWORDS = {"PRIVATE", "PUBLIC", "INTERFACE", "DEBUG", "OPTIMIZE",
                  "RELEASE", "GENERAL", "OPTIONAL", "LINK_PUBLIC",
                  "LINK_PRIVATE", "LINK_INTERFACE_LIBRARIES"}
@@ -207,6 +222,7 @@ def scan_project(project_root) -> Dict:
                                       #   cc.find_library/AC_CHECK_LIB）
         "macos_frameworks": [],       # -framework X
         "fetched_deps": [],           # FetchContent/ExternalProject/CPM 配置期拉取
+        "manifest_deps": [],          # 依赖清单函数（require_dep 等）声明的依赖
         "meson_deps": [],             # meson dependency('name', version: ...)
         "meson": {},                  # {version_min, cxx_standard, subprojects}
         "autotools_deps": [],         # PKG_CHECK_MODULES([V],[pkg >= x])
@@ -294,6 +310,7 @@ def scan_project(project_root) -> Dict:
     _cmake_vart = _collect_cmake_vars(root, info["cmake_files"])
     info["wrapper_deps"] = _detect_wrapper_deps(root, info["cmake_files"],
                                                 _cmake_vart)
+    info["manifest_deps"] = _detect_manifest_deps(root, info["cmake_files"])
     if meson_files:
         _absorb_meson(root, info, meson_files)
     if autotools_files:
@@ -320,7 +337,9 @@ def _walk(root: Path):
         for entry in entries:
             name = entry.name
             if entry.is_dir():
-                if name in EXCLUDE_DIRS or name.startswith(EXCLUDE_DIR_PREFIXES + (".",)):
+                if name in EXCLUDE_DIRS or name.startswith("."):
+                    continue
+                if _BUILD_DIR_RE.match(name):
                     continue
                 stack.append(entry)
             elif entry.is_file():
@@ -337,6 +356,55 @@ def _read_text(path: Path) -> str:
         return path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return ""
+
+
+# Qt 组件列表变量：set(<var> Core Gui ...) / list(APPEND <var> X ...)，
+# 供 find_package(Qt6 ... COMPONENTS ${var}) 展开（muse 框架 SetupQt6.cmake 形式）
+_SET_LISTVAR_RE = re.compile(r"\bset\s*\(\s*(\w+)\s+(.*?)\)", re.S)
+_LIST_APPEND_RE = re.compile(r"\blist\s*\(\s*APPEND\s+(\w+)\s+([^)]*)\)", re.S)
+_LISTVAR_TOKEN_KW = {"CACHE", "PATH", "STRING", "BOOL", "FILEPATH", "INTERNAL",
+                     "FORCE", "ON", "OFF", "REQUIRED"}
+
+
+def _listvar_tokens(body: str) -> List[str]:
+    """set/list(APPEND) 值域里的组件名 token（标识符，剔除关键字/${var}/字面量）。"""
+    out = []
+    for tok in body.split():
+        tok = tok.strip('"\'')
+        if (not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", tok)
+                or tok.upper() in _LISTVAR_TOKEN_KW):
+            continue
+        out.append(tok)
+    return out
+
+
+def _collect_list_vars(root: Path, cmake_files: List[str]) -> Dict[str, str]:
+    """累积 set(<var> ...) / list(APPEND <var> ...) 的标识符列表值。
+
+    只保留纯标识符 token（Core/Gui/...），版本号/路径/${var}/CACHE 关键字
+    全部剔除，因此不会与 _collect_cmake_vars 的字面量变量冲突。
+    同一文件内 set() 重置、list(APPEND) 追加；跨文件取并集（同名变量
+    在不同作用域各自定义时，并集与扫描顺序无关，避免 sandbox 等
+    非主构建目录的声明因目录遍历顺序而遮蔽主声明）。
+    """
+    union: Dict[str, List[str]] = {}
+    for rel in cmake_files:
+        text = _read_text(root / rel)
+        local: Dict[str, List[str]] = {}
+        for m in _SET_LISTVAR_RE.finditer(text):
+            toks = _listvar_tokens(m.group(2) or "")
+            if toks:
+                local[m.group(1)] = list(toks)
+        for m in _LIST_APPEND_RE.finditer(text):
+            toks = _listvar_tokens(m.group(2) or "")
+            if toks:
+                local[m.group(1)] = local.get(m.group(1), []) + toks
+        for var, toks in local.items():
+            merged = union.setdefault(var, [])
+            for t in toks:
+                if t not in merged:
+                    merged.append(t)
+    return {var: " ".join(toks) for var, toks in union.items()}
 
 
 def _detect_qt(root: Path, info: Dict):
@@ -359,11 +427,12 @@ def _detect_qt(root: Path, info: Dict):
 
     frameworks = set()
     kf_components = set()
+    list_vars = _collect_list_vars(root, info["cmake_files"])
     for rel in info["cmake_files"]:
         text = _read_text(root / rel)
         for match in _CMAKE_FINDPKG_QT_RE.finditer(text):
             qt_version = qt_version or match.group(1)
-            rest = match.group(2) or ""
+            rest = _subst_vars(match.group(2) or "", list_vars)
             cm = _COMPONENTS_RE.search(rest)
             comps = cm.group(1) if cm else ""
             for comp in re.split(r"\s+", comps):
@@ -406,6 +475,8 @@ def _detect_third_party(root: Path, sources: List[Dict]) -> List[Dict]:
     for src in sources:
         if src["ext"] not in TEXT_SCAN_EXTS:
             continue
+        if _is_vendored_path(src["path"]):
+            continue  # vendored 三方自己的 include 不算应用依赖证据
         text = _read_text(root / src["path"])
         for name, (pattern, _libs) in THIRD_PARTY_HINTS.items():
             if name in found and len(found[name]) >= 3:
@@ -416,11 +487,80 @@ def _detect_third_party(root: Path, sources: List[Dict]) -> List[Dict]:
             sorted(found.items())]
 
 
-# CMake 构建模块/工具链，非运行时依赖，find_package 命中时跳过
-_FINDPKG_SKIP = {"ecm", "pkgconfig", "threads", "sharedmimeinfo",
-                 "doxygen", "gettext", "i18n", "imported_target",
+# CMake 构建模块/工具链，非运行时依赖，find_package 命中时跳过。
+# 与 deps_report.CUILD_TOOL_FINDPKG / CMAKE_BUILTIN_PACKAGES 对齐（避免
+# 循环导入在两处维护：图侧跳过 + 报告侧归入 build-tool/system-lib 分类）
+_FINDPKG_SKIP = {"ecm", "pkgconfig", "pkgconf", "threads", "sharedmimeinfo",
+                 "doxygen", "gettext", "intltool", "i18n", "imported_target",
                  "findpackagehandlestandardargs", "selectlibrary",
-                 "pkg_check_modules"}  # noqa: keep explicit
+                 "pkg_check_modules",
+                 # CMake 内置模块（编译器特性 / musl libc 内置）
+                 "openmp", "iconv", "dl",
+                 # 主机构建工具 / VCS（find_package(Git) 是取版本，非链接 git）
+                 "git", "subversion", "mercurial", "ccache", "sccache",
+                 "cmake", "ninja", "python", "python3", "flex", "bison",
+                 "gperf", "linguisttools"}  # noqa: keep explicit
+
+
+# vendored / 依赖清单目录的路径段：其内的 CMake 声明属于内嵌三方代码自己
+# 或依赖引擎的构建逻辑，不是应用自身的直接依赖（e2e musescore 复核确认：
+# thirdparty/fluidsynth、KDDockWidgets/python 与 muse_deps/recipes 的
+# find_package/pkg_check_modules 污染 depth-1 清单）。
+# 注：不含 "ext"（过短，误伤正常目录名）；"*_deps" 后缀匹配依赖引擎子模块
+# （muse_deps 等 recipes 集合）。
+_VENDORED_PATH_SEGS = frozenset({
+    "thirdparty", "3rdparty", "third_party", "third-party",
+    "vendor", "vendors", "vendored", "external", "extern",
+    "deps", "dep", "dependencies", "subprojects",
+})
+
+
+def _is_vendored_path(rel: str) -> bool:
+    """相对路径是否位于 vendored 三方/依赖引擎目录内（依赖提取时跳过）。"""
+    for seg in rel.lower().replace("\\", "/").split("/")[:-1]:
+        if seg in _VENDORED_PATH_SEGS or seg.endswith("_deps"):
+            return True
+    return False
+
+# Windows 系统库（qmake win32 块 / MSVC 链接）：鸿蒙不适用（代码通常被
+# 平台守卫包裹）。project_scanner 扫描期按它过滤 win32 链接名（防止
+# 同名 Unix 库误连边，如 bcrypt→OpenBSD bcrypt）；deps_report 标注而非
+# 当作"需源码编译"的缺口
+WIN32_SYSTEM_LIBS = {
+    "user32", "kernel32", "gdi32", "shell32", "ole32", "oleaut32", "uuid",
+    "advapi32", "ws2_32", "mswsock", "winmm", "dsound", "ddraw", "dxgi",
+    "d3d9", "d3d11", "dwmapi", "shlwapi", "comctl32", "comdlg32",
+    "imm32", "wininet", "winhttp", "crypt32", "secur32", "netapi32",
+    "psapi", "version", "iphlfapi", "powrprof", "setupapi", "strmiids",
+    "avifil32", "mfplat", "mfuuid", "strmbase", "strmbasd", "wtsapi32",
+    "windowsapp", "delayimp", "opengl32", "glu32", "wintrust", "shcore",
+    "winscard", "bcrypt", "hid", "winusb", "cfgmgr32",
+}
+
+# find_package 名为构建工具/解释器（主机侧，非应用运行时依赖）。
+# project_scanner 用它过滤运行时边（deps_report 也消费，保证两侧口径一致）。
+BUILD_TOOL_FINDPKG = {
+    "ecm": "extra-cmake-modules（KDE CMake 模块，主机侧）",
+    "pkgconfig": "pkg-config（主机侧）",
+    "pkgconf": "pkgconf（主机侧 pkg-config 兼容）",
+    "gettext": "gettext 工具链（msgfmt/xgettext，主机侧）",
+    "intltool": "intltool（主机侧）",
+    "doxygen": "Doxygen 文档生成器（主机侧）",
+    "sharedmimeinfo": "update-mime-database（主机侧）",
+    "cmake": "CMake",
+    "ninja": "Ninja 构建器",
+    "python3": "Python 3",
+    "python": "Python",
+    "flex": "flex 词法生成器",
+    "bison": "bison 语法生成器",
+    "gperf": "gperf 完美哈希生成器",
+    "git": "git",
+    "ccache": "ccache 编译缓存",
+    "sccache": "sccache 编译缓存",
+    "linguisttools": "Qt Linguist 工具（lupdate/lrelease，随 Qt SDK）",
+    "lxqt2-build-tools": "LXQt CMake 构建模块（主机侧，类似 ECM）",
+    "lxqt-build-tools": "LXQt CMake 构建模块（主机侧，类似 ECM）",
+}
 
 
 # pkg_check_modules 专属关键字（IMPORTED_TARGET/GLOBAL 等），非模块名
@@ -428,33 +568,188 @@ _PKGCHECK_KW = {"IMPORTED_TARGET", "GLOBAL", "STATIC", "SHARED", "MODULE",
                 "OPTIONAL", "SKIP_CMAKE_DIRS", "WITHOUT_CMAKE_PACKAGE"}
 
 
+# ------------------------------------------------------ CMake 选项守卫分析
+#
+# 背景（e2e qbittorrent 复盘）：find_package(Systemd) 位于
+# `if (SYSTEMD)` 内，而 SYSTEMD 由 feature_option_dependent(... OFF ...)
+# 声明且默认 OFF——该依赖不参与默认构建，不应记为 runtime 依赖。
+# 方案：收集 option/feature_option[_dependent]/cmake_dependent_option 的
+# 默认值；逐行追踪 if 栈；OFF 默认选项裸守卫（未被 NOT 修饰）内的
+# find_package/pkg_check_modules 标记 optional。Find<Name>.cmake 模块
+# 文件内的检测继承 find_package(Name) 的 optional 守卫（模块仅在
+# 调用时执行，守卫上下文在调用处）。
+
+# option(NAME "doc" [ON|OFF])——无默认值时 CMake 默认 OFF
+_OPTION_RE = re.compile(
+    r'^\s*option\s*\(\s*(\w+)\s+"(?:[^"\\]|\\.)*"\s*([A-Za-z0-9_${}.]+)?',
+    re.M)
+# feature_option(NAME "doc" <default>)
+_FEATURE_OPTION_RE = re.compile(
+    r'^\s*feature_option\s*\(\s*(\w+)\s+"(?:[^"\\]|\\.)*"\s*'
+    r'([A-Za-z0-9_${}.]+)',
+    re.M)
+# feature_option_dependent(NAME "doc" <default> "COND" <fallback>) /
+# cmake_dependent_option(同形)：第一个非字符串实参是默认值
+_DEPENDENT_OPTION_RE = re.compile(
+    r'^\s*(?:feature_option_dependent|cmake_dependent_option)\s*\('
+    r'\s*(\w+)\s+"(?:[^"\\]|\\.)*"\s*([A-Za-z0-9_${}.]+)',
+    re.M)
+
+_CMAKE_IF_RE = re.compile(r'^\s*if\s*\((.*)\)\s*$', re.I)
+_CMAKE_ELSEIF_RE = re.compile(r'^\s*elseif\s*\((.*)\)\s*$', re.I)
+_CMAKE_ELSE_RE = re.compile(r'^\s*else\s*\(\s*\)\s*$', re.I)
+_CMAKE_ENDIF_RE = re.compile(r'^\s*endif\s*\(\s*\)\s*$', re.I)
+_CMAKE_FUNC_RE = re.compile(r'^\s*(?:function|macro)\s*\(', re.I)
+_CMAKE_ENDFUNC_RE = re.compile(r'^\s*end(?:function|macro)\b', re.I)
+# 条件中被 NOT 修饰的 token：`NOT X` 表示 X 为假时进入，非正向守卫
+_NOT_TOKEN_RE = re.compile(r'(?i)\bNOT\s+(\w+)')
+
+
+def _collect_option_defaults(cmake_texts: List[str]) -> Dict[str, bool]:
+    """收集 CMake 选项声明的默认值 → {选项名: 默认是否为真}。
+
+    跨文件合并（选项定义与 if 守卫常不在同一文件）；首个定义优先。
+    默认值含 ${VAR} 等非字面量时不记录（无法判定）。
+    """
+    out: Dict[str, bool] = {}
+    for rx in (_OPTION_RE, _FEATURE_OPTION_RE, _DEPENDENT_OPTION_RE):
+        for text in cmake_texts:
+            for m in rx.finditer(text):
+                name, val = m.group(1), (m.group(2) or "OFF").upper()
+                if name in out:
+                    continue
+                if val in ("ON", "TRUE", "1"):
+                    out[name] = True
+                elif val in ("OFF", "FALSE", "0"):
+                    out[name] = False
+    return out
+
+
+def _frame_positively_guarded(cond: str, off_options: Dict[str, bool]) -> bool:
+    """if 条件是否含 OFF 默认选项的裸正向引用（未被 NOT 修饰）。
+
+    `if (SYSTEMD)` → True（SYSTEMD 默认 OFF）；
+    `if (NOT SYSTEMD)` / `if (DBUS)`（默认 ON）→ False。
+    """
+    if not off_options:
+        return False
+    stripped = _NOT_TOKEN_RE.sub(" ", cond)
+    for tok in re.findall(r"\w+", stripped):
+        if off_options.get(tok) is False:
+            return True
+    return False
+
+
+def _cmake_optional_line_map(text: str,
+                             off_options: Dict[str, bool]) -> Dict[int, bool]:
+    """逐行追踪 CMake if 栈，返回 {行号: 是否处于 OFF 默认选项守卫内}。
+
+    - 任一活动 if 帧正向守卫 OFF 默认选项 → 帧内代码默认不参与构建；
+    - else/elseif 分支保守视为不守卫（可能含回退逻辑）；
+    - function/macro 体内的声明在调用点生效，守卫上下文不可靠 → 不标记。
+    """
+    result: Dict[int, bool] = {}
+    stack: List[bool] = []   # 每帧：是否 OFF 选项正向守卫
+    func_depth = 0
+    for lineno, line in enumerate(text.splitlines(), 1):
+        s = line.strip()
+        if _CMAKE_IF_RE.match(s):
+            stack.append(_frame_positively_guarded(
+                _CMAKE_IF_RE.match(s).group(1), off_options))
+        elif _CMAKE_ELSEIF_RE.match(s) and stack:
+            stack[-1] = False   # 保守：else/elseif 分支不判定为守卫
+        elif _CMAKE_ELSE_RE.match(s) and stack:
+            stack[-1] = False
+        elif _CMAKE_ENDIF_RE.match(s) and stack:
+            stack.pop()
+        elif _CMAKE_FUNC_RE.match(s):
+            func_depth += 1
+        elif _CMAKE_ENDFUNC_RE.match(s) and func_depth:
+            func_depth -= 1
+        result[lineno] = (func_depth == 0 and any(stack))
+    return result
+
+
+def _cmake_guard_context(root: Path,
+                         cmake_files: List[str]) -> Dict[str, Dict[int, bool]]:
+    """构建 {文件: {行号: optional 守卫}} 上下文（选项默认值跨文件合并）。"""
+    texts = {rel: _read_text(root / rel) for rel in cmake_files}
+    option_defaults = _collect_option_defaults(list(texts.values()))
+    off_options = {k: v for k, v in option_defaults.items() if v is False}
+    return {rel: _cmake_optional_line_map(text, off_options)
+            for rel, text in texts.items()}
+
+
+def _find_module_optional_files(cmake_files: List[str],
+                                optional_names: set) -> set:
+    """Find<Name>.cmake 模块文件（Name 的 find_package 被 optional 守卫时
+    整个模块继承 optional——模块内的 pkg_check_modules 只在调用时执行）。"""
+    if not optional_names:
+        return set()
+    wanted = {"find%s.cmake" % n for n in optional_names}
+    return {rel for rel in cmake_files
+            if Path(rel).name.lower() in wanted}
+
+
 def _detect_cmake_packages(root: Path, cmake_files: List[str]) -> Dict:
     """从 CMake 中提取第三方包：find_package(*) 和 pkg_check_modules。
 
     Qt/KF 已由 _detect_qt 专门处理，这里只返回其它包。
-    返回 {find_package: [names...], pkg_check_modules: [modules...],
-          pkg_modules: [{name, version_req}...]}（含版本约束）。
+    返回 {find_package: [必需名...], find_package_optional: [可选名...],
+          pkg_check_modules: [必需名...], pkg_check_modules_optional: [...],
+          pkg_modules: [{name, version_req, optional?}...]}（含版本约束）。
+
+    optional = 声明点位于 OFF 默认 CMake 选项的 if 守卫内（默认构建不含）。
+    同一包既有 optional 又有必需声明点时，必需优先（保守）。
     """
-    findpkgs = set()
-    pkgmods = set()
+    findpkgs, pkgmods = set(), set()
+    findpkgs_opt, pkgmods_opt = set(), set()
     pkg_details: Dict[str, Dict] = {}
     vart = _collect_cmake_vars(root, cmake_files)
+    guards = _cmake_guard_context(root, cmake_files)
     skip_prefixes = ("qt", "kf")
+
+    def _line_of(text: str, pos: int) -> int:
+        return text.count("\n", 0, pos) + 1
+
+    # pass 1: find_package（先收集，供 Find<Name>.cmake 模块继承判定）
     for rel in cmake_files:
-        text = _read_text(root / rel)
+        if _is_vendored_path(rel):
+            continue
+        text = _strip_cmake_comments(_read_text(root / rel))
+        gmap = guards.get(rel, {})
         for m in _FINDPKG_ANY_RE.finditer(text):
             name = m.group(1).lower()
             if (name.startswith(skip_prefixes) or name in _CMAKE_KW
                     or name in _FINDPKG_SKIP
                     or name.replace(".", "").isdigit()):
                 continue
-            findpkgs.add(name)
+            if gmap.get(_line_of(text, m.start())):
+                findpkgs_opt.add(name)
+            else:
+                findpkgs.add(name)
+
+    # Find<Name>.cmake 模块文件：其内全部检测继承 optional 守卫
+    opt_files = _find_module_optional_files(
+        cmake_files, findpkgs_opt - findpkgs)
+
+    # pass 2: pkg_check_modules
+    for rel in cmake_files:
+        if _is_vendored_path(rel):
+            continue
+        text = _strip_cmake_comments(_read_text(root / rel))
+        gmap = guards.get(rel, {})
+        file_opt = rel in opt_files
         for m in _PKGCHECK_RE.finditer(text):
+            line_opt = file_opt or gmap.get(_line_of(text, m.start()))
             # pkg-config spec 可带版本约束："glib-2.0 >= 2.50" / glib-2.0>=2.50
             # 替换 set() 变量；无法解析的 ${宏参} 整体剔除，避免混入包名
             specs = _subst_vars(m.group(1), vart).replace("\\\n", " ")
             specs = re.sub(r"\$\{\w+\}", " ", specs)
-            _absorb_pkg_spec(specs, pkg_details)
+            if line_opt:
+                _absorb_pkg_spec(specs, pkg_details, optional=True)
+            else:
+                _absorb_pkg_spec(specs, pkg_details, optional=False)
             for tok in _PKGCONF_NAME_RE.findall(specs):
                 tok = tok.lower()
                 if (tok.upper() in _CMAKE_KW or tok in _FINDPKG_SKIP
@@ -462,12 +757,32 @@ def _detect_cmake_packages(root: Path, cmake_files: List[str]) -> Dict:
                         or tok.startswith(("qt", "kf"))
                         or tok.replace(".", "").isdigit()):
                     continue
-                pkgmods.add(tok)
-                pkg_details.setdefault(tok, {"name": tok, "version_req": None})
+                if line_opt:
+                    pkgmods_opt.add(tok)
+                    pkg_details.setdefault(
+                        tok, {"name": tok, "version_req": None,
+                              "optional": True})
+                else:
+                    pkgmods.add(tok)
+                    pkg_details.setdefault(tok, {"name": tok,
+                                                 "version_req": None})
+
+    # 必需优先：同一包 optional 声明点与必需声明点并存时按必需处理
+    findpkgs_opt -= findpkgs
+    pkgmods_opt -= pkgmods
+    for name in pkgmods:
+        d = pkg_details.get(name)
+        if d:
+            d.pop("optional", None)
     # 带约束的 spec 覆盖裸名（保留版本要求）
-    pkgmods.update(pkg_details.keys())
+    pkgmods.update(k for k, d in pkg_details.items()
+                   if not d.get("optional"))
+    pkgmods_opt.update(k for k, d in pkg_details.items()
+                       if d.get("optional"))
     return {"find_package": sorted(findpkgs),
+            "find_package_optional": sorted(findpkgs_opt),
             "pkg_check_modules": sorted(pkgmods),
+            "pkg_check_modules_optional": sorted(pkgmods_opt),
             "pkg_modules": sorted(pkg_details.values(),
                                   key=lambda d: d["name"])}
 
@@ -476,7 +791,8 @@ _PKG_SPEC_VER_RE = re.compile(
     r"([A-Za-z0-9][A-Za-z0-9._+-]*)\s*(>=|<=|==|=|<|>|!=)\s*([0-9][\w.]*)")
 
 
-def _absorb_pkg_spec(spec: str, out: Dict[str, Dict]) -> None:
+def _absorb_pkg_spec(spec: str, out: Dict[str, Dict],
+                     optional: bool = False) -> None:
     """吸收一条 pkg-config spec（可含版本约束）到 out。"""
     m = _PKG_SPEC_VER_RE.search(spec)
     if not m:
@@ -484,6 +800,8 @@ def _absorb_pkg_spec(spec: str, out: Dict[str, Dict]) -> None:
     name = m.group(1).lower()
     out[name] = {"name": name,
                  "version_req": "%s %s" % (m.group(2), m.group(3))}
+    if optional:
+        out[name]["optional"] = True
 
 
 def _detect_pkg_manifests(root: Path) -> Dict:
@@ -631,6 +949,8 @@ def _detect_wrapper_deps(root: Path, cmake_files: List[str],
     out: List[Dict] = []
     seen: set = set()
     for rel, text in texts.items():
+        if _is_vendored_path(rel):
+            continue  # 依赖引擎/内嵌三方目录内的调用不是应用依赖
         for fn in sorted(funcs):
             for cm in re.finditer(r"\b%s\s*\(([^)]*)\)" % re.escape(fn), text):
                 args = _strip_cmake_comments(cm.group(1))
@@ -657,6 +977,73 @@ def _detect_wrapper_deps(root: Path, cmake_files: List[str],
     return out
 
 
+# 依赖清单函数名（muse_deps 引擎等）：require_dep(name [STATIC|SYSTEM|REBUILD]) /
+# require_source_dep(name)（源码自带）/ require_tool(name)（主机构建工具）。
+# 要求函数在项目扫描到的 CMake 中有 function()/macro() 定义（避免同名普通
+# 调用误匹配），首个参数为依赖名。
+_MANIFEST_FN_RE = re.compile(
+    r"(?i)^(?:require|add|use|need)[_-]?"
+    r"(?:source[_-]?)?(?:dep|deps|dependency|dependencies|tool|package)s?$")
+_MANIFEST_ARG_KW = {"STATIC", "SYSTEM", "REBUILD", "REQUIRED", "OPTIONAL",
+                    "ON", "OFF"}
+
+
+def _detect_manifest_deps(root: Path, cmake_files: List[str]) -> List[Dict]:
+    """自定义依赖清单函数的调用（如 muse_deps 引擎的 require_dep）。
+
+    返回 [{name, mode(link|source|tool), conditional, condition,
+           evidence: [file:line]}]。函数定义可位于依赖引擎子模块
+    （vendored 路径），但只扫描应用侧文件里的调用。
+    """
+    texts = {rel: _read_text(root / rel) for rel in cmake_files}
+    funcs = {m.group(1) for text in texts.values()
+             for m in _FUNC_DEF_RE.finditer(text)
+             if _MANIFEST_FN_RE.match(m.group(1))}
+    if not funcs:
+        return []
+    out: List[Dict] = []
+    seen: set = set()
+    for rel, raw in texts.items():
+        if _is_vendored_path(rel):
+            continue
+        text = _strip_cmake_comments(raw)
+        # 轻量 if/endif 追踪：记录调用是否位于条件块内（不求值，仅标注）。
+        # events: [(pos, cond)]，cond 为 if 条件文本，endif 为 None
+        events = [(m.start(), m.group(1)) for m in re.finditer(
+            r"(?im)^\s*(?:if\s*\((.*?)\)|endif\b)", text)]
+        for fn in sorted(funcs, key=len, reverse=True):
+            for cm in re.finditer(
+                    r"\b%s\s*\(\s*([A-Za-z0-9_][A-Za-z0-9_.+-]*)"
+                    % re.escape(fn), text):
+                name = cm.group(1)
+                if name.upper() in _MANIFEST_ARG_KW or name.startswith("$"):
+                    continue
+                fnl = fn.lower()
+                mode = ("tool" if "tool" in fnl
+                        else "source" if "source" in fnl else "link")
+                key = (mode, name.lower())
+                if key in seen:
+                    continue
+                seen.add(key)
+                # 调用点之前重建 if 栈，取栈顶为所在条件
+                stack: List[str] = []
+                for pos, cond in events:
+                    if pos >= cm.start():
+                        break
+                    if cond is None:
+                        if stack:
+                            stack.pop()
+                    else:
+                        stack.append(cond.strip())
+                cond = stack[-1] if stack else None
+                line = text.count("\n", 0, cm.start()) + 1
+                out.append({"name": name, "mode": mode,
+                            "conditional": cond is not None,
+                            "condition": cond,
+                            "evidence": ["%s:%d" % (rel, line)]})
+    return out
+
+
 def _collect_cmake_vars(root: Path, cmake_files: List[str]) -> Dict[str, str]:
     """收集 set(<var> <字面量>) 定义的简单变量（版本号等），供
     find_package(${var}) 的版本解析做近似替换（忽略 CMake 作用域）。"""
@@ -675,16 +1062,26 @@ def _subst_vars(text: str, vart: Dict[str, str]) -> str:
 
 
 def _detect_find_package_details(root: Path, info: Dict) -> List[Dict]:
-    """提取全部 find_package 调用的完整参数（跨行），含 Qt/KF 调用。"""
+    """提取全部 find_package 调用的完整参数（跨行），含 Qt/KF 调用。
+
+    附 optional 标志（OFF 默认选项守卫内的声明，默认构建不含）。
+    """
     vart = _collect_cmake_vars(root, info["cmake_files"])
+    guards = _cmake_guard_context(root, info["cmake_files"])
     out: List[Dict] = []
     for rel in info["cmake_files"]:
-        text = _read_text(root / rel)
+        if _is_vendored_path(rel):
+            continue
+        text = _strip_cmake_comments(_read_text(root / rel))
+        gmap = guards.get(rel, {})
         for m in _FINDPKG_FULL_RE.finditer(text):
             line = text.count("\n", 0, m.start()) + 1
-            out.append(_parse_findpkg_args(m.group(1),
-                                           _subst_vars(m.group(2) or "", vart),
-                                           rel, line))
+            detail = _parse_findpkg_args(m.group(1),
+                                         _subst_vars(m.group(2) or "", vart),
+                                         rel, line)
+            if gmap.get(line):
+                detail["optional"] = True
+            out.append(detail)
     return out
 
 
@@ -756,10 +1153,15 @@ def _ver_key(v):
 def _detect_dynamic_loads(root: Path, info: Dict) -> List[Dict]:
     """源码中的运行时动态加载目标（仅字符串字面量，变量拼接无法静态确定）。"""
     targets: Dict[str, List[str]] = {}
+    # 子串预过滤：三个目标 API 名至少出现一个才跑正则（大仓库实测占
+    # 扫描总耗时 1/3，多数文件不含任何动态加载）
+    prefilter = ("dlopen", "QLibrary", "QPluginLoader")
     for src in info["sources"]:
         if src["ext"] not in TEXT_SCAN_EXTS:
             continue
         text = _read_text(root / src["path"])
+        if not any(k in text for k in prefilter):
+            continue
         for rx, how in ((_DLOPEN_RE, "dlopen"), (_QLIBRARY_RE, "QLibrary"),
                         (_QPLUGINLOADER_RE, "QPluginLoader")):
             for m in rx.finditer(text):
@@ -829,11 +1231,17 @@ def _norm_lib_name(name: str) -> str:
     return re.sub(r"\.(lib|so|a|dylib)(\.\d+)*$", "", name)
 
 
-def _add_raw_lib(out: Dict[str, Dict], name: str, how: str, rel: str) -> None:
+def _add_raw_lib(out: Dict[str, Dict], name: str, how: str, rel: str,
+                 ext_target: bool = False) -> None:
     n = _norm_lib_name(name).strip('"\'')
     if not n or not re.fullmatch(r"[A-Za-z0-9_.+-]+", n):
         return
     e = out.setdefault(n.lower(), {"name": n, "hows": [], "evidence": []})
+    if ext_target:
+        # 名字来自 ns::external_<name> 导入目标（如 desktop-app::external_zlib）：
+        # 真正的 find_package 位于外部构建模块（cmake_helpers 等），
+        # 链接名是唯一可见的声明——标记为高置信外部依赖
+        e["ext_target"] = True
     if how not in e["hows"]:
         e["hows"].append(how)
     if rel not in e["evidence"] and len(e["evidence"]) < 3:
@@ -874,12 +1282,48 @@ def _detect_cmake_raw_links(root: Path, cmake_files: List[str]):
     raw: Dict[str, Dict] = {}
     frameworks: Dict[str, List[str]] = {}
     texts: Dict[str, str] = {}
+    all_texts: Dict[str, str] = {}   # 含 vendored：供目标定义收集
     defined = set()
+    lib_macros = set()      # body 内调用 add_library 的 macro/函数名
     for rel in cmake_files:
-        text = _read_text(root / rel)
+        text = _strip_cmake_comments(_read_text(root / rel))
+        all_texts[rel] = text
+        if _is_vendored_path(rel):
+            # 链接声明（target_link_libraries 等）不收集：vendored 三方
+            # 自己的链接不算应用依赖；但其目标定义仍参与收集（见下）
+            continue
         texts[rel] = text
+        # 包装器检测：macro/function 定义块内出现 add_library( =>
+        # 调用 <wrapper>(<target> ...) 也定义项目内目标
+        for dm in _MACRO_DEF_RE.finditer(text):
+            body = text[dm.end():]
+            em = _END_BLOCK_RE.search(body)
+            if em and "add_library(" in body[:em.start()]:
+                lib_macros.add(dm.group(1).lower())
+    # set(<var> <字面量>) 变量表：解析 add_library(${VAR} ...) 的目标名
+    vart: Dict[str, str] = {}
+    for text in all_texts.values():
+        for m in re.finditer(
+                r"^\s*set\s*\(\s*(\w+)\s+\"?([\w.]+)\"?\s*\)",
+                text, re.M):
+            vart.setdefault(m.group(1), m.group(2))
+    # 目标定义收集（含 vendored 文件）：vendored 源码内
+    # add_library(fluidsynth) 定义的是项目内目标，应用侧
+    # target_link_libraries(fluidsynth) 链的是内部目标而非外部包
+    for rel, text in all_texts.items():
         for m in _ADD_TARGET_RE.finditer(text):
-            defined.add(m.group(1).lower())
+            tgt = m.group(1)
+            if tgt.startswith("${"):
+                # add_library(${VAR} ...)：用 set(VAR x) 变量表解析目标名
+                tgt = vart.get(tgt[2:-1].strip(), "")
+            if tgt:
+                defined.add(tgt.lower())
+        if lib_macros:
+            for mw in lib_macros:
+                for m in re.finditer(
+                        r"\b%s\s*\(\s*([A-Za-z0-9_.:-]+)" % re.escape(mw),
+                        text, re.I):
+                    defined.add(m.group(1).lower())
     for rel, text in texts.items():
         for m in _TARGET_LINK_RE.finditer(text):
             args = _strip_cmake_comments(m.group(1))
@@ -895,9 +1339,31 @@ def _detect_cmake_raw_links(root: Path, cmake_files: List[str]):
                 _add_raw_lib(raw, lm.group(1), "target_link_libraries -l", rel)
             for tok in body[1].split():
                 t = tok.strip()
-                if (not t or t.startswith("$") or "::" in t
-                        or "/" in t or "\\" in t
-                        or t.upper() in _TLL_KEYWORDS or t.startswith("-")):
+                if not t or t.startswith("$") or t.upper() in _TLL_KEYWORDS \
+                        or t.startswith("-"):
+                    continue
+                if "::" in t:
+                    # 导入目标 ns::name：external_ 前缀是 cmake_helpers 等
+                    # 外部包装层的通用约定——剥前缀后的名字是高置信外部库
+                    # 声明（tdesktop 全部三方库都走这条路，find_package 不可见）。
+                    # PkgConfig::X 已由 pkg_check_modules 覆盖；Qt6::/项目内
+                    # lib_* 目标不是外部包声明，跳过。
+                    ns, _, tgt = t.partition("::")
+                    tgt = tgt.strip('"')
+                    tl = tgt.lower()
+                    if (ns.lower() == "pkgconfig"
+                            or not re.fullmatch(r"[A-Za-z0-9_.+-]+", tgt)
+                            or not tl.startswith("external_")
+                            or tl in defined
+                            or tgt.lower() in defined
+                            or tl[len("external_"):].startswith(("qt", "kf"))):
+                        continue
+                    base = tgt[len("external_"):]
+                    _add_raw_lib(raw, base,
+                                 "target_link_libraries external-target", rel,
+                                 ext_target=True)
+                    continue
+                if ("/" in t or "\\" in t):
                     continue
                 _add_raw_lib(raw, t, "target_link_libraries", rel)
         for m in _FINDLIB_RE.finditer(text):
@@ -919,6 +1385,12 @@ def _detect_cmake_raw_links(root: Path, cmake_files: List[str]):
                     continue
                 if re.search(r"_(LIBRARY|LIBRARIES|LIB|LIBS)$", t):
                     continue
+                # 全大写+下划线的 token 是 CMake 变量/关键字（如 krita
+                # FindQUAZIP.cmake 误入参数列表的 WIN32_DEBUG_POSTFIX），
+                # 不是库名候选；单字符 token（如上面关键字后的取值 d）
+                # 也几乎不可能是磁盘上的库名
+                if re.fullmatch(r"[A-Z][A-Z0-9_]*_+[A-Z0-9_]*", t) or len(t) == 1:
+                    continue
                 _add_raw_lib(raw, t, "find_library", rel)
     for name in defined:      # 项目内目标不算外部依赖
         raw.pop(name, None)
@@ -933,7 +1405,9 @@ def _detect_fetched_deps(root: Path, cmake_files: List[str]) -> List[Dict]:
     out: List[Dict] = []
     seen = set()
     for rel in cmake_files:
-        text = _read_text(root / rel)
+        if _is_vendored_path(rel):
+            continue
+        text = _strip_cmake_comments(_read_text(root / rel))
         for m in _FETCHED_DECLARE_RE.finditer(text):
             cmd, name, args = m.group(1), m.group(2), m.group(3)
             um = _FETCH_URL_RE.search(args)
@@ -1067,8 +1541,11 @@ def _detect_env_installs(root: Path, ci_files: List[str]) -> List[Dict]:
     交叉核对信源；发行版包名（libfoo-dev）需映射回库名使用。
     """
     out: Dict[str, Dict] = {}
-    tok_re = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.@+-]*")
-    skip = {"sudo", "update", "install", "install-recommends"}
+    # 含前导 '-' 的 token 也捕获（apt install -y 的 -y 不能因首字符截断
+    # 而被误读成包名 y，strawberry CI 实证）
+    tok_re = re.compile(r"-?[A-Za-z0-9][A-Za-z0-9_.@+-]*")
+    skip = {"sudo", "update", "install", "install-recommends", "upgrade",
+            "dist-upgrade"}
     for rel in ci_files:
         text = _read_text(root / rel).replace("\\\n", " ")
         for m in re.finditer(r"(?:apt(?:-get)?|brew|pacman)\b[^\n]*", text):

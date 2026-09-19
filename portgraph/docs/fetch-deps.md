@@ -78,6 +78,8 @@ manifest 中每个依赖条目带 `status`，agent 按下表决策：
       //                    test=测试框架（不进发行包）
       //                    build-tool=CMake 内置/主机构建工具
       //                    （OpenMP 随 NDK、ECM 构建机安装即可）
+      //                    vendored=源码自带依赖（require_source_dep，
+      //                    随项目源码编译，不下载不下钻）
       // 带版本范围/REQUIRED 语义的精确分类用 `deps` 命令的报告
       "artifact_url": "https://harmonybrew.atomgit.com/bottles/openssl@3-3.6.4.arm64_ohos.bottle.tar.gz",
       "sha256": "verified",

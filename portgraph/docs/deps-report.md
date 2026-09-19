@@ -24,11 +24,11 @@ link 又因被 mpfr 传递依赖而出现在 runtime）：
 
 | role | 含义 | 缺失后果 | 来源证据 |
 |---|---|---|---|
-| `link` | **编译产物依赖**：目标侧 headers + .so/.a，交叉编译/链接应用时必须存在 | 编译/链接失败 | `find_package`、`pkg_check_modules`、`target_link_libraries` 裸名/`-lfoo`、`find_library`、Conan/vcpkg 清单、源码 `#include` 第三方库头文件、qmake `LIBS`/`PKGCONFIG`、meson `dependency()`、autotools `PKG_CHECK_MODULES`/`AC_CHECK_LIB`、自定义包装函数 `PACKAGE`/`LIBRARY` 声明（如 qTox `search_dependency`）、KF 组件 |
+| `link` | **编译产物依赖**：目标侧 headers + .so/.a，交叉编译/链接应用时必须存在 | 编译/链接失败 | `find_package`、`pkg_check_modules`、`target_link_libraries` 裸名/`-lfoo`、`find_library`、Conan/vcpkg 清单、源码 `#include` 第三方库头文件、qmake `LIBS`/`PKGCONFIG`、meson `dependency()`、autotools `PKG_CHECK_MODULES`/`AC_CHECK_LIB`、自定义包装函数 `PACKAGE`/`LIBRARY` 声明（如 qTox `search_dependency`）、依赖清单函数 `require_dep(…)`（如 muse_deps 引擎）、KF 组件 |
 | `build-tool` | **编译器/构建工具依赖**：构建机运行，不部署到设备 | 构建无法进行（交叉编译产物不受影响） | `cmake_minimum_required`/`meson_version`、C++ 标准、`find_program`、`execute_process/add_custom_command COMMAND`、`find_package(ECM/gettext/OpenMP/…)` |
 | `runtime` | **运行时依赖**：设备侧 .so，不参与编译但缺了跑不起来 | 部署后 dlopen/链接失败 | link 依赖的传递闭包（hb runtime 边）、`dlopen`/`QLibrary`/`QPluginLoader` 字面量 |
 | `test` | 测试专用，不进发行包 | 测试无法构建 | `find_package(GTest/Catch2/…)`、`enable_testing` |
-| `vendored` | 项目内自带源码，随项目编译，无需外部产物 | 无（锁定提交在仓库内） | `.gitmodules`、`3rdparty/` 等目录、`FetchContent_Declare`/`ExternalProject_Add`/`CPMAddPackage`（含 GIT_TAG/VERSION 锁定）、meson `subproject()` |
+| `vendored` | 项目内自带源码，随项目编译，无需外部产物 | 无（锁定提交在仓库内） | `.gitmodules`、`3rdparty/` 等目录、`FetchContent_Declare`/`ExternalProject_Add`/`CPMAddPackage`（含 GIT_TAG/VERSION 锁定）、`require_source_dep(…)` 依赖清单声明（如 muse_deps 引擎）、meson `subproject()` |
 | `provided` | Qt 模块等由 Qt SDK / 鸿蒙框架提供 | 无（随 Qt for HarmonyOS 部署） | `QT +=`、`find_package(Qt5/6 COMPONENTS …)`、`#include <Qt…>`、meson `dependency('qt5'/'qt6', modules: …)` |
 | `env` | CI/脚本声明的**构建机环境清单**（信息性，混合工具与库，作交叉核对信源） | — | `.github`/`.ci`/顶层 `*.sh` 中 `apt/brew/pacman install` 包名 |
 
@@ -202,7 +202,12 @@ flowchart TB
 
 - **性能口径**：deps 报告内所有 runtime 闭包 BFS 共享同一份节点/出边缓存
   （`_GraphCache`），图查询总量 O(V+E)；此前每个 link 依赖独立查库，
-  200 依赖 × 深链图实测 24 万次 SQL 查询
+  200 依赖 × 深链图实测 24 万次 SQL 查询（krita 实测：node 查询命中率
+  83%，analyze 阶段仅 0.13s，已非瓶颈）。语料外泛化测试（2026-09）
+  后的全流程瓶颈在源码扫描：平台接口规则加**字面量锚点前置过滤**
+  （无锚点必无匹配，语义不变），krita（35MB 源码）deps 全流程
+  12.4s → 3.1s；剩余热点：锚点 any() 扫描本身与各检测器重复读文件
+  （后续可做共享读缓存）
 
 - **版本信息来自构建文件原文**：`find_package` 参数、pkg-config spec、
   meson `version:`、autotools `PKG_CHECK_MODULES`、Conan/vcpkg 清单、
@@ -220,6 +225,32 @@ flowchart TB
   `kb_seed.PKG_ALIASES`（libavcodec→ffmpeg、xkbcommon→libxkbcommon、
   pcsc→pcsc-lite 等）重试，同库异名不再产生 pkg-unknown 幽灵节点——
   analyze / fetch-deps / deps 三个命令的名称解析口径因此一致
+- **同库异名归并 + 去分隔符兑底解析**：find_package 的 CamelCase 压平名
+  （`LibtorrentRasterbar` → `libtorrentrasterbar`）与 pkg-config 连字符名
+  （`libtorrent-rasterbar`）指同一库，扫描期按去分隔符键分组归并为一个
+  节点（不再产生重复幽灵节点/重复 need_port）；仍未命中时按
+  `kb_seed.build_dashless_index`（仅收 hb:/cmdpkgs: 已知包源，键长 ≥6
+  防碰撞）兑底解析到已知连字符包名
+- **CMake 选项守卫（默认 OFF）内的声明标 optional**：`option` /
+  `feature_option` / `feature_option_dependent` / `cmake_dependent_option`
+  默认值为 OFF 的选项，其 `if(<OPTION>)` 正向守卫内的
+  find_package/pkg_check_modules 视为默认构建不含（e2e qBittorrent
+  `if (SYSTEMD)` 复盘）：deps 报告该条目 `required=false` + 注记；
+  `analyze`/`fetch-deps` 连 **optional 边**（不进入 runtime 闭包与
+  可移植性分析）；Find<Name>.cmake 模块文件继承 find_package(Name)
+  的守卫；同一包必需声明点与可选声明点并存时按必需（保守）。注意
+  `else`/`elseif` 分支与 function/macro 体内不判定（保守视为必需）
+- **共享解析阶梯（kb_seed.resolve_pkg_name）**：deps 报告与扫描期
+  （project_scanner）共用同一解析函数，依次尝试：
+  ① 别名表 `kb_seed.PKG_ALIASES`（hb 包名口径，如 sqlite3→sqlite、
+  libavfilter→ffmpeg、gio-2.0→glib；**优先于原名**，使同库异名归并到
+  同一节点，消除 sqlite3/sqlite 双产物重复下载）→ ② 原名 / 补 lib 前缀 /
+  去 lib 前缀 → ③ 去 pkg-config 版本后缀（glib-2.0→glib）→ ④ 去
+  find_library 构建形态后缀（jpeg-static→jpeg、libFLAC_dynamic→flac）；
+  同库异名不再产生 pkg-unknown 幽灵节点——analyze / fetch-deps / deps
+  三个命令的名称解析口径因此一致（未命中时幽灵节点用别名规范名，
+  botan3/botan-3 合一）；构建工具/平台接口名（python3/ecm/systemd）
+  在扫描期直接跳过，不建幽灵
 - 工具链检测只记**已知工具名或命中特征后缀**（`*-config`/`*-scanner`/
   `*-codegen`/`glib-*`）的 `COMMAND`/`find_program` token，避免把任意
   可执行名当依赖
@@ -231,8 +262,11 @@ flowchart TB
   函数名须由项目 function()/macro() 定义、调用处带 `PACKAGE <名>` 才
   识别；其他自定义包装形式不保证覆盖
 - `target_link_libraries` 排除项目内目标（add_library/add_executable）、
-  `Foo::Bar` 导入目标、`${VAR}`/生成器表达式、路径与链接 flag，只留
-  裸库名并按 `.lib/.so/.a` 归一
+  `${VAR}`/生成器表达式、路径与链接 flag，只留裸库名并按 `.lib/.so/.a` 归一；
+  `ns::external_<name>` 导入目标（cmake_helpers 等外部包装层约定）剥
+  `external_` 前缀后作为高置信外部依赖收录（`ext_target` 标记；tdesktop
+  全部三方库都走这条路）；其余 `Foo::Bar`（Qt5::/PkgConfig::/项目内
+  lib_*）不当作外部包声明
 
 ## fetch-deps manifest 的 role 字段
 
@@ -262,6 +296,11 @@ REQUIRED/OPTIONAL 语义的精确分类用 `deps` 报告。
 - Conan 范围检查为近似（取首个 `>=x`）；`<y` 上界不参与比较
 - `target_link_libraries` 裸名无法区分"外部库"与"由自定义 Find 模块提供
   的目标"；`${VAR}` 引用的链接项完全不可见（CI 清单交叉核对可部分补漏）
+- **未初始化子模块盲区**：shallow clone 不拉取 submodule 时，子模块内的
+  find_package/集成选择逻辑不可见（tdesktop 的 cmake/ 即 cmake_helpers：
+  breakpad/crashpad 的二选一集成在其内部实现，主仓库只能看到
+  external_crash_reports 包装目标）。完整方案需 clone --recurse-submodules
+  或按 .gitmodules 提示的缺失路径降级标注，当前版本作为已知残留
 - CI 环境清单是发行版打包名（libfoo-dev），映射回库名为近似；且只在
   `.github/`、`.ci/`、顶层 `*.sh` 范围内收集
 - meson `subproject()` 只有名字，版本取决于 subprojects/*.wrap 内容（未

@@ -1,51 +1,22 @@
 {
  "reclassify": [
   {
-   "oracle": "openal",
+   "oracle": "breakpad",
    "from": "readme-stale",
    "to": "missed-dep",
-   "reason": "Telegram/CMakeLists.txt:100 target_link_libraries(Telegram … desktop-app::external_openal)（词边界 grep 匹配不到前缀目标名）→ portgraph 漏检"
-  },
-  {
-   "oracle": "webrtc",
-   "from": "readme-stale",
-   "to": "missed-dep",
-   "reason": "Telegram/cmake/lib_tgcalls.cmake:212、td_ui.cmake:739 target_link_libraries(… desktop-app::external_webrtc) → portgraph 漏检"
-  },
-  {
-   "oracle": "xxhash",
-   "from": "readme-stale",
-   "to": "missed-dep",
-   "reason": "Telegram/CMakeLists.txt:101 target_link_libraries(… desktop-app::external_xxhash)，且 .gitmodules 声明 ThirdParty/xxHash 子模块 → portgraph 漏检"
-  },
-  {
-   "oracle": "qr-code-generator",
-   "from": "readme-stale",
-   "to": "missed-dep",
-   "reason": "Telegram/CMakeLists.txt:96 target_link_libraries(… desktop-app::external_qr_code_generator) → portgraph 漏检"
-  },
-  {
-   "oracle": "ada",
-   "from": "readme-stale",
-   "to": "missed-dep",
-   "reason": "Telegram/cmake/td_iv.cmake:175 target_link_libraries(td_iv … desktop-app::external_ada) → portgraph 漏检"
+   "reason": "主集成位于未初始化的 cmake/（cmake_helpers）子模块：Linux 侧经 external_crash_reports 包装（CMakeLists.txt:97 链接、cmake_helpers 内部实现 breakpad/crashpad 二选一），主仓库仅 macstore 段 target_link_frameworks(Telegram PRIVATE Breakpad)（:2381，平台守卫内）→ 克隆未初始化子模块导致扫描范围外，属工具残留缺口（见 TEST-REPORT）"
   },
   {
    "oracle": "crashpad",
    "from": "readme-stale",
    "to": "missed-dep",
-   "reason": "Telegram/CMakeLists.txt:2349 find_program(CRASHPAD_HANDLER crashpad_handler)（macOS 段）+ :97 external_crash_reports → 漏检（主集成在缺失 cmake/ 子模块）"
-  },
-  {
-   "oracle": "breakpad",
-   "from": "readme-stale",
-   "to": "missed-dep",
-   "reason": "Telegram/CMakeLists.txt:2381 target_link_frameworks(Telegram PRIVATE Breakpad)（macstore 段）；Linux 侧经缺失子模块的 external_crash_reports 集成 → 漏检"
+   "reason": "主集成位于未初始化的 cmake/（cmake_helpers）子模块：macOS 段 find_program(CRASHPAD_HANDLER crashpad_handler)（:2349）+ external_crash_reports（:97）→ 克隆未初始化子模块导致扫描范围外，属工具残留缺口（见 TEST-REPORT）"
   }
  ],
  "notes": [
-  "核心发现：tdesktop 的外部依赖几乎全部以 desktop-app::external_* 前缀目标名经 target_link_libraries 集成，真正的 find_package 位于未初始化的 cmake/（cmake_helpers）子模块——portgraph 的 CMake 包检测对此类工程接近失明，openssl/zlib/ffmpeg 仅靠 include 启发式检出；建议扫描器增加 target_link_libraries 目标名解析（剥 external_/lib_/命名空间前缀）并提取 .gitmodules 子模块依赖",
-  "opus/hunspell/liblzma/gsl/range-v3/lzma-sdk 的『README过时』并非 README 过时：均为 vendored 子模块（.gitmodules 声明）或经缺失的 cmake_helpers/外部 Libraries 目录集成，仓库内构建文件确无裸名引用，属当前扫描范围之外",
-  "harness 取证 grep 的词边界（\\b）无法匹配 external_zlib/external_openal 等下划线连写目标名，曾致 zlib 被误判 ★误报（实际 SourceFiles/_other/packer.h:18 有 #include <zlib.h>，且 4 处 target_link_libraries 链接 external_zlib）；建议 grep 变体增加剥前缀形式（external_/lib_）"
+  "本轮（tdesktop deps-test）已修复：扫描器现解析 target_link_libraries 的 ns::external_<name> 导入目标名（剥前缀→raw_libs ext_target）并连边/建幽灵，openal/xxhash/webrtc/ada/qr-code-generator 等不再需要人工重分类",
+  "gsl/range-v3/hunspell 等为 .gitmodules 自带子模块（vendored，随项目编译），harness 现按 .gitmodules 证据自动归 vendored 类",
+  "breakpad/crashpad 的残留缺口根因：shallow clone 未初始化子模块（cmake/ 即 cmake_helpers），其内部的 find_package/breakpad-cp 选择逻辑不可见；完整方案需 'clone --recurse-submodules' 或按 .gitmodules 提示的缺失路径降级处理，见 TEST-REPORT 残留项",
+  "lzma-sdk/liblzma/opus：主仓库构建文件确无引用（liblzma/opus 由 cmake_helpers 的外部 Libraries 预编译目录或 tg_owt 栈带入），readme-stale 归类符合当前扫描范围事实"
  ]
 }
