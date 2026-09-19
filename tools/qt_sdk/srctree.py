@@ -148,7 +148,11 @@ def _restore_exec_bits(dest: Path) -> int:
         batch = fixed[i:i + 200]
         subprocess.run(["git", "update-index", "--chmod=+x", "--"] + batch,
                        cwd=str(dest), capture_output=True, text=True)
-    subprocess.run(["git", "commit", "-q", "-m",
+    # -c identity guards: fresh machines without user.name/email would
+    # otherwise fail the commit silently and leave a dirty tree for SV1
+    subprocess.run(["git", "-c", "user.name=qt-sdk-forge",
+                    "-c", "user.email=qt-sdk-forge@localhost",
+                    "commit", "-q", "-m",
                     "fix: restore executable bits lost in initial import "
                     "(shebang scripts) [auto: qt-sdk-forge src-clone]"],
                    cwd=str(dest), capture_output=True, text=True)

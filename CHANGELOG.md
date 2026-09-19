@@ -15,7 +15,7 @@
 
 - **MINOR** 新增执行层（Execution Plane）：`tools/qt-ohos-run.py` 统一 CLI + `tools/qt_ohos/` 引擎（纯标准库实现），把迁移知识变成可执行、可恢复、可验证、可沉淀的工程闭环
   - `scan`：项目识别 + Qt 能力扫描 + 三方依赖扫描 + `knowledge/rules/` 18 条机器规则风险报告
-  - `analyze-log`：`knowledge/errors/` 36 条 QOH 错误模式自动诊断（与 `problems/` 一一对应）
+  - `analyze-log`：`knowledge/errors/` 41 条 QOH 错误模式自动诊断（与 `problems/` 一一对应；36 条原有 + 5 条 Linux 源码编译沉淀，见下）
   - 状态机 + checkpoint/resume：目标项目 `.qt-ohos/`（state/scan/plan/changes/logs/patches）
   - Verification Gate G0-G12（`verify`）：成功由工具判定，TIMEOUT 永远不是 PASS
   - Source tracking：白名单自动修复（B9 `:!ohos` 作用域、B10 AUTORCC）+ patch 固化/可回滚
