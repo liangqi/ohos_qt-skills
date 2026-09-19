@@ -121,6 +121,11 @@ VENDORED_DIR_NAMES = ("3rdparty", "thirdparty", "third_party", "third-party",
 _TARGET_LINK_RE = re.compile(r"target_link_libraries\s*\(([^)]*)\)", re.I | re.S)
 _ADD_TARGET_RE = re.compile(
     r"\b(?:qt\d+_)?add_(?:library|executable)\s*\(\s*([A-Za-z0-9_.:-]+)")
+# macro/函数名定义（body 内调用 add_library 的包装器，如 krita 的
+# kis_add_library(kritaui SHARED ...)：其首参即目标名）
+_MACRO_DEF_RE = re.compile(
+    r"\b(?:macro|function)\s*\(\s*([A-Za-z0-9_.:-]+)", re.I)
+_END_BLOCK_RE = re.compile(r"^\s*end(?:macro|function)\b", re.I | re.M)
 _TLL_KEYWORDS = {"PRIVATE", "PUBLIC", "INTERFACE", "DEBUG", "OPTIMIZE",
                  "RELEASE", "GENERAL", "OPTIONAL", "LINK_PUBLIC",
                  "LINK_PRIVATE", "LINK_INTERFACE_LIBRARIES"}
@@ -1148,10 +1153,15 @@ def _ver_key(v):
 def _detect_dynamic_loads(root: Path, info: Dict) -> List[Dict]:
     """源码中的运行时动态加载目标（仅字符串字面量，变量拼接无法静态确定）。"""
     targets: Dict[str, List[str]] = {}
+    # 子串预过滤：三个目标 API 名至少出现一个才跑正则（大仓库实测占
+    # 扫描总耗时 1/3，多数文件不含任何动态加载）
+    prefilter = ("dlopen", "QLibrary", "QPluginLoader")
     for src in info["sources"]:
         if src["ext"] not in TEXT_SCAN_EXTS:
             continue
         text = _read_text(root / src["path"])
+        if not any(k in text for k in prefilter):
+            continue
         for rx, how in ((_DLOPEN_RE, "dlopen"), (_QLIBRARY_RE, "QLibrary"),
                         (_QPLUGINLOADER_RE, "QPluginLoader")):
             for m in rx.finditer(text):
@@ -1273,13 +1283,40 @@ def _detect_cmake_raw_links(root: Path, cmake_files: List[str]):
     frameworks: Dict[str, List[str]] = {}
     texts: Dict[str, str] = {}
     defined = set()
+    lib_macros = set()      # body 内调用 add_library 的 macro/函数名
     for rel in cmake_files:
         if _is_vendored_path(rel):
             continue  # vendored 三方自己的链接声明不算应用依赖
         text = _strip_cmake_comments(_read_text(root / rel))
         texts[rel] = text
+        # 包装器检测：macro/function 定义块内出现 add_library( =>
+        # 调用 <wrapper>(<target> ...) 也定义项目内目标
+        for dm in _MACRO_DEF_RE.finditer(text):
+            body = text[dm.end():]
+            em = _END_BLOCK_RE.search(body)
+            if em and "add_library(" in body[:em.start()]:
+                lib_macros.add(dm.group(1).lower())
+    # set(<var> <字面量>) 变量表：解析 add_library(${VAR} ...) 的目标名
+    vart: Dict[str, str] = {}
+    for text in texts.values():
+        for m in re.finditer(
+                r"^\s*set\s*\(\s*(\w+)\s+\"?([\w.]+)\"?\s*\)",
+                text, re.M):
+            vart.setdefault(m.group(1), m.group(2))
+    for rel, text in texts.items():
         for m in _ADD_TARGET_RE.finditer(text):
-            defined.add(m.group(1).lower())
+            tgt = m.group(1)
+            if tgt.startswith("${"):
+                # add_library(${VAR} ...)：用 set(VAR x) 变量表解析目标名
+                tgt = vart.get(tgt[2:-1].strip(), "")
+            if tgt:
+                defined.add(tgt.lower())
+        if lib_macros:
+            for mw in lib_macros:
+                for m in re.finditer(
+                        r"\b%s\s*\(\s*([A-Za-z0-9_.:-]+)" % re.escape(mw),
+                        text, re.I):
+                    defined.add(m.group(1).lower())
     for rel, text in texts.items():
         for m in _TARGET_LINK_RE.finditer(text):
             args = _strip_cmake_comments(m.group(1))
@@ -1340,6 +1377,12 @@ def _detect_cmake_raw_links(root: Path, cmake_files: List[str]):
                 if in_skip or "$" in t:
                     continue
                 if re.search(r"_(LIBRARY|LIBRARIES|LIB|LIBS)$", t):
+                    continue
+                # 全大写+下划线的 token 是 CMake 变量/关键字（如 krita
+                # FindQUAZIP.cmake 误入参数列表的 WIN32_DEBUG_POSTFIX），
+                # 不是库名候选；单字符 token（如上面关键字后的取值 d）
+                # 也几乎不可能是磁盘上的库名
+                if re.fullmatch(r"[A-Z][A-Z0-9_]*_+[A-Z0-9_]*", t) or len(t) == 1:
                     continue
                 _add_raw_lib(raw, t, "find_library", rel)
     for name in defined:      # 项目内目标不算外部依赖
@@ -1491,8 +1534,11 @@ def _detect_env_installs(root: Path, ci_files: List[str]) -> List[Dict]:
     交叉核对信源；发行版包名（libfoo-dev）需映射回库名使用。
     """
     out: Dict[str, Dict] = {}
-    tok_re = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.@+-]*")
-    skip = {"sudo", "update", "install", "install-recommends"}
+    # 含前导 '-' 的 token 也捕获（apt install -y 的 -y 不能因首字符截断
+    # 而被误读成包名 y，strawberry CI 实证）
+    tok_re = re.compile(r"-?[A-Za-z0-9][A-Za-z0-9_.@+-]*")
+    skip = {"sudo", "update", "install", "install-recommends", "upgrade",
+            "dist-upgrade"}
     for rel in ci_files:
         text = _read_text(root / rel).replace("\\\n", " ")
         for m in re.finditer(r"(?:apt(?:-get)?|brew|pacman)\b[^\n]*", text):

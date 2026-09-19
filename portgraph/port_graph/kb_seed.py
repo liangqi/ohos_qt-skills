@@ -254,7 +254,8 @@ PKG_ALIASES: Dict[str, str] = {
     "pcsc": "pcsc-lite", "libpcsclite": "pcsc-lite",
     "pcsclite": "pcsc-lite",
     # pkg-config 名 → CMake find_package 名（同库双声明合并）
-    "libtorrent-rasterbar": "LibtorrentRasterbar",
+    # 注：libtorrent-rasterbar 无鸿蒙包，无需别名；同库异名归并由
+    # 去分隔符分组（_dashless_key）与 dashless 兑底解析覆盖
     # ---- e2e tdesktop（tier C）复核确认的缺口 ----
     # external_* 导入目标链接名（cmake_helpers 约定，剥前缀后的裸名）→ 包名
     "openal": "openal-soft",          # OpenAL Soft（kcat），pkg-config 名 openal
@@ -275,6 +276,55 @@ PKG_ALIASES: Dict[str, str] = {
     "intl": "gettext",           # CMake Intl 模块 → gettext(libintl)
     "utfcpp": "utf8cpp",         # require_source_dep(utfcpp) → hb utf8cpp
     "nlohmann_json": "nlohmann-json",  # require_dep 名 → hb nlohmann-json
+    # ── 语料外泛化测试补充（QOwnNotes/strawberry/krita 实证，2026-09）──
+    # glib 家族 pkg-config 模块（libgio/gobject/gthread/gmodule 随 glib
+    # 包发布，cmd-pkgs glib 2.88.0 与 hb glib bottle 内均实测含对应 .pc）
+    "gio-2.0": "glib", "gio-unix-2.0": "glib", "gobject-2.0": "glib",
+    "gthread-2.0": "glib", "gmodule-2.0": "glib",
+    "gmodule-no-export-2.0": "glib",
+    # gstreamer 核心模块（cmd-pkgs gstreamer tarball 实测含
+    # libgst{base,controller,net,check}-1.0.so 与对应 .pc；
+    # gstreamer-app/audio/pbutils/tag 属 gst-plugins-base，不在包内，
+    # 不加别名以兑底 need_port 定性）
+    "gstreamer-base-1.0": "gstreamer", "gstreamer-net-1.0": "gstreamer",
+    "gstreamer-controller-1.0": "gstreamer",
+    # fftw 精度/线程变体（同名包内，cmdpkgs:fftw 3.3.10）
+    "fftw3": "fftw", "fftw3f": "fftw", "fftw3l": "fftw", "fftw3q": "fftw",
+    "fftw3_omp": "fftw", "fftw3f_omp": "fftw", "fftw3l_omp": "fftw",
+    "fftw3q_omp": "fftw", "fftw3_threads": "fftw",
+    "fftw3f_threads": "fftw", "fftw3l_threads": "fftw",
+    "fftw3q_threads": "fftw",
+    # libav* 遗漏项（libavfilter 缺失致 krita 误报 need_port）
+    "libavfilter": "ffmpeg", "libswresample": "ffmpeg",
+    "libpostproc": "ffmpeg",
+    # 各库常见变体名（hb/cmd-pkgs 包名口径）
+    "gif": "giflib",                       # krita find_package(GIF)
+    "jpegxl": "libjxl", "libjxl_threads": "libjxl",  # cmdpkgs:libjxl
+    "turbojpeg": "jpeg-turbo", "libturbojpeg": "jpeg-turbo",
+    "turbojpeg-static": "jpeg-turbo", "jpeg-static": "jpeg-turbo",
+    "webpdecoder": "webp", "webpdemux": "webp", "webpmux": "webp",
+    "sharpyuv": "webp", "libsharpyuv": "webp",
+    "libopenjp2": "openjpeg", "openjp2": "openjpeg",
+    "openjpip": "openjpeg", "openjpip_server": "openjpeg",
+    "libopenjpip": "openjpeg", "libopenjpip_server": "openjpeg",
+    "harfbuzz-icu": "harfbuzz",
+    "eigen3": "eigen",                      # krita find_package(Eigen3)
+    "botan3": "botan-3",                    # QOwnNotes find_package(Botan3)
+    # OpenEXR 3.x 组件（hb openexr bottle 实测含 libIex/IlmThread/
+    # OpenEXR/Core/Util；Half 在 3.x 归 imath）
+    "iex": "openexr", "iexmath": "openexr", "ilmimf": "openexr",
+    "ilmimfutil": "openexr", "ilmthread": "openexr",
+    "openexrcore": "openexr", "openexrutil": "openexr",
+    "half": "imath",
+    # gsl 的 cblas 组件（hb/cmd-pkgs gsl 同包发布）
+    "gslcblas": "gsl", "cblas": "gsl",
+    "jpeg": "jpeg-turbo",                   # hb 包名为 jpeg-turbo
+    # lcms2（hb 包名 little-cms2 / cmd-pkgs 名 lcms2）
+    "lcms-2": "lcms2", "lcms2": "lcms2",
+    "lcms-2_fast_float": "lcms2", "lcms2_fast_float": "lcms2",
+    # Ogg（libogg 包）
+    # 同库异名归并（无包源时幽灵节点用规范名，避免双份 need_port）
+    "quazip-qt": "quazip", "kdcrawqt6": "kdcraw",
 }
 
 
@@ -372,6 +422,65 @@ def resolve_package(conn, hint_name: str) -> Optional[Dict]:
         if best and best["port_status"] == "ported":
             break
     return best
+
+
+def resolve_pkg_name(conn, name: str,
+                      cache: Optional[Dict] = None) -> Optional[Dict]:
+    """库线索名（find_package/pkg-config/裸链接）→ 已入库包节点。
+
+    deps_report 与 project_scanner 的共享解析口径，依次尝试：
+      1. 别名表 PKG_ALIASES（hb 包名口径，如 sqlite3→sqlite、
+         libavfilter→ffmpeg；优先于原名，使同库异名归并到同一节点，
+         避免 sqlite3/sqlite 双产物重复下载）
+      2. 原名 / 补 lib 前缀（xkbcommon→libxkbcommon）/ 去 lib 前缀
+      3. 去 pkg-config 版本后缀（glib-2.0→glib）及其组合
+    扫描期与报告期共用，消除 fetch-deps 幽灵节点而 deps 报告能解析
+    的口径分裂（libsparsehash/gio-2.0 实证）。
+    cache: 单次分析内缓存（含 None 未命中；分析期间图不变）。
+    """
+    if conn is None:
+        return None
+    key = (name or "").lower()
+    if not key:
+        return None
+    if cache is not None and key in cache:
+        return cache[key]
+    node = None
+    alias = PKG_ALIASES.get(key)
+    if alias and alias.lower() != key:
+        node = resolve_package(conn, alias.lower())
+    if node is None:
+        stripped = re.sub(r"-\d+(\.\d+)*$", "", key)
+        cands = [key]
+        if not key.startswith("lib"):
+            cands.append("lib" + key)
+        if key.startswith("lib"):
+            cands.append(key[3:])
+        if stripped != key:
+            cands.append(stripped)
+            if not stripped.startswith("lib"):
+                cands.append("lib" + stripped)
+        # find_library NAMES 的构建形态后缀（libFLAC_static / jpeg-static
+        # / libFLAC_dynamic）→ 基础名
+        for base in list(cands):
+            s2 = re.sub(r"[_-](static|dynamic|debug)$", "", base)
+            if s2 != base and s2 not in cands:
+                cands.append(s2)
+        # 展开各候选的别名（libfftw3 → 去前缀 fftw3 → 别名 fftw；
+        # libwebpmux → webpmux → webp）
+        expanded: List[str] = []
+        for cand in cands:
+            expanded.append(cand)
+            a = PKG_ALIASES.get(cand)
+            if a and a.lower() not in expanded:
+                expanded.append(a.lower())
+        for cand in expanded:
+            node = resolve_package(conn, cand)
+            if node:
+                break
+    if cache is not None:
+        cache[key] = node
+    return node
 
 
 def ingest(conn) -> Dict:

@@ -59,10 +59,20 @@ _STRING_ARG_RE = re.compile(r'^"([^"]+)"\s*(?:=>\s*(.+))?$')
 #   name-v1.5.6.tar.gz                                           （v 前缀）
 #   name-20260408.tar.gz                                         （日期版本 ≥6 位）
 #   https://site/ack-v3.10.0                                     （无扩展名，URL 即止）
+#   name-1.2.3-b2-nodocs.tar.xz / ant-1.10.18-bin.tar.xz         （版本后带
+#     -bin/-src 等名称后缀段，boost/antlr 实证）
+#   xxx-0.9.0.crate                                              （Rust crate）
+#   .../tarball/v8.14.18/download.tar.gz                         （版本是独立
+#     路径段而文件名不含版本，chiselapp 实证；作为兜底规则，仅在
+#     文件名锚定未命中时尝试）
 _URL_VER_RE = re.compile(
-    r"[-_/]v?(\d+(?:\.\d+)+(?:[a-zA-Z]\d+)?(?:_\d+)?|\d{6,})"
-    r"(?=\.(?:tar\.(?:gz|bz2|xz|lz)|t(?:gz|bz2|xz)|zip|tar|gz|bz2|xz|jar)"
+    r"[-_/][vV]?(\d+(?:\.\d+)+(?:[a-zA-Z]\d*)?(?:_\d+)?|\d{6,})"
+    r"(?=(?:[-_.][A-Za-z][\w.]*)*\."
+    r"(?:tar\.(?:gz|bz2|xz|lz)|t(?:gz|bz2|xz)|zip|tar|gz|bz2|xz|jar|crate)"
     r"(?:[?#]|$)|$)")
+# 兜底：版本是完整路径段（v1.2.3/），文件名本身不含版本
+_URL_VER_SEG_RE = re.compile(
+    r"[-_/][vV]?(\d+(?:\.\d+)+(?:[a-zA-Z]\d*)?(?:_\d+)?|\d{6,})/")
 
 MACOS_SYSTEM_IFACE = (
     "iface:macos-system", "macOS 系统库绑定", "os-api", "convertible",
@@ -214,6 +224,11 @@ def parse_formula(path: Path) -> Dict:
                 vm = _URL_VER_RE.search(m.group(1))
                 if vm:
                     url_version = vm.group(1)
+                elif url_version is None:
+                    # 兑底：版本作为独立路径段（.../tarball/v8.14.18/xx.tar.gz）
+                    vm = _URL_VER_SEG_RE.search(m.group(1))
+                    if vm:
+                        url_version = vm.group(1)
             continue
         m = _HEAD_RE.match(line)
         if m and info["head_url"] is None:

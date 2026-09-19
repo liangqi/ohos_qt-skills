@@ -202,7 +202,12 @@ flowchart TB
 
 - **性能口径**：deps 报告内所有 runtime 闭包 BFS 共享同一份节点/出边缓存
   （`_GraphCache`），图查询总量 O(V+E)；此前每个 link 依赖独立查库，
-  200 依赖 × 深链图实测 24 万次 SQL 查询
+  200 依赖 × 深链图实测 24 万次 SQL 查询（krita 实测：node 查询命中率
+  83%，analyze 阶段仅 0.13s，已非瓶颈）。语料外泛化测试（2026-09）
+  后的全流程瓶颈在源码扫描：平台接口规则加**字面量锚点前置过滤**
+  （无锚点必无匹配，语义不变），krita（35MB 源码）deps 全流程
+  12.4s → 3.1s；剩余热点：锚点 any() 扫描本身与各检测器重复读文件
+  （后续可做共享读缓存）
 
 - **版本信息来自构建文件原文**：`find_package` 参数、pkg-config spec、
   meson `version:`、autotools `PKG_CHECK_MODULES`、Conan/vcpkg 清单、
@@ -235,6 +240,17 @@ flowchart TB
   可移植性分析）；Find<Name>.cmake 模块文件继承 find_package(Name)
   的守卫；同一包必需声明点与可选声明点并存时按必需（保守）。注意
   `else`/`elseif` 分支与 function/macro 体内不判定（保守视为必需）
+- **共享解析阶梯（kb_seed.resolve_pkg_name）**：deps 报告与扫描期
+  （project_scanner）共用同一解析函数，依次尝试：
+  ① 别名表 `kb_seed.PKG_ALIASES`（hb 包名口径，如 sqlite3→sqlite、
+  libavfilter→ffmpeg、gio-2.0→glib；**优先于原名**，使同库异名归并到
+  同一节点，消除 sqlite3/sqlite 双产物重复下载）→ ② 原名 / 补 lib 前缀 /
+  去 lib 前缀 → ③ 去 pkg-config 版本后缀（glib-2.0→glib）→ ④ 去
+  find_library 构建形态后缀（jpeg-static→jpeg、libFLAC_dynamic→flac）；
+  同库异名不再产生 pkg-unknown 幽灵节点——analyze / fetch-deps / deps
+  三个命令的名称解析口径因此一致（未命中时幽灵节点用别名规范名，
+  botan3/botan-3 合一）；构建工具/平台接口名（python3/ecm/systemd）
+  在扫描期直接跳过，不建幽灵
 - 工具链检测只记**已知工具名或命中特征后缀**（`*-config`/`*-scanner`/
   `*-codegen`/`glib-*`）的 `COMMAND`/`find_program` token，避免把任意
   可执行名当依赖

@@ -1,6 +1,6 @@
 # keepassxc 依赖对账报告（portgraph E2E）
 
-> 生成时间: 2026-09-19T12:13:14Z | 语料: corpus.json#keepassxc | 构建系统: cmake | 源文件: 884
+> 生成时间: 2026-09-19T12:49:13Z | 语料: corpus.json#keepassxc | 构建系统: cmake | 源文件: 884
 > Oracle: INSTALL.md（复核: 已复核，7 条；来源: agent 复核定稿：删除散文链接残留 set-up-build-environment；asciidoctor 依原文（build tools must exist within your PATH + KPXC_FEATURE_DOCS）改判 build；本版 INSTALL.md 仅声明 qt/botan/zlib 三个库，无 libgcrypt/argon2/libsodium/ykpers；vcpkg/xvfb-run 为 prose 提及的工具/测试辅助，不入 oracle）
 
 ## 1. 结论速览
@@ -9,7 +9,7 @@
 |---|---|
 | 可移植性 verdict | **blocked**（阻塞 5 / 未知 2 / 平台排除 0） |
 | 检出召回率 | 100%（3/3 README 运行时依赖） |
-| 检出精确率 | 23% |
+| 检出精确率 | 25% |
 | Bug 候选 | **0**（无） |
 | 依赖闭包 | 40 项（cmd_only 1, covered 1, need_port 1, provided 6, target 1, would_download 30） |
 
@@ -39,7 +39,6 @@
 |---|---|---|---|---|
 | README漏列 | — | libqrencode | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | README漏列 | — | libusb | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
-| README漏列 | — | libx11 | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | README漏列 | — | libxi | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | README漏列 | — | libxkbcommon | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
 | README漏列 | — | libxtst | package d1 | 构建文件引用但 README 未列 → README 不完整（portgraph 正确） |
@@ -60,12 +59,12 @@
 | 一致 | zlib | zlib | package d1 |  |
 | 未知包(正常) | — | openmp | package d1 | pkg-unknown 幽灵节点：find_package 名未解析到已知鸿蒙包（ALIASES 缺口） 【agent: CMakeLists.txt:259 find_package(OpenMP)（无 REQUIRED，命中后仅追加 OpenMP_C(_XX)_FLAGS）是 CMake 内置编译器特性探测而非三方包；OHOS clang 工具链自带 OpenMP runtime，hb-cor |
 
-归类统计：构建工具×4，一致×3，粒度折叠×4，README漏列×10，未知包(正常)×1
+归类统计：构建工具×4，一致×3，粒度折叠×4，README漏列×9，未知包(正常)×1
 
 ## 4. 依赖闭包概览（fetch-deps --dry-run）
 
 - 闭包总数 40 项：cmd_only 1，covered 1，need_port 1，provided 6，target 1，would_download 30
-- 可直下 bottle：minizip、pcsc-lite、qrencode、readline、libx11、zlib、libxkbcommon、libusb、libxi、libxtst、zlib-ng-compat、libpng、libxcb、xorgproto、xkeyboard-config、libxext、libxfixes、python@3.14、libxau、libxdmcp、mpdecimal、openssl@3、sqlite、xz、zstd、gettext、util-linux、musl-compat、lz4、libunistring
+- 可直下 bottle：minizip、pcsc-lite、qrencode、readline、zlib、libxkbcommon、libusb、libxi、libxtst、zlib-ng-compat、libpng、libxcb、xkeyboard-config、libx11、libxext、libxfixes、xorgproto、python@3.14、libxau、libxdmcp、mpdecimal、openssl@3、sqlite、xz、zstd、gettext、util-linux、musl-compat、lz4、libunistring
 - 仅命令获取（cmd_only）：ca-certificates
 - 需自行移植（need_port）：botan
   - botan: ?
@@ -77,7 +76,6 @@
 | botan | package | runtime | unknown | 1 |
 | libqrencode | package | runtime | ported | 1 |
 | libusb | package | runtime | ported | 1 |
-| libx11 | package | runtime | ported | 1 |
 | libxi | package | runtime | ported | 1 |
 | libxkbcommon | package | runtime | ported | 1 |
 | libxtst | package | runtime | ported | 1 |
@@ -98,4 +96,4 @@
 - 对比口径：portgraph 直接依赖（depth-1 边）vs README/INSTALL 声明依赖；闭包仅做产物概览。
 - 归因证据：对未匹配项自动 grep 克隆仓库构建文件（find_package/pkg_check_modules/target_link_libraries/vcpkg 等）。
 - ★ 类（missed-dep / resolution-gap / false-positive）为 bug 候选，需人工确认；其余为预期差异。
-- agent 可读报告：`/root/harmony-workspace/worker3/portgraph/tests/e2e/reports/keepassxc.report.json`
+- agent 可读报告：`/root/harmony-workspace/worker4/portgraph/tests/e2e/reports/keepassxc.report.json`
