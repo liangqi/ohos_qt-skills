@@ -1,36 +1,36 @@
 {
  "schema": "portgraph-e2e-report/1",
  "app": {
-  "key": "keepassxc",
-  "app_id": "app:keepassxc",
-  "name": "keepassxc",
-  "url": "https://github.com/keepassxreboot/keepassxc",
+  "key": "corpus-c",
+  "app_id": "app:corpus-c",
+  "name": "corpus-c",
+  "url": "https://github.com/corpus-c/corpus-c",
   "tier": "B",
   "build_system": "cmake",
   "sources": 884,
-  "repo_path": "workspace/keepassxc"
+  "repo_path": "workspace/corpus-c"
  },
  "generated_at": "2026-09-19T15:13:09Z",
  "verdict": "blocked",
  "blockers": [
   {
    "kind": "unsupported-interface",
-   "node": "app:keepassxc",
+   "node": "app:corpus-c",
    "reason": "使用鸿蒙不支持的平台接口 macOS Cocoa/AppKit（os-api）macOS 专属 UI/系统框架；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (16 处无条件 / 0 处鸿蒙可编译 / 1 处宏守卫排除 / 0 处文件级排除) | src/thirdparty/ykcore/ykcore_osx.c:36[unconditional] #include <IOKit/hid/IOHIDLib.h>; src/thirdparty/ykcore/ykcore_osx.c:37[unconditional] #include <IOKit/hid/IOHIDKeys.h>; src/thirdparty/ykcore/ykcore_osx.c:38[unconditional] #include <IOKit/hid/IOHIDUsageTables.h>］"
   },
   {
    "kind": "unsupported-interface",
-   "node": "app:keepassxc",
+   "node": "app:corpus-c",
    "reason": "使用鸿蒙不支持的平台接口 D-Bus IPC（ipc）鸿蒙无 D-Bus（Qt D-Bus 模块 Out of scope）；需改用系统服务/IPC；同类鸿蒙替代接口: 鸿蒙 IPC/系统服务能力［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (24 处无条件 / 2 处鸿蒙可编译 / 16 处宏守卫排除 / 0 处文件级排除) | tests/util/FdoSecretsProxy.cpp:22[unconditional] const QString& service, const QString& path, const QDBusConnection& connection, ; tests/util/FdoSecretsProxy.h:23[platform-excluded] #include <QtDBus>; tests/util/FdoSecretsProxy.h:96[platform-excluded] const QDBusConnection& connection,］"
   },
   {
    "kind": "unsupported-interface",
-   "node": "app:keepassxc",
+   "node": "app:corpus-c",
    "reason": "使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (12 处无条件 / 0 处鸿蒙可编译 / 17 处宏守卫排除 / 11 处文件级排除) | src/main.cpp:49[platform-excluded] #include <windows.h>; src/thirdparty/ykcore/ykbzero.h:35[platform-excluded] #include <windows.h>; src/thirdparty/ykcore/ykcore_windows.c:37[unconditional] #include <windows.h>］"
   },
   {
    "kind": "unsupported-interface",
-   "node": "app:keepassxc",
+   "node": "app:corpus-c",
    "reason": "使用鸿蒙不支持的平台接口 X11/Xlib 直连（display）鸿蒙无 X11 显示服务；Qt 应用应走 QPA，直连 X11 代码不可移植；同类鸿蒙替代接口: 鸿蒙 WindowStage/XComponent［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (5 处无条件 / 2 处鸿蒙可编译 / 2 处宏守卫排除 / 0 处文件级排除) | src/gui/osutils/nixutils/NixUtils.cpp:45[ohos-active] #include <X11/XKBlib.h>; src/gui/osutils/nixutils/NixUtils.cpp:46[ohos-active] #include <xcb/xproto.h>; src/gui/osutils/nixutils/X11Funcs.cpp:23[unconditional] #include <X11/Xutil.h>］"
   },
   {
@@ -269,7 +269,7 @@
   }
  ],
  "oracle": {
-  "app": "keepassxc",
+  "app": "corpus-c",
   "source": "INSTALL.md",
   "source_note": "agent 复核定稿：删除散文链接残留 set-up-build-environment；asciidoctor 依原文（build tools must exist within your PATH + KPXC_FEATURE_DOCS）改判 build；本版 INSTALL.md 仅声明 qt/botan/zlib 三个库，无 libgcrypt/argon2/libsodium/ykpers；vcpkg/xvfb-run 为 prose 提及的工具/测试辅助，不入 oracle",
   "reviewed": true,
@@ -487,7 +487,7 @@
       "file": "src/CMakeLists.txt",
       "line": 390,
       "strong": true,
-      "text": "target_link_libraries(keepassxc_core Qt6::DBus ${LIBUSB"
+      "text": "target_link_libraries(corpus-c_core Qt6::DBus ${LIBUSB"
      },
      {
       "file": "src/thirdparty/ykcore/CMakeLists.txt",
@@ -517,7 +517,7 @@
       "file": "src/CMakeLists.txt",
       "line": 395,
       "strong": true,
-      "text": "target_link_libraries(keepassxc_gui X11"
+      "text": "target_link_libraries(corpus-c_gui X11"
      },
      {
       "file": "src/autotype/CMakeLists.txt",

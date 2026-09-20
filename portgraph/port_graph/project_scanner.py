@@ -57,7 +57,7 @@ PLATFORM_API_RULES: List[Dict] = [
      "pre": ("dbus/", "QDBusConnection", "QtDBus")},
     {"iface": "iface:alsa",
      # 只认真实 ALSA API 前缀：裸 snd_ 会命中任意变量名
-     # （cutter/rizin 实证：生成的 scanner.c 里 snd_last_ch 变量名
+     # （gen_j/rizin 实证：生成的 scanner.c 里 snd_last_ch 变量名
      # 曾导致整个应用被误判 blocked）
      "re": re.compile(r"#\s*include\s*<\s*alsa/|\bsnd_(pcm|ctl|mixer|seq|"
                        r"rawmidi|card|config|lib|hwdep|timer|input|output|"
@@ -332,12 +332,12 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
     unknown 包节点。require_source_dep（源码自带）→ vendored 边；
     require_tool（主机构建工具）不连边。
 
-    集三轮实测增强（e2e tdesktop/musescore/qbittorrent 复核驱动）：
+    集三轮实测增强（e2e corpus_a/corpus_b/corpus_d 复核驱动）：
     - find_package 命中的构建工具/解释器（python3 等）不建运行时边——
       那是构建期依赖，deps_report 侧归 build-tool 分类；
     - target_link_libraries 的 ns::external_<name> 导入目标名（剥前缀后
       在 raw_libs 里，ext_target=True）：能解析则连边，不能解析且非
-      vendored 子模块则建幽灵节点（高置信声明，如 tdesktop 的全部三方库）；
+      vendored 子模块则建幽灵节点（高置信声明，如 corpus_a 的全部三方库）；
     - 同库异名归并：find_package 的 CamelCase 压平名（LibtorrentRasterbar →
       libtorrentrasterbar）与 pkg-config 连字符名（libtorrent-rasterbar）按
       去分隔符键分组，组内选代表名，避免同库产生重复幽灵节点/重复下载；
@@ -374,8 +374,8 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
     for md in manifest:
         if md["mode"] == "link" and md["name"] not in names:
             names.append(md["name"])
-    # project() 自引用（如 Cutter 插件样例 find_package(Cutter)）：
-    # 不是外部依赖，避免误解析到同名无关包（cmdpkgs:cutter 实证）
+    # project() 自引用（如 gen_j 插件样例 find_package(gen_j)）：
+    # 不是外部依赖，避免误解析到同名无关包（cmdpkgs:gen_j 实证）
     self_names = {n.lower() for n in info.get("cmake_project_names", [])}
     if self_names:
         names = [n for n in names if n.lower() not in self_names]
@@ -444,14 +444,14 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
     seen = set()
     # git 子模块折叠名（提前算：主名单与裸链接名共用）——
     # find_package(Rizin) 而仓库自带 rizin/ 子模块（默认 bundled 构建）
-    # 不建幽灵：源码随项目（cutter 实证）
+    # 不建幽灵：源码随项目（gen_j 实证）
     submodule_folds = _submodule_folds(info.get("git_submodules", []))
 
     # ---- 主名单：同库异名分组（组内代表名 = 能解析到已知包的 >
     #      带分隔符的（pkg-config/hb 命名口径）> 首个出现的）。
     #      分组键取别名表规范化后的去分隔符键：ddjvuapi→djvulibre、
     #      usb-1.0→libusb 这类同库异名凭别名归入同组，不再产生重复
-    #      未知条目（okular 双 djvulibre 幽灵实证）
+    #      未知条目（gen_b 双 djvulibre 幽灵实证）
     dashless_index = kb_seed.build_dashless_index(conn)
     groups: Dict[str, List[str]] = {}
     order: List[str] = []
@@ -497,7 +497,7 @@ def _link_third_party(conn, app_id: str, info: Dict) -> Dict:
     #      在未解析且非 vendored 子模块时建幽灵节点
     for rl in info.get("raw_libs", []):
         name = rl["name"]
-        # 其他平台 if 块内的裸链接声明（konsole if(HAIKU) network、okular
+        # 其他平台 if 块内的裸链接声明（gen_c if(HAIKU) network、gen_b
         # mobile if(ANDROID) -lsoftokn3 等）：默认鸿蒙构建不含，不连边
         if rl.get("platform_block"):
             continue

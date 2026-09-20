@@ -39,3 +39,5 @@ drafts/
 .ab/
 # 根目录误生成的空 DB（真正的主库在 portgraph/workspace/ 下）
 /portgraph/portgraph.db
+# portgraph 运行时依赖图 DB（ingest/scan 生成，不入库）
+portgraph/deps.db

@@ -1,5 +1,5 @@
 {
- "app": "qbittorrent",
+ "app": "corpus-d",
  "source": "INSTALL",
  "source_note": "手工编写：依赖清单在仓库根 INSTALL 文件（无扩展名，corpus oracle_files 误配为 INSTALL.md；且为纯文本编号列表非 markdown 标题，自动提取器无法解析）。已逐条对照 INSTALL 原文复核。",
  "reviewed": true,

@@ -9,7 +9,7 @@
 
 用法:
     python tests/e2e/run_e2e.py list
-    python tests/e2e/run_e2e.py run --project tdesktop [--fresh-db] [--skip-scan] [--no-clone]
+    python tests/e2e/run_e2e.py run --project corpus_a [--fresh-db] [--skip-scan] [--no-clone]
     python tests/e2e/run_e2e.py run --all
 
 产物:
@@ -116,7 +116,7 @@ README_ALIASES = {
     "libxkb": "libxkbcommon", "xkbcommon": "libxkbcommon",
     "qt5-webengine": "qt", "qt6-webengine": "qt",
     "qt5-quickcontrols2": "qt", "qt6-quickcontrols2": "qt",
-    # 同库异名（e2e tdesktop 复核确认）：nayuki QR-Code-generator
+    # 同库异名（e2e corpus_a 复核确认）：nayuki QR-Code-generator
     # = cmd-pkgs libqrcodegen（版本序列同源，1.8.0）
     "qr-code-generator": "libqrcodegen",
 }
@@ -394,7 +394,7 @@ def _word_guard(e: str) -> str:
     """词界保护：字母数字之外均算边界（_:.-@ 等分隔符也算）。
 
     \b 无法命中 external_openal / lib_zlib / ns::openal 这类下划线/
-    冒号连写形式（e2e tdesktop 复核：external_* 前缀目标名曾被漏判），
+    冒号连写形式（e2e corpus_a 复核：external_* 前缀目标名曾被漏判），
     改用环视断言实现分隔符敏感的边界。
     """
     return r"(?<![A-Za-z0-9])" + e + r"(?![A-Za-z0-9])"
@@ -439,7 +439,7 @@ def grep_dep_refs(repo: Path, name_variants: List[str],
         except OSError:
             continue
         rel = str(f.relative_to(repo)).replace("\\", "/")
-        # 强证据：全文本匹配（CMake 命令常跨多行——tdesktop 的
+        # 强证据：全文本匹配（CMake 命令常跨多行——corpus_a 的
         # target_link_libraries 每个链接项独占一行，逐行匹配会漏证据）
         for pat in strict:
             for m in pat.finditer(text):
@@ -479,7 +479,7 @@ def name_variants(disp_or_name: str, node: Optional[Dict] = None) -> List[str]:
             out.append(nm)
             out.append(nm.lower())
         # 节点名含 @version（openssl@3）时追加剥离变体：否则 grep 不到
-        # find_package(OpenSSL) 这类原始声明（e2e qbittorrent 复盘确认）
+        # find_package(OpenSSL) 这类原始声明（e2e corpus_d 复盘确认）
         if "@" in nm:
             out.append(nm.split("@", 1)[0])
         nid = node["id"]

@@ -43,9 +43,9 @@ def clone_repo(url: str, name: Optional[str] = None,
     返回 {path, cloned, reason?}。已存在则复用（cloned=False）。
     失败抛 RuntimeError。
 
-    submodule 浅拉（--depth 1）：musescore 等项目的依赖清单/框架在
-    submodule（muse_deps、muse），不初始化则扫描不到依赖声明
-    （e2e musescore 复核确认）；已有克隆且 submodule 未初始化时也会补拉。
+    submodule 浅拉（--depth 1）：corpus_b 等项目的依赖清单/框架在
+    submodule（corpus_b_deps、corpus_b_core），不初始化则扫描不到依赖声明
+    （e2e corpus_b 复核确认）；已有克隆且 submodule 未初始化时也会补拉。
     """
     err = validate_url(url)
     if err:
@@ -76,7 +76,7 @@ def _init_submodules(target: Path, timeout: int) -> None:
         return
     # --init 必须带 -- 前缀：裸 init 会被 git 当 pathspec（回归：
     # 旧版裸 init 导致复用克隆的 submodule 永远拉不起来，
-    # musescore 扫描范围缺失、deps 大面积漏检，且静默无报错）
+    # corpus_b 扫描范围缺失、deps 大面积漏检，且静默无报错）
     cmd = ["git", "-C", str(target), "submodule", "update", "--init",
            "--depth", "1", "--recursive"]
     try:

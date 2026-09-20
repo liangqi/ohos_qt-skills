@@ -407,10 +407,10 @@
         <label>目标应用
           <span class="select-wrap">
             <select id="app-select">
-              <option value="tdesktop" selected>tdesktop 5.3.2</option>
+              <option value="corpus-a" selected>corpus-a 5.3.2</option>
               <option value="krdc">krdc 23.08</option>
               <option value="filelight">filelight 23.08</option>
-              <option value="musescore">MuseScore 4.5</option>
+              <option value="corpus-b">corpus-b 4.5</option>
             </select>
             <i class="chev" data-icon aria-hidden="true"></i>
           </span>
@@ -444,7 +444,7 @@
 
     <main class="layout">
       <div id="graph-container">
-        <svg class="topo" viewBox="0 0 1110 800" preserveAspectRatio="xMidYMid meet" role="img" aria-label="tdesktop 依赖拓扑：Qt 模块聚合（展开态）与外部依赖">
+        <svg class="topo" viewBox="0 0 1110 800" preserveAspectRatio="xMidYMid meet" role="img" aria-label="corpus-a 依赖拓扑：Qt 模块聚合（展开态）与外部依赖">
           <defs>
             <pattern id="dotgrid" width="22" height="22" patternUnits="userSpaceOnUse">
               <circle class="dot-grid-dot" cx="2" cy="2" r="1.5"></circle>
@@ -464,13 +464,13 @@
           <text class="lbl-combo" x="400" y="212" text-anchor="middle">Qt 模块聚合</text>
           <text class="lbl-combo-sub" x="400" y="229" text-anchor="middle"><tspan class="t-ok">3</tspan> 支持 · <tspan class="t-bad">1</tspan> 阻塞</text>
 
-          <!-- 依赖边：tdesktop → Qt 模块（uses-module） -->
+          <!-- 依赖边：corpus-a → Qt 模块（uses-module） -->
           <path class="edge-strong" d="M 140 384 C 185 350 260 310 345 273" marker-end="url(#arrow-strong)"></path>
           <path class="edge-strong" d="M 145 395 C 230 375 330 355 424 332" marker-end="url(#arrow-strong)"></path>
           <path class="edge-strong" d="M 146 402 C 205 410 260 425 314 433" marker-end="url(#arrow-strong)"></path>
           <path class="edge-strong" d="M 143 412 C 220 450 320 490 413 510" marker-end="url(#arrow-strong)"></path>
 
-          <!-- 依赖边：tdesktop → 外部依赖（runtime；libsecret 为平台条件边） -->
+          <!-- 依赖边：corpus-a → 外部依赖（runtime；libsecret 为平台条件边） -->
           <path class="edge-muted" d="M 143 388 C 170 210 330 85 716 129" marker-end="url(#arrow-muted)"></path>
           <path class="edge-muted" d="M 144 391 C 200 190 480 88 825 264" marker-end="url(#arrow-muted)"></path>
           <path class="edge-muted" d="M 146 398 C 290 390 500 396 690 400" marker-end="url(#arrow-muted)"></path>
@@ -480,7 +480,7 @@
           <!-- 目标应用节点 -->
           <g class="gnode">
             <circle class="n-app" cx="120" cy="400" r="26"></circle>
-            <text class="lbl-app-name" x="120" y="452" text-anchor="middle">tdesktop</text>
+            <text class="lbl-app-name" x="120" y="452" text-anchor="middle">corpus-a</text>
             <text class="lbl-app-meta" x="120" y="466" text-anchor="middle">v5.3.2 · app</text>
           </g>
 
@@ -538,9 +538,9 @@
           <ul id="blocker-list">
             <li class="risk-high">
               <div class="b-kind">不支持的平台接口 <span class="risk-chip risk-high">高风险</span></div>
-              <div class="b-node">app:tdesktop</div>
+              <div class="b-node">app:corpus-a</div>
               <div class="b-reason">使用鸿蒙不支持的平台接口 macOS Cocoa / AppKit，4 处无条件编译命中将参与鸿蒙构建，212 处文件级命中已被平台排除。</div>
-              <div class="b-path">app:tdesktop → 平台接口 → macOS Cocoa / AppKit</div>
+              <div class="b-path">app:corpus-a → 平台接口 → macOS Cocoa / AppKit</div>
             </li>
             <li class="risk-medium">
               <div class="b-kind">不支持的 Qt 模块 <span class="risk-chip risk-medium">中风险</span></div>
@@ -548,7 +548,7 @@
               <div class="b-reason">Qt WebEngine 依赖 Chromium，鸿蒙无官方移植记录，建议改用系统 WebView 能力。</div>
               <div class="b-guard">guard: uses-module</div>
               <div class="b-alt">鸿蒙可替代: <span class="alt-chip st-convertible">OHOS WebView</span></div>
-              <div class="b-path">app:tdesktop → qt-module:qtwebengine</div>
+              <div class="b-path">app:corpus-a → qt-module:qtwebengine</div>
             </li>
           </ul>
           <h2>平台排除项（不编译）<span id="excluded-count" class="count">3</span></h2>

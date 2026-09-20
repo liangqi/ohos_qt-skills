@@ -1,7 +1,7 @@
-# musescore 依赖对账报告（portgraph E2E）
+# corpus-b 依赖对账报告（portgraph E2E）
 
-> 生成时间: 2026-09-19T15:12:53Z | 语料: corpus.json#musescore | 构建系统: cmake+qmake | 源文件: 5729
-> Oracle: buildscripts/cmake/DependencyManifest.cmake + muse/buildscripts/cmake/ExtDepsManifest.cmake + muse/framework/{midi,audio/driver}/CMakeLists.txt + muse/framework/cmake/MuseDeclareOptions.cmake（人工整理）（复核: 已复核，25 条；来源: 针对 master 2b540fe（muse_deps 依赖引擎时代）重写：README 无依赖段（指向 wiki.spatia... 外部 wiki），oracle 依仓库内依赖清单人工整理。口径=默认构建需外部产物的依赖：require_dep(...)（预编译/系统模式）与项目自身 find_package 为 runtime/optional；require_source_dep（liblouis/kddockwidgets/picojson/pugixml/utfcpp/googletest/crashpad_client/vst3sdk/lodepng/asiosdk）与 FetchContent 的 mnxdom 源码模式为 vendored，随项目源码编译、无需外部产物，不入 oracle；require_tool/find_package(Git) 为主机构建工具列 build。可选性依 MuseDeclareOptions.cmake 默认值：MUSE_MODULE_AUDIO_JACK OFF、MUSE_MODULE_AUDIO_PIPEWIRE OFF、MUSE_MODULE_DRAW_USE_QTTEXTDRAW ON（→ msdfgen 不启用）、MSS_USE_SYSTEM_MNXDOM OFF（→ mnxdom 默认源码自带，系统模式才 pkg_check）；MUSE_MODULE_AUDIO_EXPORT ON、MUSE_BUILD_IMPEXP_MNX_MODULE ON。旧 oracle（CI setup.sh + MUE_COMPILE_USE_SYSTEM_* 时代）的 pulseaudio/openssl/tinyxml/ffmpeg 在 master 已不存在：PulseAudio 直连仅存于内嵌 fluidsynth 可选驱动，openssl 无任何清单引用。）
+> 生成时间: 2026-09-19T15:12:53Z | 语料: corpus.json#corpus-b | 构建系统: cmake+qmake | 源文件: 5729
+> Oracle: buildscripts/cmake/DependencyManifest.cmake + corpus-b-core/buildscripts/cmake/ExtDepsManifest.cmake + corpus-b-core/framework/{midi,audio/driver}/CMakeLists.txt + corpus-b-core/framework/cmake/CorpusBOptions.cmake（人工整理）（复核: 已复核，25 条；来源: 针对 master 2b540fe（corpus-b-deps 依赖引擎时代）重写：README 无依赖段（指向项目外部 wiki），oracle 依仓库内依赖清单人工整理。口径=默认构建需外部产物的依赖：require_dep(...)（预编译/系统模式）与项目自身 find_package 为 runtime/optional；require_source_dep（liblouis/kddockwidgets/picojson/pugixml/utfcpp/googletest/crashpad_client/vst3sdk/lodepng/asiosdk）与 FetchContent 的 mnxdom 源码模式为 vendored，随项目源码编译、无需外部产物，不入 oracle；require_tool/find_package(Git) 为主机构建工具列 build。可选性依 CorpusBOptions.cmake 默认值：CB_MODULE_AUDIO_JACK OFF、CB_MODULE_AUDIO_PIPEWIRE OFF、CB_MODULE_DRAW_USE_QTTEXTDRAW ON（→ msdfgen 不启用）、CB_USE_SYSTEM_MNXDOM OFF（→ mnxdom 默认源码自带，系统模式才 pkg_check）；CB_MODULE_AUDIO_EXPORT ON、CB_BUILD_IMPEXP_MNX_MODULE ON。旧 oracle（CI setup.sh + CB_COMPILE_USE_SYSTEM_* 时代）的 pulseaudio/openssl/tinyxml/ffmpeg 在 master 已不存在：PulseAudio 直连仅存于内嵌 fluidsynth 可选驱动，openssl 无任何清单引用。）
 
 ## 1. 结论速览
 
@@ -15,20 +15,20 @@
 
 **Agent 复核说明**：
 
-- oracle 针对 master 2b540fe（muse_deps 依赖引擎）重写：require_dep 清单（DependencyManifest/ExtDepsManifest）+ 项目 find_package（ALSA/Jack/mnxdom）+ SetupQt6.cmake；可选性依 MuseDeclareOptions.cmake 默认值。require_source_dep 的 10 个源码自带依赖（liblouis/kddockwidgets/picojson/pugixml/utfcpp/googletest/crashpad_client/vst3sdk/lodepng/asiosdk）按口径不入 oracle（随项目源码编译，无需外部产物），portgraph 以 vendored 边 + fetch-deps status=vendored 表达。
-- 上一轮（旧版仓库，CI setup.sh 时代）的 10 个 ALIASES 缺口已在本轮修复入库（alsa→alsa-lib、sndfile→libsndfile、tinyxml→tinyxml2、glib2→glib、dbus1→dbus、ogg→libogg、vorbis→libvorbis、png→libpng、brotlidec→brotli、utfcpp→utf8cpp、nlohmann_json→nlohmann-json、intl→gettext）；fluidsynth/KDDockWidgets 内嵌三方与 muse_deps recipes 的误报源由 vendored 路径跳过修复；注释行 find_package 误匹配由注释剥离修复；buildscripts/ 目录误排除（build* 前缀）已修复。
-- 残留（非本轮修复）：require_dep 条件块不求值（msdfgen/pipewire/asiosdk 等默认关闭的声明仍进闭包，fetch-deps 概览偏保守）；deps 报告 raw_libs 中项目内部 target 名（engraving/global/muse_* 等，由 declare_module 等函数创建，add_library 扫描不可见）与 hb:global 巧合解析为噪音。
+- oracle 针对 master 2b540fe（corpus-b-deps 依赖引擎）重写：require_dep 清单（DependencyManifest/ExtDepsManifest）+ 项目 find_package（ALSA/Jack/mnxdom）+ SetupQt6.cmake；可选性依 CorpusBOptions.cmake 默认值。require_source_dep 的 10 个源码自带依赖（liblouis/kddockwidgets/picojson/pugixml/utfcpp/googletest/crashpad_client/vst3sdk/lodepng/asiosdk）按口径不入 oracle（随项目源码编译，无需外部产物），portgraph 以 vendored 边 + fetch-deps status=vendored 表达。
+- 上一轮（旧版仓库，CI setup.sh 时代）的 10 个 ALIASES 缺口已在本轮修复入库（alsa→alsa-lib、sndfile→libsndfile、tinyxml→tinyxml2、glib2→glib、dbus1→dbus、ogg→libogg、vorbis→libvorbis、png→libpng、brotlidec→brotli、utfcpp→utf8cpp、nlohmann_json→nlohmann-json、intl→gettext）；fluidsynth/KDDockWidgets 内嵌三方与 corpus-b-deps recipes 的误报源由 vendored 路径跳过修复；注释行 find_package 误匹配由注释剥离修复；buildscripts/ 目录误排除（build* 前缀）已修复。
+- 残留（非本轮修复）：require_dep 条件块不求值（msdfgen/pipewire/asiosdk 等默认关闭的声明仍进闭包，fetch-deps 概览偏保守）；deps 报告 raw_libs 中项目内部 target 名（engraving/global/cb_* 等，由 declare_module 等函数创建，add_library 扫描不可见）与 hb:global 巧合解析为噪音。
 
 ## 2. 可移植性判定（analyze）
 
 | 阻塞类型 | 节点 | 原因 |
 |---|---|---|
-| unsupported-interface | app:musescore | 使用鸿蒙不支持的平台接口 ALSA 直连（audio）鸿蒙音频走 AudioRenderer/AudioCapturer，ALSA 不可用；同类鸿蒙替代接口: 鸿蒙 AudioRenderer/AudioCapturer［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (89 处无条件 /  |
-| unsupported-interface | app:musescore | 使用鸿蒙不支持的平台接口 macOS CoreAudio（audio）macOS 专属音频框架；同类鸿蒙替代接口: 鸿蒙 AudioRenderer/AudioCapturer［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (2 处无条件 / 11 处鸿蒙可编译 / 0 处宏守卫排除 /  |
-| unsupported-interface | app:musescore | 使用鸿蒙不支持的平台接口 D-Bus IPC（ipc）鸿蒙无 D-Bus（Qt D-Bus 模块 Out of scope）；需改用系统服务/IPC；同类鸿蒙替代接口: 鸿蒙 IPC/系统服务能力［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (10 处无条件 / 0 处鸿蒙可编译 / 2 |
-| unsupported-interface | app:musescore | 使用鸿蒙不支持的平台接口 PulseAudio 直连（audio）鸿蒙无 PulseAudio 服务；同类鸿蒙替代接口: 鸿蒙 AudioRenderer/AudioCapturer［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (0 处无条件 / 8 处鸿蒙可编译 / 2 处宏守卫排除  |
-| unsupported-interface | app:musescore | 使用鸿蒙不支持的平台接口 systemd（os-api）鸿蒙无 systemd 服务管理；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (0 处无条 |
-| unsupported-interface | app:musescore | 使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (30 处无 |
+| unsupported-interface | app:corpus-b | 使用鸿蒙不支持的平台接口 ALSA 直连（audio）鸿蒙音频走 AudioRenderer/AudioCapturer，ALSA 不可用；同类鸿蒙替代接口: 鸿蒙 AudioRenderer/AudioCapturer［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (89 处无条件 /  |
+| unsupported-interface | app:corpus-b | 使用鸿蒙不支持的平台接口 macOS CoreAudio（audio）macOS 专属音频框架；同类鸿蒙替代接口: 鸿蒙 AudioRenderer/AudioCapturer［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (2 处无条件 / 11 处鸿蒙可编译 / 0 处宏守卫排除 /  |
+| unsupported-interface | app:corpus-b | 使用鸿蒙不支持的平台接口 D-Bus IPC（ipc）鸿蒙无 D-Bus（Qt D-Bus 模块 Out of scope）；需改用系统服务/IPC；同类鸿蒙替代接口: 鸿蒙 IPC/系统服务能力［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (10 处无条件 / 0 处鸿蒙可编译 / 2 |
+| unsupported-interface | app:corpus-b | 使用鸿蒙不支持的平台接口 PulseAudio 直连（audio）鸿蒙无 PulseAudio 服务；同类鸿蒙替代接口: 鸿蒙 AudioRenderer/AudioCapturer［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (0 处无条件 / 8 处鸿蒙可编译 / 2 处宏守卫排除  |
+| unsupported-interface | app:corpus-b | 使用鸿蒙不支持的平台接口 systemd（os-api）鸿蒙无 systemd 服务管理；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (0 处无条 |
+| unsupported-interface | app:corpus-b | 使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (30 处无 |
 | unsupported-module | qtmod:dbus | Qt for HarmonyOS 模块适配表: 不支持 - 鸿蒙无 D-Bus |
 | unsupported-module | qtmod:x11extras | Qt for HarmonyOS 模块适配表: 不支持 - X11 专属 |
 
@@ -78,11 +78,11 @@
 | 一致 | libpng | libpng | package d1 |  |
 | 一致 | fdk-aac | fdk-aac | package d1 |  |
 | 一致 | lame | lame | package d1 |  |
-| 一致 | opusenc | opusenc | package d1 | 匹配到幽灵节点：真实外部依赖且无已知鸿蒙包（fetch-deps 报 need_port/需源码移植，检出正确） 【agent: 无 bottle 属实：hb-core/cmd-pkgs 均无 opusenc/libopusenc formula（源码 pin 在 muse_deps/recipes/opusenc/spec.cmake），portgraph 标 need_port 正确；requ |
+| 一致 | opusenc | opusenc | package d1 | 匹配到幽灵节点：真实外部依赖且无已知鸿蒙包（fetch-deps 报 need_port/需源码移植，检出正确） 【agent: 无 bottle 属实：hb-core/cmd-pkgs 均无 opusenc/libopusenc formula（源码 pin 在 corpus-b-deps/recipes/opusenc/spec.cmake），portgraph 标 need_port 正确；requ |
 | 一致 | nlohmann_json | nlohmann-json | package d1 |  |
-| 一致 | json_schema_validator | json_schema_validator | package d1 | 匹配到幽灵节点：真实外部依赖且无已知鸿蒙包（fetch-deps 报 need_port/需源码移植，检出正确） 【agent: 无 bottle 属实：hb-core/cmd-pkgs 均无 json-schema-validator（源码 pin 在 muse_deps/recipes/json_schema_validator），need_port 正确】 |
-| 一致(可选) | msdfgen | msdfgen | package d1 | 匹配到幽灵节点：真实外部依赖且无已知鸿蒙包（fetch-deps 报 need_port/需源码移植，检出正确） 【agent: 无 bottle 属实：hb/cmd-pkgs 均无 msdfgen；且默认构建不启用（MUSE_MODULE_DRAW_USE_QTTEXTDRAW 默认 ON）】 |
-| 一致(可选) | pipewire | pipewire | package d1 | 匹配到幽灵节点：真实外部依赖且无已知鸿蒙包（fetch-deps 报 need_port/需源码移植，检出正确） 【agent: 无 bottle 属实：hb/cmd-pkgs 确无 pipewire 库包（MUSE_MODULE_AUDIO_PIPEWIRE 默认 OFF）；需要时走 PipeWire 直连 unsupported-interface 阻塞项】 |
+| 一致 | json_schema_validator | json_schema_validator | package d1 | 匹配到幽灵节点：真实外部依赖且无已知鸿蒙包（fetch-deps 报 need_port/需源码移植，检出正确） 【agent: 无 bottle 属实：hb-core/cmd-pkgs 均无 json-schema-validator（源码 pin 在 corpus-b-deps/recipes/json_schema_validator），need_port 正确】 |
+| 一致(可选) | msdfgen | msdfgen | package d1 | 匹配到幽灵节点：真实外部依赖且无已知鸿蒙包（fetch-deps 报 need_port/需源码移植，检出正确） 【agent: 无 bottle 属实：hb/cmd-pkgs 均无 msdfgen；且默认构建不启用（CB_MODULE_DRAW_USE_QTTEXTDRAW 默认 ON）】 |
+| 一致(可选) | pipewire | pipewire | package d1 | 匹配到幽灵节点：真实外部依赖且无已知鸿蒙包（fetch-deps 报 need_port/需源码移植，检出正确） 【agent: 无 bottle 属实：hb/cmd-pkgs 确无 pipewire 库包（CB_MODULE_AUDIO_PIPEWIRE 默认 OFF）；需要时走 PipeWire 直连 unsupported-interface 阻塞项】 |
 
 归类统计：构建工具×5，一致×16，一致(可选)×2，可选未启用×2，粒度折叠×15，README漏列×1
 
@@ -141,4 +141,4 @@
 - 对比口径：portgraph 直接依赖（depth-1 边）vs README/INSTALL 声明依赖；闭包仅做产物概览。
 - 归因证据：对未匹配项自动 grep 克隆仓库构建文件（find_package/pkg_check_modules/target_link_libraries/vcpkg 等）。
 - ★ 类（missed-dep / resolution-gap / false-positive）为 bug 候选，需人工确认；其余为预期差异。
-- agent 可读报告：`tests/e2e/reports/musescore.report.json`
+- agent 可读报告：`tests/e2e/reports/corpus-b.report.json`

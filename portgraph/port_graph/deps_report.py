@@ -87,11 +87,11 @@ CMAKE_BUILTIN_PACKAGES = {
     "dl": {"kind": "system-lib", "note": "musl libc 内置 dlopen"},
     "opengl": {"kind": "system-lib",
                "note": "OHOS 提供 OpenGL ES（libEGL_ndk / libGLESv3_ndk），"
-                      "桌面 OpenGL 调用需适配 GLES 3（lmms/zynaddsubfx 实证）"},
+                      "桌面 OpenGL 调用需适配 GLES 3（gen_d/gen_p 实证）"},
     "packagehandlestandardargs": {
         "kind": "build-tool",
         "note": "CMake 内置模块（find_package_handle_standard_args），非依赖"
-                "（lmms FindFFTW.cmake 实证；曾以错名"
+                "（gen_d FindFFTW.cmake 实证；曾以错名"
                 "findpackagehandlestandardargs 入表致幽灵残留）"},
 }
 
@@ -104,12 +104,12 @@ INTERFACE_BOUND_PACKAGES = {
     "xcb": "XCB：鸿蒙不支持直连",
     "alsa": "ALSA 音频：鸿蒙不可用，需改鸿蒙 AudioRenderer",
     "asound": "ALSA 客户端库名（-lasound / find_library）：鸿蒙不可用，"
-            "需改鸿蒙 AudioRenderer/AudioCapturer（lmms FindAlsa 实证）",
+            "需改鸿蒙 AudioRenderer/AudioCapturer（gen_d FindAlsa 实证）",
     "pulseaudio": "PulseAudio：鸿蒙无此服务",
     "libpulse": "PulseAudio 客户端库（pkg-config 名 libpulse）：鸿蒙无此服务，"
-              "需改鸿蒙 AudioRenderer/AudioCapturer（lmms 实证）",
+              "需改鸿蒙 AudioRenderer/AudioCapturer（gen_d 实证）",
     "pulse": "PulseAudio 客户端库名（find_library pulse / -lpulse）：鸿蒙无此"
-           "服务（lmms FindPulseAudio 实证）",
+           "服务（gen_d FindPulseAudio 实证）",
     "dbus": "D-Bus IPC：鸿蒙无 D-Bus（Qt D-Bus 模块 Out of scope）",
     "cocoa": "macOS Cocoa：鸿蒙不适用",
     "appkit": "macOS AppKit：鸿蒙不适用",
@@ -122,7 +122,7 @@ INTERFACE_BOUND_PACKAGES = {
     "security": "macOS Security 框架：鸿蒙不适用（APPLE 平台块）",
     "coreservices": "macOS CoreServices 框架：鸿蒙不适用（APPLE 平台块）",
     "corefoundation": "macOS CoreFoundation 框架：鸿蒙不适用（APPLE 平台块）",
-    # macOS 框架经 find_library 裸名引入（muse 实证：AudioToolbox/CoreMIDI
+    # macOS 框架经 find_library 裸名引入（corpus_b_core 实证：AudioToolbox/CoreMIDI
     # 在 OS_IS_MAC 块内 find_library，未命中表时被当普通包报“需源码交叉编译”）
     "audiotoolbox": "macOS AudioToolbox 框架：鸿蒙不可用，需改鸿蒙"
                   " AudioRenderer/AudioCapturer（APPLE 平台块内引入）",
@@ -231,10 +231,10 @@ def _in_tree_dir_index(root: Path) -> Dict[str, str]:
     """项目内自带源码目录索引：目录名（小写）→ 相对路径。
 
     用于判定未解析的裸链接名/find_package 名是否其实是项目自带源码
-    （QOwnNotes 的 src/libraries/fakevim、botan、litehtml 实证：报告
+    （gen_f 的 src/libraries/fakevim、botan、litehtml 实证：报告
     误报 need_port，而源码就在仓库内随项目编译）。
 
-    只收「像三方库」的目录，避免把项目自身代码目录（krita 的
+    只收「像三方库」的目录，避免把项目自身代码目录（gen_a 的
     libs/flake/text/lager、plugins/impex/jpeg/3rdparty/lcms 里的
     iccjpeg 胶水）误判成 in-tree：
       - 目录含构建文件（CMakeLists/Makefile.am/.pri/.pro）（无构建文件的
@@ -262,9 +262,9 @@ def _in_tree_dir_index(root: Path) -> Dict[str, str]:
                              filenames]
     # 父目录的“依赖集合”判定：父目录名是库容器（libraries/libs）且
     # ≥5 个子目录各自像库目录。容器名白名单是为了避免把功能分组目录
-    # 误当依赖集合——okular 的 generators/（poppler/epub/markdown/…）
+    # 误当依赖集合——gen_b 的 generators/（poppler/epub/markdown/…）
     # 是格式生成器插件代码目录，不是自带库源码（实证误判 in-tree，
-    # 掩盖 poppler/epub 真实 need_port）；QOwnNotes 的 src/libraries
+    # 掩盖 poppler/epub 真实 need_port）；gen_f 的 src/libraries
     # 是真实的自带库集合。
     _LIB_CONTAINER_NAMES = {"libraries", "libs"}
     children: Dict[str, int] = {}
@@ -281,7 +281,7 @@ def _in_tree_dir_index(root: Path) -> Dict[str, str]:
             and parent_path.name.lower() in _LIB_CONTAINER_NAMES)
         has_readme = any(f.upper().startswith(("README", "LICENSE", "COPYING"))
                          for f in filenames)
-        # README/LICENSE 单独不足以判定：okular generators/epub 的 README
+        # README/LICENSE 单独不足以判定：gen_b generators/epub 的 README
         # 描述的是“基于外部 libepub 的后端”（指向 svn 获取库），不是自带
         # 源码包——仅在库容器父目录内作为补充佐证（容器内非集合规模的
         # 自带库，如 libraries/ 下仅 2 个真库但各自带上游 README）。
@@ -298,7 +298,7 @@ def _loose_folds(n: str) -> set:
 
     editorconfig_core_qt ≡ editorconfig-core-qt；
     Qt-Advanced-Docking-System ≡ qtadvanceddocking-qt6（CPM 名 ads
-    vs 链接目标名 qtadvanceddocking-qt6，NotepadNext 实证）。"""
+    vs 链接目标名 qtadvanceddocking-qt6，gen_i 实证）。"""
     toks = [t for t in re.split(r"[-_./]+", (n or "").lower()) if t]
     while toks and toks[-1] in ("qt5", "qt6", "system"):
         toks = toks[:-1]
@@ -316,11 +316,11 @@ def _vendored_declarations(info: Dict) -> Dict[str, tuple]:
 
     覆盖四类“随项目编译”的声明：
     - git 子模块（.gitmodules；浅克隆未初始化时目录为空，
-      _in_tree_dir_index 不可见）——tdesktop kcoreaddons/microtex 实证
+      _in_tree_dir_index 不可见）——corpus_a kcoreaddons/microtex 实证
     - CPM/FetchContent/ExternalProject 配置期拉取（fetched_deps；
-      名字或 URL 末段均可匹配）——NotepadNext ads/QSimpleUpdater 实证
+      名字或 URL 末段均可匹配）——gen_i ads/QSimpleUpdater 实证
     - meson 自带子项目（subprojects/ 目录与 .wrap）与项目内部
-      override_dependency 目标——cutter/rizin 的 zydis/rz_* 实证
+      override_dependency 目标——gen_j/rizin 的 zydis/rz_* 实证
     """
     out: Dict[str, tuple] = {}
 
@@ -713,7 +713,7 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                           rl["evidence"][0] if rl.get("evidence") else "?")
         plat = rl.get("platform_block")
         if n.lower() in TEST_FRAMEWORKS:
-            # target_link_libraries 裸名命中测试框架（如 QOwnNotes 的
+            # target_link_libraries 裸名命中测试框架（如 gen_f 的
             # gtest_main）：归入 test 而非 need_port 的 link
             test_deps.append({"name": n, "source": ev,
                               "note": "测试框架，不进发行包"})
@@ -803,7 +803,7 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                          n, " %s" % ad["version_req"] if ad.get("version_req") else "",
                          ad["evidence"][0] if ad.get("evidence") else ""))
 
-    # ---- 6g) 自定义包装函数声明（如 qTox search_dependency 的
+    # ---- 6g) 自定义包装函数声明（如 gen_n search_dependency 的
     #          PACKAGE <pkg-config 名> [LIBRARY x] [MINIMUM_VERSION v]）
     for wd in info.get("wrapper_deps", []):
         n = wd["name"]
@@ -823,7 +823,7 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
         if aliased:
             e.setdefault("ohos_note", "包装声明 %s 归并为包 %s" % (n, aliased))
 
-    # ---- 6h) 依赖清单函数（muse_deps 引擎等）：require_dep / require_source_dep /
+    # ---- 6h) 依赖清单函数（corpus_b_deps 引擎等）：require_dep / require_source_dep /
     #          require_tool。link → 常规 link 依赖；source → vendored；tool → 工具链
     manifest_vendored: List[Dict] = []
     for md in info.get("manifest_deps", []):
@@ -860,8 +860,8 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                                          "platform-iface")
         if entry["kind"] == "framework":
             # KF 组件不能走包名解析阶梯：组件名与无关 C 库同名异义
-            # （KF Archive ≠ libarchive、KF Config ≠ libconfig，okular/
-            # konsole 实证曾误展示 ready bottle 与闭包 need_port 矛盾）。
+            # （KF Archive ≠ libarchive、KF Config ≠ libconfig，gen_b/
+            # gen_c 实证曾误展示 ready bottle 与闭包 need_port 矛盾）。
             # 解析到扫描入库的 kf:<comp> 节点（port_status=unknown →
             # 需源码交叉编译，与 fetch-deps 闭包口径一致）。
             node = (db.get_node(conn, "kf:%s" % entry["name"].lower())
@@ -889,8 +889,8 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
                                       "编译，无需外部产物" % hit)
         # 未解析且命中项目自带源码声明（git 子模块 / CPM-FetchContent
         # / meson 子项目与内部目标）：源码随项目，不是外部 need_port
-        # 缺口（tdesktop kcoreaddons、NotepadNext QSimpleUpdater、
-        # cutter rz_*/zydis 实证）
+        # 缺口（corpus_a kcoreaddons、gen_i QSimpleUpdater、
+        # gen_j rz_*/zydis 实证）
         if node is None and entry["kind"] == "package" and vendored_decls:
             hit = next((vendored_decls[f]
                         for f in _loose_folds(entry["name"])

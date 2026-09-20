@@ -26,16 +26,16 @@ TEXT_SCAN_EXTS = {".c", ".cc", ".cpp", ".cxx", ".c++", ".h", ".hh", ".hpp",
 BINARY_EXTS = {".so", ".a", ".dll", ".dylib", ".lib", ".dll.a"}
 # 排除目录：仅排除确定非源码的（VCS/IDE 缓存/构建产物）。
 # 注意：dist 不排除——C++/CMake 项目中常为源控的打包/安装子目录
-# （如 qBittorrent 的 add_subdirectory(dist)，内含真实依赖声明与
+# （如 corpus_d 的 add_subdirectory(dist)，内含真实依赖声明与
 # 选项守卫，e2e 复盘曾因排除 dist 漏掉 if(SYSTEMD) 守卫上下文）。
 EXCLUDE_DIRS = {".git", ".hg", ".svn", ".qt-ohos", "node_modules", "__pycache__",
                 ".idea", ".vs", ".vscode", ".gradle", "out"}
-# dist 不在排除清单：C++ 项目中 dist 多为源控打包/安装目录（qbittorrent
+# dist 不在排除清单：C++ 项目中 dist 多为源控打包/安装目录（corpus_d
 # 的 dist/unix/CMakeLists.txt 是真实构建子目录，e2e 复核确认）
 # 构建输出目录（build / build-Debug / build.123 / build2）：排除以免扫到生成物；
-# 注意 buildscripts / buildtools 是源码目录（muse、musescore 的依赖清单
+# 注意 buildscripts / buildtools 是源码目录（corpus_b_core、corpus_b 的依赖清单
 # ExtDepsManifest.cmake / SetupQt6.cmake 都在其中），不能按 build 前缀排除
-# （e2e musescore 复核确认的前缀误排除 bug）。
+# （e2e corpus_b 复核确认的前缀误排除 bug）。
 _BUILD_DIR_RE = re.compile(r"^build(?:[-._].+|\d+)?$")
 MAX_FILE_BYTES = 2 * 1024 * 1024
 
@@ -57,7 +57,7 @@ def _orphan_components(rest: str) -> List[str]:
     """无 COMPONENTS 关键字时的尾随组件名（CMake 语义：版本/关键字之后
     的裸名即组件）。
 
-    konsole 实证：find_package(Qt6 ${V} CONFIG REQUIRED\n Core ...)
+    gen_c 实证：find_package(Qt6 ${V} CONFIG REQUIRED\n Core ...)
     与 find_package(KF6 ${V} REQUIRED\n Bookmarks ...)——合法但无
     COMPONENTS 关键字，旧解析全部漏检（Qt 模块只余 include 启发式命中）。
     OPTIONAL_COMPONENTS 之后的 token 是可选组件，不收（保守不判必需）。
@@ -157,8 +157,8 @@ VENDORED_DIR_NAMES = ("3rdparty", "thirdparty", "third_party", "third-party",
 _TARGET_LINK_RE = re.compile(r"target_link_libraries\s*\(([^)]*)\)", re.I | re.S)
 _ADD_TARGET_RE = re.compile(
     r"\b(?:qt\d+_)?add_(?:library|executable)\s*\(\s*([A-Za-z0-9_.:-]+)")
-# macro/函数名定义（body 内调用 add_library 的包装器，如 krita 的
-# kis_add_library(kritaui SHARED ...)：其首参即目标名）
+# macro/函数名定义（body 内调用 add_library 的包装器，如 gen_a 的
+# kis_add_library(gen_aui SHARED ...)：其首参即目标名）
 _MACRO_DEF_RE = re.compile(
     r"\b(?:macro|function)\s*\(\s*([A-Za-z0-9_.:-]+)", re.I)
 _END_BLOCK_RE = re.compile(r"^\s*end(?:macro|function)\b", re.I | re.M)
@@ -302,7 +302,7 @@ def scan_project(project_root) -> Dict:
 
     info["pro_files"] = pro_files
     # 项目自带 .cmake 模块（cmake/Modules 等）与 CMakeLists 一起参与依赖
-    # 提取——find_package 常集中在被 include() 的 .cmake 里（如 qBittorrent
+    # 提取——find_package 常集中在被 include() 的 .cmake 里（如 corpus_d
     # 的 CheckPackages.cmake）
     info["cmake_files"] = cmake_files
     # project() 自身名（供 project_scanner 自引用过滤）
@@ -401,7 +401,7 @@ def _read_text(path: Path) -> str:
 
 
 # Qt 组件列表变量：set(<var> Core Gui ...) / list(APPEND <var> X ...)，
-# 供 find_package(Qt6 ... COMPONENTS ${var}) 展开（muse 框架 SetupQt6.cmake 形式）
+# 供 find_package(Qt6 ... COMPONENTS ${var}) 展开（corpus_b_core 框架 SetupQt6.cmake 形式）
 _SET_LISTVAR_RE = re.compile(r"\bset\s*\(\s*(\w+)\s+(.*?)\)", re.S)
 _LIST_APPEND_RE = re.compile(r"\blist\s*\(\s*APPEND\s+(\w+)\s+([^)]*)\)", re.S)
 _LISTVAR_TOKEN_KW = {"CACHE", "PATH", "STRING", "BOOL", "FILEPATH", "INTERNAL",
@@ -487,7 +487,7 @@ def _detect_qt(root: Path, info: Dict):
             cm = _COMPONENTS_RE.search(rest)
             # _COMPONENTS_RE 截取段可能混入后续关键字，需 _CMAKE_KW 过滤；
             # orphan token 已由区域状态机保证不是关键字，不过滤（否则
-            # 与 CONFIG 同形的 KF 组件 Config 会被丢弃——konsole 实证）
+            # 与 CONFIG 同形的 KF 组件 Config 会被丢弃——gen_c 实证）
             kw_filtered = [c for c in re.split(r"\s+", cm.group(1))
                            if c and c.isalpha()
                            and c.upper() not in _CMAKE_KW] if cm else []
@@ -554,11 +554,11 @@ _FINDPKG_SKIP = {"ecm", "pkgconfig", "pkgconf", "threads", "sharedmimeinfo",
 
 
 # vendored / 依赖清单目录的路径段：其内的 CMake 声明属于内嵌三方代码自己
-# 或依赖引擎的构建逻辑，不是应用自身的直接依赖（e2e musescore 复核确认：
-# thirdparty/fluidsynth、KDDockWidgets/python 与 muse_deps/recipes 的
+# 或依赖引擎的构建逻辑，不是应用自身的直接依赖（e2e corpus_b 复核确认：
+# thirdparty/fluidsynth、KDDockWidgets/python 与 corpus_b_deps/recipes 的
 # find_package/pkg_check_modules 污染 depth-1 清单）。
 # 注：不含 "ext"（过短，误伤正常目录名）；"*_deps" 后缀匹配依赖引擎子模块
-# （muse_deps 等 recipes 集合）。
+# （corpus_b_deps 等 recipes 集合）。
 _VENDORED_PATH_SEGS = frozenset({
     "thirdparty", "3rdparty", "third_party", "third-party",
     "vendor", "vendors", "vendored", "external", "extern",
@@ -575,13 +575,13 @@ def _is_vendored_path(rel: str) -> bool:
 
 
 # wrapper CMake 文件签名：定义 add_library(external_<X> ...) 导入目标
-#（cmake_helpers / desktop-app 约定，tdesktop 全部三方库都走这条路）。
+#（cmake_helpers / desktop-app 约定，corpus_a 全部三方库都走这条路）。
 # 这类文件不是 vendored 源码，而是应用外部依赖的声明层：其内的
 # find_package / pkg_check_modules 就是应用自身的依赖（例：
 # cmake/external/openal/CMakeLists.txt 定义 external_openal 并
 # find_package(OpenAL REQUIRED)）。submodule 初始化后 external_X 成为
 # 项目内目标，若同时跳过 wrapper 文件，真实依赖会被两条规则叠加藏掉
-#（tdesktop 复盘：openal/ada/rnnoise 漏检）。
+#（corpus_a 复盘：openal/ada/rnnoise 漏检）。
 _WRAPPER_TARGET_RE = re.compile(
     r"add_library\s*\(\s*external_[A-Za-z0-9_.:-]+", re.I)
 
@@ -603,10 +603,10 @@ WIN32_SYSTEM_LIBS = {
     "avifil32", "mfplat", "mfuuid", "strmbase", "strmbasd", "wtsapi32",
     "windowsapp", "delayimp", "opengl32", "glu32", "wintrust", "shcore",
     "winscard", "bcrypt", "hid", "winusb", "cfgmgr32",
-    # muse 实证：OS_IS_WIN 块内 target_link_libraries 的 4 个缺口
+    # corpus_b_core 实证：OS_IS_WIN 块内 target_link_libraries 的 4 个缺口
     # （同块的 winmm/ole32/shell32/wintrust 等均已往表内）
     "mmdevapi", "msi", "taskschd", "userenv",
-    # libopenshot 实证：WIN32 块异常处理/DirectShow（同块 ole32/strmiids
+    # libgen_g 实证：WIN32 块异常处理/DirectShow（同块 ole32/strmiids
     # /uuid 已在表内）
     "dbghelp", "imagehlp",
 }
@@ -628,7 +628,7 @@ BUILD_TOOL_FINDPKG = {
     "pythoninterp": "Python 解释器（CMake FindPythonInterp，主机侧）",
     "pythonlibs": "Python 头文件/库（CMake FindPythonLibs，绑定生成，主机侧）",
     "perl": "Perl 解释器（主机侧，测试/代码生成脚本）",
-    "swig": "SWIG 绑定生成器（主机侧，libopenshot bindings 实证）",
+    "swig": "SWIG 绑定生成器（主机侧，libgen_g bindings 实证）",
     "ruby": "Ruby 解释器（绑定生成/脚本，主机侧）",
     "java": "JDK（CMake FindJava，绑定生成，主机侧）",
     "jni": "JNI 头文件（CMake FindJNI，绑定编译，主机侧）",
@@ -651,7 +651,7 @@ _PKGCHECK_KW = {"IMPORTED_TARGET", "GLOBAL", "STATIC", "SHARED", "MODULE",
 
 # ------------------------------------------------------ CMake 选项守卫分析
 #
-# 背景（e2e qbittorrent 复盘）：find_package(Systemd) 位于
+# 背景（e2e corpus_d 复盘）：find_package(Systemd) 位于
 # `if (SYSTEMD)` 内，而 SYSTEMD 由 feature_option_dependent(... OFF ...)
 # 声明且默认 OFF——该依赖不参与默认构建，不应记为 runtime 依赖。
 # 方案：收集 option/feature_option[_dependent]/cmake_dependent_option 的
@@ -701,9 +701,9 @@ _OHOS_ACTIVE_TOKENS = frozenset({"UNIX", "LINUX", "POSIX", "OHOS",
 def _frame_platform_excluded(cond: str) -> Optional[str]:
     """if 条件是否为其他平台专属（鸿蒙不适用）。返回条件串或 None。
 
-    实证：konsole if(HAIKU) tll network、if(SYSTEM_NAME MATCHES
-    "FreeBSD") tll util、okular mobile if(ANDROID) tll -lsoftokn3、
-    keepassxc FindQREncode if(WIN32 AND NOT MINGW) find_library(qrencoded)。
+    实证：gen_c if(HAIKU) tll network、if(SYSTEM_NAME MATCHES
+    "FreeBSD") tll util、gen_b mobile if(ANDROID) tll -lsoftokn3、
+    corpus_c FindQREncode if(WIN32 AND NOT MINGW) find_library(qrencoded)。
     """
     stripped = _NOT_TOKEN_RE.sub(" ", cond)
     toks = {t.upper() for t in re.findall(r"\w+", stripped)}
@@ -730,7 +730,7 @@ def _cmake_platform_line_map(text: str) -> Dict[int, Optional[str]]:
             stack.append(_frame_platform_excluded(m.group(1)))
         elif _CMAKE_ELSEIF_RE.match(s) and stack:
             # elseif 分支的条件可直接评估（if(Darwin) ... elseif(Windows)
-            # 两分支均为其他平台专属；qbittorrent src/base 实证）；
+            # 两分支均为其他平台专属；corpus_d src/base 实证）；
             # 仅 else（补集，含 OHOS）保守不判
             em = _CMAKE_ELSEIF_RE.match(s)
             stack[-1] = _frame_platform_excluded(em.group(1))
@@ -825,7 +825,7 @@ def _frame_positively_guarded(cond: str, off_options: Dict[str, bool]) -> bool:
 
     `if (SYSTEMD)` → True（SYSTEMD 默认 OFF）；
     `if (NOT SYSTEMD)` / `if (DBUS)`（默认 ON）→ False。
-    OR 析取语义（tdesktop 复盘）：`if (X OR LINUX)` 在鸿蒙下
+    OR 析取语义（corpus_a 复盘）：`if (X OR LINUX)` 在鸿蒙下
     因 LINUX 恒真必然激活，不能标 optional——仅当全部析取项都是
     OFF 选项正向引用（或含 OFF 选项且无恒真项）时才标 optional。
     """
@@ -896,12 +896,12 @@ def _find_module_optional_files(cmake_files: List[str],
 
 def _cmake_project_names(root: Path, cmake_files: List[str]) -> set:
     """根 CMakeLists.txt 的 project() 项目名（小写）：
-    find_package(<自身项目名>) 是自引用（如 Cutter 插件样例
-    find_package(Cutter REQUIRED)），不是外部依赖（曾误解析到
-    同名无关包 cmdpkgs:cutter）。
+    find_package(<自身项目名>) 是自引用（如 gen_j 插件样例
+    find_package(gen_j REQUIRED)），不是外部依赖（曾误解析到
+    同名无关包 cmdpkgs:gen_j）。
 
     只收根目录 CMakeLists.txt：vendored 子目录里
-    project(fakevim)（QOwnNotes src/libraries 布局）声明的是子项目
+    project(fakevim)（gen_f src/libraries 布局）声明的是子项目
     自己的名字，其存在不代表宿主 find_package(fakevim) 是自引用。
     """
     names = set()
@@ -1152,7 +1152,7 @@ def _parse_findpkg_args(name: str, rest: str, rel: str,
     mode = None
     seen_kw = False    # 已过版本/关键字位置（其后的裸名是组件）
     seen_comp = False  # 已开始收集组件：后续裸名均为组件，不再按关键字
-                        # 解释（KF 组件名 Config 与 CONFIG 同形，konsole 实证）
+                        # 解释（KF 组件名 Config 与 CONFIG 同形，gen_c 实证）
     for tok in tokens:
         tok2 = tok.strip('"')
         up = tok2.upper()
@@ -1173,7 +1173,7 @@ def _parse_findpkg_args(name: str, rest: str, rel: str,
             seen_kw = True
             continue
         if version is None and re.fullmatch(r"\d+(\.\d+)*", tok2):
-            # 版本可带引号：find_package(Poppler "24.08.0" ...)（okular）
+            # 版本可带引号：find_package(Poppler "24.08.0" ...)（gen_b）
             version = tok2
             seen_kw = True
             continue
@@ -1187,7 +1187,7 @@ def _parse_findpkg_args(name: str, rest: str, rel: str,
             optional_components.append(tok2)
         elif seen_kw or mode == "c":
             # CMake 语义：版本/关键字之后的裸名即组件，无需 COMPONENTS
-            # 关键字（konsole: find_package(Qt6 ${V} CONFIG REQUIRED\n Core ...)）
+            # 关键字（gen_c: find_package(Qt6 ${V} CONFIG REQUIRED\n Core ...)）
             components.append(tok2)
             mode = "c"
             seen_comp = True
@@ -1208,7 +1208,7 @@ _WRAP_FRAMEWORK_RE = re.compile(r"\bFRAMEWORK\s+\"?([A-Za-z0-9_]+)\"?")
 
 def _detect_wrapper_deps(root: Path, cmake_files: List[str],
                          vart: Dict[str, str]) -> List[Dict]:
-    """项目自定义包装函数（如 qTox 的 search_dependency）里的依赖声明。
+    """项目自定义包装函数（如 gen_n 的 search_dependency）里的依赖声明。
 
     识别条件：函数名由项目 function()/macro() 定义，且调用参数中带
     PACKAGE <pkg-config 名> / LIBRARY <库名> / MINIMUM_VERSION <版本> /
@@ -1252,7 +1252,7 @@ def _detect_wrapper_deps(root: Path, cmake_files: List[str],
     return out
 
 
-# 依赖清单函数名（muse_deps 引擎等）：require_dep(name [STATIC|SYSTEM|REBUILD]) /
+# 依赖清单函数名（corpus_b_deps 引擎等）：require_dep(name [STATIC|SYSTEM|REBUILD]) /
 # require_source_dep(name)（源码自带）/ require_tool(name)（主机构建工具）。
 # 要求函数在项目扫描到的 CMake 中有 function()/macro() 定义（避免同名普通
 # 调用误匹配），首个参数为依赖名。
@@ -1264,7 +1264,7 @@ _MANIFEST_ARG_KW = {"STATIC", "SYSTEM", "REBUILD", "REQUIRED", "OPTIONAL",
 
 
 def _detect_manifest_deps(root: Path, cmake_files: List[str]) -> List[Dict]:
-    """自定义依赖清单函数的调用（如 muse_deps 引擎的 require_dep）。
+    """自定义依赖清单函数的调用（如 corpus_b_deps 引擎的 require_dep）。
 
     返回 [{name, mode(link|source|tool), conditional, condition,
            evidence: [file:line]}]。函数定义可位于依赖引擎子模块
@@ -1357,7 +1357,7 @@ def _detect_find_package_details(root: Path, info: Dict) -> List[Dict]:
                                          _subst_vars(m.group(2) or "", vart),
                                          rel, line)
             if detail["name"].lower() in self_names:
-                continue    # project() 自引用（如 Cutter 插件样例）
+                continue    # project() 自引用（如 gen_j 插件样例）
             if gmap.get(line):
                 detail["optional"] = True
             elif pmap.get(line):
@@ -1583,7 +1583,7 @@ def _detect_dynamic_loads(root: Path, info: Dict) -> List[Dict]:
     """源码中的运行时动态加载目标（仅字符串字面量，变量拼接无法静态确定）。
 
     非鸿蒙平台守卫（#if defined(Q_OS_WIN) 等）内的加载不编译，
-    不计入（notepadqq 复盘：singleapplication.cpp 的 QLibrary("kernel32")
+    不计入（gen_h 复盘：singleapplication.cpp 的 QLibrary("kernel32")
     在 Q_OS_WIN 块内被误报为运行时动态加载）。
     """
     targets: Dict[str, List[str]] = {}
@@ -1802,7 +1802,7 @@ def _detect_cmake_raw_links(root: Path, cmake_files: List[str]):
                 if "::" in t:
                     # 导入目标 ns::name：external_ 前缀是 cmake_helpers 等
                     # 外部包装层的通用约定——剥前缀后的名字是高置信外部库
-                    # 声明（tdesktop 全部三方库都走这条路，find_package 不可见）。
+                    # 声明（corpus_a 全部三方库都走这条路，find_package 不可见）。
                     # PkgConfig::X 已由 pkg_check_modules 覆盖；Qt6::/项目内
                     # lib_* 目标不是外部包声明，跳过。
                     ns, _, tgt = t.partition("::")
@@ -1846,7 +1846,7 @@ def _detect_cmake_raw_links(root: Path, cmake_files: List[str]):
                     continue
                 if re.search(r"_(LIBRARY|LIBRARIES|LIB|LIBS)$", t):
                     continue
-                # 全大写+下划线的 token 是 CMake 变量/关键字（如 krita
+                # 全大写+下划线的 token 是 CMake 变量/关键字（如 gen_a
                 # FindQUAZIP.cmake 误入参数列表的 WIN32_DEBUG_POSTFIX），
                 # 不是库名候选；单字符 token（如上面关键字后的取值 d）
                 # 也几乎不可能是磁盘上的库名
@@ -1865,7 +1865,7 @@ def _detect_fetched_deps(root: Path, cmake_files: List[str]) -> List[Dict]:
     configure 阶段拉取的源码依赖（GIT_REPOSITORY/URL + GIT_TAG/VERSION）。
 
     不跳过 vendored 路径：thirdparty/CMakeLists.txt 常是宿主自己写的
-    拉取胶水（NotepadNext 实证：CPM 声明全在 thirdparty/，跳过导致
+    拉取胶水（gen_i 实证：CPM 声明全在 thirdparty/，跳过导致
     ads/QSimpleUpdater 等自带声明丢失，链接名无从归并为 in-tree）。
     """
     out: List[Dict] = []
@@ -1881,7 +1881,7 @@ def _detect_fetched_deps(root: Path, cmake_files: List[str]) -> List[Dict]:
                 name = url.split("/")[-1] if url else name
             elif name == "NAME":
                 # CPMAddPackage(NAME <name> ...)：首 token 是关键字 NAME，
-                # 实际包名在其后（NotepadNext 实证：曾把字面量 NAME 当包名）
+                # 实际包名在其后（gen_i 实证：曾把字面量 NAME 当包名）
                 nm = re.match(r"\s*\"?([A-Za-z0-9_.:+-]+)", args)
                 if not nm or nm.group(1).startswith("$"):
                     # CPM 实现文件内部的 CPMAddPackage(NAME ${Name})：
@@ -1904,7 +1904,7 @@ def _meson_internal_names(root: Path, meson_files: List[str]) -> set:
     数字、去 lib 前缀）：
 
     - meson.override_dependency('name', ...) —— 项目自身 library() 定义
-      的依赖（rizin 的 rz_core/rz_util 等，cutter 实证：曾整批误报
+      的依赖（rizin 的 rz_core/rz_util 等，gen_j 实证：曾整批误报
       need_port，实际由 vendored rizin 子模块随项目编译）
     - <meson 项目根>/subprojects/ 下的目录名与 .wrap 文件名 —— meson
       自带子项目（zydis/softfloat/ptrace-wrap 等）
@@ -1954,7 +1954,7 @@ def _absorb_meson(root: Path, info: Dict, meson_files: List[str]) -> None:
 
     结果合并进 info（meson_deps / meson / raw_libs / qt_modules）。
     内部依赖（override_dependency/subprojects 自带）标 internal=True，
-    供 deps_report 归 in-tree 而非 need_port（cutter/rizin 实证）。
+    供 deps_report 归 in-tree 而非 need_port（gen_j/rizin 实证）。
     """
     meson_info: Dict = {"version_min": None, "cxx_standard": None,
                         "subprojects": [], "internal_deps": []}
@@ -1970,7 +1970,7 @@ def _absorb_meson(root: Path, info: Dict, meson_files: List[str]) -> None:
     for rel in meson_files:
         text = _read_text(root / rel)
         # vendored 三方子树自己的 meson 声明不算应用依赖（与 CMake 检测器
-        # 同口径；tdesktop 复盘：ThirdParty/xdg-desktop-portal 的
+        # 同口径；corpus_a 复盘：ThirdParty/xdg-desktop-portal 的
         # libgeoclue/pipewire 泄漏进应用 depth-1）
         vendored = _is_vendored_path(rel)
         if not meson_info["version_min"]:
@@ -2047,7 +2047,7 @@ def _absorb_autotools(root: Path, info: Dict,
     for rel in autotools_files:
         text = _read_text(root / rel)
         # vendored 三方子树自己的 configure.ac 不算应用依赖（与 CMake
-        # 检测器同口径；tdesktop 复盘：ThirdParty/nimf 的
+        # 检测器同口径；corpus_a 复盘：ThirdParty/nimf 的
         # anthy/gtk+/m17n 泄漏进应用 depth-1）
         if _is_vendored_path(rel):
             continue
@@ -2098,7 +2098,7 @@ def _detect_env_installs(root: Path, ci_files: List[str]) -> List[Dict]:
     """
     out: Dict[str, Dict] = {}
     # 含前导 '-' 的 token 也捕获（apt install -y 的 -y 不能因首字符截断
-    # 而被误读成包名 y，strawberry CI 实证）
+    # 而被误读成包名 y，gen_e CI 实证）
     tok_re = re.compile(r"-?[A-Za-z0-9][A-Za-z0-9_.@+-]*")
     skip = {"sudo", "update", "install", "install-recommends", "upgrade",
             "dist-upgrade"}

@@ -4,7 +4,7 @@
 > 范围：`portgraph/port_graph/{deps_report,deps_fetch,kb_seed,project_scanner}.py`、
 > `portgraph/portgraph.py`、`portgraph/tests/`、`portgraph/docs/`
 > 验证环境：Python 3.10，主库 4758 个 Harmonybrew formula + 1248 个 cmd-pkgs 已入库；
-> 真实语料 keepassxc（884 源文件，e2e corpus tier B）；合成样例工程 deps-sample。
+> 真实语料 corpus-c（884 源文件，e2e corpus tier B）；合成样例工程 deps-sample。
 
 ---
 
@@ -23,8 +23,8 @@
 ### 问题定位
 
 实际执行了完整链路：`ingest all`（hb-core sparse clone 4758 formula）→ 合成样例工程
-`deps`/`fetch-deps` → 真实项目 keepassxc `deps`/`fetch-deps --dry-run` → e2e 对账
-harness（`tests/e2e/run_e2e.py run --project keepassxc`），从准确性、去重一致性、
+`deps`/`fetch-deps` → 真实项目 corpus-c `deps`/`fetch-deps --dry-run` → e2e 对账
+harness（`tests/e2e/run_e2e.py run --project corpus-c`），从准确性、去重一致性、
 分类语义、输出可读性、CLI 易用性五个角度取证。
 
 ---
@@ -46,7 +46,7 @@ harness（`tests/e2e/run_e2e.py run --project keepassxc`），从准确性、去
 
 ### 2. 同库异名去重：deps 矛盾条目合并 + fetch-deps 重复下载（去重 ★）
 
-**问题**（keepassxc 实测）：
+**问题**（corpus-c 实测）：
 - deps 报告中 qrencode 库出现 **3 条**（`QREncode`→hb:qrencode 有 bottle、
   `libqrencode`→cmdpkgs:libqrencode 有直链、`qrencoded` 幽灵），同一库一条说"有产物"
   一条说"无产物"
@@ -101,7 +101,7 @@ OpenMP 是编译器特性（libomp 随 NDK）、GTest 是测试框架，都不�
   8.22.0（与本次改动无关的既有数据漂移）
 - e2e harness `name_variants` 补**反向别名**变体：别名归并后的节点名（libx11/
   pcsc-lite）能被构建文件 grep（`find_package(X11)`/`PCSC`）命中，否则误判 false-positive
-- `overrides/keepassxc.json`：3 条"待补 ALIASES"resolution-gap 规则已落地，更新注记
+- `overrides/corpus-c.json`：3 条"待补 ALIASES"resolution-gap 规则已落地，更新注记
 
 ---
 
@@ -116,7 +116,7 @@ OpenMP 是编译器特性（libomp 随 NDK）、GTest 是测试框架，都不�
 | fetch-deps gtest | `需自行移植（源码: ?）` | `测试框架，不进发行包；仅当需要在鸿蒙设备上跑测试时才处理` |
 | fetch-deps x11 | `需自行移植（源码: ?）` | `需自行移植（未入库，无源码链接：请确认依赖名是否正确…）` |
 
-### 3.2 真实项目 keepassxc（884 源文件）
+### 3.2 真实项目 corpus-c（884 源文件）
 
 | 维度 | 优化前 | 优化后 |
 |---|---|---|
@@ -139,7 +139,7 @@ OpenMP 是编译器特性（libomp 随 NDK）、GTest 是测试框架，都不�
 
 ## 四、遗留问题与建议
 
-1. **平台块内的 `target_link_libraries` 裸名**：keepassxc 的 `network`（macOS
+1. **平台块内的 `target_link_libraries` 裸名**：corpus-c 的 `network`（macOS
    DARWIN 块内 tll）现归 platform-iface，但 `required` 标记仍为真——qt_scanner
    不感知 tll 调用处的平台块上下文。建议：qt_scanner 记录 tll 所在
    `if(APPLE)/if(WIN32)` 块，deps_report 将平台块内的裸名直接降为 optional。
@@ -153,7 +153,7 @@ OpenMP 是编译器特性（libomp 随 NDK）、GTest 是测试框架，都不�
    可给 `fetch_app_deps` 加 `closure=` 复用参数。
 5. **hb-core 版本漂移的测试策略**：`test_curl_formula` 已改为形态断言；其余依赖
    本地 sparse checkout 的用例（1 个）在无数据源环境中仍会 skip，属预期。
-6. **e2e 其余语料**（tdesktop/musescore/qbittorrent）未在本轮重跑（克隆体积大）；
+6. **e2e 其余语料**（corpus-a/corpus-b/corpus-d）未在本轮重跑（克隆体积大）；
    建议在具备网络的后续轮次执行 `run_e2e.py run --all` 验证别名改动对其他语料
    的 resolution-gap 消除效果。
 
@@ -167,6 +167,6 @@ python -m unittest discover -s tests            # 42 用例全过
 python portgraph.py deps <项目路径> --json       # 综合依赖分析
 python portgraph.py deps <项目路径> --json --compact   # --compact 后置（新）
 python portgraph.py fetch-deps <app> --dry-run   # 依赖闭包分类预览
-python tests/e2e/run_e2e.py run --project keepassxc --no-clone --fresh-db
+python tests/e2e/run_e2e.py run --project corpus-c --no-clone --fresh-db
 # → recall=100% precision=23% bug_candidates=0（原 4）
 ```

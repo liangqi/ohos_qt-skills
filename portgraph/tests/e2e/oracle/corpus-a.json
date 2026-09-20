@@ -1,5 +1,5 @@
 {
- "app": "tdesktop",
+ "app": "corpus-a",
  "source": "README.md",
  "source_note": "README §Third-party 逐条人工复核：剥离许可后缀噪声；GYP/Ninja/CMake 改 build 型；Open Sans/Vazirmatn 字体与 Emoji alpha codes 为数据资产（非链接依赖）已删",
  "reviewed": true,

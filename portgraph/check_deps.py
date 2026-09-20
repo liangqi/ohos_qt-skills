@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""查询 portgraph DB：tdesktop 真实依赖清单在 Harmonybrew/cmd-pkgs 的产物可用性"""
+"""查询 portgraph DB：corpus_a 真实依赖清单在 Harmonybrew/cmd-pkgs 的产物可用性"""
 import sqlite3
 import sys
 
@@ -15,7 +15,7 @@ names = [
     # 文本/杂项
     'hunspell', 'cmark', 'cmark-gfm', 'ada', 'boost', 'lz4', 'xxhash',
     'minizip', 'kcoreaddons', 'kf5-kcoreaddons', 'kf6-kcoreaddons',
-    # 重型/Telegram 专属
+    # 重型/corpus_a 专属
     'tlottie', 'tdlib', 'tgcalls', 'tg_owt', 'libcbor', 'libfido2', 'fido2',
     'range-v3',
     # 传递依赖

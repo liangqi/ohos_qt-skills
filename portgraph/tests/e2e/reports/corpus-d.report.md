@@ -1,6 +1,6 @@
-# qbittorrent 依赖对账报告（portgraph E2E）
+# corpus-d 依赖对账报告（portgraph E2E）
 
-> 生成时间: 2026-09-19T15:12:49Z | 语料: corpus.json#qbittorrent | 构建系统: cmake | 源文件: 710
+> 生成时间: 2026-09-19T15:12:49Z | 语料: corpus.json#corpus-d | 构建系统: cmake | 源文件: 710
 > Oracle: INSTALL（复核: 已复核，7 条；来源: 手工编写：依赖清单在仓库根 INSTALL 文件（无扩展名，corpus oracle_files 误配为 INSTALL.md；且为纯文本编号列表非 markdown 标题，自动提取器无法解析）。已逐条对照 INSTALL 原文复核。）
 
 ## 1. 结论速览
@@ -16,7 +16,7 @@
 **Agent 复核说明**：
 
 - 第二轮复核（worker3-deps-test，基线 f98a2e7）：首轮 2 个 resolution-gap（libtorrentrasterbar / systemd）均已确认根因并修复。1) libtorrentrasterbar 幽灵节点 = find_package(LibtorrentRasterbar)（CheckPackages.cmake:6，CamelCase 压平名）与 pkg_check_modules(libtorrent-rasterbar)（同文件 L9，连字符名）同库异名未归并——修复：project_scanner._link_third_party 按去分隔符键分组归并 + kb_seed.build_dashless_index 兜底解析（CamelCase 压平名 → 已知连字符包名，键长≥6 防碰撞）。libtorrent-rasterbar 确实不在 hb-core/cmd-pkgs（cmd-pkgs 仅异库 libtorrent-rakshasa，dashless 键不同不会误映射），保留单个 pkg-unknown:libtorrent-rasterbar 幽灵节点是正确结论（need_port），其版本约束 >= 2.0.10 因 CMake 宏参 ${version} 无法静态解析（残留项）。
-- 2) systemd 幽灵节点 = find_package(Systemd)（dist/unix/CMakeLists.txt:3）被 if (SYSTEMD) 守卫，而 SYSTEMD 由 feature_option_dependent(... OFF "NOT GUI" OFF) 声明且默认 OFF（GUI 默认 ON），且该 find_package 仅用于探测服务文件安装目录（不链接）——修复：qt_scanner 新增 CMake 选项守卫分析（option/feature_option[_dependent]/cmake_dependent_option 默认值收集 + if 栈逐行追踪 + Find<Name>.cmake 模块继承调用处守卫），守卫内声明连 optional 边；optional 边不进入 runtime 闭包/可移植性分析/fetch-deps。前置根因：dist 目录被 EXCLUDE_DIRS 排除导致守卫上下文丢失（qBittorrent add_subdirectory(dist) 是真实构建子目录），已移除该排除。
+- 2) systemd 幽灵节点 = find_package(Systemd)（dist/unix/CMakeLists.txt:3）被 if (SYSTEMD) 守卫，而 SYSTEMD 由 feature_option_dependent(... OFF "NOT GUI" OFF) 声明且默认 OFF（GUI 默认 ON），且该 find_package 仅用于探测服务文件安装目录（不链接）——修复：qt_scanner 新增 CMake 选项守卫分析（option/feature_option[_dependent]/cmake_dependent_option 默认值收集 + if 栈逐行追踪 + Find<Name>.cmake 模块继承调用处守卫），守卫内声明连 optional 边；optional 边不进入 runtime 闭包/可移植性分析/fetch-deps。前置根因：dist 目录被 EXCLUDE_DIRS 排除导致守卫上下文丢失（corpus-d add_subdirectory(dist) 是真实构建子目录），已移除该排除。
 - 上轮遗留的 harness 取证缺陷已修复：name_variants 对含 @version 的节点名（openssl@3）追加剥离变体，避免 grep 不到 find_package(OpenSSL) 而误判 false-positive。
 - oracle 说明（沿首轮）：依赖清单在仓库根 INSTALL 文件（纯文本编号列表，corpus oracle_files 曾误配 INSTALL.md），本 oracle 为 agent 逐条对照 INSTALL 原文手工编写（7 条：5 runtime + 1 build + 1 optional），已复核。
 
@@ -24,9 +24,9 @@
 
 | 阻塞类型 | 节点 | 原因 |
 |---|---|---|
-| unsupported-interface | app:qbittorrent | 使用鸿蒙不支持的平台接口 macOS Cocoa/AppKit（os-api）macOS 专属 UI/系统框架；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-ac |
-| unsupported-interface | app:qbittorrent | 使用鸿蒙不支持的平台接口 D-Bus IPC（ipc）鸿蒙无 D-Bus（Qt D-Bus 模块 Out of scope）；需改用系统服务/IPC；同类鸿蒙替代接口: 鸿蒙 IPC/系统服务能力［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (10 处无条件 / 11 处鸿蒙可编译 /  |
-| unsupported-interface | app:qbittorrent | 使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (3 处无条 |
+| unsupported-interface | app:corpus-d | 使用鸿蒙不支持的平台接口 macOS Cocoa/AppKit（os-api）macOS 专属 UI/系统框架；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-ac |
+| unsupported-interface | app:corpus-d | 使用鸿蒙不支持的平台接口 D-Bus IPC（ipc）鸿蒙无 D-Bus（Qt D-Bus 模块 Out of scope）；需改用系统服务/IPC；同类鸿蒙替代接口: 鸿蒙 IPC/系统服务能力［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (10 处无条件 / 11 处鸿蒙可编译 /  |
+| unsupported-interface | app:corpus-d | 使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (3 处无条 |
 | unsupported-module | qtmod:dbus | Qt for HarmonyOS 模块适配表: 不支持 - 鸿蒙无 D-Bus |
 
 未确认项 1 个：
@@ -83,4 +83,4 @@
 - 对比口径：portgraph 直接依赖（depth-1 边）vs README/INSTALL 声明依赖；闭包仅做产物概览。
 - 归因证据：对未匹配项自动 grep 克隆仓库构建文件（find_package/pkg_check_modules/target_link_libraries/vcpkg 等）。
 - ★ 类（missed-dep / resolution-gap / false-positive）为 bug 候选，需人工确认；其余为预期差异。
-- agent 可读报告：`tests/e2e/reports/qbittorrent.report.json`
+- agent 可读报告：`tests/e2e/reports/corpus-d.report.json`

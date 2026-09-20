@@ -1,42 +1,42 @@
 {
  "schema": "portgraph-e2e-report/1",
  "app": {
-  "key": "tdesktop",
-  "app_id": "app:tdesktop",
-  "name": "tdesktop",
-  "url": "https://github.com/telegramdesktop/tdesktop",
+  "key": "corpus-a",
+  "app_id": "app:corpus-a",
+  "name": "corpus-a",
+  "url": "https://github.com/corpus-a/corpus-a",
   "tier": "C",
   "build_system": "cmake+qmake",
   "sources": 6358,
-  "repo_path": "workspace/tdesktop"
+  "repo_path": "workspace/corpus-a"
  },
  "generated_at": "2026-09-19T15:12:59Z",
  "verdict": "blocked",
  "blockers": [
   {
    "kind": "unsupported-interface",
-   "node": "app:tdesktop",
-   "reason": "使用鸿蒙不支持的平台接口 macOS Cocoa/AppKit（os-api）macOS 专属 UI/系统框架；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (7 处无条件 / 0 处鸿蒙可编译 / 0 处宏守卫排除 / 621 处文件级排除) | Telegram/lib_webview/webview/platform/mac/webview_mac.mm:26[platform-file-excluded] #import <Foundation/Foundation.h>; Telegram/lib_webview/webview/platform/mac/webview_mac.mm:31[platform-file-excluded] @protocol WebviewWKFeature <NSObject>; Telegram/lib_webview/webview/platform/mac/webview_mac.mm:35[platform-file-excluded] @interface WKPreferences (WebviewPrivate)］"
+   "node": "app:corpus-a",
+   "reason": "使用鸿蒙不支持的平台接口 macOS Cocoa/AppKit（os-api）macOS 专属 UI/系统框架；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (7 处无条件 / 0 处鸿蒙可编译 / 0 处宏守卫排除 / 621 处文件级排除) | corpus-a/lib_webview/webview/platform/mac/webview_mac.mm:26[platform-file-excluded] #import <Foundation/Foundation.h>; corpus-a/lib_webview/webview/platform/mac/webview_mac.mm:31[platform-file-excluded] @protocol WebviewWKFeature <NSObject>; corpus-a/lib_webview/webview/platform/mac/webview_mac.mm:35[platform-file-excluded] @interface WKPreferences (WebviewPrivate)］"
   },
   {
    "kind": "unsupported-interface",
-   "node": "app:tdesktop",
-   "reason": "使用鸿蒙不支持的平台接口 D-Bus IPC（ipc）鸿蒙无 D-Bus（Qt D-Bus 模块 Out of scope）；需改用系统服务/IPC；同类鸿蒙替代接口: 鸿蒙 IPC/系统服务能力［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (54 处无条件 / 7 处鸿蒙可编译 / 53 处宏守卫排除 / 0 处文件级排除) | Telegram/ThirdParty/kcoreaddons/src/lib/io/kurlmimedata.cpp:102[ohos-active] static bool available = QDBusConnection::sessionBus().interface(); Telegram/ThirdParty/kcoreaddons/src/lib/io/kurlmimedata.cpp:103[ohos-active] && QDBusConnection::sessionBus().interface()->activatableServiceNames().value().; Telegram/ThirdParty/kcoreaddons/src/lib/io/kurlmimedata.cpp:110[ohos-active] QDBusConnection::sessionBus().interface() && QDBusConnection::sessionBus().inter］"
+   "node": "app:corpus-a",
+   "reason": "使用鸿蒙不支持的平台接口 D-Bus IPC（ipc）鸿蒙无 D-Bus（Qt D-Bus 模块 Out of scope）；需改用系统服务/IPC；同类鸿蒙替代接口: 鸿蒙 IPC/系统服务能力［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (54 处无条件 / 7 处鸿蒙可编译 / 53 处宏守卫排除 / 0 处文件级排除) | corpus-a/ThirdParty/kcoreaddons/src/lib/io/kurlmimedata.cpp:102[ohos-active] static bool available = QDBusConnection::sessionBus().interface(); corpus-a/ThirdParty/kcoreaddons/src/lib/io/kurlmimedata.cpp:103[ohos-active] && QDBusConnection::sessionBus().interface()->activatableServiceNames().value().; corpus-a/ThirdParty/kcoreaddons/src/lib/io/kurlmimedata.cpp:110[ohos-active] QDBusConnection::sessionBus().interface() && QDBusConnection::sessionBus().inter］"
   },
   {
    "kind": "unsupported-interface",
-   "node": "app:tdesktop",
-   "reason": "使用鸿蒙不支持的平台接口 systemd（os-api）鸿蒙无 systemd 服务管理；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (0 处无条件 / 2 处鸿蒙可编译 / 0 处宏守卫排除 / 0 处文件级排除) | Telegram/ThirdParty/xdg-desktop-portal/src/xdp-app-info-host.c:23[ohos-active] #include <systemd/sd-login.h>; Telegram/ThirdParty/xdg-desktop-portal/src/xdp-app-info.c:38[ohos-active] #include <systemd/sd-login.h>］"
+   "node": "app:corpus-a",
+   "reason": "使用鸿蒙不支持的平台接口 systemd（os-api）鸿蒙无 systemd 服务管理；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (0 处无条件 / 2 处鸿蒙可编译 / 0 处宏守卫排除 / 0 处文件级排除) | corpus-a/ThirdParty/xdg-desktop-portal/src/xdp-app-info-host.c:23[ohos-active] #include <systemd/sd-login.h>; corpus-a/ThirdParty/xdg-desktop-portal/src/xdp-app-info.c:38[ohos-active] #include <systemd/sd-login.h>］"
   },
   {
    "kind": "unsupported-interface",
-   "node": "app:tdesktop",
+   "node": "app:corpus-a",
    "reason": "使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (107 处无条件 / 9 处鸿蒙可编译 / 59 处宏守卫排除 / 187 处文件级排除) | cmake/win_directx_helper/win_directx_helper.cpp:25[unconditional] using Handle = HINSTANCE;; cmake/win_directx_helper/win_directx_helper.cpp:84[unconditional] ? reinterpret_cast<Function>(GetProcAddress(handle, name)); cmake/win_directx_helper/win_directx_helper.cpp:96[unconditional] const auto file = CreateFile(］"
   },
   {
    "kind": "unsupported-interface",
-   "node": "app:tdesktop",
-   "reason": "使用鸿蒙不支持的平台接口 X11/Xlib 直连（display）鸿蒙无 X11 显示服务；Qt 应用应走 QPA，直连 X11 代码不可移植；同类鸿蒙替代接口: 鸿蒙 WindowStage/XComponent［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (34 处无条件 / 3 处鸿蒙可编译 / 26 处宏守卫排除 / 0 处文件级排除) | Telegram/ThirdParty/nimf/modules/services/xim/nimf-xim-ic.c:23[unconditional] #include <X11/Xutil.h>; Telegram/ThirdParty/nimf/modules/services/xim/nimf-xim.h:28[platform-excluded] #include <X11/XKBlib.h>; Telegram/ThirdParty/nimf/modules/services/xim/IMdkit/FrameMgr.c:29[unconditional] #include <X11/Xlibint.h>］"
+   "node": "app:corpus-a",
+   "reason": "使用鸿蒙不支持的平台接口 X11/Xlib 直连（display）鸿蒙无 X11 显示服务；Qt 应用应走 QPA，直连 X11 代码不可移植；同类鸿蒙替代接口: 鸿蒙 WindowStage/XComponent［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (34 处无条件 / 3 处鸿蒙可编译 / 26 处宏守卫排除 / 0 处文件级排除) | corpus-a/ThirdParty/nimf/modules/services/xim/nimf-xim-ic.c:23[unconditional] #include <X11/Xutil.h>; corpus-a/ThirdParty/nimf/modules/services/xim/nimf-xim.h:28[platform-excluded] #include <X11/XKBlib.h>; corpus-a/ThirdParty/nimf/modules/services/xim/IMdkit/FrameMgr.c:29[unconditional] #include <X11/Xlibint.h>］"
   },
   {
    "kind": "unsupported-module",
@@ -52,7 +52,7 @@
  "unknowns": [
   {
    "kind": "unknown-interface",
-   "node": "app:tdesktop",
+   "node": "app:corpus-a",
    "reason": "平台接口 fork()/exec() 进程模型 的鸿蒙支持性未确认（guard=ohos-active）"
   },
   {
@@ -148,8 +148,8 @@
  ],
  "platform_excluded": [
   {
-   "node": "app:tdesktop",
-   "name": "tdesktop",
+   "node": "app:corpus-a",
+   "name": "corpus-a",
    "iface": "macOS CoreAudio",
    "category": "audio",
    "guard": "platform-excluded",
@@ -163,14 +163,14 @@
      "note": "鸿蒙原生音频 API，替代 ALSA/PulseAudio/CoreAudio"
     }
    ],
-   "evidence": "[被非鸿蒙平台守卫包裹（不编译）] guard=platform-excluded (0 处无条件 / 0 处鸿蒙可编译 / 0 处宏守卫排除 / 5 处文件级排除) | Telegram/ThirdParty/tgcalls/tgcalls/platform/darwin/iOS/tgcalls_audio_device_ios.h:252[platform-file-excluded] // The AudioUnit used to play and record audio.; Telegram/ThirdParty/tgcalls/tgcalls/platform/darwin/iOS/tgcalls_voice_processing_audio_unit.h:14[platform-file-excluded] #include <AudioUnit/AudioUnit.h>; Telegram/ThirdParty/tgcalls/tgcalls/platform/darwin/iOS/tgcalls_voice_processing_audio_unit.h:14[platform-file-excluded] #include <AudioUnit/AudioUnit.h>",
+   "evidence": "[被非鸿蒙平台守卫包裹（不编译）] guard=platform-excluded (0 处无条件 / 0 处鸿蒙可编译 / 0 处宏守卫排除 / 5 处文件级排除) | corpus-a/ThirdParty/tgcalls/tgcalls/platform/darwin/iOS/tgcalls_audio_device_ios.h:252[platform-file-excluded] // The AudioUnit used to play and record audio.; corpus-a/ThirdParty/tgcalls/tgcalls/platform/darwin/iOS/tgcalls_voice_processing_audio_unit.h:14[platform-file-excluded] #include <AudioUnit/AudioUnit.h>; corpus-a/ThirdParty/tgcalls/tgcalls/platform/darwin/iOS/tgcalls_voice_processing_audio_unit.h:14[platform-file-excluded] #include <AudioUnit/AudioUnit.h>",
    "path": [
-    "app:tdesktop"
+    "app:corpus-a"
    ]
   },
   {
-   "node": "app:tdesktop",
-   "name": "tdesktop",
+   "node": "app:corpus-a",
+   "name": "corpus-a",
    "iface": "Wayland 直连",
    "category": "display",
    "guard": "platform-excluded",
@@ -184,9 +184,9 @@
      "note": "鸿蒙窗口模型，替代 X11/Wayland 直连"
     }
    ],
-   "evidence": "[被非鸿蒙平台守卫包裹（不编译）] guard=platform-excluded (0 处无条件 / 0 处鸿蒙可编译 / 1 处宏守卫排除 / 0 处文件级排除) | Telegram/ThirdParty/nimf/modules/services/wayland/nimf-wayland.h:36[platform-excluded] #include <wayland-client.h>",
+   "evidence": "[被非鸿蒙平台守卫包裹（不编译）] guard=platform-excluded (0 处无条件 / 0 处鸿蒙可编译 / 1 处宏守卫排除 / 0 处文件级排除) | corpus-a/ThirdParty/nimf/modules/services/wayland/nimf-wayland.h:36[platform-excluded] #include <wayland-client.h>",
    "path": [
-    "app:tdesktop"
+    "app:corpus-a"
    ]
   }
  ],
@@ -893,7 +893,7 @@
   }
  ],
  "oracle": {
-  "app": "tdesktop",
+  "app": "corpus-a",
   "source": "README.md",
   "source_note": "README §Third-party 逐条人工复核：剥离许可后缀噪声；GYP/Ninja/CMake 改 build 型；Open Sans/Vazirmatn 字体与 Emoji alpha codes 为数据资产（非链接依赖）已删",
   "reviewed": true,
@@ -1125,7 +1125,7 @@
     "note": "README 声明但构建文件无引用 → 疑似 README 过时/笔误",
     "grep": []
    },
-   "agent_note": "主集成位于 cmake/（cmake_helpers）子模块：Linux 侧经 external_crash_reports 包装（CMakeLists.txt:97），主仓库仅 macstore 段 target_link_frameworks(Telegram PRIVATE Breakpad)（:2381，平台守卫内）。submodule 现已初始化，但 breakpad/crashpad 是 cmake/external/crash_reports 内 add_subdirectory 的 vendored 源码（随项目编译），portgraph 不作为外部包检出属正确定性；README 将其列为外部运行时依赖不准确"
+   "agent_note": "主集成位于 cmake/（cmake_helpers）子模块：Linux 侧经 external_crash_reports 包装（CMakeLists.txt:97），主仓库仅 macstore 段 target_link_frameworks(corpus-a PRIVATE Breakpad)（:2381，平台守卫内）。submodule 现已初始化，但 breakpad/crashpad 是 cmake/external/crash_reports 内 add_subdirectory 的 vendored 源码（随项目编译），portgraph 不作为外部包检出属正确定性；README 将其列为外部运行时依赖不准确"
   },
   {
    "class": "missed-dep",
@@ -1142,7 +1142,7 @@
     "note": "README 声明但构建文件无引用 → 疑似 README 过时/笔误",
     "grep": []
    },
-   "agent_note": "主集成位于 cmake/（cmake_helpers）子模块：Linux 侧经 external_crash_reports 包装（CMakeLists.txt:97），主仓库仅 macstore 段 target_link_frameworks(Telegram PRIVATE Breakpad)（:2381，平台守卫内）。submodule 现已初始化，但 breakpad/crashpad 是 cmake/external/crash_reports 内 add_subdirectory 的 vendored 源码（随项目编译），portgraph 不作为外部包检出属正确定性；README 将其列为外部运行时依赖不准确"
+   "agent_note": "主集成位于 cmake/（cmake_helpers）子模块：Linux 侧经 external_crash_reports 包装（CMakeLists.txt:97），主仓库仅 macstore 段 target_link_frameworks(corpus-a PRIVATE Breakpad)（:2381，平台守卫内）。submodule 现已初始化，但 breakpad/crashpad 是 cmake/external/crash_reports 内 add_subdirectory 的 vendored 源码（随项目编译），portgraph 不作为外部包检出属正确定性；README 将其列为外部运行时依赖不准确"
   },
   {
    "class": "build-only",
@@ -1233,7 +1233,7 @@
    "pg_status": null,
    "depth": null,
    "evidence": {
-    "note": " .gitmodules 自带子模块（Telegram/ThirdParty/GSL → https://github.com/Microsoft/GSL.git）：随项目源码一起编译，不作为外部包获取/检测"
+    "note": " .gitmodules 自带子模块（corpus-a/ThirdParty/GSL → https://github.com/Microsoft/GSL.git）：随项目源码一起编译，不作为外部包获取/检测"
    },
    "agent_note": null
   },
@@ -1476,7 +1476,7 @@
       "text": "target_link_libraries(external_cmark_gfm"
      },
      {
-      "file": "Telegram/cmake/td_iv.cmake",
+      "file": "corpus-a/cmake/td_iv.cmake",
       "line": 157,
       "strong": true,
       "text": "    desktop-app::external_cmark_gfm"
@@ -1682,7 +1682,7 @@
       "text": "        ${libs_loc}/local/lib/libavif"
      },
      {
-      "file": "Telegram/ThirdParty/kimageformats/CMakeLists.txt",
+      "file": "corpus-a/ThirdParty/kimageformats/CMakeLists.txt",
       "line": 54,
       "strong": true,
       "text": "find_package(libavif"
@@ -1724,13 +1724,13 @@
       "text": "        ${libs_loc}/local/lib/libheif"
      },
      {
-      "file": "Telegram/ThirdParty/kimageformats/CMakeLists.txt",
+      "file": "corpus-a/ThirdParty/kimageformats/CMakeLists.txt",
       "line": 65,
       "strong": true,
       "text": "pkg_check_modules(LibHeif IMPORTED_TARGET libheif"
      },
      {
-      "file": "Telegram/ThirdParty/kimageformats/src/imageformats/CMakeLists.txt",
+      "file": "corpus-a/ThirdParty/kimageformats/src/imageformats/CMakeLists.txt",
       "line": 95,
       "strong": true,
       "text": "target_link_libraries(kimg_heif PkgConfig::LibHeif"
@@ -1877,13 +1877,13 @@
       "text": "    PkgConfig::DESKTOP_APP_XKBCOMMON"
      },
      {
-      "file": "Telegram/ThirdParty/nimf/configure.ac",
+      "file": "corpus-a/ThirdParty/nimf/configure.ac",
       "line": 75,
       "strong": true,
       "text": "                                       [xkbcommon"
      },
      {
-      "file": "Telegram/ThirdParty/nimf/configure.ac",
+      "file": "corpus-a/ThirdParty/nimf/configure.ac",
       "line": 278,
       "strong": true,
       "text": "                                     wayland-protocols xkbcommon"
@@ -2127,7 +2127,7 @@
       "text": "        pango"
      },
      {
-      "file": "Telegram/lib_ui/CMakeLists.txt",
+      "file": "corpus-a/lib_ui/CMakeLists.txt",
       "line": 368,
       "strong": true,
       "text": "target_link_libraries(lib_ui PRIVATE desktop-app::external_pango"
@@ -2189,25 +2189,25 @@
       "text": "find_package(protobuf"
      },
      {
-      "file": "Telegram/ThirdParty/cld3/CMakeLists.txt",
+      "file": "corpus-a/ThirdParty/cld3/CMakeLists.txt",
       "line": 8,
       "strong": true,
       "text": "find_package(Protobuf"
      },
      {
-      "file": "Telegram/ThirdParty/cld3/CMakeLists.txt",
+      "file": "corpus-a/ThirdParty/cld3/CMakeLists.txt",
       "line": 63,
       "strong": true,
       "text": "target_link_libraries(language_identifier_main cld3 ${Protobuf"
      },
      {
-      "file": "Telegram/ThirdParty/cld3/CMakeLists.txt",
+      "file": "corpus-a/ThirdParty/cld3/CMakeLists.txt",
       "line": 66,
       "strong": true,
       "text": "target_link_libraries(getonescriptspan_test cld3 ${Protobuf"
      },
      {
-      "file": "Telegram/ThirdParty/cld3/CMakeLists.txt",
+      "file": "corpus-a/ThirdParty/cld3/CMakeLists.txt",
       "line": 69,
       "strong": true,
       "text": "target_link_libraries(language_identifier_features_test cld3 ${Protobuf"
@@ -2367,7 +2367,7 @@
       "text": "target_link_libraries(external_xxhash"
      },
      {
-      "file": "Telegram/CMakeLists.txt",
+      "file": "corpus-a/CMakeLists.txt",
       "line": 100,
       "strong": true,
       "text": "    desktop-app::external_xxhash"
@@ -2531,7 +2531,7 @@
   }
  },
  "agent_notes": [
-  "本轮（tdesktop deps-test）已修复：扫描器现解析 target_link_libraries 的 ns::external_<name> 导入目标名（剥前缀→raw_libs ext_target）并连边/建幽灵，openal/xxhash/webrtc/ada/qr-code-generator 等不再需要人工重分类",
+  "本轮（corpus-a deps-test）已修复：扫描器现解析 target_link_libraries 的 ns::external_<name> 导入目标名（剥前缀→raw_libs ext_target）并连边/建幽灵，openal/xxhash/webrtc/ada/qr-code-generator 等不再需要人工重分类",
   "gsl/range-v3/hunspell 等为 .gitmodules 自带子模块（vendored，随项目编译），harness 现按 .gitmodules 证据自动归 vendored 类",
   "breakpad/crashpad 的残留缺口根因：shallow clone 未初始化子模块（cmake/ 即 cmake_helpers），其内部的 find_package/breakpad-cp 选择逻辑不可见；完整方案需 'clone --recurse-submodules' 或按 .gitmodules 提示的缺失路径降级处理，见 TEST-REPORT 残留项",
   "lzma-sdk/liblzma/opus：主仓库构建文件确无引用（liblzma/opus 由 cmake_helpers 的外部 Libraries 预编译目录或 tg_owt 栈带入），readme-stale 归类符合当前扫描范围事实"

@@ -75,7 +75,7 @@ Output: ./portgraph\portgraph-explorer\pages\index.html（整文件覆盖重写�
 顶栏 .topbar（毛玻璃：background color-mix(in srgb, var(--muted) 88%, transparent)、backdrop-filter saturate(180%) blur(20px)、border-bottom 1px var(--border)、padding 0 16px、gap 12px、align-items center）：
 - 左侧品牌：28x28 圆角方块品牌标（radius 9px、radial-gradient(circle at 32% 30%, var(--brand-300), var(--primary) 58%, var(--brand-600))、微阴影）+ h1 "鸿蒙化可移植性图谱"（15px/600）+ p "Qt 应用 × HarmonyOS 依赖拓扑分析"（11px muted）。
 - 右侧控件组（flex、gap 8-10px、可换行）：
-  - label "目标应用" + select#app-select：选项 tdesktop 5.3.2（selected）、krdc 23.08、filelight 23.08、MuseScore 4.5
+  - label "目标应用" + select#app-select：选项 corpus-a 5.3.2（selected）、krdc 23.08、filelight 23.08、corpus-b 4.5
   - label "布局" + select#layout-select：横向层级（selected）、力导向、环形
   - input#search-input type=search，placeholder "搜索节点名，回车定位"
   - button#add-app-btn "添加分析"（次级样式，data-dom-id="add-app-btn"）
@@ -118,18 +118,18 @@ Output: ./portgraph\portgraph-explorer\pages\index.html（整文件覆盖重写�
 ## E. 拓扑 SVG 规范（手绘静态复刻，viewBox="0 0 1110 800"）
 
 - 底纹：<defs> 内 22x22 dot-grid pattern（1.5px 圆点 var(--border)）铺满全图；箭头 marker（var(--border)）。
-- app 节点 tdesktop：cx≈120、cy≈400、r 26、fill var(--primary)、stroke var(--brand-600) 3px；下方标签：mono 11px/600 var(--foreground) "tdesktop" + 9px muted "v5.3.2 · app"。
+- app 节点 corpus-a：cx≈120、cy≈400、r 26、fill var(--primary)、stroke var(--brand-600) 3px；下方标签：mono 11px/600 var(--foreground) "corpus-a" + 9px muted "v5.3.2 · app"。
 - Qt 聚合（展开态，真实应用点击聚合圈后的状态）：虚线圆 cx≈400、cy≈400、r≈165、stroke var(--primary) 1.4px dasharray 5 4（透明度约 .55）、fill var(--primary) 透明度 .04；圆上方标签："Qt 模块聚合"（12px/600 var(--primary)）+ "3 支持 · 1 阻塞"（10px muted，数字分别用 state-success/state-error 着色的 tspans）。
 - 聚合内 4 个 Qt 模块节点（mono 9.5-10px 标签在节点下方）：qtbase（约 350,250，r 11，success）、qt5compat（约 430,330，r 11，success）、qtsvg（约 330,430，r 11，success）、qtwebengine（约 430,510，r 13，error，标签 var(--text-700)）；success 节点 fill var(--state-success)、stroke var(--card) 2px；error 节点 fill var(--state-error)。
 - 外部依赖 5 个节点（右侧分布，r 10，标签同上）：zlib（约 690,150，success）、openssl@3（约 790,270，success）、ffmpeg（约 680,400，success）、libsecret（约 800,520，success）、libexif（约 880,630，fill var(--chart-3)，标签 var(--text-700)）。
-- 边：tdesktop→4 个 Qt 模块（uses-module 语义）：stroke var(--primary) 1.4px、透明度 .9、带箭头；tdesktop→5 个外部依赖（runtime 语义）：stroke var(--border) 1.2px、透明度 .85、带箭头；其中 tdesktop→libsecret 一条 dasharray 4 4（platform_cond 平台条件边）。全部三次贝塞尔曲线（C 指令），从节点边缘出发到目标节点边缘，不得穿越节点本体、不得与标签重叠。
+- 边：corpus-a→4 个 Qt 模块（uses-module 语义）：stroke var(--primary) 1.4px、透明度 .9、带箭头；corpus-a→5 个外部依赖（runtime 语义）：stroke var(--border) 1.2px、透明度 .85、带箭头；其中 corpus-a→libsecret 一条 dasharray 4 4（platform_cond 平台条件边）。全部三次贝塞尔曲线（C 指令），从节点边缘出发到目标节点边缘，不得穿越节点本体、不得与标签重叠。
 - 交互态（纯 CSS）：.gnode circle 过渡 150ms；.gnode:hover circle stroke var(--primary)、stroke-width 2.5；svg cursor grab。
 - 质量要求：标签与几何零重叠、零越界；全图横向铺满 1110 宽（左缘 ≈90、右缘 ≈1000+），纵向利用 800 高；这是一张依赖拓扑图而非数据图表，不用坐标轴。
 
 ## F. 侧栏内容（真实语义数据）
 
-阻塞点卡片 1（risk-high）：b-kind "不支持的平台接口" + risk-chip "高风险"；b-node "app:tdesktop"；b-reason "使用鸿蒙不支持的平台接口 macOS Cocoa / AppKit，4 处无条件编译命中将参与鸿蒙构建，212 处文件级命中已被平台排除。"；b-path（dashed 顶边线、mono 10px var(--primary)）"app:tdesktop → 平台接口 → macOS Cocoa / AppKit"。
-阻塞点卡片 2（risk-medium）：b-kind "不支持的 Qt 模块" + risk-chip "中风险"；b-node "qt-module:qtwebengine"；b-reason "Qt WebEngine 依赖 Chromium，鸿蒙无官方移植记录，建议改用系统 WebView 能力。"；b-guard chip "guard: uses-module"；b-alt "鸿蒙可替代: " + alt-chip st-convertible "OHOS WebView"；b-path "app:tdesktop → qt-module:qtwebengine"。
+阻塞点卡片 1（risk-high）：b-kind "不支持的平台接口" + risk-chip "高风险"；b-node "app:corpus-a"；b-reason "使用鸿蒙不支持的平台接口 macOS Cocoa / AppKit，4 处无条件编译命中将参与鸿蒙构建，212 处文件级命中已被平台排除。"；b-path（dashed 顶边线、mono 10px var(--primary)）"app:corpus-a → 平台接口 → macOS Cocoa / AppKit"。
+阻塞点卡片 2（risk-medium）：b-kind "不支持的 Qt 模块" + risk-chip "中风险"；b-node "qt-module:qtwebengine"；b-reason "Qt WebEngine 依赖 Chromium，鸿蒙无官方移植记录，建议改用系统 WebView 能力。"；b-guard chip "guard: uses-module"；b-alt "鸿蒙可替代: " + alt-chip st-convertible "OHOS WebView"；b-path "app:corpus-a → qt-module:qtwebengine"。
 平台排除项 3 条（结构：b-kind "iface（category）"、b-node "guard: …"、b-reason、b-alt chips）：
 1. "X11（窗口系统）" / "guard: #ifdef Q_OS_LINUX" / "位于 platform/unix 路径，仅在 Linux/X11 构建启用，鸿蒙构建不参与编译。" / alt-chip st-supported "OHOS WindowManager"
 2. "ALSA（音频）" / "guard: #ifdef Q_OS_LINUX" / "音频后端仅在 Linux 条件编译，鸿蒙走系统音频框架。" / alt-chip st-supported "OHOS AudioFramework"

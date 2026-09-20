@@ -1042,12 +1042,12 @@ class TestDbNameLookup(unittest.TestCase):
 
 
 class TestGeneralizationFixes(unittest.TestCase):
-    """语料外泛化测试（QOwnNotes/strawberry/krita，2026-09）暴露问题的
+    """语料外泛化测试（gen_f/gen_e/gen_a，2026-09）暴露问题的
     回归测试：URL 版本提取 / 宏包装目标 / find_library 关键字 / env -y /
     共享解析阶梯 / in-tree 判定 / raw 链接名的 test 角色。"""
 
-    # ---- 0) lmms 泛化轮（2026-09 worker2-deps-regress）暴露的表缺口
-    def test_lmms_regress_classifications(self):
+    # ---- 0) gen_d 泛化轮（2026-09 worker2-deps-regress）暴露的表缺口
+    def test_gen_d_regress_classifications(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "lm"
             (root / "src").mkdir(parents=True)
@@ -1101,8 +1101,8 @@ target_link_libraries(app PRIVATE cxxtest)
             self.assertIn("perl", tools)
             conn.close()
 
-    # ---- 0b) libopenshot 泛化轮：绑定生成工具链 + lib前缀+版本后缀组合剥离
-    def test_openshot_bindings_and_ladder(self):
+    # ---- 0b) libgen_g 泛化轮：绑定生成工具链 + lib前缀+版本后缀组合剥离
+    def test_gen_g_bindings_and_ladder(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "os"
             (root / "bindings").mkdir(parents=True)
@@ -1141,8 +1141,8 @@ target_link_libraries(app PRIVATE cxxtest)
             self.assertNotIn("swig", link)
             conn.close()
 
-    # ---- 0e) lmms 第二轮：平台接口库名 / 版本化库名归并
-    def test_lmms_iface_libnames_and_merge(self):
+    # ---- 0e) gen_d 第二轮：平台接口库名 / 版本化库名归并
+    def test_gen_d_iface_libnames_and_merge(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "lm2"
             root.mkdir()
@@ -1174,7 +1174,7 @@ target_link_libraries(p PRIVATE ${ASOUND} ${PULSE} ${FS1} sfftw)
             conn.close()
 
     # ---- 0c) 图侧解析结果校验（hint 保留原名，节点应命中 hb:pipewire）
-    def test_openshot_ladder_node_resolution(self):
+    def test_gen_g_ladder_node_resolution(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "os2"
             root.mkdir()
@@ -1193,8 +1193,8 @@ target_link_libraries(p PRIVATE ${ASOUND} ${PULSE} ${FS1} sfftw)
             self.assertEqual(scan["deps_unknown"], [])
             conn.close()
 
-    # ---- 0d) libopenshot 第二轮：win32 缺口库 + OpenCV 目标名归并
-    def test_openshot_win32_and_target_merge(self):
+    # ---- 0d) libgen_g 第二轮：win32 缺口库 + OpenCV 目标名归并
+    def test_gen_g_win32_and_target_merge(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "os3"
             root.mkdir()
@@ -1260,7 +1260,7 @@ pkg_check_modules(BABL babl-0.1)
                 got = m2.group(1) if m2 else None
             self.assertEqual(got, want, "version of %s" % url)
 
-    # ---- 2) 宏包装的 add_library（krita kis_add_library 实证）
+    # ---- 2) 宏包装的 add_library（gen_a kis_add_library 实证）
     def test_macro_wrapped_add_library(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "p"
@@ -1271,16 +1271,16 @@ project(MacroWrap)
 macro(kis_add_library)
     add_library(${REAL_UNPARSED_ARGUMENTS})
 endmacro()
-kis_add_library(kritaui SHARED src/x.cpp)
+kis_add_library(gen_aui SHARED src/x.cpp)
 add_executable(app src/main.cpp)
-target_link_libraries(app PRIVATE kritaui zlib)
+target_link_libraries(app PRIVATE gen_aui zlib)
 """, encoding="utf-8")
             (root / "src").mkdir()
             (root / "src" / "x.cpp").write_text("", encoding="utf-8")
             (root / "src" / "main.cpp").write_text("", encoding="utf-8")
             info = qt_scanner.scan_project(root)
             raw = {e["name"].lower() for e in info["raw_libs"]}
-            self.assertNotIn("kritaui", raw)   # 宏定义的项目内目标
+            self.assertNotIn("gen_aui", raw)   # 宏定义的项目内目标
             self.assertIn("zlib", raw)
 
     # ---- 2b) set() 变量间接的 add_library（fakevim 实证）
@@ -1411,7 +1411,7 @@ find_library(QUAZIP_LIBRARIES WIN32_DEBUG_POSTFIX d
             self.assertFalse((link["lager"].get("artifact") or {}).get("ready"))
             conn.close()
 
-    # ---- 6b) in-tree 不误收项目自身代码目录（krita lager/lcms 实证）
+    # ---- 6b) in-tree 不误收项目自身代码目录（gen_a lager/lcms 实证）
     def test_in_tree_rejects_project_code_dirs(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "p"
@@ -1432,7 +1432,7 @@ find_library(QUAZIP_LIBRARIES WIN32_DEBUG_POSTFIX d
             self.assertIsNone(_match_in_tree_dir(idx, "lager"))
             self.assertIsNone(_match_in_tree_dir(idx, "lcms"))
 
-    # ---- 6e) git 子模块 link 依赖（tdesktop kcoreaddons/microtex 实证）：
+    # ---- 6e) git 子模块 link 依赖（corpus_a kcoreaddons/microtex 实证）：
     #          浅克隆未初始化时子模块目录为空，in-tree 索引不可见，
     #          但 .gitmodules 已声明 → 未解析名归 in-tree，不误报
     #          "无产物 → 需源码编译"；已解析到产物的同名依赖追加
@@ -1442,11 +1442,11 @@ find_library(QUAZIP_LIBRARIES WIN32_DEBUG_POSTFIX d
             root = Path(tmp) / "p"
             root.mkdir()
             (root / ".gitmodules").write_text(
-                '[submodule "Telegram/ThirdParty/kcoreaddons"]\n'
-                "\tpath = Telegram/ThirdParty/kcoreaddons\n"
+                '[submodule "corpus_a/ThirdParty/kcoreaddons"]\n'
+                "\tpath = corpus_a/ThirdParty/kcoreaddons\n"
                 "\turl = https://github.com/KDE/kcoreaddons.git\n"
-                '[submodule "Telegram/ThirdParty/xxHash"]\n'
-                "\tpath = Telegram/ThirdParty/xxHash\n"
+                '[submodule "corpus_a/ThirdParty/xxHash"]\n'
+                "\tpath = corpus_a/ThirdParty/xxHash\n"
                 "\turl = https://github.com/Cyan4973/xxHash.git\n",
                 encoding="utf-8")
             (root / "CMakeLists.txt").write_text(
@@ -1474,7 +1474,7 @@ find_library(QUAZIP_LIBRARIES WIN32_DEBUG_POSTFIX d
             self.assertIn("子模块", link["xxhash"]["ohos_note"])
             conn.close()
 
-    # ---- 6f) CPMAddPackage(NAME <name> ...) 名字提取（NotepadNext
+    # ---- 6f) CPMAddPackage(NAME <name> ...) 名字提取（gen_i
     #          实证：曾把字面量 NAME 当包名，vendored 段出现垃圾条目
     #          "NAME"；真实名 ads/QSimpleUpdater 应被提取）
     def test_cpm_name_keyword(self):
@@ -1502,7 +1502,7 @@ find_library(QUAZIP_LIBRARIES WIN32_DEBUG_POSTFIX d
 
     # ---- 6g) CPM/FetchContent 拉取的包：链接名命中（含宽松折叠，
     #          qtadvanceddocking-qt6 ≡ ads 的 URL 末段）→ in-tree，
-    #          不再误报 need_port（NotepadNext 实证）
+    #          不再误报 need_port（gen_i 实证）
     def test_fetched_dep_link_classification(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "p"
@@ -1533,16 +1533,16 @@ find_library(QUAZIP_LIBRARIES WIN32_DEBUG_POSTFIX d
                 self.assertTrue(link[nm]["artifact"]["ready"], nm)
             conn.close()
 
-    # ---- 6h) find_package(<自身项目名>) 自引用（cutter 实证：曾误
-    #          解析到同名无关包 cmdpkgs:cutter）：根 project() 名跳过；
+    # ---- 6h) find_package(<自身项目名>) 自引用（gen_j 实证：曾误
+    #          解析到同名无关包 cmdpkgs:gen_j）：根 project() 名跳过；
     #          vendored 子目录里 project(fakevim) 不影响宿主声明
     def test_find_package_self_reference(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "p"
             root.mkdir()
             (root / "CMakeLists.txt").write_text(
-                "project(Cutter)\n"
-                "find_package(Cutter REQUIRED)\n"
+                "project(gen_j)\n"
+                "find_package(gen_j REQUIRED)\n"
                 "find_package(OpenSSL REQUIRED)\n", encoding="utf-8")
             lib = root / "src" / "libraries" / "fakevim"
             lib.mkdir(parents=True)
@@ -1556,11 +1556,11 @@ find_library(QUAZIP_LIBRARIES WIN32_DEBUG_POSTFIX d
             kb_seed.seed_interfaces(conn)
             report = deps_report.analyze_dependencies(conn, root)
             names = {d["name"].lower() for d in report["link_deps"]}
-            self.assertNotIn("cutter", names)     # 自引用不误入
+            self.assertNotIn("gen_j", names)     # 自引用不误入
             self.assertIn("openssl", names)         # 正常外部包保留
             conn.close()
 
-    # ---- 6i) meson 内部依赖与子项目（cutter/rizin 实证）：
+    # ---- 6i) meson 内部依赖与子项目（gen_j/rizin 实证）：
     #          override_dependency 定义的目标（rz_core）与
     #          subprojects/ 自带子项目（zydis）→ in-tree；
     #          外部依赖（pcre2）保留为 package
@@ -1678,12 +1678,12 @@ class TestCLICompact(unittest.TestCase):
         self.assertTrue(r.stdout.strip())
 
 
-# ------------------------------------------------- e2e qbittorrent 复盘修复
+# ------------------------------------------------- e2e corpus_d 复盘修复
 
 class TestCmakeOptionGuard(unittest.TestCase):
     """OFF 默认 CMake 选项守卫内的 find_package/pkg_check_modules 标 optional。
 
-    取证样本：qBittorrent dist/unix/CMakeLists.txt 的 if (SYSTEMD)
+    取证样本：corpus_d dist/unix/CMakeLists.txt 的 if (SYSTEMD)
     （SYSTEMD 由 feature_option_dependent 声明且默认 OFF）。同时覆盖
     dist/ 目录不再被排除（add_subdirectory(dist) 是真实构建子目录）。
     """
@@ -1955,7 +1955,7 @@ class TestE2ENameVariants(unittest.TestCase):
 
 
 # =====================================================================
-# e2e tdesktop（tier C）deps-test 轮新增：external_* 导入目标链接解析、
+# e2e corpus_a（tier C）deps-test 轮新增：external_* 导入目标链接解析、
 # 构建工具过滤、vendored 子模块抑制、win32 系统库防误连、harness 取证
 # =====================================================================
 
@@ -1970,7 +1970,7 @@ def _load_e2e_harness():
 
 class TestExternalTargetLinks(unittest.TestCase):
     """target_link_libraries 的 ns::external_<name> 导入目标解析
-    （tdesktop 全部三方库走这条路，find_package 位于 cmake_helpers）。"""
+    （corpus_a 全部三方库走这条路，find_package 位于 cmake_helpers）。"""
 
     CMAKE = """
 cmake_minimum_required(VERSION 3.16)
@@ -1984,7 +1984,7 @@ target_link_libraries(app PRIVATE
   desktop-app::lib_base
   desktop-app::external_qt_static_plugins
   Qt5::Core
-  PkgConfig::TDESKTOP_UDEV
+  PkgConfig::CORPUS_A_UDEV
   external_foo
   z
 )
@@ -2020,7 +2020,7 @@ target_link_libraries(app PRIVATE
             # vendored 子模块：external_cmark_gfm 对应 .gitmodules 条目
             (root / ".gitmodules").write_text(
                 '[submodule "ThirdParty/cmark-gfm"]\n'
-                "\tpath = Telegram/ThirdParty/cmark-gfm\n"
+                "\tpath = corpus_a/ThirdParty/cmark-gfm\n"
                 "\turl = https://github.com/github/cmark-gfm.git\n",
                 encoding="utf-8")
             (root / "CMakeLists.txt").write_text(
@@ -2104,8 +2104,8 @@ class TestWin32LibNoFalseEdge(unittest.TestCase):
             conn.close()
 
 
-class TestMusescoreRegressTables(unittest.TestCase):
-    """musescore 回归轮（2026-09 worker2-deps-regress）暴露的表缺口：
+class Testcorpus_bRegressTables(unittest.TestCase):
+    """corpus_b 回归轮（2026-09 worker2-deps-regress）暴露的表缺口：
     gmock 测试框架 / win32 系统库 4 缺口 / macOS 框架 find_library 裸名
     （修复前均被当普通包报“无鸿蒙预编译产物，需源码交叉编译”）。"""
 
@@ -2162,8 +2162,8 @@ target_link_libraries(t1 PRIVATE drv gmock)
             conn.close()
 
 
-class TestPkgAliasesTdesktop(unittest.TestCase):
-    """e2e tdesktop 复核确认的别名缺口（external_* 裸名 → 鸿蒙包）。"""
+class TestPkgAliasescorpus_a(unittest.TestCase):
+    """e2e corpus_a 复核确认的别名缺口（external_* 裸名 → 鸿蒙包）。"""
 
     def test_aliases_resolve(self):
         conn = db.connect(":memory:")
@@ -2205,7 +2205,7 @@ class TestE2eHarnessDepsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
             (repo / "CMakeLists.txt").write_text(
-                "target_link_libraries(Telegram PRIVATE "
+                "target_link_libraries(corpus_a PRIVATE "
                 "desktop-app::external_xxhash lib_zlib)\n",
                 encoding="utf-8")
             ev = self.h.grep_dep_refs(repo, self.h.name_variants("xxHash"))
@@ -2223,7 +2223,7 @@ class TestE2eHarnessDepsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
             (repo / "CMakeLists.txt").write_text(
-                "target_link_libraries(Telegram\nPRIVATE\n"
+                "target_link_libraries(corpus_a\nPRIVATE\n"
                 "    desktop-app::external_boost_regex\n"
                 "    desktop-app::external_minizip\n)\n",
                 encoding="utf-8")
@@ -2263,10 +2263,10 @@ class TestE2eHarnessDepsTest(unittest.TestCase):
             repo = Path(tmp)
             (repo / ".gitmodules").write_text(
                 '[submodule "ThirdParty/GSL"]\n'
-                "\tpath = Telegram/ThirdParty/GSL\n"
+                "\tpath = corpus_a/ThirdParty/GSL\n"
                 "\turl = https://github.com/Microsoft/GSL.git\n"
                 '[submodule "ThirdParty/xxHash"]\n'
-                "\tpath = Telegram/ThirdParty/xxHash\n"
+                "\tpath = corpus_a/ThirdParty/xxHash\n"
                 "\turl = https://github.com/Cyan4973/xxHash.git\n",
                 encoding="utf-8")
             m1 = self.h.vendored_submodule_match(
@@ -2290,7 +2290,7 @@ class TestE2eHarnessDepsTest(unittest.TestCase):
 class TestPkgConfigVersionSuffixResolve(unittest.TestCase):
     """pkg-config 版本后缀名（lilv-0/glib-2.0）在图侧也解析到包
     （此前仅 deps_report._resolve 支持，图侧产生幽灵节点，
-    e2e musescore 复核确认）。"""
+    e2e corpus_b 复核确认）。"""
 
     def test_version_suffix_stripped(self):
         conn = db.connect(":memory:")
@@ -2315,7 +2315,7 @@ class TestPkgConfigVersionSuffixResolve(unittest.TestCase):
 
 class TestBuildscriptsDirNotExcluded(unittest.TestCase):
     """build* 前缀误排除修复：buildscripts/buildtools 是源码目录必须扫描，
-    build/build-Debug 等构建输出目录仍排除（e2e musescore 根因）。"""
+    build/build-Debug 等构建输出目录仍排除（e2e corpus_b 根因）。"""
 
     def _project(self, tmp: Path):
         root = tmp / "bs"
@@ -2344,8 +2344,8 @@ class TestBuildscriptsDirNotExcluded(unittest.TestCase):
 
 class TestVendoredCmakeSkip(unittest.TestCase):
     """vendored/依赖引擎目录内的 CMake 声明与注释行不算应用依赖
-    （e2e musescore：thirdparty/fluidsynth、KDDockWidgets/python、
-    muse_deps/recipes 污染 depth-1；注释行 find_package 误匹配）。"""
+    （e2e corpus_b：thirdparty/fluidsynth、KDDockWidgets/python、
+    corpus_b_deps/recipes 污染 depth-1；注释行 find_package 误匹配）。"""
 
     def _project(self, tmp: Path):
         root = tmp / "vend"
@@ -2358,7 +2358,7 @@ class TestVendoredCmakeSkip(unittest.TestCase):
             "# Exported targets for cmake: find_package(FluidSynth)\n",
             encoding="utf-8")
         # 依赖引擎子模块 recipes 的系统模式回退（不应计入）
-        p = root / "muse_deps/recipes/lv2sdk/meta.cmake"
+        p = root / "corpus_b_deps/recipes/lv2sdk/meta.cmake"
         p.parent.mkdir(parents=True)
         p.write_text(
             "pkg_check_modules(lv2sdk_system REQUIRED IMPORTED_TARGET "
@@ -2390,7 +2390,7 @@ class TestVendoredCmakeSkip(unittest.TestCase):
 class TestWrapperCmakePassthrough(unittest.TestCase):
     """vendored 路径下的 wrapper 声明文件（add_library(external_X)）
     不是 vendored 源码：其内的 find_package / pkg_check_modules 是应用
-    自身依赖，应透传计入（tdesktop 复盘：submodule 初始化后 external_X
+    自身依赖，应透传计入（corpus_a 复盘：submodule 初始化后 external_X
     成为项目内目标，叠加 vendored 跳过把 openal/ada/rnnoise 全部藏掉）。"""
 
     def _project(self, tmp: Path):
@@ -2456,7 +2456,7 @@ class TestWrapperCmakePassthrough(unittest.TestCase):
 
 class TestDynamicLoadPlatformGuard(unittest.TestCase):
     """非鸿蒙平台守卫（#if defined(Q_OS_WIN)）内的 QLibrary/dlopen
-    加载不编译、不计入 dynamic_loads（notepadqq 复盘：kernel32 误报）。"""
+    加载不编译、不计入 dynamic_loads（gen_h 复盘：kernel32 误报）。"""
 
     def test_win_guarded_qlibrary_excluded(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -2486,7 +2486,7 @@ class TestDynamicLoadPlatformGuard(unittest.TestCase):
 
 
 class TestRequireDepManifest(unittest.TestCase):
-    """依赖清单函数检测（muse_deps 引擎）：require_dep/require_source_dep/
+    """依赖清单函数检测（corpus_b_deps 引擎）：require_dep/require_source_dep/
     require_tool → link/vendored/tool 三种角色；条件块标注。"""
 
     ENGINE = """
@@ -2503,7 +2503,7 @@ require_dep(zlib)
 require_dep(freetype STATIC)
 require_source_dep(kddockwidgets)
 require_tool(crashpad_handler)
-if (MUSE_MODULE_AUDIO_PIPEWIRE)
+if (CB_MODULE_AUDIO_PIPEWIRE)
     require_dep(pipewire)
 endif()
 """
@@ -2511,7 +2511,7 @@ endif()
     def _project(self, tmp: Path):
         root = tmp / "mdep"
         # 引擎定义在依赖子模块（vendored 路径）：定义可用，但其中调用不扫
-        p = root / "muse_deps/buildtools/manifest.cmake"
+        p = root / "corpus_b_deps/buildtools/manifest.cmake"
         p.parent.mkdir(parents=True)
         p.write_text(self.ENGINE +
                      "require_dep(internal_only_in_engine)\n",
@@ -2536,7 +2536,7 @@ endif()
             self.assertEqual(md["crashpad_handler"]["mode"], "tool")
             # 条件块标注：不求值，只标注
             self.assertTrue(md["pipewire"]["conditional"])
-            self.assertIn("MUSE_MODULE_AUDIO_PIPEWIRE",
+            self.assertIn("CB_MODULE_AUDIO_PIPEWIRE",
                           md["pipewire"]["condition"])
             # STATIC 等模式参数不是依赖名；引擎内部调用不扫
             self.assertNotIn("static", md)
@@ -2614,7 +2614,7 @@ class TestFetchVendoredRole(unittest.TestCase):
 
 class TestQtComponentsListVar(unittest.TestCase):
     """set(<var> Core Gui ...) + list(APPEND) + find_package(Qt6 COMPONENTS
-    ${var}) 的组件展开（muse SetupQt6.cmake 形式）；同名变量跨文件并集，
+    ${var}) 的组件展开（corpus_b_core SetupQt6.cmake 形式）；同名变量跨文件并集，
     与目录遍历顺序无关。"""
 
     def _project(self, tmp: Path):
@@ -2644,8 +2644,8 @@ class TestQtComponentsListVar(unittest.TestCase):
             self.assertEqual(info["qt_version_hint"], "6")
 
 
-class TestMusescoreAliasResolution(unittest.TestCase):
-    """e2e musescore 确认的别名缺口：CMake 模块名/依赖清单名 → hb 包名，
+class Testcorpus_bAliasResolution(unittest.TestCase):
+    """e2e corpus_b 确认的别名缺口：CMake 模块名/依赖清单名 → hb 包名，
     扫描期解析不产生幽灵节点。"""
 
     def _project(self, tmp: Path):
@@ -2688,7 +2688,7 @@ class TestMusescoreAliasResolution(unittest.TestCase):
 
 
 class TestClonerSubmodules(unittest.TestCase):
-    """clone 复用时应补拉 submodule（musescore 依赖清单在 muse_deps/muse
+    """clone 复用时应补拉 submodule（corpus_b 依赖清单在 corpus_b_deps/corpus_b_core
     submodule 内，不初始化则扫描不到）；无 submodule/失败时静默降级。"""
 
     def test_reused_clone_inits_submodules_silently(self):
@@ -2701,9 +2701,9 @@ class TestClonerSubmodules(unittest.TestCase):
             (root / "CMakeLists.txt").write_text(
                 "project(Sub)\n", encoding="utf-8")
             (root / ".gitmodules").write_text(
-                '[submodule "muse_deps"]\n'
-                '\tpath = muse_deps\n'
-                '\turl = https://example.invalid/muse_deps.git\n',
+                '[submodule "corpus_b_deps"]\n'
+                '\tpath = corpus_b_deps\n'
+                '\turl = https://example.invalid/corpus_b_deps.git\n',
                 encoding="utf-8")
             orig_ws = cloner.WORKSPACE
             cloner.WORKSPACE = Path(tmp)   # 克隆目标指到临时 workspace
@@ -2728,11 +2728,11 @@ class TestClonerSubmodules(unittest.TestCase):
 
 
 class TestQuotedVersionAndOrphanComponents(unittest.TestCase):
-    """泛化回归（okular/konsole 实证）：
+    """泛化回归（gen_b/gen_c 实证）：
 
     - find_package 带引号版本：find_package(Poppler "24.08.0" COMPONENTS Qt6)
     - 无 COMPONENTS 关键字的尾随组件：find_package(Qt6 ${V} CONFIG REQUIRED
-      \\n Core Multimedia ...)（CMake 合法语法，konsole 全部漏检）
+      \\n Core Multimedia ...)（CMake 合法语法，gen_c 全部漏检）
     - 组件名与关键字同形：KF 组件 Config 不得被当 CONFIG 关键字丢弃
     """
 
@@ -2777,7 +2777,7 @@ class TestQuotedVersionAndOrphanComponents(unittest.TestCase):
 
     def test_kf_config_component_not_swallowed(self):
         """KF 组件名 Config 与 CONFIG 关键字同形：组件区开始后不再按
-        关键字解释（konsole find_package(KF6 ${V} REQUIRED Bookmarks
+        关键字解释（gen_c find_package(KF6 ${V} REQUIRED Bookmarks
         Config ConfigWidgets ...) 曾丢 Config）。"""
         with tempfile.TemporaryDirectory() as tmp:
             root = self._project(tmp, (
@@ -2812,9 +2812,9 @@ class TestQuotedVersionAndOrphanComponents(unittest.TestCase):
 
 class TestPlatformBlockContext(unittest.TestCase):
     """其他平台 if 块内的链接/探测声明：required=False + 注记，
-    不入 DB runtime 边（konsole if(HAIKU) network、if(FreeBSD) util、
-    qbittorrent if(Darwin)/elseif(Windows)、okular mobile if(ANDROID)、
-    keepassxc FindQREncode if(WIN32 AND NOT MINGW) 实证）。"""
+    不入 DB runtime 边（gen_c if(HAIKU) network、if(FreeBSD) util、
+    corpus_d if(Darwin)/elseif(Windows)、gen_b mobile if(ANDROID)、
+    corpus_c FindQREncode if(WIN32 AND NOT MINGW) 实证）。"""
 
     CMAKE = """cmake_minimum_required(VERSION 3.16)
 project(PlatBlocks)
@@ -2917,7 +2917,7 @@ endif()
 
 class TestOptionalPlatformIface(unittest.TestCase):
     """INTERFACE_BOUND_PACKAGES（platform-iface）条目遵循 optional 守卫：
-    qbittorrent systemd（feature_option_dependent 默认 OFF 块内的
+    corpus_d systemd（feature_option_dependent 默认 OFF 块内的
     find_package(Systemd)）曾误报 required=True + “直连平台栈”警告。"""
 
     def test_optional_systemd_not_required(self):
@@ -2952,7 +2952,7 @@ class TestOptionalPlatformIface(unittest.TestCase):
 
 class TestDashlessMergeInDepsReport(unittest.TestCase):
     """deps 报告 link 表的去分隔符合并：未解析的同库压平名/连字符名
-    不双计（qbittorrent LibtorrentRasterbar + libtorrent-rasterbar
+    不双计（corpus_d LibtorrentRasterbar + libtorrent-rasterbar
     曾产生两条“需源码交叉编译”警告）。"""
 
     def test_single_entry_single_warning(self):
@@ -2982,7 +2982,7 @@ class TestDashlessMergeInDepsReport(unittest.TestCase):
 
 class TestKfFrameworkResolution(unittest.TestCase):
     """KF 组件条目解析到 kf:<comp> 节点而非包名阶梯：KF Archive ≠
-    libarchive、KF Config ≠ libconfig（okular/konsole 曾误展示 ready
+    libarchive、KF Config ≠ libconfig（gen_b/gen_c 曾误展示 ready
     bottle，与闭包 need_port 矛盾）。"""
 
     def test_framework_resolves_to_kf_node(self):
@@ -3014,9 +3014,9 @@ class TestKfFrameworkResolution(unittest.TestCase):
 
 
 class TestInTreeGeneratorDirs(unittest.TestCase):
-    """in-tree 判定不误收功能分组目录（okular generators/poppler、
+    """in-tree 判定不误收功能分组目录（gen_b generators/poppler、
     generators/epub 是格式生成器插件代码而非自带库源码）；库容器
-    （libraries/libs）内的自带库照常命中（QOwnNotes fakevim 实证）。"""
+    （libraries/libs）内的自带库照常命中（gen_f fakevim 实证）。"""
 
     def test_generators_not_in_tree(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -3032,7 +3032,7 @@ class TestInTreeGeneratorDirs(unittest.TestCase):
                 d = gens / name
                 d.mkdir(parents=True)
                 (d / "CMakeLists.txt").write_text(
-                    "okular_add_generator(okularGenerator_%s x.cpp)\n" % name,
+                    "gen_b_add_generator(gen_bGenerator_%s x.cpp)\n" % name,
                     encoding="utf-8")
                 (d / "x.cpp").write_text("", encoding="utf-8")
             # generators/epub 的 README 是“基于外部 libepub 的后端”说明
@@ -3066,8 +3066,8 @@ class TestInTreeGeneratorDirs(unittest.TestCase):
                              "src/libraries/fakevim")
 
 
-class TestPkgAliasesOkular(unittest.TestCase):
-    """okular 泛化实证的别名缺口：ddjvuapi→djvulibre（同库 pkg-config
+class TestPkgAliasesgen_b(unittest.TestCase):
+    """gen_b 泛化实证的别名缺口：ddjvuapi→djvulibre（同库 pkg-config
     名，消除双幽灵）、libmarkdown→discount（hb markdown 是 daringfireball
     的 Perl/PHP 版本，同名异义曾误下载错误 bottle）。"""
 
@@ -3122,7 +3122,7 @@ class TestPkgAliasesOkular(unittest.TestCase):
     def test_init_cmd_uses_dash_init_flag(self):
         """回玺：`git submodule update init ...` 裸 init 被 git 当 pathspec，
         报错但旧版静默吞掉 → 复用克隆的 submodule 永远拉不起来
-        （musescore 扫描范围缺失、deps 大面积漏检）。必须用 --init。"""
+        （corpus_b 扫描范围缺失、deps 大面积漏检）。必须用 --init。"""
         from port_graph import cloner
         captured = {}
 

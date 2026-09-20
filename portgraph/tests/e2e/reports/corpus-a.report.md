@@ -1,6 +1,6 @@
-# tdesktop 依赖对账报告（portgraph E2E）
+# corpus-a 依赖对账报告（portgraph E2E）
 
-> 生成时间: 2026-09-19T15:12:59Z | 语料: corpus.json#tdesktop | 构建系统: cmake+qmake | 源文件: 6358
+> 生成时间: 2026-09-19T15:12:59Z | 语料: corpus.json#corpus-a | 构建系统: cmake+qmake | 源文件: 6358
 > Oracle: README.md（复核: 已复核，20 条；来源: README §Third-party 逐条人工复核：剥离许可后缀噪声；GYP/Ninja/CMake 改 build 型；Open Sans/Vazirmatn 字体与 Emoji alpha codes 为数据资产（非链接依赖）已删）
 
 ## 1. 结论速览
@@ -15,7 +15,7 @@
 
 **Agent 复核说明**：
 
-- 本轮（tdesktop deps-test）已修复：扫描器现解析 target_link_libraries 的 ns::external_<name> 导入目标名（剥前缀→raw_libs ext_target）并连边/建幽灵，openal/xxhash/webrtc/ada/qr-code-generator 等不再需要人工重分类
+- 本轮（corpus-a deps-test）已修复：扫描器现解析 target_link_libraries 的 ns::external_<name> 导入目标名（剥前缀→raw_libs ext_target）并连边/建幽灵，openal/xxhash/webrtc/ada/qr-code-generator 等不再需要人工重分类
 - gsl/range-v3/hunspell 等为 .gitmodules 自带子模块（vendored，随项目编译），harness 现按 .gitmodules 证据自动归 vendored 类
 - breakpad/crashpad 的残留缺口根因：shallow clone 未初始化子模块（cmake/ 即 cmake_helpers），其内部的 find_package/breakpad-cp 选择逻辑不可见；完整方案需 'clone --recurse-submodules' 或按 .gitmodules 提示的缺失路径降级处理，见 TEST-REPORT 残留项
 - lzma-sdk/liblzma/opus：主仓库构建文件确无引用（liblzma/opus 由 cmake_helpers 的外部 Libraries 预编译目录或 tg_owt 栈带入），readme-stale 归类符合当前扫描范围事实
@@ -24,16 +24,16 @@
 
 | 阻塞类型 | 节点 | 原因 |
 |---|---|---|
-| unsupported-interface | app:tdesktop | 使用鸿蒙不支持的平台接口 macOS Cocoa/AppKit（os-api）macOS 专属 UI/系统框架；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-ac |
-| unsupported-interface | app:tdesktop | 使用鸿蒙不支持的平台接口 D-Bus IPC（ipc）鸿蒙无 D-Bus（Qt D-Bus 模块 Out of scope）；需改用系统服务/IPC；同类鸿蒙替代接口: 鸿蒙 IPC/系统服务能力［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (54 处无条件 / 7 处鸿蒙可编译 / 5 |
-| unsupported-interface | app:tdesktop | 使用鸿蒙不支持的平台接口 systemd（os-api）鸿蒙无 systemd 服务管理；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (0 处无条 |
-| unsupported-interface | app:tdesktop | 使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (107 处 |
-| unsupported-interface | app:tdesktop | 使用鸿蒙不支持的平台接口 X11/Xlib 直连（display）鸿蒙无 X11 显示服务；Qt 应用应走 QPA，直连 X11 代码不可移植；同类鸿蒙替代接口: 鸿蒙 WindowStage/XComponent［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (34 处无条件 / 3 处 |
+| unsupported-interface | app:corpus-a | 使用鸿蒙不支持的平台接口 macOS Cocoa/AppKit（os-api）macOS 专属 UI/系统框架；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-ac |
+| unsupported-interface | app:corpus-a | 使用鸿蒙不支持的平台接口 D-Bus IPC（ipc）鸿蒙无 D-Bus（Qt D-Bus 模块 Out of scope）；需改用系统服务/IPC；同类鸿蒙替代接口: 鸿蒙 IPC/系统服务能力［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (54 处无条件 / 7 处鸿蒙可编译 / 5 |
+| unsupported-interface | app:corpus-a | 使用鸿蒙不支持的平台接口 systemd（os-api）鸿蒙无 systemd 服务管理；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (0 处无条 |
+| unsupported-interface | app:corpus-a | 使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (107 处 |
+| unsupported-interface | app:corpus-a | 使用鸿蒙不支持的平台接口 X11/Xlib 直连（display）鸿蒙无 X11 显示服务；Qt 应用应走 QPA，直连 X11 代码不可移植；同类鸿蒙替代接口: 鸿蒙 WindowStage/XComponent［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (34 处无条件 / 3 处 |
 | unsupported-module | qtmod:dbus | Qt for HarmonyOS 模块适配表: 不支持 - 鸿蒙无 D-Bus |
 | unsupported-module | qtmod:waylandcompositor | Qt for HarmonyOS 模块适配表: 不支持 - Linux/Wayland 合成器框架，鸿蒙窗口模型非 Wayland |
 
 未确认项 19 个：
-- [unknown-interface] app:tdesktop: 平台接口 fork()/exec() 进程模型 的鸿蒙支持性未确认（guard=ohos-active）
+- [unknown-interface] app:corpus-a: 平台接口 fork()/exec() 进程模型 的鸿蒙支持性未确认（guard=ohos-active）
 - [unknown-package] pkg-unknown:ada: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
 - [unknown-package] pkg-unknown:microsoft: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
 - [unknown-package] pkg-unknown:range: 无鸿蒙预编译产物，需自行交叉编译移植；不在 Harmonybrew/cmd-pkgs 已知清单
@@ -53,8 +53,8 @@
 
 | 归类 | README 侧 | portgraph 侧 | 类型/深度 | 证据/说明 |
 |---|---|---|---|---|
-| ★漏检 | breakpad | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 【agent: 主集成位于 cmake/（cmake_helpers）子模块：Linux 侧经 external_crash_reports 包装（CMakeLists.txt:97），主仓库仅 macstore 段 target_link_frameworks(Telegram PRIVATE Breakpad)（:2381 |
-| ★漏检 | crashpad | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 【agent: 主集成位于 cmake/（cmake_helpers）子模块：Linux 侧经 external_crash_reports 包装（CMakeLists.txt:97），主仓库仅 macstore 段 target_link_frameworks(Telegram PRIVATE Breakpad)（:2381 |
+| ★漏检 | breakpad | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 【agent: 主集成位于 cmake/（cmake_helpers）子模块：Linux 侧经 external_crash_reports 包装（CMakeLists.txt:97），主仓库仅 macstore 段 target_link_frameworks(corpus-a PRIVATE Breakpad)（:2381 |
+| ★漏检 | crashpad | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 【agent: 主集成位于 cmake/（cmake_helpers）子模块：Linux 侧经 external_crash_reports 包装（CMakeLists.txt:97），主仓库仅 macstore 段 target_link_frameworks(corpus-a PRIVATE Breakpad)（:2381 |
 | ★误报 | — | libxcb | package d1 | portgraph 检出但构建文件无引用 → 扫描误报候选（include 启发式/名字巧合） |
 | README过时 | lzma-sdk | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 |
 | README过时 | opus | — | runtime | README 声明但构建文件无引用 → 疑似 README 过时/笔误 |
@@ -101,7 +101,7 @@
 | 一致 | qr-code-generator | libqrcodegen | package d1 |  |
 | 一致 | hunspell | hunspell | package d1 |  |
 | 一致 | ada | ada | package d1 | 匹配到幽灵节点：真实外部依赖且无已知鸿蒙包（fetch-deps 报 need_port/需源码移植，检出正确） |
-| 自带子模块 | gsl | — | runtime |  .gitmodules 自带子模块（Telegram/ThirdParty/GSL → https://github.com/Microsoft/GSL.git）：随项目源码一起编译，不作为外部包获取/检测 |
+| 自带子模块 | gsl | — | runtime |  .gitmodules 自带子模块（corpus-a/ThirdParty/GSL → https://github.com/Microsoft/GSL.git）：随项目源码一起编译，不作为外部包获取/检测 |
 | 未知包(正常) | — | auto_updates | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
 | 未知包(正常) | — | breakpad-client | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
 | 未知包(正常) | — | crash_reports | package d1 | 未匹配到已知鸿蒙包：真实外部依赖，幽灵节点为正确检出（fetch-deps 报 need_port/需源码移植） |
@@ -203,4 +203,4 @@
 - 对比口径：portgraph 直接依赖（depth-1 边）vs README/INSTALL 声明依赖；闭包仅做产物概览。
 - 归因证据：对未匹配项自动 grep 克隆仓库构建文件（find_package/pkg_check_modules/target_link_libraries/vcpkg 等）。
 - ★ 类（missed-dep / resolution-gap / false-positive）为 bug 候选，需人工确认；其余为预期差异。
-- agent 可读报告：`tests/e2e/reports/tdesktop.report.json`
+- agent 可读报告：`tests/e2e/reports/corpus-a.report.json`

@@ -1,5 +1,5 @@
 {
- "app": "keepassxc",
+ "app": "corpus-c",
  "source": "INSTALL.md",
  "source_note": "agent 复核定稿：删除散文链接残留 set-up-build-environment；asciidoctor 依原文（build tools must exist within your PATH + KPXC_FEATURE_DOCS）改判 build；本版 INSTALL.md 仅声明 qt/botan/zlib 三个库，无 libgcrypt/argon2/libsodium/ykpers；vcpkg/xvfb-run 为 prose 提及的工具/测试辅助，不入 oracle",
  "reviewed": true,

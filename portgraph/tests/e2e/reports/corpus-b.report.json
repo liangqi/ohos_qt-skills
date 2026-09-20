@@ -1,47 +1,47 @@
 {
  "schema": "portgraph-e2e-report/1",
  "app": {
-  "key": "musescore",
-  "app_id": "app:musescore",
-  "name": "musescore",
-  "url": "https://github.com/musescore/MuseScore",
+  "key": "corpus-b",
+  "app_id": "app:corpus-b",
+  "name": "corpus-b",
+  "url": "https://github.com/corpus-b/corpus-b",
   "tier": "C",
   "build_system": "cmake+qmake",
   "sources": 5729,
-  "repo_path": "workspace/musescore"
+  "repo_path": "workspace/corpus-b"
  },
  "generated_at": "2026-09-19T15:12:53Z",
  "verdict": "blocked",
  "blockers": [
   {
    "kind": "unsupported-interface",
-   "node": "app:musescore",
-   "reason": "使用鸿蒙不支持的平台接口 ALSA 直连（audio）鸿蒙音频走 AudioRenderer/AudioCapturer，ALSA 不可用；同类鸿蒙替代接口: 鸿蒙 AudioRenderer/AudioCapturer［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (89 处无条件 / 113 处鸿蒙可编译 / 1 处宏守卫排除 / 0 处文件级排除) | muse/framework/midi/internal/platform/lin/alsamidiinport.cpp:24[unconditional] #include <alsa/asoundlib.h>; muse/framework/midi/internal/platform/lin/alsamidiinport.cpp:25[unconditional] #include <alsa/seq.h>; muse/framework/midi/internal/platform/lin/alsamidiinport.cpp:26[unconditional] #include <alsa/seq_midi_event.h>］"
+   "node": "app:corpus-b",
+   "reason": "使用鸿蒙不支持的平台接口 ALSA 直连（audio）鸿蒙音频走 AudioRenderer/AudioCapturer，ALSA 不可用；同类鸿蒙替代接口: 鸿蒙 AudioRenderer/AudioCapturer［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (89 处无条件 / 113 处鸿蒙可编译 / 1 处宏守卫排除 / 0 处文件级排除) | corpus-b-core/framework/midi/internal/platform/lin/alsamidiinport.cpp:24[unconditional] #include <alsa/asoundlib.h>; corpus-b-core/framework/midi/internal/platform/lin/alsamidiinport.cpp:25[unconditional] #include <alsa/seq.h>; corpus-b-core/framework/midi/internal/platform/lin/alsamidiinport.cpp:26[unconditional] #include <alsa/seq_midi_event.h>］"
   },
   {
    "kind": "unsupported-interface",
-   "node": "app:musescore",
-   "reason": "使用鸿蒙不支持的平台接口 macOS CoreAudio（audio）macOS 专属音频框架；同类鸿蒙替代接口: 鸿蒙 AudioRenderer/AudioCapturer［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (2 处无条件 / 11 处鸿蒙可编译 / 0 处宏守卫排除 / 11 处文件级排除) | muse/framework/midi/internal/platform/osx/coremidiinport.cpp:24[platform-file-excluded] #include <CoreAudio/HostTime.h>; muse/framework/midi/internal/platform/osx/coremidiinport.cpp:26[platform-file-excluded] #include <CoreMIDI/CoreMIDI.h>; muse/framework/midi/internal/platform/osx/coremidiinport.cpp:47[platform-file-excluded] MIDIPortRef inputPort = 0;］"
+   "node": "app:corpus-b",
+   "reason": "使用鸿蒙不支持的平台接口 macOS CoreAudio（audio）macOS 专属音频框架；同类鸿蒙替代接口: 鸿蒙 AudioRenderer/AudioCapturer［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (2 处无条件 / 11 处鸿蒙可编译 / 0 处宏守卫排除 / 11 处文件级排除) | corpus-b-core/framework/midi/internal/platform/osx/coremidiinport.cpp:24[platform-file-excluded] #include <CoreAudio/HostTime.h>; corpus-b-core/framework/midi/internal/platform/osx/coremidiinport.cpp:26[platform-file-excluded] #include <CoreMIDI/CoreMIDI.h>; corpus-b-core/framework/midi/internal/platform/osx/coremidiinport.cpp:47[platform-file-excluded] MIDIPortRef inputPort = 0;］"
   },
   {
    "kind": "unsupported-interface",
-   "node": "app:musescore",
-   "reason": "使用鸿蒙不支持的平台接口 D-Bus IPC（ipc）鸿蒙无 D-Bus（Qt D-Bus 模块 Out of scope）；需改用系统服务/IPC；同类鸿蒙替代接口: 鸿蒙 IPC/系统服务能力［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (10 处无条件 / 0 处鸿蒙可编译 / 2 处宏守卫排除 / 0 处文件级排除) | muse/framework/ui/internal/platform/linux/linuxplatformtheme.cpp:23[unconditional] #include <QtDBus/QDBusConnection>; muse/framework/ui/internal/platform/linux/linuxplatformtheme.cpp:23[unconditional] #include <QtDBus/QDBusConnection>; muse/framework/ui/internal/platform/linux/linuxplatformtheme.cpp:24[unconditional] #include <QtDBus/QDBusConnectionInterface>］"
+   "node": "app:corpus-b",
+   "reason": "使用鸿蒙不支持的平台接口 D-Bus IPC（ipc）鸿蒙无 D-Bus（Qt D-Bus 模块 Out of scope）；需改用系统服务/IPC；同类鸿蒙替代接口: 鸿蒙 IPC/系统服务能力［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (10 处无条件 / 0 处鸿蒙可编译 / 2 处宏守卫排除 / 0 处文件级排除) | corpus-b-core/framework/ui/internal/platform/linux/linuxplatformtheme.cpp:23[unconditional] #include <QtDBus/QDBusConnection>; corpus-b-core/framework/ui/internal/platform/linux/linuxplatformtheme.cpp:23[unconditional] #include <QtDBus/QDBusConnection>; corpus-b-core/framework/ui/internal/platform/linux/linuxplatformtheme.cpp:24[unconditional] #include <QtDBus/QDBusConnectionInterface>］"
   },
   {
    "kind": "unsupported-interface",
-   "node": "app:musescore",
-   "reason": "使用鸿蒙不支持的平台接口 PulseAudio 直连（audio）鸿蒙无 PulseAudio 服务；同类鸿蒙替代接口: 鸿蒙 AudioRenderer/AudioCapturer［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (0 处无条件 / 8 处鸿蒙可编译 / 2 处宏守卫排除 / 0 处文件级排除) | muse/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/drivers/fluid_pulse.c:33[ohos-active] #include <pulse/simple.h>; muse/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/drivers/fluid_pulse.c:34[ohos-active] #include <pulse/error.h>; muse/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/drivers/fluid_pulse.c:44[ohos-active] pa_simple *pa_handle;］"
+   "node": "app:corpus-b",
+   "reason": "使用鸿蒙不支持的平台接口 PulseAudio 直连（audio）鸿蒙无 PulseAudio 服务；同类鸿蒙替代接口: 鸿蒙 AudioRenderer/AudioCapturer［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (0 处无条件 / 8 处鸿蒙可编译 / 2 处宏守卫排除 / 0 处文件级排除) | corpus-b-core/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/drivers/fluid_pulse.c:33[ohos-active] #include <pulse/simple.h>; corpus-b-core/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/drivers/fluid_pulse.c:34[ohos-active] #include <pulse/error.h>; corpus-b-core/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/drivers/fluid_pulse.c:44[ohos-active] pa_simple *pa_handle;］"
   },
   {
    "kind": "unsupported-interface",
-   "node": "app:musescore",
-   "reason": "使用鸿蒙不支持的平台接口 systemd（os-api）鸿蒙无 systemd 服务管理；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (0 处无条件 / 3 处鸿蒙可编译 / 0 处宏守卫排除 / 0 处文件级排除) | muse/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/fluidsynth.c:41[ohos-active] #include <systemd/sd-daemon.h>; muse/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/fluidsynth.c:1098[ohos-active] sd_notify(0, \"READY=1\");; muse/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/fluidsynth.c:1180[ohos-active] sd_notify(0, \"STOPPING=1\");］"
+   "node": "app:corpus-b",
+   "reason": "使用鸿蒙不支持的平台接口 systemd（os-api）鸿蒙无 systemd 服务管理；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (0 处无条件 / 3 处鸿蒙可编译 / 0 处宏守卫排除 / 0 处文件级排除) | corpus-b-core/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/fluidsynth.c:41[ohos-active] #include <systemd/sd-daemon.h>; corpus-b-core/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/fluidsynth.c:1098[ohos-active] sd_notify(0, \"READY=1\");; corpus-b-core/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/fluidsynth.c:1180[ohos-active] sd_notify(0, \"STOPPING=1\");］"
   },
   {
    "kind": "unsupported-interface",
-   "node": "app:musescore",
-   "reason": "使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (30 处无条件 / 8 处鸿蒙可编译 / 39 处宏守卫排除 / 45 处文件级排除) | src/project/internal/platform/windows/windowsrecentfilescontroller.cpp:25[platform-file-excluded] #include <shlobj.h>; muse/framework/vst/qml/Muse/Vst/vstview.cpp:29[platform-excluded] #include <windows.h>; muse/framework/vst/qml/Muse/Vst/vstview.cpp:46[platform-excluded] static void removeMinMaxButtons(HWND window)］"
+   "node": "app:corpus-b",
+   "reason": "使用鸿蒙不支持的平台接口 Win32 API（os-api）Windows 专属系统接口；同类鸿蒙替代接口: dlopen 动态加载、glib 事件循环、macOS 系统库绑定、POSIX/musl C 库、pthread 多线程［证据: [含鸿蒙/通用守卫（会编译）] guard=ohos-active (30 处无条件 / 8 处鸿蒙可编译 / 39 处宏守卫排除 / 45 处文件级排除) | src/project/internal/platform/windows/windowsrecentfilescontroller.cpp:25[platform-file-excluded] #include <shlobj.h>; corpus-b-core/framework/vst/qml/corpus-b-core/Vst/vstview.cpp:29[platform-excluded] #include <windows.h>; corpus-b-core/framework/vst/qml/corpus-b-core/Vst/vstview.cpp:46[platform-excluded] static void removeMinMaxButtons(HWND window)］"
   },
   {
    "kind": "unsupported-module",
@@ -78,8 +78,8 @@
  ],
  "platform_excluded": [
   {
-   "node": "app:musescore",
-   "name": "musescore",
+   "node": "app:corpus-b",
+   "name": "corpus-b",
    "iface": "macOS Cocoa/AppKit",
    "category": "os-api",
    "guard": "platform-excluded",
@@ -121,9 +121,9 @@
      "note": "musl 提供 pthread"
     }
    ],
-   "evidence": "[被非鸿蒙平台守卫包裹（不编译）] guard=platform-excluded (0 处无条件 / 0 处鸿蒙可编译 / 0 处宏守卫排除 / 25 处文件级排除) | src/project/internal/platform/macos/macosrecentfilescontroller.mm:22[platform-file-excluded] #include <Cocoa/Cocoa.h>; src/appshell/internal/platform/macos/macosappmenumodelhook.mm:25[platform-file-excluded] #include <Cocoa/Cocoa.h>; muse/framework/uicomponents/qml/Muse/UiComponents/internal/platform/macos/macospopupviewclosecontroller.mm:25[platform-file-excluded] #include <AppKit/NSEvent.h>",
+   "evidence": "[被非鸿蒙平台守卫包裹（不编译）] guard=platform-excluded (0 处无条件 / 0 处鸿蒙可编译 / 0 处宏守卫排除 / 25 处文件级排除) | src/project/internal/platform/macos/macosrecentfilescontroller.mm:22[platform-file-excluded] #include <Cocoa/Cocoa.h>; src/appshell/internal/platform/macos/macosappmenumodelhook.mm:25[platform-file-excluded] #include <Cocoa/Cocoa.h>; corpus-b-core/framework/uicomponents/qml/corpus-b-core/UiComponents/internal/platform/macos/macospopupviewclosecontroller.mm:25[platform-file-excluded] #include <AppKit/NSEvent.h>",
    "path": [
-    "app:musescore"
+    "app:corpus-b"
    ]
   }
  ],
@@ -509,28 +509,28 @@
   }
  ],
  "oracle": {
-  "app": "musescore",
-  "source": "buildscripts/cmake/DependencyManifest.cmake + muse/buildscripts/cmake/ExtDepsManifest.cmake + muse/framework/{midi,audio/driver}/CMakeLists.txt + muse/framework/cmake/MuseDeclareOptions.cmake（人工整理）",
-  "source_note": "针对 master 2b540fe（muse_deps 依赖引擎时代）重写：README 无依赖段（指向 wiki.spatia... 外部 wiki），oracle 依仓库内依赖清单人工整理。口径=默认构建需外部产物的依赖：require_dep(...)（预编译/系统模式）与项目自身 find_package 为 runtime/optional；require_source_dep（liblouis/kddockwidgets/picojson/pugixml/utfcpp/googletest/crashpad_client/vst3sdk/lodepng/asiosdk）与 FetchContent 的 mnxdom 源码模式为 vendored，随项目源码编译、无需外部产物，不入 oracle；require_tool/find_package(Git) 为主机构建工具列 build。可选性依 MuseDeclareOptions.cmake 默认值：MUSE_MODULE_AUDIO_JACK OFF、MUSE_MODULE_AUDIO_PIPEWIRE OFF、MUSE_MODULE_DRAW_USE_QTTEXTDRAW ON（→ msdfgen 不启用）、MSS_USE_SYSTEM_MNXDOM OFF（→ mnxdom 默认源码自带，系统模式才 pkg_check）；MUSE_MODULE_AUDIO_EXPORT ON、MUSE_BUILD_IMPEXP_MNX_MODULE ON。旧 oracle（CI setup.sh + MUE_COMPILE_USE_SYSTEM_* 时代）的 pulseaudio/openssl/tinyxml/ffmpeg 在 master 已不存在：PulseAudio 直连仅存于内嵌 fluidsynth 可选驱动，openssl 无任何清单引用。",
+  "app": "corpus-b",
+  "source": "buildscripts/cmake/DependencyManifest.cmake + corpus-b-core/buildscripts/cmake/ExtDepsManifest.cmake + corpus-b-core/framework/{midi,audio/driver}/CMakeLists.txt + corpus-b-core/framework/cmake/CorpusBOptions.cmake（人工整理）",
+  "source_note": "针对 master 2b540fe（corpus-b-deps 依赖引擎时代）重写：README 无依赖段（指向项目外部 wiki），oracle 依仓库内依赖清单人工整理。口径=默认构建需外部产物的依赖：require_dep(...)（预编译/系统模式）与项目自身 find_package 为 runtime/optional；require_source_dep（liblouis/kddockwidgets/picojson/pugixml/utfcpp/googletest/crashpad_client/vst3sdk/lodepng/asiosdk）与 FetchContent 的 mnxdom 源码模式为 vendored，随项目源码编译、无需外部产物，不入 oracle；require_tool/find_package(Git) 为主机构建工具列 build。可选性依 CorpusBOptions.cmake 默认值：CB_MODULE_AUDIO_JACK OFF、CB_MODULE_AUDIO_PIPEWIRE OFF、CB_MODULE_DRAW_USE_QTTEXTDRAW ON（→ msdfgen 不启用）、CB_USE_SYSTEM_MNXDOM OFF（→ mnxdom 默认源码自带，系统模式才 pkg_check）；CB_MODULE_AUDIO_EXPORT ON、CB_BUILD_IMPEXP_MNX_MODULE ON。旧 oracle（CI setup.sh + CB_COMPILE_USE_SYSTEM_* 时代）的 pulseaudio/openssl/tinyxml/ffmpeg 在 master 已不存在：PulseAudio 直连仅存于内嵌 fluidsynth 可选驱动，openssl 无任何清单引用。",
   "reviewed": true,
   "deps": [
    {
     "name": "qt",
     "display": "qt",
     "type": "runtime",
-    "raw": "Qt 6.8（muse/buildscripts/cmake/SetupQt6.cmake:90 find_package(Qt6 6.8 REQUIRED COMPONENTS ${qt_components})，组件 Core/Gui/Widgets/Network/Qml/Quick/QuickControls2/QuickWidgets/Xml/Svg/ShaderTools/Core5Compat + 条件追加 NetworkAuth/PrintSupport/DBus/Concurrent/LinguistTools/WebSockets）"
+    "raw": "Qt 6.8（corpus-b-core/buildscripts/cmake/SetupQt6.cmake:90 find_package(Qt6 6.8 REQUIRED COMPONENTS ${qt_components})，组件 Core/Gui/Widgets/Network/Qml/Quick/QuickControls2/QuickWidgets/Xml/Svg/ShaderTools/Core5Compat + 条件追加 NetworkAuth/PrintSupport/DBus/Concurrent/LinguistTools/WebSockets）"
    },
    {
     "name": "alsa",
     "display": "alsa",
     "type": "runtime",
-    "raw": "find_package(ALSA REQUIRED)（muse/framework/midi/CMakeLists.txt:80、muse/framework/audio/driver/CMakeLists.txt:55，Linux 分支无条件）"
+    "raw": "find_package(ALSA REQUIRED)（corpus-b-core/framework/midi/CMakeLists.txt:80、corpus-b-core/framework/audio/driver/CMakeLists.txt:55，Linux 分支无条件）"
    },
    {
     "name": "ogg",
     "display": "ogg",
     "type": "runtime",
-    "raw": "require_dep(ogg)（buildscripts/cmake/DependencyManifest.cmake:1 无条件 + muse/buildscripts/cmake/ExtDepsManifest.cmake:41，MUSE_MODULE_AUDIO_EXPORT 默认 ON）"
+    "raw": "require_dep(ogg)（buildscripts/cmake/DependencyManifest.cmake:1 无条件 + corpus-b-core/buildscripts/cmake/ExtDepsManifest.cmake:41，CB_MODULE_AUDIO_EXPORT 默认 ON）"
    },
    {
     "name": "vorbis",
@@ -566,7 +566,7 @@
     "name": "freetype",
     "display": "freetype",
     "type": "runtime",
-    "raw": "require_dep(freetype)（ExtDepsManifest.cmake:14/18，MUSE_MODULE_DRAW_USE_FONTFACE_FT 默认 ON、STATIC_DEPS 默认 OFF）"
+    "raw": "require_dep(freetype)（ExtDepsManifest.cmake:14/18，CB_MODULE_DRAW_USE_FONTFACE_FT 默认 ON、STATIC_DEPS 默认 OFF）"
    },
    {
     "name": "harfbuzz",
@@ -584,7 +584,7 @@
     "name": "fdk-aac",
     "display": "fdk-aac",
     "type": "runtime",
-    "raw": "require_dep(fdk-aac)（ExtDepsManifest.cmake:42，MUSE_MODULE_AUDIO_EXPORT 默认 ON）"
+    "raw": "require_dep(fdk-aac)（ExtDepsManifest.cmake:42，CB_MODULE_AUDIO_EXPORT 默认 ON）"
    },
    {
     "name": "lame",
@@ -602,7 +602,7 @@
     "name": "nlohmann_json",
     "display": "nlohmann_json",
     "type": "runtime",
-    "raw": "require_dep(nlohmann_json)（DependencyManifest.cmake:12，MUE_BUILD_IMPEXP_MNX_MODULE 默认 ON 且 MSS_USE_SYSTEM_MNXDOM 默认 OFF）"
+    "raw": "require_dep(nlohmann_json)（DependencyManifest.cmake:12，CB_BUILD_IMPEXP_MNX_MODULE 默认 ON 且 CB_USE_SYSTEM_MNXDOM 默认 OFF）"
    },
    {
     "name": "json_schema_validator",
@@ -614,55 +614,55 @@
     "name": "jack",
     "display": "jack",
     "type": "optional",
-    "raw": "find_package(Jack REQUIRED)（muse/framework/audio/driver/CMakeLists.txt:72，MUSE_MODULE_AUDIO_JACK 默认 OFF，MuseDeclareOptions.cmake:42）"
+    "raw": "find_package(Jack REQUIRED)（corpus-b-core/framework/audio/driver/CMakeLists.txt:72，CB_MODULE_AUDIO_JACK 默认 OFF，CorpusBOptions.cmake:42）"
    },
    {
     "name": "msdfgen",
     "display": "msdfgen",
     "type": "optional",
-    "raw": "require_dep(msdfgen)（ExtDepsManifest.cmake:24，仅 NOT MUSE_MODULE_DRAW_USE_QTTEXTDRAW——默认 ON → 不启用）"
+    "raw": "require_dep(msdfgen)（ExtDepsManifest.cmake:24，仅 NOT CB_MODULE_DRAW_USE_QTTEXTDRAW——默认 ON → 不启用）"
    },
    {
     "name": "pipewire",
     "display": "pipewire",
     "type": "optional",
-    "raw": "require_dep(pipewire)（ExtDepsManifest.cmake:50，MUSE_MODULE_AUDIO_PIPEWIRE 默认 OFF，CI 才开）"
+    "raw": "require_dep(pipewire)（ExtDepsManifest.cmake:50，CB_MODULE_AUDIO_PIPEWIRE 默认 OFF，CI 才开）"
    },
    {
     "name": "mnxdom",
     "display": "mnxdom",
     "type": "optional",
-    "raw": "pkg_check_modules(mnxdom REQUIRED)（src/importexport/mnx/CMakeLists.txt:14，仅 MSS_USE_SYSTEM_MNXDOM=ON 时；默认 OFF → FetchContent 源码自带）"
+    "raw": "pkg_check_modules(mnxdom REQUIRED)（src/importexport/mnx/CMakeLists.txt:14，仅 CB_USE_SYSTEM_MNXDOM=ON 时；默认 OFF → FetchContent 源码自带）"
    },
    {
     "name": "git",
     "display": "git",
     "type": "build",
-    "raw": "find_package(Git REQUIRED)（muse/buildscripts/cmake/SetupDependencies.cmake:29，获取修订号用）"
+    "raw": "find_package(Git REQUIRED)（corpus-b-core/buildscripts/cmake/SetupDependencies.cmake:29，获取修订号用）"
    },
    {
     "name": "crashpad_handler",
     "display": "crashpad_handler",
     "type": "build",
-    "raw": "require_tool(crashpad_handler)（ExtDepsManifest.cmake:62，MUSE_MODULE_DIAGNOSTICS_CRASHPAD_CLIENT 默认 OFF、CI 开）"
+    "raw": "require_tool(crashpad_handler)（ExtDepsManifest.cmake:62，CB_MODULE_DIAGNOSTICS_CRASHPAD_CLIENT 默认 OFF、CI 开）"
    },
    {
     "name": "sentry-cli",
     "display": "sentry-cli",
     "type": "build",
-    "raw": "require_tool(sentry-cli)（muse/buildscripts/ci/crashdumps/ci_sentry_dumpsyms_upload.cmake:35）"
+    "raw": "require_tool(sentry-cli)（corpus-b-core/buildscripts/ci/crashdumps/ci_sentry_dumpsyms_upload.cmake:35）"
    },
    {
     "name": "dump_syms",
     "display": "dump_syms",
     "type": "build",
-    "raw": "require_tool(dump_syms)（muse/buildscripts/ci/crashdumps/ci_generate_dumpsyms.cmake:19）"
+    "raw": "require_tool(dump_syms)（corpus-b-core/buildscripts/ci/crashdumps/ci_generate_dumpsyms.cmake:19）"
    },
    {
     "name": "uncrustify",
     "display": "uncrustify",
     "type": "build",
-    "raw": "require_tool(uncrustify)（muse/tools/codestyle/uncrustify.cmake:30）"
+    "raw": "require_tool(uncrustify)（corpus-b-core/tools/codestyle/uncrustify.cmake:30）"
    }
   ]
  },
@@ -863,7 +863,7 @@
    "evidence": {
     "note": "匹配到幽灵节点：真实外部依赖且无已知鸿蒙包（fetch-deps 报 need_port/需源码移植，检出正确）"
    },
-   "agent_note": "无 bottle 属实：hb-core/cmd-pkgs 均无 opusenc/libopusenc formula（源码 pin 在 muse_deps/recipes/opusenc/spec.cmake），portgraph 标 need_port 正确；require_dep(opusenc) 检出于 ExtDepsManifest.cmake:46"
+   "agent_note": "无 bottle 属实：hb-core/cmd-pkgs 均无 opusenc/libopusenc formula（源码 pin 在 corpus-b-deps/recipes/opusenc/spec.cmake），portgraph 标 need_port 正确；require_dep(opusenc) 检出于 ExtDepsManifest.cmake:46"
   },
   {
    "class": "matched",
@@ -893,7 +893,7 @@
    "evidence": {
     "note": "匹配到幽灵节点：真实外部依赖且无已知鸿蒙包（fetch-deps 报 need_port/需源码移植，检出正确）"
    },
-   "agent_note": "无 bottle 属实：hb-core/cmd-pkgs 均无 json-schema-validator（源码 pin 在 muse_deps/recipes/json_schema_validator），need_port 正确"
+   "agent_note": "无 bottle 属实：hb-core/cmd-pkgs 均无 json-schema-validator（源码 pin 在 corpus-b-deps/recipes/json_schema_validator），need_port 正确"
   },
   {
    "class": "optional-not-built",
@@ -925,7 +925,7 @@
    "evidence": {
     "note": "匹配到幽灵节点：真实外部依赖且无已知鸿蒙包（fetch-deps 报 need_port/需源码移植，检出正确）"
    },
-   "agent_note": "无 bottle 属实：hb/cmd-pkgs 均无 msdfgen；且默认构建不启用（MUSE_MODULE_DRAW_USE_QTTEXTDRAW 默认 ON）"
+   "agent_note": "无 bottle 属实：hb/cmd-pkgs 均无 msdfgen；且默认构建不启用（CB_MODULE_DRAW_USE_QTTEXTDRAW 默认 ON）"
   },
   {
    "class": "matched-optional",
@@ -941,7 +941,7 @@
    "evidence": {
     "note": "匹配到幽灵节点：真实外部依赖且无已知鸿蒙包（fetch-deps 报 need_port/需源码移植，检出正确）"
    },
-   "agent_note": "无 bottle 属实：hb/cmd-pkgs 确无 pipewire 库包（MUSE_MODULE_AUDIO_PIPEWIRE 默认 OFF）；需要时走 PipeWire 直连 unsupported-interface 阻塞项"
+   "agent_note": "无 bottle 属实：hb/cmd-pkgs 确无 pipewire 库包（CB_MODULE_AUDIO_PIPEWIRE 默认 OFF）；需要时走 PipeWire 直连 unsupported-interface 阻塞项"
   },
   {
    "class": "optional-not-built",
@@ -1054,34 +1054,34 @@
     "note": "构建文件引用但 README 未列 → README 不完整（portgraph 正确）",
     "grep": [
      {
-      "file": "muse/buildscripts/cmake/DeclareModuleSetup.cmake",
+      "file": "corpus-b-core/buildscripts/cmake/DeclareModuleSetup.cmake",
       "line": 119,
       "strong": true,
-      "text": "target_link_libraries(${target_name} PRIVATE muse_global"
+      "text": "target_link_libraries(${target_name} PRIVATE cb_global"
      },
      {
-      "file": "muse/framework/cmake/MuseCreateModule.cmake",
+      "file": "corpus-b-core/framework/cmake/CorpusBCreateModule.cmake",
       "line": 127,
       "strong": true,
-      "text": "target_link_libraries(${target_name} PRIVATE muse_global"
+      "text": "target_link_libraries(${target_name} PRIVATE cb_global"
      },
      {
-      "file": "muse/framework/testing/qtest.cmake",
+      "file": "corpus-b-core/framework/testing/qtest.cmake",
       "line": 73,
       "strong": true,
-      "text": "    muse_global"
+      "text": "    cb_global"
      },
      {
-      "file": "muse/framework/testing/gtest.cmake",
+      "file": "corpus-b-core/framework/testing/gtest.cmake",
       "line": 82,
       "strong": true,
-      "text": "    muse_global"
+      "text": "    cb_global"
      },
      {
-      "file": "muse/framework/global/CMakeLists.txt",
+      "file": "corpus-b-core/framework/global/CMakeLists.txt",
       "line": 164,
       "strong": true,
-      "text": "target_link_libraries(muse_global"
+      "text": "target_link_libraries(cb_global"
      }
     ]
    },
@@ -1351,8 +1351,8 @@
   }
  },
  "agent_notes": [
-  "oracle 针对 master 2b540fe（muse_deps 依赖引擎）重写：require_dep 清单（DependencyManifest/ExtDepsManifest）+ 项目 find_package（ALSA/Jack/mnxdom）+ SetupQt6.cmake；可选性依 MuseDeclareOptions.cmake 默认值。require_source_dep 的 10 个源码自带依赖（liblouis/kddockwidgets/picojson/pugixml/utfcpp/googletest/crashpad_client/vst3sdk/lodepng/asiosdk）按口径不入 oracle（随项目源码编译，无需外部产物），portgraph 以 vendored 边 + fetch-deps status=vendored 表达。",
-  "上一轮（旧版仓库，CI setup.sh 时代）的 10 个 ALIASES 缺口已在本轮修复入库（alsa→alsa-lib、sndfile→libsndfile、tinyxml→tinyxml2、glib2→glib、dbus1→dbus、ogg→libogg、vorbis→libvorbis、png→libpng、brotlidec→brotli、utfcpp→utf8cpp、nlohmann_json→nlohmann-json、intl→gettext）；fluidsynth/KDDockWidgets 内嵌三方与 muse_deps recipes 的误报源由 vendored 路径跳过修复；注释行 find_package 误匹配由注释剥离修复；buildscripts/ 目录误排除（build* 前缀）已修复。",
-  "残留（非本轮修复）：require_dep 条件块不求值（msdfgen/pipewire/asiosdk 等默认关闭的声明仍进闭包，fetch-deps 概览偏保守）；deps 报告 raw_libs 中项目内部 target 名（engraving/global/muse_* 等，由 declare_module 等函数创建，add_library 扫描不可见）与 hb:global 巧合解析为噪音。"
+  "oracle 针对 master 2b540fe（corpus-b-deps 依赖引擎）重写：require_dep 清单（DependencyManifest/ExtDepsManifest）+ 项目 find_package（ALSA/Jack/mnxdom）+ SetupQt6.cmake；可选性依 CorpusBOptions.cmake 默认值。require_source_dep 的 10 个源码自带依赖（liblouis/kddockwidgets/picojson/pugixml/utfcpp/googletest/crashpad_client/vst3sdk/lodepng/asiosdk）按口径不入 oracle（随项目源码编译，无需外部产物），portgraph 以 vendored 边 + fetch-deps status=vendored 表达。",
+  "上一轮（旧版仓库，CI setup.sh 时代）的 10 个 ALIASES 缺口已在本轮修复入库（alsa→alsa-lib、sndfile→libsndfile、tinyxml→tinyxml2、glib2→glib、dbus1→dbus、ogg→libogg、vorbis→libvorbis、png→libpng、brotlidec→brotli、utfcpp→utf8cpp、nlohmann_json→nlohmann-json、intl→gettext）；fluidsynth/KDDockWidgets 内嵌三方与 corpus-b-deps recipes 的误报源由 vendored 路径跳过修复；注释行 find_package 误匹配由注释剥离修复；buildscripts/ 目录误排除（build* 前缀）已修复。",
+  "残留（非本轮修复）：require_dep 条件块不求值（msdfgen/pipewire/asiosdk 等默认关闭的声明仍进闭包，fetch-deps 概览偏保守）；deps 报告 raw_libs 中项目内部 target 名（engraving/global/cb_* 等，由 declare_module 等函数创建，add_library 扫描不可见）与 hb:global 巧合解析为噪音。"
  ]
 }

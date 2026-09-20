@@ -221,7 +221,7 @@ ALIASES: Dict[str, List[str]] = {
     "protobuf": ["protobuf"],
     "spdlog": ["spdlog"],
     "glm": ["glm"],
-    # CMake 模块名/依赖清单名 → hb 包名（e2e musescore 复核；同时供
+    # CMake 模块名/依赖清单名 → hb 包名（e2e corpus_b 复核；同时供
     # e2e names_match 对账：oracle 名 alsa ↔ 已解析节点名 alsa-lib）
     "alsa": ["alsa-lib", "alsa"],
     "sndfile": ["libsndfile", "sndfile"],
@@ -245,29 +245,29 @@ PKG_ALIASES: Dict[str, str] = {
     "libswscale": "ffmpeg", "libavcodec": "ffmpeg", "libavformat": "ffmpeg",
     "libavutil": "ffmpeg", "libavdevice": "ffmpeg",
     # xz 工具链提供 liblzma（find_package(LibLZMA) 是 CMake 官方模块名，
-    # tdesktop cmake/external/auto_updates/xz wrapper 实证）
+    # corpus_a cmake/external/auto_updates/xz wrapper 实证）
     "liblzma": "xz",
     "ssl": "openssl", "crypto": "openssl",
     "sqlite3": "sqlite", "curl": "curl", "gcrypt": "libgcrypt",
     "tag": "taglib", "mtp": "libmtp", "usb-1.0": "libusb",
     "magic": "libmagic", "exif": "libexif", "discid": "libdiscid",
     "chromaprint": "chromaprint", "mp3lame": "lame",
-    # lmms 实证：find_library/AC_CHECK_LIB 的版本化库名归并（veal
+    # gen_d 实证：find_library/AC_CHECK_LIB 的版本化库名归并（veal
     # FindFluidSynth 的 macOS dylib 变体 / swh 的单精度 fftw）
     "fluidsynth-1": "fluidsynth", "fluidsynth-2": "fluidsynth",
     "fluidsynth-3": "fluidsynth",
-    "fluidsynth": "fluid-synth",  # cmd-pkgs 包名（lmms 实证：图侧靠
+    "fluidsynth": "fluid-synth",  # cmd-pkgs 包名（gen_d 实证：图侧靠
                                    # dashless 兑底而报告侧不可见，口径分裂）
     "sfftw": "fftw",
-    # libopenshot 实证：OpenCV 4 导入目标名（非 OpenCV::core 命名形态）
+    # libgen_g 实证：OpenCV 4 导入目标名（非 OpenCV::core 命名形态）
     # 归并到 opencv；jsoncppd 为 Findjsoncpp 的 debug 变体名
     "opencv_core": "opencv", "opencv_video": "opencv",
     "opencv_highgui": "opencv", "opencv_dnn": "opencv",
     "opencv_tracking": "opencv",
     "jsoncppd": "jsoncpp",
-    # pkg-config 模块名无 lib 前缀 → hb 包名（e2e keepassxc 复核确认的缺口）
+    # pkg-config 模块名无 lib 前缀 → hb 包名（e2e corpus_c 复核确认的缺口）
     "xkbcommon": "libxkbcommon", "x11": "libx11",
-    # graphviz 的链接库（cutter pkg_check_modules(libgvc) → graphviz 包）
+    # graphviz 的链接库（gen_j pkg_check_modules(libgvc) → graphviz 包）
     "libgvc": "graphviz", "libcgraph": "graphviz", "libcdt": "graphviz",
     # PC/SC 智能卡栈：find_package(PCSC)/pkg-config libpcsclite/find_library
     # pcsclite → pcsc-lite
@@ -276,14 +276,14 @@ PKG_ALIASES: Dict[str, str] = {
     # pkg-config 名 → CMake find_package 名（同库双声明合并）
     # 注：libtorrent-rasterbar 无鸿蒙包，无需别名；同库异名归并由
     # 去分隔符分组（_dashless_key）与 dashless 兑底解析覆盖
-    # ---- e2e tdesktop（tier C）复核确认的缺口 ----
+    # ---- e2e corpus_a（tier C）复核确认的缺口 ----
     # external_* 导入目标链接名（cmake_helpers 约定，剥前缀后的裸名）→ 包名
     "openal": "openal-soft",          # OpenAL Soft（kcat），pkg-config 名 openal
     "iconv": "libiconv",              # libiconv 包（musl 内置 iconv 亦可）
     "boost_regex": "boost",           # boost::regex 组件链接 → boost 包
     "cmark_gfm": "cmark-gfm",         # 分隔符差异（_ vs -）
     "qr_code_generator": "libqrcodegen",  # nayuki QR-Code-generator（cmd-pkgs 版本 1.8.0 同源）
-    # ---- e2e musescore（tier C）复核确认的缺口 ----
+    # ---- e2e corpus_b（tier C）复核确认的缺口 ----
     "alsa": "alsa-lib",           # find_package(ALSA) → alsa-lib
     "sndfile": "libsndfile",      # find_package(SndFile) → libsndfile
     "tinyxml": "tinyxml2",        # FindTinyXml 实际找 tinyxml2
@@ -291,19 +291,19 @@ PKG_ALIASES: Dict[str, str] = {
     "dbus1": "dbus",             # CMake DBus1 模块名
     "ogg": "libogg",             # require_dep(ogg) / pkg-config ogg
     "vorbis": "libvorbis",       # require_dep(vorbis)
-    "oggvorbis": "libvorbis",    # lmms FindOggVorbis 复合模块名（模块内
+    "oggvorbis": "libvorbis",    # gen_d FindOggVorbis 复合模块名（模块内
                                   # 部实为 find_package(Ogg/Vorbis)）
     "png": "libpng",             # CMake PNG 模块名
     "brotlidec": "brotli",       # pkg-config 组件名
     "intl": "gettext",           # CMake Intl 模块 → gettext(libintl)
     "utfcpp": "utf8cpp",         # require_source_dep(utfcpp) → hb utf8cpp
     "nlohmann_json": "nlohmann-json",  # require_dep 名 → hb nlohmann-json
-    # ── 泛化测试（okular KDE，2026-09）实证 ──
+    # ── 泛化测试（gen_b KDE，2026-09）实证 ──
     "ddjvuapi": "djvulibre",     # djvulibre 的 pkg-config 名（FindDjVuLibre
                                   # 用 pkg_check_modules(ddjvuapi) 探测同库）
     "libmarkdown": "discount",   # discount 的库名/pkg-config 名；hb markdown
                                   # 是 daringfireball 的 Perl/PHP 版本，同名异义
-    # ── 语料外泛化测试补充（QOwnNotes/strawberry/krita 实证，2026-09）──
+    # ── 语料外泛化测试补充（gen_f/gen_e/gen_a 实证，2026-09）──
     # glib 家族 pkg-config 模块（libgio/gobject/gthread/gmodule 随 glib
     # 包发布，cmd-pkgs glib 2.88.0 与 hb glib bottle 内均实测含对应 .pc）
     "gio-2.0": "glib", "gio-unix-2.0": "glib", "gobject-2.0": "glib",
@@ -321,11 +321,11 @@ PKG_ALIASES: Dict[str, str] = {
     "fftw3q_omp": "fftw", "fftw3_threads": "fftw",
     "fftw3f_threads": "fftw", "fftw3l_threads": "fftw",
     "fftw3q_threads": "fftw",
-    # libav* 遗漏项（libavfilter 缺失致 krita 误报 need_port）
+    # libav* 遗漏项（libavfilter 缺失致 gen_a 误报 need_port）
     "libavfilter": "ffmpeg", "libswresample": "ffmpeg",
     "libpostproc": "ffmpeg",
     # 各库常见变体名（hb/cmd-pkgs 包名口径）
-    "gif": "giflib",                       # krita find_package(GIF)
+    "gif": "giflib",                       # gen_a find_package(GIF)
     "jpegxl": "libjxl", "libjxl_threads": "libjxl",  # cmdpkgs:libjxl
     "turbojpeg": "jpeg-turbo", "libturbojpeg": "jpeg-turbo",
     "turbojpeg-static": "jpeg-turbo", "jpeg-static": "jpeg-turbo",
@@ -335,8 +335,8 @@ PKG_ALIASES: Dict[str, str] = {
     "openjpip": "openjpeg", "openjpip_server": "openjpeg",
     "libopenjpip": "openjpeg", "libopenjpip_server": "openjpeg",
     "harfbuzz-icu": "harfbuzz",
-    "eigen3": "eigen",                      # krita find_package(Eigen3)
-    "botan3": "botan-3",                    # QOwnNotes find_package(Botan3)
+    "eigen3": "eigen",                      # gen_a find_package(Eigen3)
+    "botan3": "botan-3",                    # gen_f find_package(Botan3)
     # OpenEXR 3.x 组件（hb openexr bottle 实测含 libIex/IlmThread/
     # OpenEXR/Core/Util；Half 在 3.x 归 imath）
     "iex": "openexr", "iexmath": "openexr", "ilmimf": "openexr",
@@ -415,7 +415,7 @@ def resolve_package(conn, hint_name: str) -> Optional[Dict]:
     近似对齐依次尝试：原名 / 补 lib 前缀（xkbcommon→libxkbcommon）/
     去 lib 前缀 / 去 pkg-config 版本后缀（lilv-0→lilv、glib-2.0→glib）
     及其组合；与 deps_report._resolve 口径一致（此前仅 deps 侧支持，
-    图侧缺口导致 e2e musescore lilv-0/zix-0 幽灵节点）。
+    图侧缺口导致 e2e corpus_b lilv-0/zix-0 幽灵节点）。
     """
     name = (hint_name or "").lower()
     if not name:
@@ -492,7 +492,7 @@ def resolve_pkg_name(conn, name: str,
                 cands.append("lib" + stripped)
             else:
                 # 去 lib 前缀 + 版本后缀组合（libpipewire-0.3 → pipewire；
-                # libopenshot 实证，单项剥离均不命中）
+                # libgen_g 实证，单项剥离均不命中）
                 cands.append(stripped[3:])
         # find_library NAMES 的构建形态后缀（libFLAC_static / jpeg-static
         # / libFLAC_dynamic）→ 基础名

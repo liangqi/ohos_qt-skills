@@ -9,7 +9,7 @@
     python tools/portgraph.py analyze <app-id|name># 可移植性判定 + 阻塞点
     python tools/portgraph.py deps <path|app>      # 综合依赖分析（分类+版本范围）
     python tools/portgraph.py fetch "zlib,openssl@3"  # 下载指定包的鸿蒙 bottle
-    python tools/portgraph.py fetch-deps tdesktop    # 一键下载应用全部依赖产物
+    python tools/portgraph.py fetch-deps corpus_a    # 一键下载应用全部依赖产物
     python tools/portgraph.py stats                # 数据统计
     python tools/portgraph.py serve [--port 8000]  # FastAPI + 前端页面
     python tools/portgraph.py export [out.json]    # 导出焦点图数据
@@ -349,7 +349,7 @@ def cmd_deps(args) -> None:
             # 用户传的是路径形态（含分隔符/存在但非目录），按路径报错
             # 而非误导性的 "app not found"
             print("[portgraph] 项目路径不存在或不是目录: %s"
-                  "（若想按已扫描应用分析，请传应用名如 tdesktop）" % target)
+                  "（若想按已扫描应用分析，请传应用名如 corpus_a）" % target)
             sys.exit(1)
         else:
             app_id = _resolve_app(conn, target)
@@ -414,7 +414,7 @@ def main() -> None:
     p = sub.add_parser(
         "deps", help="综合依赖分析（link/build-tool/runtime/test/vendored "
                      "分类 + 版本范围 + 产物获取途径，见 docs/deps-report.md）")
-    p.add_argument("target", help="项目路径或已扫描应用名（如 tdesktop）")
+    p.add_argument("target", help="项目路径或已扫描应用名（如 corpus_a）")
     p.add_argument("--json", action="store_true",
                    help="输出完整报告 JSON（机器可读，供 agent 解析）")
     p.set_defaults(func=cmd_deps)
@@ -433,7 +433,7 @@ def main() -> None:
     p = sub.add_parser("fetch-deps",
                        help="一键下载应用全部依赖的鸿蒙产物（agent 工具，"
                             "见 docs/fetch-deps.md）")
-    p.add_argument("app", help="应用 ID 或名称（如 tdesktop / app:tdesktop）")
+    p.add_argument("app", help="应用 ID 或名称（如 corpus_a / app:corpus_a）")
     p.add_argument("--out", help="下载解压目录（默认 workspace/ohos-libs，跨应用共享缓存）")
     p.add_argument("--force", action="store_true", help="已存在也重新下载")
     p.add_argument("--dry-run", action="store_true",

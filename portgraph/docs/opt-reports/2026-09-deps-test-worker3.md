@@ -1,18 +1,18 @@
-# TEST-REPORT — portgraph 依赖分析真实项目测试与优化（qbittorrent，tier B）
+# TEST-REPORT — portgraph 依赖分析真实项目测试与优化（corpus-d，tier B）
 
 > 分支：`worker3-deps-test` | 基线：`f98a2e7`（44 单测全过）| 本轮提交：`d8f32c3`（53 单测全过）
 > 日期：2026-09-19 | 工作区：`~/harmony-workspace/worker3`（全新 workspace）
-> 语料：`portgraph/tests/e2e/corpus.json#qbittorrent`（e2e tier B，README/INSTALL 有依赖段）
+> 语料：`portgraph/tests/e2e/corpus.json#corpus-d`（e2e tier B，README/INSTALL 有依赖段）
 
 ## 1. 执行摘要
 
-用真实项目 **qBittorrent**（shallow clone 上游 master）跑 portgraph 依赖分析 e2e 对账，
+用真实项目 **corpus-d**（shallow clone 上游 master）跑 portgraph 依赖分析 e2e 对账，
 首轮在基线代码上得到 **2 个 resolution-gap bug 候选**（`libtorrentrasterbar`、`systemd`
 幽灵节点）。逐条用构建文件取证定位根因后修复 **3 个根因 + 1 个 harness 取证缺陷**，
 每项补单测（44→53，全过）。**bug_candidates 2→0，recall/precision 保持 100%**，
 未改任何 e2e 对账口径（oracle / 归类逻辑 / 指标公式零改动）。
 
-## 2. 指标前后对比（qbittorrent e2e）
+## 2. 指标前后对比（corpus-d e2e）
 
 | 指标 | 基线 f98a2e7 | 修复后 d8f32c3 | 变化 |
 |---|---|---|---|
@@ -29,8 +29,8 @@
 
 | 项目 | 结果 |
 |---|---|
-| keepassxc（B，已复核 oracle） | **无回归**：指标/闭包/直接依赖与已提交基线完全一致（diff 仅时间戳与 repo_path） |
-| musescore（C，已复核 oracle） | 指标变化（recall 50%→25%）**全部来自上游构建系统迁移**（新克隆已重构为 muse_deps/FetchContent manifest，find_package 声明大幅减少）。A/B 验证：基线代码扫同一新克隆结果与修复后代码一致（qt_modules=3、直接依赖 4~5 个）；且新机制把 `pkg_check_modules(mnxdom)`（`option(MSS_USE_SYSTEM_MNXDOM ... OFF)` 守卫）正确判为 optional——在第二个真实项目上验证了选项守卫分析 |
+| corpus-c（B，已复核 oracle） | **无回归**：指标/闭包/直接依赖与已提交基线完全一致（diff 仅时间戳与 repo_path） |
+| corpus-b（C，已复核 oracle） | 指标变化（recall 50%→25%）**全部来自上游构建系统迁移**（新克隆已重构为 corpus-b-deps/FetchContent manifest，find_package 声明大幅减少）。A/B 验证：基线代码扫同一新克隆结果与修复后代码一致（qt_modules=3、直接依赖 4~5 个）；且新机制把 `pkg_check_modules(mnxdom)`（`option(CB_USE_SYSTEM_MNXDOM ... OFF)` 守卫）正确判为 optional——在第二个真实项目上验证了选项守卫分析 |
 
 ## 3. 修复清单（根因 → 修复 → 证据 → 测试）
 
@@ -54,7 +54,7 @@
 
 ### 3.3 前置根因：dist 目录被排除，守卫上下文丢失
 
-- **取证**：`qt_scanner.EXCLUDE_DIRS` 含 `dist`，导致 `dist/unix/CMakeLists.txt`（qBittorrent `add_subdirectory(dist)` 的真实构建子目录）不被扫描——首轮 systemd 的 if 守卫上下文完全不可见。
+- **取证**：`qt_scanner.EXCLUDE_DIRS` 含 `dist`，导致 `dist/unix/CMakeLists.txt`（corpus-d `add_subdirectory(dist)` 的真实构建子目录）不被扫描——首轮 systemd 的 if 守卫上下文完全不可见。
 - **修复**：从 `EXCLUDE_DIRS` 移除 `dist`（C++/CMake 项目中 dist 多为源控打包/安装目录而非构建产物；JS 生态语义不适用于本工具域），注释记录依据。
 - **测试**：`TestCmakeOptionGuard` fixture 即放在 `dist/unix/CMakeLists.txt`，同时覆盖该回归。
 
@@ -68,10 +68,10 @@
 
 1. **libtorrent-rasterbar 不在 hb-core / cmd-pkgs**（数据源缺口，非解析缺陷）：保留单个 `pkg-unknown:libtorrent-rasterbar` 幽灵节点 / need_port=1 是**正确结论**（INSTALL 原文也警告勿装成 rakshasa 异库）。根治需向 Harmonybrew 提交 libtorrent-rasterbar formula（上游 https://github.com/arvidn/libtorrent）。
 2. **libtorrent 版本约束无法静态解析**：`pkg_check_modules(... "libtorrent-rasterbar>=${version}")` 的 `${version}` 是 CMake 宏参（`macro(find_libtorrent version)`），`set()` 变量表无法代入 → deps 报告缺 `>= 2.0.10`。改进方向：宏参字面量调用点回填（`find_libtorrent(2.0)` 之类），收益低暂不做。
-3. **musescore 语料漂移**：上游 master 已迁移构建系统（muse_deps/FetchContent manifest），旧 oracle（18 条）对新克隆 recall 只有 25%。需按新布局重建 oracle（本轮不动，避免误改对账口径；A/B 已证明非代码回归）。
-4. **"matched 到幽灵节点"的 ⚠ 通用提示**保留：harness 无法区分"数据源真缺口"与"解析缺口"，人工复核说明已在 `tests/e2e/overrides/qbittorrent.json` notes 阐明（libtorrent-rasterbar 属前者）。
+3. **corpus-b 语料漂移**：上游 master 已迁移构建系统（corpus-b-deps/FetchContent manifest），旧 oracle（18 条）对新克隆 recall 只有 25%。需按新布局重建 oracle（本轮不动，避免误改对账口径；A/B 已证明非代码回归）。
+4. **"matched 到幽灵节点"的 ⚠ 通用提示**保留：harness 无法区分"数据源真缺口"与"解析缺口"，人工复核说明已在 `tests/e2e/overrides/corpus-d.json` notes 阐明（libtorrent-rasterbar 属前者）。
 5. **optional 边的展示**：目前 API node detail 出边可见（type=optional），web 图谱/CLI summary 尚无专门分组展示（后续增强项）。
-6. **dashless 兜底理论碰撞风险**：两个不同库去分隔符后同键会错配；已用"仅已知包源 + 键长 ≥6 + 键冲突 hb/ported 优先"收窄，未发现实际碰撞案例（qbittorrent/musescore/keepassxc 语料验证）。
+6. **dashless 兜底理论碰撞风险**：两个不同库去分隔符后同键会错配；已用"仅已知包源 + 键长 ≥6 + 键冲突 hb/ported 优先"收窄，未发现实际碰撞案例（corpus-d/corpus-b/corpus-c 语料验证）。
 
 ## 5. 环境与复现
 
@@ -81,7 +81,7 @@ git clone --filter=blob:none --sparse https://atomgit.com/Harmonybrew/homebrew-c
 (cd workspace/hb-core && git sparse-checkout set Formula)
 python portgraph.py ingest all          # hb 4758 formula + cmd-pkgs 1248
 python -m unittest discover -s tests    # 53 tests OK
-python tests/e2e/run_e2e.py run --project qbittorrent --fresh-db
+python tests/e2e/run_e2e.py run --project corpus-d --fresh-db
 # → recall=100% precision=100% bug_candidates=0 closure=19 need_port=1
 ```
 
@@ -89,6 +89,6 @@ python tests/e2e/run_e2e.py run --project qbittorrent --fresh-db
 `port_graph/project_scanner.py`（同库归并 + optional 边）、`port_graph/kb_seed.py`
 （dashless 索引/解析）、`port_graph/deps_report.py`（optional 语义）、
 `tests/e2e/run_e2e.py`（name_variants @ 剥离）、`tests/test_port_graph.py`（+9 测试）、
-`tests/e2e/overrides/qbittorrent.json`（复核说明更新）、
-`tests/e2e/reports/*.report.{md,json}`（qbittorrent 新基线 + keepassxc/musescore 重跑）、
+`tests/e2e/overrides/corpus-d.json`（复核说明更新）、
+`tests/e2e/reports/*.report.{md,json}`（corpus-d 新基线 + corpus-c/corpus-b 重跑）、
 `docs/deps-report.md`（语义文档）。
