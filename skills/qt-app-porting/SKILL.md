@@ -141,6 +141,21 @@ python tools/qt-ohos-run.py resume --run    # 从 checkpoint 继续
 | Verification Plane | `verify` 门禁 G0-G12                                         |
 | Learning Plane     | `knowledge/rules/` `knowledge/errors/` `knowledge/drafts/` |
 
+## 多 Agent 接口与人工接入
+
+通信契约见 `_index/_agent-mesh.md`（单一真源，本节只摘要；agent 名 app-porter）。
+
+- 入站：`task-order`（dispatcher）、`assessment` + `deps-manifest`（port-assessor）、
+  `sdk-release`（sdk-forge，经 `config set qt_sdk_prefix` 消费）
+- 出站：`task-report`（dispatcher）、疑似框架问题线索转 framework-analyst、
+  `kb-draft`（`draft` / `promote`）
+- 移交一律走 ho-\*.yaml 信封 + flow.jsonl 追写；无 refs 不受理
+
+人工接入点：签名证书与密码（H2，不落盘）；非白名单修改——尤其 `Q_OS_LINUX` 守卫类
+（鸿蒙下 `Q_OS_OHOS` 隐含 `Q_OS_LINUX`）——人工评审后才 patch（H3）；verify=FAIL 且
+未命中已知错误模式时是否转问题链（H1）；一键模式 `project_generation` 暂停给指引（H2）。
+完整清单与分级定义见 `_agent-mesh.md` §五。
+
 ## 边界
 
 - 本 skill 不重编 Qt 框架本身（那是 `semantic/qt-harmonyos-build.md` 的领域）

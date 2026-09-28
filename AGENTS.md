@@ -102,6 +102,8 @@ skills/      → Agent skills（自动化脚本和工具）
 | `qt-app-porting` | Qt 应用鸿蒙化自动迁移（扫描→计划→受追踪修改→构建→装机→验证门禁→报告→知识蒸馏，统一 CLI `tools/qt-ohos-run.py`） | 用户说"迁移/移植/鸿蒙化这个 Qt 项目（要执行）"、"验证迁移结果"、"分析构建/运行日志"时触发 |
 | `qt-sdk-forge` | Qt 本地 SDK 工程平面（**所有 Qt SDK 编译与临时测试版本统一入口**）：编译 Qt 源码（全量/增量 install，5.12/5.15 源码编译、6.12 预构建登记）、应用与追踪修改补丁（接收其他 agent 的修改方案工单）、发布维护本地 SDK 多版本（SV0-SV8 门禁 + 补丁溯源 manifest + ENV 同步）、定期跟踪上游演进并联动 faults review，统一 CLI `tools/qt-sdk-run.py`（Python，Windows 编译差距已闭合） | 用户说"编译/重编 Qt"、"给 Qt 打补丁/应用修改方案"、"出/切换 SDK 版本或临时测试版本"、"检查上游更新"、"维护本地 SDK"时触发 |
 | `portgraph`（仓库工具，非 skills/） | 可行性评估与依赖解决：`analyze` 可移植性判定（portable/blocked/uncertain）+ `deps` 综合依赖分析（link/build-tool/runtime/test/vendored 角色分类 + 版本范围与要求校验）+ `fetch-deps` 应用级依赖闭包（bottle 直下 / 源码编译缺口清单） | 接到"移植/迁移/鸿蒙化某应用"或"评估某应用可行性"任务时**自动作为第 0 步执行**，产出评估结论后再进入迁移工作流；依赖 ≥3 个三方库时**禁止**人工逐个判断 |
+| `task-dispatcher` | 多 Agent 协作调度中枢：任务台账（task.yaml）+ 流转日志（flow.jsonl）+ 移交信封（ho-\*.yaml），按任务路由派单、汇聚人工接入请求（waiting-human）、关单移交工程迭代 | 多 agent 协作模式下用户发起任何任务时首先由本 agent 建档路由；"查任务状态 / 续跑 / 关单"时触发 |
+| `kb-iterator` | 工程迭代 agent（知识库唯一真源写入门）：faults 草稿主编六步门禁、QOH/R promote、索引再生（faults-build build）、事实校验（kb-verify-qt）、任务复盘蒸馏、上游演进复核与版本基准表更新 | 任务关单需沉淀知识、用户说"合入草稿 / 复核 faults / 重建索引 / 检查上游演进影响"时触发 |
 
 **首次使用**：如果用户是第一次使用本知识库，或 `ENV.local.md` 不存在，**必须**先执行 `skills/kb-init/SKILL.md` 完成初始化。
 
@@ -142,7 +144,7 @@ skills/      → Agent skills（自动化脚本和工具）
 
 | 工具 | 集成方式 |
 |------|---------|
-| Claude Code | 本文件（CLAUDE.md）自动加载 |
+| Claude Code | 将 `AGENTS.md` 复制为本地 `CLAUDE.md` 后自动加载（本仓不携带 CLAUDE.md） |
 | Codex | AGENTS.md 自动加载（与本文件内容相同） |
 | Cursor | 在 `.cursorrules` 中引用 `_index/_map.md` |
 | Windsurf | 在 `.windsurfrules` 中引用 `_index/_map.md` |

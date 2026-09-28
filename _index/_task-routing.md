@@ -4,9 +4,9 @@ type: meta
 domain: workflow
 tags: [agent, routing, task-types, workflow, decision-tree]
 created: 2026-06-27
-updated: 2026-09-12
+updated: 2026-09-23
 status: active
-refs: [semantic-qt-harmonyos-golden-rules, procedural-demo-generation]
+refs: [agent-mesh, semantic-qt-harmonyos-golden-rules, procedural-demo-generation]
 summary: >
   开发者任务路由表：按用户请求匹配任务类型，确定必读页与工作流。
   覆盖移植、API/模块/平台限制查询、构建排障、窗口、生命周期、问题分析、
@@ -16,6 +16,9 @@ summary: >
 # 任务路由表
 
 > **使用方式**：收到请求后，先匹配下方路由树，确定任务类型，然后按"必读页"加载上下文、按"工作流"执行。
+
+> **多 agent 协作模式**：任务台账 / 移交信封（ho-\*.yaml）/ 流转日志（flow.jsonl）/ 人工接入点契约见
+> [_agent-mesh](_agent-mesh.md)；本表即 task-dispatcher 的路由核心。单 agent 场景忽略此注记。
 
 ---
 
