@@ -1,6 +1,9 @@
 # 个人本地配置（不入库）
 ENV.local.md
 TODO.local.md
+# 交接/本地文档与本地工具配置（发布树不带；AGENTS.md 为入库真源）
+HANDOVER.md
+CLAUDE.md
 
 # 构建产物
 dist/

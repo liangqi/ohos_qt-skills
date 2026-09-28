@@ -84,15 +84,15 @@
 
 ### 方式一：让 AI 工具自动用（推荐）
 
-本库靠 `CLAUDE.md` / `AGENTS.md`（内容相同）驱动 AI。进入仓库根目录打开你的工具即可：
+本库靠 `AGENTS.md` 驱动 AI（`CLAUDE.md` 为本地等价文件，不入库）。进入仓库根目录打开你的工具即可：
 
 | 工具 | 怎么接 |
 |------|--------|
-| Claude Code | 仓库根目录打开，自动读 `CLAUDE.md` |
+| Claude Code | 仓库根目录打开；可将 `AGENTS.md` 复制为本地 `CLAUDE.md` 自动加载 |
 | Codex / OpenCode | 仓库根目录打开，自动读 `AGENTS.md` |
 | Cursor | 建 `.cursorrules`，内容：`请阅读并遵循 _index/_map.md 中定义的知识库结构` |
 | Windsurf | 建 `.windsurfrules`，同上 |
-| ChatGPT / 其它 | 手动上传 `_index/_map.md` + 相关知识页，或把 `CLAUDE.md` 复制进系统提示 |
+| ChatGPT / 其它 | 手动上传 `_index/_map.md` + 相关知识页，或把 `AGENTS.md` 复制进系统提示 |
 
 接入后，直接用自然语言提问，AI 会按"任务路由 → 扫铁律 → 按需加载知识页 → 给方案"处理。遇到报错它会先查 `problems/_lookup.md`。
 
