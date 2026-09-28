@@ -93,7 +93,7 @@ Agent 不需要手拼 configure 参数；本节供评审 config.summary 时对�
 |--------|-----------|-----------|---------|
 | skip 列表 | 全量 skip（33 项，见 `semantic/qt-harmonyos-build.md` §Configure） | 精简 skip（27 项，同页 §Qt 5.15.16 Skip 列表） | 不适用 |
 | `-c++std` | c++14 | c++14 | — |
-| OpenGL | `--render gl` → `-opengl desktop`；`--render gles` → `-opengl es2`（qtbase c5de1b3d 之后；该 commit 之前 gles 必须显式 `-opengles3`） | 同左 | — |
+| OpenGL | `--render gl` → `-opengl desktop`（CLI 自动检查 sysroot libGLv4.so，缺失时警告并给 gitee.com/inkuu/opengl 替换指引）；`--render gles` → `-opengl es2`；`--render gles3` → `-opengl es2 -opengles3`（显式 ES3，需 qtbase c5de1b3d+） | 同左 | — |
 | OpenSSL（可选） | configure 追加 `-openssl-runtime -I<openssl头文件> -ssl`，头文件来自 [openharmony/third_party_openssl](https://gitee.com/openharmony/third_party_openssl/tree/master/include/) | 同左 | — |
 | Desktop GL 构建失败缓解 | SDK/设备 ≥ API 20；从 [inkuu/opengl](https://gitee.com/inkuu/opengl/tree/mesa_headers_all) 取 `libGLv4.so` 替换 `sysroot/usr/lib/aarch64-linux-ohos/` 下同名文件后重编；app.json5 设 `NEED_OPENGL` | 同左 | — |
 | SDK 输出目录名 | `Qt5.12.12-arm64-v8a[-gles|-debug]` | `Qt5.15.16-arm64-v8a[-gles|-debug]` | kit 目录名（安装器决定） |

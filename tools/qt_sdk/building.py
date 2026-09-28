@@ -48,6 +48,24 @@ SKIP_5_15 = [
     "qtopcua", "qtknx", "qtconnectivity", "coap",
 ]
 
+
+def resolve_skip_list(qt_version, skip_extra=None, with_modules=None):
+    """Default skip list for the version, minus with_modules, plus
+    skip_extra. Returns (skip_list, ignored_with) - with entries not in
+    the default list are ignored (reported, not applied)."""
+    skip = list(QT_VERSIONS[qt_version][1])
+    ignored_with = []
+    for mod in with_modules or []:
+        if mod in skip:
+            skip.remove(mod)
+        else:
+            ignored_with.append(mod)
+    for mod in skip_extra or []:
+        if mod not in skip:
+            skip.append(mod)
+    return skip, ignored_with
+
+
 QT_VERSIONS = {"5.12": ("Qt5.12.12-arm64-v8a", SKIP_5_12),
                "5.15": ("Qt5.15.16-arm64-v8a", SKIP_5_15)}
 
@@ -63,6 +81,8 @@ def sdk_dir_name(qt_version: str, render: str, build_type: str) -> str:
     name = QT_VERSIONS[qt_version][0]
     if render == "gles":
         name += "-gles"
+    elif render == "gles3":
+        name += "-gles3"
     if build_type == "debug":
         name += "-debug"
     return name
@@ -197,6 +217,22 @@ def _sdk_version(native: Path) -> str:
         return ""
 
 
+def _opengl_desktop_check(render: str, env: Dict[str, str]) -> Optional[str]:
+    """Desktop GL needs the patched libGLv4.so in the sysroot (build.md).
+    Returns a warning string when missing, None when ok/irrelevant."""
+    if render != "gl":
+        return None
+    lib = (Path(env["OHOS_SDK_SYSROOT"]) / "usr" / "lib"
+           / "aarch64-linux-ohos" / "libGLv4.so")
+    if lib.exists():
+        return None
+    return ("desktop GL build: patched libGLv4.so missing in sysroot "
+            "(expected %s) - get it from gitee.com/inkuu/opengl "
+            "(mesa_headers_all) and place it in "
+            "<sysroot>/usr/lib/aarch64-linux-ohos/ - see "
+            "semantic/qt-harmonyos-build.md OpenGL section" % lib)
+
+
 def _config_fingerprint(args: List[str], env: Dict[str, str]) -> str:
     """Fingerprint of everything that shapes the build dir: configure args
     plus the OHOS SDK identity (path + package version). Swapping the SDK
@@ -225,7 +261,9 @@ def _default_jobs() -> int:
 
 def configure(st: ForgeState, qt_version: str, render: str = "gl",
               build_type: str = "release",
-              timeout: Optional[float] = None) -> Dict:
+              timeout: Optional[float] = None,
+              skip_extra: Optional[List[str]] = None,
+              with_modules: Optional[List[str]] = None) -> Dict:
     """Full (re)configure of a shadow build dir for the given variant."""
     cfg = st.env()
     src = cfg.get("qt_src") or envcheck.default_paths()["qt_src"]
@@ -245,10 +283,15 @@ def configure(st: ForgeState, qt_version: str, render: str = "gl",
         "-opensource", "-confirm-license",
         "-debug" if build_type == "debug" else "-release",
     ]
-    if render == "gles":
-        args += ["-opengl", "es2"]
-    else:
+    if render == "gl":
         args += ["-opengl", "desktop"]
+    elif render == "gles":
+        args += ["-opengl", "es2"]
+    else:  # gles3: ES 2 + explicit -opengles3 (needs qtbase c5de1b3d+)
+        args += ["-opengl", "es2", "-opengles3"]
+    gl_warn = _opengl_desktop_check(render, env)
+    if gl_warn:
+        print("[qt-sdk-run] WARN: %s" % gl_warn)
     args += ["-no-use-gold-linker", "-no-gcc-sysroot", "-no-dbus",
              "-ohos-arch", "arm64-v8a",
              "-c++std", "c++14",
@@ -256,7 +299,17 @@ def configure(st: ForgeState, qt_version: str, render: str = "gl",
     if os.name == "nt":
         args += ["-device-option",
                  "CROSS_COMPILE=%s" % (Path(env["LLVM_INSTALL_DIR"]) / "bin")]
-    for mod in QT_VERSIONS[qt_version][1]:
+    skip_list, ignored_with = resolve_skip_list(qt_version, skip_extra,
+                                                with_modules)
+    if skip_extra or with_modules:
+        enabled = [m for m in (with_modules or [])
+                   if m not in ignored_with]
+        print("[qt-sdk-run] module set: skip=%d (default %d), enabled=%s, "
+              "ignored --with=%s"
+              % (len(skip_list), len(QT_VERSIONS[qt_version][1]),
+                 ",".join(enabled) or "-",
+                 ",".join(ignored_with) or "-"))
+    for mod in skip_list:
         args += ["-skip", mod]
 
     if os.name == "nt":

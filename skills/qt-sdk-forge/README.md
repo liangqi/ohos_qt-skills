@@ -86,8 +86,9 @@ python tools/qt-sdk-run.py forge <proposal-dir> --qt 5.15 --release --type test
 | 领域 | 命令 |
 |------|------|
 | 环境 | `init` · `env`（SV0 检测）· `config set/get/show` · `src-clone --method commercial\|opensource --version 5.12\|5.15` |
+| 模块 | `modules --qt <ver>`（静态：默认编译/可启用/平台不支持）· `modules --configured`（active 变体实际模块）· `configure --with a,b`（启用默认 skip 的模块）· `configure --skip a,b`（追加 skip） |
 | 补丁 | `patch-import <dir>` · `patch-apply/revert <id>` · `patch-list` · `patch-export <id> --dest` · `patch-mark <id> <status>` |
-| 编译 | `configure --qt --render --build-type` · `build` · `install`（均可 `--qt` 切换变体槽） |
+| 编译 | `configure --qt --render gl\|gles\|gles3 --build-type [--skip] [--with]` · `build` · `install`（均可 `--qt` 切换变体槽） |
 | 验证 | `verify`（SV0-SV8）· `smoke-mark --result pass\|fail` |
 | 版本 | `release [--type release\|test]` · `release-list` · `use <ver>` · `diff <v1> <v2>` |
 | 演进 | `upstream-check` |

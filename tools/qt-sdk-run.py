@@ -38,8 +38,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from qt_sdk import (building, envcheck, patching, releasing, srctree,  # noqa: E402
-                    verify)
+from qt_sdk import (building, envcheck, modules,  # noqa: E402
+                    patching, releasing, srctree, verify)
 from qt_sdk.state import (BudgetExhausted, STAGES,  # noqa: E402
                           init_state, load_state)
 
@@ -62,6 +62,11 @@ def _ok_or_die(result: dict, what: str) -> None:
         return
     print("[qt-sdk-run] FAIL: %s - %s" % (what, result.get("error", "")))
     sys.exit(1)
+
+
+def _csv(value: str) -> list:
+    """Split a comma-separated CLI value (--skip/--with) into a list."""
+    return [part.strip() for part in (value or "").split(",") if part.strip()]
 
 
 def _print_checks(report: dict) -> None:
@@ -275,7 +280,9 @@ def cmd_configure(args) -> int:
     st = _state(args)
     result = building.configure(st, args.qt, render=args.render,
                                 build_type=args.build_type,
-                                timeout=args.timeout)
+                                timeout=args.timeout,
+                                skip_extra=_csv(args.skip),
+                                with_modules=_csv(args.with_modules))
     if result.get("ok"):
         print("[qt-sdk-run] configured %s -> %s"
               % (result["build_dir"], result["sdk_dir"]))
@@ -362,6 +369,54 @@ def cmd_release_list(args) -> int:
             m.get("version"), m.get("type"), m.get("qt_version"),
             ",".join(p.get("id", "?") for p in m.get("patches", [])) or "-",
             m.get("sdk_dir")))
+    return 0
+
+
+def cmd_modules(args) -> int:
+    if not args.qt and not args.configured:
+        print("usage: modules [--qt {5.12,5.15} | --configured]")
+        print("  --qt <ver>    static view: default built / skippable / "
+              "unsupported")
+        print("  --configured  modules actually present in the active "
+              "variant's SDK")
+        return 1
+    if args.qt:
+        report = modules.static_report(args.qt)
+        print("Qt %s module availability (source: %s)"
+              % (args.qt, report["source"]))
+        if report.get("parse_error"):
+            print("  [degraded] %s" % report["parse_error"])
+        print("  default built (%d): %s" % (
+            len(report["default_built"]),
+            ", ".join(report["default_built"]) or "(none)"))
+        print("  skipped by default (%d) - enable with `configure --with`: "
+              "%s" % (len(report["skipped_by_default"]),
+                      ", ".join(report["skipped_by_default"]) or "(none)"))
+        print("  unsupported (%d) - platform blocked, not enableable: %s" % (
+            len(report["unsupported"]),
+            ", ".join(report["unsupported"]) or "(none)"))
+        if report["unknown"]:
+            print("  unknown (%d): %s" % (len(report["unknown"]),
+                                          ", ".join(report["unknown"])))
+        return 0
+    st = _state(args)
+    try:
+        ctx = building.build_ctx(st)
+    except RuntimeError:
+        print("[qt-sdk-run] FAIL: no configured build context")
+        return 1
+    if not ctx.get("sdk_dir"):
+        print("[qt-sdk-run] FAIL: active variant has no sdk_dir - run "
+              "`configure` first")
+        return 1
+    report = modules.configured_report(ctx["sdk_dir"], ctx.get("build_dir"))
+    print("modules actually present in SDK: %s (count: %d)" % (
+        report["sdk_dir"], report["count"]))
+    print("  %s" % (", ".join(report["modules"])
+                    or "(none - run `install` first?)"))
+    if report["from_summary"]:
+        print("  config.summary mentions: %s"
+              % ", ".join(report["from_summary"]))
     return 0
 
 
@@ -453,7 +508,9 @@ def cmd_forge(args) -> int:
         if need_conf:
             conf = building.configure(st, args.qt, render=args.render,
                                       build_type=args.build_type,
-                                      timeout=args.timeout)
+                                      timeout=args.timeout,
+                                      skip_extra=_csv(args.skip),
+                                      with_modules=_csv(args.with_modules))
             _ok_or_die(conf, "configure")
         elif not ctx:
             print("[qt-sdk-run] FAIL: no build context - pass --qt")
@@ -524,6 +581,8 @@ class _ns:
         self.render = "gl"
         self.build_type = "release"
         self.qt = None
+        self.skip = ""
+        self.with_modules = ""
         for key, val in kw.items():
             setattr(self, key, val)
         if not hasattr(self, "home"):
@@ -538,7 +597,9 @@ def _add_variant_args(p, required: bool) -> None:
     on configure/forge they define the variant to configure."""
     p.add_argument("--qt", required=required, choices=["5.12", "5.15"],
                    help="Qt version (switch active variant)")
-    p.add_argument("--render", default="gl", choices=["gl", "gles"])
+    p.add_argument("--render", default="gl", choices=["gl", "gles", "gles3"],
+                   help="OpenGL flavour: gl (desktop), gles (ES 2), "
+                        "gles3 (ES 2 + -opengles3)")
     p.add_argument("--build-type", default="release",
                    choices=["release", "debug"])
 
@@ -609,6 +670,12 @@ def main(argv=None) -> int:
     p = sub.add_parser("configure", help="full configure for a variant")
     _add_variant_args(p, required=True)
     p.add_argument("--timeout", type=float, default=None)
+    p.add_argument("--skip", default="",
+                   help="comma-separated extra modules to skip (appended "
+                        "to the version default)")
+    p.add_argument("--with", dest="with_modules", default="",
+                   help="comma-separated modules to enable (removed from "
+                        "the version default skip list)")
     p.set_defaults(func=cmd_configure)
 
     for name, help_, fn in (
@@ -640,6 +707,16 @@ def main(argv=None) -> int:
     p = sub.add_parser("release-list", help="list released versions")
     p.set_defaults(func=cmd_release_list)
 
+    p = sub.add_parser("modules", help="list Qt modules: static "
+                       "availability or actually built")
+    p.add_argument("--qt", default=None, choices=["5.12", "5.15"],
+                   help="static view: default built / skippable / "
+                        "unsupported")
+    p.add_argument("--configured", action="store_true",
+                   help="modules actually present in the active variant's "
+                        "SDK")
+    p.set_defaults(func=cmd_modules)
+
     p = sub.add_parser("use", help="switch ENV.local.md to a release")
     p.add_argument("version")
     p.add_argument("--env-local", default=None,
@@ -660,6 +737,12 @@ def main(argv=None) -> int:
     p.add_argument("dir")
     _add_variant_args(p, required=False)
     p.add_argument("--timeout", type=float, default=None)
+    p.add_argument("--skip", default="",
+                   help="comma-separated extra modules to skip (appended "
+                        "to the version default)")
+    p.add_argument("--with", dest="with_modules", default="",
+                   help="comma-separated modules to enable (removed from "
+                        "the version default skip list)")
     p.add_argument("--release", action="store_true",
                    help="also cut a version after verify")
     p.add_argument("--type", default="test", choices=["release", "test"])

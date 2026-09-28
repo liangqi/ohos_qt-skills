@@ -196,6 +196,21 @@ python tools/qt-sdk-run.py build        # 超时默认 4h，--timeout 覆盖
 python tools/qt-sdk-run.py install
 ```
 
+**模块选择与查询**（默认 skip 列表按版本内置，可增删）：
+
+```bash
+python tools/qt-sdk-run.py modules --qt 5.15          # 查询：默认编译 / 可 --with 启用 / 平台不支持
+python tools/qt-sdk-run.py modules --configured       # 查询：active 变体 SDK 实际安装的模块
+python tools/qt-sdk-run.py configure --qt 5.15 --with qtconnectivity   # 从默认 skip 列表移除（启用）
+python tools/qt-sdk-run.py configure --qt 5.15 --skip qtcharts         # 追加 skip
+```
+
+- `--render` 支持 `gl | gles | gles3`（gles3 = `-opengl es2 -opengles3`，需
+  qtbase c5de1b3d+；`gl` 时自动做 sysroot libGLv4.so 前置检查，缺失给警告与
+  替换指引，不阻断）
+- 自定义模块集参与 configure 指纹：模块集变化自动触发脏构建目录清理重配
+  （QOH040 防护），不会残留旧模块的 .pri
+
 **增量 + install**（日常高频：补丁后重编；直接复用上次 configure 的变体上下文）：
 
 ```bash
@@ -366,7 +381,22 @@ forge 进程**，需要并行就用独立 home。
 **上游协作 agent**：`framework-issue-analysis`（产出修改方案工单进 inbox）、
 faults 库维护（C 页修复建议 → 工单）；**下游协作 agent**：`qt-app-porting`
 （消费 SDK 版本做应用迁移与冒烟，`qt_sdk_prefix` 指向本平面产出）、
-`kb-init`（ENV.local.md 同步方）。
+`kb-init`（ENV.local.md 同步方）。全量接口卡与移交信封契约见 `_index/_agent-mesh.md`。
+
+## 人工接入点（HITL）
+
+分级定义：H1 阻断决策 / H2 人工执行 / H3 复核确认（通用红线与全 agent 总表见
+`_index/_agent-mesh.md` §五）。
+
+| 级别 | 触发条件 | 行为 |
+|------|---------|------|
+| H2 | Qt 6.12 预构建安装器需登录交互安装，agent 不代下载 | 提示用户手动安装后 `config set sdk_root` 登记 |
+| H2 | 商业源码 clone 凭据 | 用户口头提供，只进内存不落盘 |
+| H1 | 正式版发布（`--type release`，ENV 指针切换影响全部下游） | 等用户确认 |
+| H1 | diagnostic 补丁被 release 门禁拒绝后的处置（revert / 改出 test 版） | 等用户裁决 |
+| H1 | superseded 复核通过后的补丁退役 + 出无该补丁的新版本 | 等用户确认 |
+| H2 | SV7 冒烟的人工验证结果（`smoke-mark` 登记的是人为结论） | 请人执行并登记 |
+| H1 | 上游 patch 提交（本 skill 不代办） | `patch-export` 后交人提交 |
 
 ## 边界
 
