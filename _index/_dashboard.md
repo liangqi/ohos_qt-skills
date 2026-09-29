@@ -1,20 +1,20 @@
 ---
-updated: 2026-09-12
-total_pages: 47
+updated: 2026-09-29
+total_pages: 46
 description: >
   知识库健康仪表盘（派生计数，从 frontmatter 自动生成）。
 ---
 
 # 知识库健康仪表盘
 
-> **最后更新**：2026-09-12 | **总活跃页面**：47 | **归档**：1
+> **最后更新**：2026-09-29 | **总活跃页面**：46 | **归档**：1
 
 ---
 
 ## 一、文件清单（派生）
 
 
-### semantic（24 活跃）
+### semantic（26 活跃）
 
 | 页面 | 状态 | 最后更新 |
 |------|:----:|:--------:|
@@ -22,9 +22,11 @@ description: >
 | `qt-harmonyos-accessibility.md` | ✅ 活跃 | 2026-07-23 |
 | `qt-harmonyos-api-mapping.md` | ✅ 活跃 | 2026-08-15 |
 | `qt-harmonyos-api.md` | ✅ 活跃 | 2026-08-06 |
+| `qt-harmonyos-blocking-taxonomy.md` | ✅ 活跃 | 2026-09-08 |
 | `qt-harmonyos-build-run-workflow.md` | ✅ 活跃 | 2026-08-15 |
 | `qt-harmonyos-build.md` | ✅ 活跃 | 2026-07-03 |
 | `qt-harmonyos-code-patterns.md` | ✅ 活跃 | 2026-08-14 |
+| `qt-harmonyos-dev-guide.md` | ✅ 活跃 | 2026-06-02 |
 | `qt-harmonyos-golden-rules.md` | ✅ 活跃 | 2026-08-14 |
 | `qt-harmonyos-lifecycle.md` | ✅ 活跃 | 2026-08-14 |
 | `qt-harmonyos-modules.md` | ✅ 活跃 | 2026-06-11 |
@@ -62,16 +64,14 @@ description: >
 | `qt6-ohos-manual-deploy.md` | ✅ 活跃 | 2026-08-06 |
 | `qt6-ohos-windows-cli-deploy.md` | ✅ 活跃 | 2026-08-01 |
 
-### episodic（8 活跃）
+### episodic（6 活跃）
 
 | 页面 | 状态 | 最后更新 |
 |------|:----:|:--------:|
 | `coin3d-quarter-ohos.md` | ✅ 活跃 | 2026-06-08 |
 | `ohostemplate-blockedbymodal-patch.md` | ✅ 活跃 | 2026-08-06 |
-| `qt-opensource-apps-harmonyos-survey.md` | ✅ 活跃 | 2026-06-26 |
 | `quit-deadlock-tsfn.md` | ✅ 活跃 | 2026-07-13 |
 | `saribbon-ohos.md` | ✅ 活跃 | 2026-06-26 |
-| `tdesktop-harmonyos-porting.md` | ✅ 活跃 | 2026-09-12 |
 | `toolwindow-crossscreen-flicker.md` | ✅ 活跃 | 2026-06-05 |
 | `wa-nativewindow-leave-bug.md` | ✅ 活跃 | 2026-06-09 |
 
@@ -80,7 +80,7 @@ description: >
 | 页面 | 状态 | 最后更新 |
 |------|:----:|:--------:|
 
-### problems（41 条目）
+### problems（46 条目）
 
 详见 [_lookup](../problems/_lookup.md)。
 
@@ -94,10 +94,10 @@ description: >
 
 | 域 | 活跃页 | 备注 |
 |----|:------:|------|
-| semantic | 24 | 见各页 frontmatter refs |
+| semantic | 26 | 见各页 frontmatter refs |
 | procedural | 14 | 见各页 frontmatter refs |
-| episodic | 8 | 项目经验，无外部来源 |
+| episodic | 6 | 项目经验，无外部来源 |
 | preference | 0 | 个人偏好 |
 | faults | 55 | 问题跟踪图（17 症状 + 18 根因 + 15 方案 + 5 跟踪单，同 problems 不计入活跃页） |
-| **合计活跃** | **47** | |
+| **合计活跃** | **46** | |
 

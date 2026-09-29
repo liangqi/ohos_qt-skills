@@ -30,7 +30,7 @@ summary: >
   import、无任何 @ohos.* eager import，libqohos 启动期 jsState.eval("@ohos.deviceInfo")
   裸全局表达式 eval 被 ArkTS 运行时以"非已知模块路径"拒绝，Napi::Error 未捕获致
   onAcceptWant 崩溃（连带 factories/objects API 错配静默丢 @kit.* 模块）。defect/
-  qt-port（triage 已人工判定，非系统 bug）；W-0008（qView-ohos 完整版 4 文件替换）
+  qt-port（triage 已人工判定，非系统 bug）；W-0008（完整版参考模板 4 文件替换）
   已真机验证，暂无跟踪单。
 ---
 
@@ -78,9 +78,9 @@ triage 结论（bug report 样例，已按人工签署口径沉淀）：**Qt 框
 
 ## 临时方案（Workarounds）
 
-- **W-0008（adopted，已验证 2026-07-23 真机）**：用 qView-ohos 钦定完整版替换胶水 4 文件：
-  1. `entry/src/main/ets/qability/OhosExportModules.ts` ← qView-ohos 版：26 个 `import __ohos__X from '@ohos.X'`（eager default-import，覆盖 deviceInfo/display/window/font/resourceManager/i18n/intl/settings/...）+ 13 个 `@kit.*` eager import；`getOhosExportModules()` 返回**直接对象**（非箭头工厂）；
-  2. `entry/src/main/ets/qability/QtUtils.ets` ← qView-ohos 版：`getModulesMapForQt()` 调 `getOhosExportModules()` + `getLocalStorageTsInterface()` + `getQEmbeddedComponentCreatorTsInterface()`（**调用取对象**，非存函数引用）；
+- **W-0008（adopted，已验证 2026-07-23 真机）**：用钦定完整版参考模板替换胶水 4 文件：
+  1. `entry/src/main/ets/qability/OhosExportModules.ts` ← 完整版参考模板：26 个 `import __ohos__X from '@ohos.X'`（eager default-import，覆盖 deviceInfo/display/window/font/resourceManager/i18n/intl/settings/...）+ 13 个 `@kit.*` eager import；`getOhosExportModules()` 返回**直接对象**（非箭头工厂）；
+  2. `entry/src/main/ets/qability/QtUtils.ets` ← 完整版参考模板：`getModulesMapForQt()` 调 `getOhosExportModules()` + `getLocalStorageTsInterface()` + `getQEmbeddedComponentCreatorTsInterface()`（**调用取对象**，非存函数引用）；
   3. `QAbilityStage.ets` / `QChildProcess.ets`：`getModulesFactoriesMapForQt()` → `getModulesMapForQt()`（2 处调用点改名，保留 QAbilityStage 的 resourceDir）；
   4. 重建 `build_project(entry@default, debug)` → 装机 → 触发 onAcceptWant → 不崩、QtWatchdog 持续运行 = 修复生效。
 
@@ -96,7 +96,7 @@ triage 结论（bug report 样例，已按人工签署口径沉淀）：**Qt 框
 | 日期 | 环境（Qt/OHOS） | 动作 | 结果 | 状态变化 |
 |------|----------------|------|------|---------|
 | 2026-07-23 | Qt 5.15.16（515 代际 libqohos，7/17 构建）/ HarmonyOS 6.0.0.29（MateBook Fold 真机） | qapp-recreate-test 触发 onAcceptWant 复现，取 faultlog + strings 判据 | cppcrash-60469：LAST_FATAL_MESSAGE 命中，栈到 `jsState.eval("@ohos.deviceInfo")`；strings 查无错误文本 → 判 515 代际 | → open |
-| 2026-07-23 | 同上 | qView-ohos 完整版 4 文件替换，重建装机，再触发 onAcceptWant | 不崩、QtWatchdog 持续运行（shot-after-fix.png） | → workaround |
+| 2026-07-23 | 同上 | 完整版参考模板 4 文件替换，重建装机，再触发 onAcceptWant | 不崩、QtWatchdog 持续运行（shot-after-fix.png） | → workaround |
 
 （历史事实来源：[runtime-crash-ohos-deviceinfo-global-expression](../problems/runtime-crash-ohos-deviceinfo-global-expression.md) evidence/deliverables 与 [qt-bug-report-sample](../procedural/qt-bug-report-sample.md)；主编合入时按门禁在本表首行登记审核复现。）
 

@@ -63,7 +63,7 @@ summary: >
 - 入站：`task-order`（app 路径）
 - 出站：`assessment.json` + deps-report + fetch-deps 闭包 manifest（type=`assessment` / `deps-manifest`）
 - 边界：只分析不改动目标工程；**依赖 ≥3 个三方库时禁止人工逐个判断**，以闭包分析输出为准
-  （tdesktop 实证：68 依赖闭包分析一次给出 59 bottle + 9 源码编译的解）
+  （实证：某 68 依赖大型应用的闭包分析一次给出 59 bottle + 9 源码编译的解）
 
 **framework-analyst**（框架问题分析 agent）
 
@@ -118,7 +118,7 @@ workspace/tasks/
 
 ```yaml
 id: TSK-20260923-001
-title: tdesktop v7.0.2 鸿蒙化迁移
+title: 某 Qt 应用 v1.0 鸿蒙化迁移
 status: in-progress      # created | in-progress | waiting-human | blocked | closed
 created: 2026-09-23
 route: "[A]+[P]"         # 命中的 _task-routing 路由码

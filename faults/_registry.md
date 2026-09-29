@@ -1,5 +1,5 @@
 ---
-updated: 2026-09-19
+updated: 2026-09-29
 counts:
   symptoms: 17
   causes: 18
@@ -174,7 +174,7 @@ description: >
 | W-0005 | 构建/打包期展开真实文件（替代运行时 symlink） | C-0008 | adopted | — | 无退役预期（wontfix：沙箱规格稳定） |
 | W-0006 | 权限需求交平台打包契约，不作运行时业务成功条件 | C-0008 | adopted | — | 无退役预期（wontfix：沙箱规格稳定） |
 | W-0007 | 重编 libqohos.so 打 transientParent 反写 patch（… | C-0009 | adopted | 2026-08-06 Qt 5.15.16 / OHOS… | 上游 harmonyos 分支合入 transientPar… |
-| W-0008 | qView-ohos 钦定完整版替换胶水 4 文件（26+13 eager defa… | C-0010 | adopted | 2026-07-23 Qt 5.15.16（515 代际… | Qt 源码树模板与 libqohos 同批次更新（eager… |
+| W-0008 | 钦定完整版参考模板替换胶水 4 文件（26+13 eager default-imp… | C-0010 | adopted | 2026-07-23 Qt 5.15.16（515 代际… | Qt 源码树模板与 libqohos 同批次更新（eager… |
 | W-0009 | main() 约束：QApplication 必须是第一个 Qt API 调用（构造… | C-0011 | proposed | — | 根因确认并根治（或定性为使用约束并文档化转正）后，撤销临时约… |
 | W-0010 | 插件 .so 随 HAP lib 目录打包交付（或固定集合静态链接），不做运行时下载… | C-0012 | adopted | — | 无退役预期（wontfix：loader 规格稳定）；若平台… |
 | W-0011 | 路径获取加 Q_OS_OHOS 分支：QStandardPaths::writabl… | C-0013 | adopted | 2026-07-09 Qt 5.15.16 / Harm… | 无退役预期（wontfix：bundle 只读规格稳定）；若… |

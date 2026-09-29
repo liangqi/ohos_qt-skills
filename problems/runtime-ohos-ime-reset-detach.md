@@ -8,7 +8,7 @@ updated: 2026-09-12
 status: solved
 severity: high
 audience: public
-refs: [fault-C-0002, fault-C-0003, episodic-projects-tdesktop-harmonyos-porting, problem-build-qt612-ohos-plugin-rebuild]
+refs: [fault-C-0002, fault-C-0003, problem-build-qt612-ohos-plugin-rebuild]
 summary: >
   Qt 6.12-beta3 ohos 平台插件 QOhosInputContext::reset() 里 Detach/Attach 输入法
   控制器，在拼音组合中途把软键盘收起（handlePanelHiding），且 commit() 把 pending
@@ -113,22 +113,22 @@ cb setPreviewText（组合期，拼音字母，正常）
 object（此刻 pushText left=[] 为空，新字段还没接上）。表现为偶发丢首字。待上游或
 本地进一步修复（思路：commit 前校验 focus object 的 ImEnabled 查询结果）。
 
-## 附：「中文搜索搜不到」的定性（非移植 bug）
+## 附：「中文搜索搜不到」的定性方法（非移植 bug）
 
-tdesktop 移植版搜「极速搜索」无结果时的**三角验证**结论，供同类问题参考：
+某 IM 客户端移植版中文搜索无结果时的**三角验证**方法，供同类问题参考：
 
 | 测试 | 结果 | 结论 |
 |------|------|------|
-| 本地会话搜索「极」单字 | 命中已加入会话 | 本地 CJK 索引正常 |
+| 本地会话搜索中文单字 | 命中已加入会话 | 本地 CJK 索引正常 |
 | 远端全局搜索中文短词 | 无结果 | 见下 |
 | 官方客户端（同账号）搜同样词 | 同样无结果 | **服务器不索引中文短词全局搜索，非移植 bug** |
-| 拉丁词（durov/jisou） | 有结果 | 远端链路正常；拉丁命中中文会话靠 @username |
+| 拉丁词查询 | 有结果 | 远端链路正常 |
 
-tdesktop 本地索引只有**俄语转写**（`translitRusEng`），无拼音——搜 `jisou` 命中
-中文会话走的是该会话的拉丁 @username，不是拼音索引。
+**方法要点**：应用层"功能异常"先用**官方客户端同账号对照**定性——官方同样不行的，
+是服务端/应用设计行为，不是移植引入的 bug。
 
-## tdesktop 应用日志位置
+## 应用侧日志排查（通用方法）
 
-`/data/app/el2/100/base/<bundle>/preferences/log.txt`（与 tdata 同目录），
-`hdc file recv` 拉取；看 `RPC Error` 区分客户端 bug 与服务器行为（FLOOD_WAIT /
-PEER_ID_INVALID / USER_NOT_PARTICIPANT 等）。
+`hdc file recv` 拉取应用私有目录日志（`/data/app/el2/100/base/<bundle>/` 下，
+具体文件名因应用而异），看应用自身错误码（如 RPC Error）区分客户端 bug
+与服务器行为（FLOOD_WAIT / PEER_ID_INVALID / USER_NOT_PARTICIPANT 等）。

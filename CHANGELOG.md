@@ -41,6 +41,9 @@
 - **PATCH** 发布分支裁剪（bitfun-release）：`CLAUDE.md` 移出版本管理（`AGENTS.md` 同内容保留为入库真源，本地可复制生成，README/AGENTS 多工具表同步修正）；`HANDOVER.md` 交接文档与内部工作草稿不入库（.gitignore 防回滑）；`_agent-mesh.md` §八内部调度平台 ID 脱敏（协议与编排语义保留）
 - **MINOR** 新增根级 `SKILL.md`：知识库 skill 化总入口——frontmatter 触发词覆盖"鸿蒙化/移植 Qt/三方依赖分析/构建报错"等场景（鸿蒙化 Qt 应用时自动加载），正文固化主工作流（Step 0 portgraph 可行性评估与依赖闭包 → qt-ohos-run 流水线 → G0-G12 门禁）、三方依赖分析与下载（deps 角色分类 + fetch/fetch-deps bottle 一键获取）、知识检索入口与纪律红线
 - **PATCH** README 全面重写并与知识库实际对齐（多路一致性校验）：任务路由 13→15 类（补 [S] SDK 工程）、QOH 错误模式 36→41、API 映射 12→13 类、目录树补 knowledge/tools/portgraph/templates/tests/.gitcode 与 5 个 skills、Skills 表补全（SKILL.md 总入口 + qt-sdk-forge/task-dispatcher/kb-iterator + portgraph 仓库工具）、移除对外失效的 `_scripts/kb-dev-edition.sh` 引用；结构按开源最佳实践重构（徽章行 + 核心能力表 + 30 秒上手 + AI 接入矩阵 + CLI 折叠子命令清单 + FAQ + 已知限制 + 版本 v2.3.0）
+- **MINOR** 新增知识库一致性自测 `tests/test_kb_consistency.py`（20 用例，纯标准库，`python -m unittest discover -s tests -v` 与引擎测试同跑）：**L1** Skill 清单规范（根级+5 子级 SKILL.md frontmatter name/description、AGENTS 技能表登记完整性）；**L2** 文档计数一致性——文档声称 == 实际值（QOH 41 / R 规则 18 / 铁律 35 / 任务路由 15 / API 映射 13 / problems 46 / faults 图 17-18-15-5 / 测试用例数），数字漂移在提交前被拦截（keep numbers real）；**L3** 交叉引用完整性（QOH refs → problems 页、README/SKILL/AGENTS/_task-routing 行内路径解析——支持 `qt-`/`qt-harmonyos-`/`qt-ohos-` 简写前缀约定、README 相对链接与锚点）；**L4** CLI 契约（qt-ohos-run 24 / qt-sdk-run 24 / portgraph 10 子命令集合，增删命令须显式更新测试）；**L5** faults-build check 集成门禁（exit 0 = ERROR 清零）
+- **PATCH** 一致性测试落地即修复一批同源过时项与规范缺陷：AGENTS.md（36→41 QOH、`_scripts/kb-dev-edition.sh` 失效引用移除、H1 标题 CLAUDE.md→AGENTS.md）；_task-routing.md（[H] ~36→145+ API、"33 条铁律"→35、B1-B11→B1-B12、W1-W5→W1-W6、"36 条错误模式"→41、决策树补 [P] 自动迁移条目）；portgraph/README.md（接口白名单 19→22、单测 35→119）；_dashboard.md（semantic 24→26 补 blocking-taxonomy/dev-guide 两页、problems 41→46、合计活跃 47→48）；skills/qt-app-porting/SKILL.md frontmatter 规范化（`***`/长横线围栏→`---`，描述体补缩进）、kb-iterator 与 task-dispatcher 的长横线闭合围栏→`---`；portgraph 测试删除 1 个同类遮蔽的死用例（test_build_tools_count_matches_display，120 定义→119 实跑）；README [N] 路由 deveco-mcp-capabilities 补全 ohos-common-kb-public/ 前缀、单测数 120→119
+- **PATCH** 知识库应用名脱敏（内容策略：知识库不携带特定应用名的鸿蒙化信息，防止 agent 锚定具体案例走捷径）：删除 episodic 应用复盘 2 页（某 IM 客户端全量移植复盘、229 应用普查页），通用经验蒸馏保留——"同文件多处修改必须串行"入 qt-app-harmonyos-migration 陷阱节、bottle 缺口镜像源/静态转共享技巧入 third-party-libs §3.4、三大阻断模块统计（D-Bus/QtMultimedia/QtWebEngine）入 modules 快速查找；路由/协议/procedural 层实证引用改"某大型应用"式表述并移除内部协作过程细节；problems/semantic 证据性提及泛化（批次编译清单、参考实现等）；portgraph 文档示例换 sample-app 虚构样例（e2e corpus.json 测试基础设施真实 URL 豁免；SARibbon/Coin3D 等三方库名按 [M] 路向知识保留）；faults 真源 W-0008 标题同步脱敏并重建派生物（build OK / check 0 ERROR）。计数联动：episodic 8→6、合计活跃 48→46。注：远端历史提交仍含应用名，未改写公开历史
 - note: `RELEASE-MANIFEST.yaml` 的 `content_tree_sha256` 将在下次发版时由发版脚本重新生成
 
 ## v2.2.1 — 2026-08-29
@@ -57,7 +60,7 @@
 
 ## v2.1.0 — 2026-08-25
 
-- Qt6.12 beta3 模块状态更新（QtHarmonyExtras 重新独立成模块 + 文件权限接口修正）；新增 QCTools/xi-qt OHOS 迁移经验；修正公开页硬编码 Qt 路径脱敏；新增版本化发版机制（README 能力规格节 + RELEASE-MANIFEST + CHANGELOG）
+- Qt6.12 beta3 模块状态更新（QtHarmonyExtras 重新独立成模块 + 文件权限接口修正）；新增若干 Qt 应用 OHOS 迁移编译经验；修正公开页硬编码 Qt 路径脱敏；新增版本化发版机制（README 能力规格节 + RELEASE-MANIFEST + CHANGELOG）
 
 ## v2.0.0 — 2026-08-19
 

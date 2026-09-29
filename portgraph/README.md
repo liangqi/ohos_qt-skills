@@ -82,21 +82,21 @@ python portgraph.py ingest kb            # Qt 模块矩阵 + 接口白名单
 
 ```bash
 # 克隆并扫描（后台任务，见 Web 端）
-python portgraph.py clone https://github.com/KDE/krdc
+python portgraph.py clone https://github.com/<org>/<你的Qt应用>
 
 # 或扫描本地已有工程
-python portgraph.py scan workspace/krdc
+python portgraph.py scan workspace/<app>
 
 # 可移植性分析（含阻塞点、风险等级、依赖产物清单）
-python portgraph.py analyze krdc --summary
+python portgraph.py analyze <app> --summary
 ```
 
-输出示例（tdesktop）：
+输出示例（虚构样例 sample-app）：
 
 ```
 verdict: blocked
 blockers: 2
-  [unsupported-interface] app:tdesktop: 使用鸿蒙不支持的平台接口
+  [unsupported-interface] app:sample-app: 使用鸿蒙不支持的平台接口
       macOS Cocoa/AppKit …［证据: 212 处文件级排除 / 4 处无条件 …］
 依赖产物清单: 8 个依赖（3 个有鸿蒙产物 / 5 个框架提供 / 0 个需移植）
   [有产物] ffmpeg v9.0.1 (runtime) ported
@@ -108,7 +108,7 @@ blockers: 2
 
 ```bash
 # 路径或已扫描应用名皆可；--json 输出机器可读报告
-python portgraph.py deps flameshot
+python portgraph.py deps <app>
 ```
 
 按角色回答"这个项目到底依赖什么"（详见 docs/deps-report.md）：
@@ -136,8 +136,8 @@ arm64-OpenHarmony 预编译 bottle（含 include/ + lib/ + cmake 配置）：
 python portgraph.py fetch "zlib,jsoncpp,openssl@3"
 
 # 或一键拿整个应用的全部依赖产物（agent 工具，详见 docs/fetch-deps.md）
-python portgraph.py fetch-deps tdesktop --dry-run   # 预览分类清单
-python portgraph.py fetch-deps tdesktop             # 下载 + manifest
+python portgraph.py fetch-deps sample-app --dry-run   # 预览分类清单
+python portgraph.py fetch-deps sample-app            # 下载 + manifest
 ```
 
 自动完成：查库取直链 → 下载 → sha256 校验 → 解压到 `workspace/ohos-libs/`
@@ -245,14 +245,14 @@ portgraph/
 | [Harmonybrew](https://atomgit.com/Harmonybrew/homebrew-core) | 4741 formula | 依赖图、bottle 直链、源码/主页链接 |
 | [cmd-pkgs](https://gitcode.com/OpenHarmonyPCDeveloper/cmd-pkgs) | 1248 包 | 鸿蒙 aarch64 预编译产物直链 |
 | Qt 模块鸿蒙支持矩阵（vendored） | 50 模块 | 36 支持 / 14 不支持 |
-| 接口白名单（人工策展） | 19 接口 | POSIX/socket/GLES/pthread… 支持态 |
+| 接口白名单（人工策展） | 22 接口 | POSIX/socket/GLES/pthread… 支持态（含 3 条鸿蒙原生替代） |
 | KDE Frameworks 组件依赖表 | 30 组件 | KF→Qt/KF/接口 递归展开 |
 
 ## 测试
 
 ```bash
 cd portgraph
-python -m unittest discover -s tests -v    # 35 项：解析器/引擎/守卫/闭包/提取/全形式依赖声明
+python -m unittest discover -s tests -v    # 119 项：解析器/引擎/守卫/闭包/提取/全形式依赖声明
 ```
 
 ## 已知限制

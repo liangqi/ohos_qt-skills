@@ -24,11 +24,11 @@ link 又因被 mpfr 传递依赖而出现在 runtime）：
 
 | role | 含义 | 缺失后果 | 来源证据 |
 |---|---|---|---|
-| `link` | **编译产物依赖**：目标侧 headers + .so/.a，交叉编译/链接应用时必须存在 | 编译/链接失败 | `find_package`、`pkg_check_modules`、`target_link_libraries` 裸名/`-lfoo`、`find_library`、Conan/vcpkg 清单、源码 `#include` 第三方库头文件、qmake `LIBS`/`PKGCONFIG`、meson `dependency()`、autotools `PKG_CHECK_MODULES`/`AC_CHECK_LIB`、自定义包装函数 `PACKAGE`/`LIBRARY` 声明（如 qTox `search_dependency`）、依赖清单函数 `require_dep(…)`（如 muse_deps 引擎）、KF 组件 |
+| `link` | **编译产物依赖**：目标侧 headers + .so/.a，交叉编译/链接应用时必须存在 | 编译/链接失败 | `find_package`、`pkg_check_modules`、`target_link_libraries` 裸名/`-lfoo`、`find_library`、Conan/vcpkg 清单、源码 `#include` 第三方库头文件、qmake `LIBS`/`PKGCONFIG`、meson `dependency()`、autotools `PKG_CHECK_MODULES`/`AC_CHECK_LIB`、自定义包装函数 `PACKAGE`/`LIBRARY` 声明（如某 IM 客户端的 `search_dependency`）、依赖清单函数 `require_dep(…)`（如自带依赖清单引擎）、KF 组件 |
 | `build-tool` | **编译器/构建工具依赖**：构建机运行，不部署到设备 | 构建无法进行（交叉编译产物不受影响） | `cmake_minimum_required`/`meson_version`、C++ 标准、`find_program`、`execute_process/add_custom_command COMMAND`、`find_package(ECM/gettext/OpenMP/…)` |
 | `runtime` | **运行时依赖**：设备侧 .so，不参与编译但缺了跑不起来 | 部署后 dlopen/链接失败 | link 依赖的传递闭包（hb runtime 边）、`dlopen`/`QLibrary`/`QPluginLoader` 字面量 |
 | `test` | 测试专用，不进发行包 | 测试无法构建 | `find_package(GTest/Catch2/…)`、`enable_testing` |
-| `vendored` | 项目内自带源码，随项目编译，无需外部产物 | 无（锁定提交在仓库内） | `.gitmodules`、`3rdparty/` 等目录、`FetchContent_Declare`/`ExternalProject_Add`/`CPMAddPackage`（含 GIT_TAG/VERSION 锁定）、`require_source_dep(…)` 依赖清单声明（如 muse_deps 引擎）、meson `subproject()` |
+| `vendored` | 项目内自带源码，随项目编译，无需外部产物 | 无（锁定提交在仓库内） | `.gitmodules`、`3rdparty/` 等目录、`FetchContent_Declare`/`ExternalProject_Add`/`CPMAddPackage`（含 GIT_TAG/VERSION 锁定）、`require_source_dep(…)` 依赖清单声明（如自带依赖清单引擎）、meson `subproject()` |
 | `provided` | Qt 模块等由 Qt SDK / 鸿蒙框架提供 | 无（随 Qt for HarmonyOS 部署） | `QT +=`、`find_package(Qt5/6 COMPONENTS …)`、`#include <Qt…>`、meson `dependency('qt5'/'qt6', modules: …)` |
 | `env` | CI/脚本声明的**构建机环境清单**（信息性，混合工具与库，作交叉核对信源） | — | `.github`/`.ci`/顶层 `*.sh` 中 `apt/brew/pacman install` 包名 |
 
@@ -49,7 +49,7 @@ find_package/pkg-config 声明，产物获取途径取决于名称匹配结果�
 | pkg-config 约束 | `version_req` | `pkg_check_modules(FF "libavcodec >= 58")` |
 | meson 约束 | `version_req` | `dependency('glib-2.0', version: '>= 2.36')` |
 | autotools 约束 | `version_req` | `PKG_CHECK_MODULES([F],[zlib >= 1.2])` |
-| 自定义包装函数约束 | `version_req` | `search_dependency(X PACKAGE y MINIMUM_VERSION ${V})`（`${V}` 经 `set()` 变量解析，qTox 实证） |
+| 自定义包装函数约束 | `version_req` | `search_dependency(X PACKAGE y MINIMUM_VERSION ${V})`（`${V}` 经 `set()` 变量解析（某 IM 客户端实证）） |
 | Conan 范围 | `version_range`（原样保留） | `zlib/[>=1.2 <2]` |
 | vcpkg 约束 | `version>=` | `vcpkg.json` dependencies |
 | Qt 版本 | `qt.min_version` | `find_package(Qt5 5.15 …)` / meson `qt_req` vs 鸿蒙可用 5.12/5.15/6.12 |
@@ -202,8 +202,8 @@ flowchart TB
   不是外部 need_port 缺口）——宽容折叠匹配（去 lib 前缀、去尾部
   qt5/qt6/system 变体 token：`qtadvanceddocking-qt6` ≡ CPM 包 `ads` 的
   URL 末段 `Qt-Advanced-Docking-System`）；已解析到产物的同名依赖追加
-  "可随项目编译，bottle 为备选"注记。tdesktop kcoreaddons/microtex、
-  NotepadNext ads/QSimpleUpdater、cutter rz_*/zydis 实证
+  "可随项目编译，bottle 为备选"注记。某 IM 客户端 kcoreaddons/microtex、
+  某编辑器 ads/QSimpleUpdater、某逆向工具 rz_*/zydis 实证
 - **find_package(<自身项目名>) 是自引用**：根 CMakeLists 的 project() 名
   （如 Cutter 插件样例 find_package(Cutter)）不作为外部依赖，避免误解析
   到同名无关包（cmdpkgs:cutter 实证）；vendored 子目录里 project(fakevim)
@@ -215,10 +215,10 @@ flowchart TB
 
 - **性能口径**：deps 报告内所有 runtime 闭包 BFS 共享同一份节点/出边缓存
   （`_GraphCache`），图查询总量 O(V+E)；此前每个 link 依赖独立查库，
-  200 依赖 × 深链图实测 24 万次 SQL 查询（krita 实测：node 查询命中率
+  200 依赖 × 深链图实测 24 万次 SQL 查询（某大型绘画应用实测：node 查询命中率
   83%，analyze 阶段仅 0.13s，已非瓶颈）。语料外泛化测试（2026-09）
   后的全流程瓶颈在源码扫描：平台接口规则加**字面量锚点前置过滤**
-  （无锚点必无匹配，语义不变），krita（35MB 源码）deps 全流程
+  （无锚点必无匹配，语义不变），该应用（35MB 源码）deps 全流程
   12.4s → 3.1s；剩余热点：锚点 any() 扫描本身与各检测器重复读文件
   （后续可做共享读缓存）
 
@@ -247,7 +247,7 @@ flowchart TB
 - **CMake 选项守卫（默认 OFF）内的声明标 optional**：`option` /
   `feature_option` / `feature_option_dependent` / `cmake_dependent_option`
   默认值为 OFF 的选项，其 `if(<OPTION>)` 正向守卫内的
-  find_package/pkg_check_modules 视为默认构建不含（e2e qBittorrent
+  find_package/pkg_check_modules 视为默认构建不含（e2e 某下载器
   `if (SYSTEMD)` 复盘）：deps 报告该条目 `required=false` + 注记；
   `analyze`/`fetch-deps` 连 **optional 边**（不进入 runtime 闭包与
   可移植性分析）；Find<Name>.cmake 模块文件继承 find_package(Name)
@@ -268,7 +268,7 @@ flowchart TB
   `*-codegen`/`glib-*`）的 `COMMAND`/`find_program` token，避免把任意
   可执行名当依赖
 - CMake 依赖检测覆盖**项目自带 .cmake 模块**（`include()` 引入的
-  cmake/Modules/*.cmake——qBittorrent 的 CheckPackages.cmake 模式），
+  cmake/Modules/*.cmake——某下载器工程的 CheckPackages.cmake 模式），
   并解析 `set(var x)` 变量代入 find_package/pkg_check_modules 的版本位
   （`${minBoostVersion}` → 1.76）
 - 自定义包装函数检测依赖 **PACKAGE/LIBRARY 关键字约定**（启发式）：
@@ -277,7 +277,7 @@ flowchart TB
 - `target_link_libraries` 排除项目内目标（add_library/add_executable）、
   `${VAR}`/生成器表达式、路径与链接 flag，只留裸库名并按 `.lib/.so/.a` 归一；
   `ns::external_<name>` 导入目标（cmake_helpers 等外部包装层约定）剥
-  `external_` 前缀后作为高置信外部依赖收录（`ext_target` 标记；tdesktop
+  `external_` 前缀后作为高置信外部依赖收录（`ext_target` 标记；某 IM 客户端
   全部三方库都走这条路）；其余 `Foo::Bar`（Qt5::/PkgConfig::/项目内
   lib_*）不当作外部包声明
 
@@ -309,15 +309,15 @@ REQUIRED/OPTIONAL 语义的精确分类用 `deps` 报告。
   标注 `note="位于 if(…) 平台块"` 且不入 runtime 边；`UNIX`/`LINUX`/
   `POSIX`/`OHOS` 视为鸿蒙活跃（`if(UNIX AND NOT APPLE)` 不降级），
   `NOT WIN32` 等否定条件不降级，`else` 分支保守不判（2026-09 泛化轮：
-  qbittorrent Darwin/Windows 块、konsole HAIKU/FreeBSD 块、okular mobile
-  ANDROID 块、keepassxc FindQREncode WIN32 块、tdesktop APPLE 块实证）。
+  某下载器 Darwin/Windows 块、某终端 HAIKU/FreeBSD 块、某文档查看器 mobile
+  ANDROID 块、某密码管理器 FindQREncode WIN32 块、某 IM 客户端 APPLE 块实证）。
   局限：平台块内的 find_package 对 Find<Name>.cmake 模块内容的平台继承
   未实现（保守按必需处理）
 - **KF 组件解析到 kf:<comp> 节点而非包名阶梯**：KF Archive ≠ libarchive、
   KF Config ≠ libconfig（同名异义），deps 表与 fetch-deps 闭包口径一致
   （kf 节点 need_port，需源码交叉编译 KF6）
 - **in-tree 判定的容器名白名单**：仅 `libraries`/`libs` 父目录（或 vendored
-  路径段）计为自带库集合；`generators` 等功能分组目录（okular 的
+  路径段）计为自带库集合；`generators` 等功能分组目录（某文档查看器的
   generators/poppler 是格式生成器插件代码而非 poppler 源码）不判 in-tree
 - find_package 名称 → hb 包名的匹配依赖 `kb_seed.resolve_package` 别名表 +
   前缀/后缀规则，同名异义（如多精度库 MPC vs 音乐播放器 mpc）可能错配，
@@ -326,7 +326,7 @@ REQUIRED/OPTIONAL 语义的精确分类用 `deps` 报告。
 - `target_link_libraries` 裸名无法区分"外部库"与"由自定义 Find 模块提供
   的目标"；`${VAR}` 引用的链接项完全不可见（CI 清单交叉核对可部分补漏）
 - **未初始化子模块盲区**：shallow clone 不拉取 submodule 时，子模块内的
-  find_package/集成选择逻辑不可见（tdesktop 的 cmake/ 即 cmake_helpers：
+  find_package/集成选择逻辑不可见（某 IM 客户端的 cmake/ 即 cmake_helpers：
   breakpad/crashpad 的二选一集成在其内部实现，主仓库只能看到
   external_crash_reports 包装目标）。完整方案需 clone --recurse-submodules
   或按 .gitmodules 提示的缺失路径降级标注，当前版本作为已知残留

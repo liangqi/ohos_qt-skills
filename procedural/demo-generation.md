@@ -118,7 +118,7 @@ summary: >
 >
 > **必做检查点**（创建工程后立即）：
 > 1. `strings <SDK>/plugins/platforms/libqohos.so | grep -E "^modules$|^modulesFactories$"` → 定 API（modules=objects / modulesFactories=factories）
-> 2. 用 **qView-ohos 钦定完整版**替换 `entry/src/main/ets/qability/OhosExportModules.ts` + `QtUtils.ets`（26 个 `@ohos.*` + 13 个 `@kit.*` **eager default-import**，objects API，`getModulesMapForQt`），并同步改 `QAbilityStage.ets`/`QChildProcess.ets` 的 `getModulesFactoriesMapForQt()` → `getModulesMapForQt()`
+> 2. 用**钦定完整版参考模板**替换 `entry/src/main/ets/qability/OhosExportModules.ts` + `QtUtils.ets`（26 个 `@ohos.*` + 13 个 `@kit.*` **eager default-import**，objects API，`getModulesMapForQt`），并同步改 `QAbilityStage.ets`/`QChildProcess.ets` 的 `getModulesFactoriesMapForQt()` → `getModulesMapForQt()`
 > 3. 详见 [[problem-runtime-crash-ohos-deviceinfo-global-expression]]（含 @ohos.deviceInfo 崩溃谱两代际判据）
 
 ### 3.3 Qt+CEF / WebEngine 迁移 demo（特殊：用嫁接脚本，不走常规 6 步）

@@ -57,19 +57,19 @@ libqohos.so 是平台胶水，其 napi 注册前的 so 加载沿 DT_NEEDED 传�
 ```
 libqohos.so → libfontconfig.so → libfreetype.so → libbz2.so.1.0   ✗
                                              └→ libz.so.1          ✗
-libTelegram.so → libavcodec.so.63 → libdav1d.so.7                  ✗
+libapp.so → libavcodec.so.63 → libdav1d.so.7                  ✗
              → libavif.so.16  → libaom.so.3 / libdav1d.so.7        ✗
              → libheif.so.1   → libaom.so.3                        ✗
              → libz.so                                                  ✗
 ```
 
-对照组：同设备上正常运行的 Qt 应用（musescore）恰好部署了这些 so。
+对照组：同设备上另一正常运行的 Qt 应用恰好部署了这些 so。
 
 ## 排查法（递归闭包脚本）
 
 1. `hdc shell ls /system/lib64 /system/lib64/platformsdk ...` 取系统 so 集
    （NDK 系统库如 libhilog_ndk.z.so 在设备其他搜索路径，属于正常存在）
-2. 从 `libqohos.so` + `libTelegram.so` 出发 BFS：`llvm-readobj --dynamic-table`
+2. 从 `libqohos.so` + `libapp.so` 出发 BFS：`llvm-readobj --dynamic-table`
    解析每个 NEEDED，部署目录命中则继续下钻，未命中即缺失
 3. 误报过滤：系统库白名单；重点看 app 级带版本号 so（.so.N）
 
@@ -107,8 +107,8 @@ bottle 解压在 NTFS 上的 .so symlink 变成 0 字节或不可访问 reparse 
 
 补齐后启动日志出现完整链路即成功：
 ```
-setupQtApplication() - sharedLibraryName: libTelegram.so
-opened library '.../libTelegram.so' with main function
+setupQtApplication() - sharedLibraryName: libapp.so
+opened library '.../libapp.so' with main function
 calling 'main' function in library ... (argc=2)
 QAbility::onForeground()
 ```

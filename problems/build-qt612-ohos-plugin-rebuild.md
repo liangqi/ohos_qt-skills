@@ -8,7 +8,7 @@ updated: 2026-09-12
 status: solved
 severity: high
 audience: public
-refs: [episodic-projects-tdesktop-harmonyos-porting, semantic-qt-harmonyos-build]
+refs: [semantic-qt-harmonyos-build]
 summary: >
   修补 Qt 6.12-beta3 harmonyos kit 的 ohos 平台插件（libqohos.so）不能走常规
   qt-cmake，须 cmake + BUILD_SUBMODULES=src/plugins/platforms；配置期五连坑：

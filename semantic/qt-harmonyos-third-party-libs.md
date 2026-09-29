@@ -90,6 +90,15 @@ target_link_libraries(QtHarmonyApp PRIVATE
 **优势**：避免 .so 部署问题，减少运行时依赖。
 **劣势**：增大应用 .so 体积，多个模块使用同一静态库时可能符号冲突。
 
+### 3.4 bottle 缺口时的两个源码编译技巧
+
+依赖闭包分析（portgraph fetch-deps）给出"需源码编译"缺口时，两个实战技巧：
+
+- **官方源无 bottle / 无发布包**：改用可靠的源码镜像编译（如 GitHub 社区维护镜像），编译参数以官方 formula 为准；
+- **只有静态库（`.a`）但应用需要动态加载**：静态转共享库——
+  `clang -shared -Wl,--whole-archive lib<name>.a -o lib<name>.so.<ver> ...`
+  （`--whole-archive` 保证符号全量导出；转出后按普通 .so 部署到 `entry/libs/arm64-v8a/`）。
+
 ---
 
 ## 4. 平台限制在 Qt 项目中的检查点

@@ -11,7 +11,7 @@
 #      depends_on C→C（仅实证阻塞）｜manifests 为 causes 的派生反查索引
 
 schema: 2
-updated: 2026-09-19
+updated: 2026-09-29
 
 counts:
   symptoms: 17
@@ -635,7 +635,7 @@ workarounds:
     retire_when: "上游 harmonyos 分支合入 transientParent 反写后恢复官方 kit，移除本地重编流程并回归三级窗口关闭测试"
     detail: "C-0009-qpa-syntheticparent-no-transientparent.md §临时方案"
   - id: W-0008
-    title: "qView-ohos 钦定完整版替换胶水 4 文件（26+13 eager default-import + objects API）"
+    title: "钦定完整版参考模板替换胶水 4 文件（26+13 eager default-import + objects API）"
     targets: [C-0010]
     status: adopted
     verified:

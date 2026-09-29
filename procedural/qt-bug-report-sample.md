@@ -218,7 +218,7 @@ QAbilityStage.onAcceptWant(want)                                    # entry/.../
 
 ## workaround (A+B, 可选)
 
-Qt 侧绕行（已实施并真机验证）：用 qView-ohos 钦定完整版替换 4 个文件——`OhosExportModules.ts`（26 个 `@ohos.*` + 13 个 `@kit.*` eager default-import）、`QtUtils.ets`（`getModulesMapForQt()` 调 `getOhosExportModules()` 取直接对象，objects API）、`QAbilityStage.ets` / `QChildProcess.ets`（`getModulesFactoriesMapForQt()` → `getModulesMapForQt()`，2 处调用点改名；保留 QAbilityStage 的 resourceDir）。重建 `build_project(entry@default, debug)` → 装机 → 触发 onAcceptWant → 不崩、QtWatchdog 持续运行 = 修复生效。
+Qt 侧绕行（已实施并真机验证）：用钦定完整版参考模板替换 4 个文件——`OhosExportModules.ts`（26 个 `@ohos.*` + 13 个 `@kit.*` eager default-import）、`QtUtils.ets`（`getModulesMapForQt()` 调 `getOhosExportModules()` 取直接对象，objects API）、`QAbilityStage.ets` / `QChildProcess.ets`（`getModulesFactoriesMapForQt()` → `getModulesMapForQt()`，2 处调用点改名；保留 QAbilityStage 的 resourceDir）。重建 `build_project(entry@default, debug)` → 装机 → 触发 onAcceptWant → 不崩、QtWatchdog 持续运行 = 修复生效。
 
 副作用与风险：`@ohos.*` / `@kit.*` 清单须以 `strings libqohos.so | grep -E "^@ohos\.|^@kit\."` 取本 libqohos 实际 eval 的模块根去重对齐；libqohos 代际变更（重建）后需重新核对清单，否则新增模块 eval 仍会崩。
 

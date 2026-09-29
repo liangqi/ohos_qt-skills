@@ -28,6 +28,7 @@ summary: >
 用户请求
     │
     ├─ "移植/迁移/鸿蒙化一个应用" ──────────→ [A] 应用移植
+    ├─ "自动迁移/一键迁移/跑一遍迁移" ─────→ [P] 自动迁移（执行层）
     ├─ "这个 API 在鸿蒙上怎么替换" ───────→ [B] API 替换查询
     ├─ "某个 Qt 模块是否支持鸿蒙" ──────────→ [C] 模块支持查询
     ├─ "鸿蒙有什么限制/不能做什么" ──────────→ [D] 平台限制查询
@@ -65,8 +66,9 @@ summary: >
 > 依赖 ≥3 个三方库时禁止人工逐个判断可行性，以闭包分析输出为准；blocked 需研判
 > blockers 的 guard 证据（无条件 ohos-active 命中且核心路径才是硬阻塞，可选分支放行）；
 > unknowns 即源码编译缺口清单，要**明确逐项告知用户**。
-> 反例实证（tdesktop，2026-09）：68 个依赖首轮人工判断直接绕开依赖分析，用户纠正后才用
-> portgraph，闭包分析一次给出 59 bottle + 9 源码编译的解，避免了按全源码交叉编译的错误路径。
+> 反例实证（2026-09，某 68 依赖大型应用）：首轮人工逐个判断依赖直接绕开闭包分析，
+> 走了弯路后 portgraph 闭包分析一次给出 59 bottle + 9 源码编译的解，
+> 避免了按全源码交叉编译的错误路径。
 
 ### [B] API 替换查询
 
@@ -105,7 +107,7 @@ summary: >
 | 项目 | 内容 |
 |------|------|
 | **工作流** | `build-run-workflow.md` §构建失败排查四步法 |
-| **必读页** | ① `golden-rules.md` §一（B1-B11） ② `project-structure.md` |
+| **必读页** | ① `golden-rules.md` §一（B1-B12） ② `project-structure.md` |
 | **按需加载** | `build.md`（Qt 编译）、`third-party-libs.md`（三方库编译）、`problems/_lookup.md`（已知错误） |
 | **预期输出** | 错误分类 → 根因 → 修复步骤 |
 
@@ -115,7 +117,7 @@ summary: >
 
 | 项目 | 内容 |
 |------|------|
-| **必读页** | ① `golden-rules.md` §二（W1-W5） ② `window-model.md` |
+| **必读页** | ① `golden-rules.md` §二（W1-W6） ② `window-model.md` |
 | **按需加载** | `code-patterns.md` §模式 3（对话框） |
 | **预期输出** | 规则说明 + 修复代码 |
 
@@ -135,7 +137,7 @@ summary: >
 
 | 项目 | 内容 |
 |------|------|
-| **必读页** | ① `ohos-extras.md`（~36 APIs） |
+| **必读页** | ① `ohos-extras.md`（145+ API） |
 | **按需加载** | `lifecycle.md`（使用示例）、`golden-rules.md` §三（A1-A6） |
 | **预期输出** | API 签名 + 用途 + 使用示例 |
 
@@ -183,7 +185,7 @@ summary: >
 > 端到端数据流：`app → scan → assess → plan → project_generation → patch → compile → package → install → launch → smoke → verify → report → draft → promote → 索引再生成 → kb-release 发布`。assess 为迁移第 0 步：blocked 即止并出报告（`assessment.json`）。
 
 > 关键约束：成功与否只以 `qt-ohos-run verify` 的门禁结果为准（LLM 负责推理，tool 负责事实）。
-> 机器知识：`knowledge/rules/`（18 条预扫描规则）、`knowledge/errors/`（36 条错误模式，对应 problems/）。
+> 机器知识：`knowledge/rules/`（18 条预扫描规则）、`knowledge/errors/`（41 条错误模式，对应 problems/）。
 
 ### [Q] Demo 生成
 
@@ -228,7 +230,7 @@ summary: >
 
 当请求不明确匹配任何类型时：
 
-1. **先扫描 `golden-rules.md`** — 33 条铁律覆盖最常见场景
+1. **先扫描 `golden-rules.md`** — 35 条铁律覆盖最常见场景
 2. **询问澄清** — 提供 3 个最可能的选项
 3. **如果涉及多个类型** — 按 [A] 应用移植 的流程编排，它会自动调用其他类型
 

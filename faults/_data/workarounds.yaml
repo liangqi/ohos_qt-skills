@@ -88,7 +88,7 @@ workarounds:
     detail: "C-0009-qpa-syntheticparent-no-transientparent.md §临时方案"
 
   - id: W-0008
-    title: "qView-ohos 钦定完整版替换胶水 4 文件（26+13 eager default-import + objects API）"
+    title: "钦定完整版参考模板替换胶水 4 文件（26+13 eager default-import + objects API）"
     targets: [C-0010]
     status: adopted
     cost: "libqohos 代际变更后需重新 strings 对齐 @ohos.*/@kit.* 清单；每个从源码树模板生成的工程都要替换"

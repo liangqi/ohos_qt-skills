@@ -17,13 +17,13 @@
 | **到底依赖什么？** | **`deps <路径\|应用名>`（本报告主角）** | 依赖全景：每个依赖什么角色、版本要求是否满足、鸿蒙产物从哪拿 |
 | 产物从哪拿？ | `fetch-deps <app>` | bottle 直链下载 + 集成 manifest |
 
-为什么不能靠人翻构建脚本？三个坑（以 tdesktop 为实证，README 声明 22 项三方依赖、闭包 112 项）：
+为什么不能靠人翻构建脚本？三个坑（以某大型 IM 应用为实证，README 声明 22 项三方依赖、闭包 112 项）：
 
 - **漏**——依赖不只在 `find_package` 里。还藏在 `target_link_libraries` 裸名与 `ns::external_*` 导入目标、`FetchContent` 网络拉取、git submodule、CI 脚本 `apt install`、源码 `dlopen` 里，人工翻一遍很难一个不漏；
 - **错**——最容易犯的错是"编译过了就没事"。交叉编译只需要 headers + 库，但应用跑在设备上还需要**传递的运行时 .so**——bottle 不捆绑依赖，漏拉一个，设备上直接起不来，而编译期毫无感知；
 - **慢**——上百个依赖逐个查"鸿蒙上有没有、版本够不够"，人工要数小时且不可复现。
 
-`deps` 一次扫描把三个坑一起填掉：tdesktop 给出 **78 个 bottle 直下 + 21 个需源码移植** 的明确清单。
+`deps` 一次扫描把三个坑一起填掉：该应用一次给出 **78 个 bottle 直下 + 21 个需源码移植** 的明确清单。
 
 ## 二、顶层设计（通俗版）
 
@@ -112,16 +112,16 @@ flowchart TB
 
 | 层面 | 信号 | 举例 |
 |---|---|---|
-| CMake | `find_package` / `pkg_check_modules` / `target_link_libraries` 裸名·`-lfoo`·`-framework`·`ns::external_*` 导入目标 / `find_library` / `FetchContent`·`ExternalProject`·`CPM` / `find_program`·`COMMAND` / 项目自定义包装函数（`PACKAGE`/`LIBRARY` 关键字约定）/ 依赖清单引擎（muse_deps `require_dep`） | `find_package(OpenSSL 3.0.2 REQUIRED)` |
-| qmake | `QT +=` / `LIBS += -lfoo` / `PKGCONFIG +=` | smplayer |
-| meson | `dependency('名', version:)` / `find_library` / `meson_version`·`cpp_std` / `subproject()` | audacious `glib-2.0 >= 2.36` |
+| CMake | `find_package` / `pkg_check_modules` / `target_link_libraries` 裸名·`-lfoo`·`-framework`·`ns::external_*` 导入目标 / `find_library` / `FetchContent`·`ExternalProject`·`CPM` / `find_program`·`COMMAND` / 项目自定义包装函数（`PACKAGE`/`LIBRARY` 关键字约定）/ 依赖清单引擎（`require_dep` 约定） | `find_package(OpenSSL 3.0.2 REQUIRED)` |
+| qmake | `QT +=` / `LIBS += -lfoo` / `PKGCONFIG +=` | 某播放器 |
+| meson | `dependency('名', version:)` / `find_library` / `meson_version`·`cpp_std` / `subproject()` | 某播放器 `glib-2.0 >= 2.36` |
 | autotools | `PKG_CHECK_MODULES` / `AC_CHECK_LIB` | `zlib >= 1.2` |
-| 包管理清单 | conanfile（范围 `[>=1.2 <2]`）/ vcpkg.json | keepassxc |
-| 源码 | `#include` 三方库头（zlib/openssl/boost 等 16 类）/ `dlopen`·`QLibrary`·`QPluginLoader` 字面量 | tdesktop |
-| 仓库结构 | `.gitmodules` / `3rdparty/` 目录 / meson `subprojects/*.wrap` | tdesktop |
-| CI 脚本 | `.github/`·`.ci/`·顶层 `*.sh` 里的 `apt/brew/pacman install` | flameshot 21 个 |
+| 包管理清单 | conanfile（范围 `[>=1.2 <2]`）/ vcpkg.json | 某密码管理器 |
+| 源码 | `#include` 三方库头（zlib/openssl/boost 等 16 类）/ `dlopen`·`QLibrary`·`QPluginLoader` 字面量 | 某 IM 客户端 |
+| 仓库结构 | `.gitmodules` / `3rdparty/` 目录 / meson `subprojects/*.wrap` | 某 IM 客户端 |
+| CI 脚本 | `.github/`·`.ci/`·顶层 `*.sh` 里的 `apt/brew/pacman install` | 某截图工具 21 个 |
 
-**看不见的**（明确不支持，报告不装懂）：`${VAR}` 引用的链接项；运行时拼接的动态库名；qmake 平台作用域块的归属区分；只写在 README/INSTALL 而构建文件从未声明的"运行期才用"的依赖；**shallow clone 未初始化的 submodule 内容**（tdesktop 复盘：cmake_helpers 子模块里的声明不可见，e2e 对账会如实归因而非漏报）；Bazel/Gradle/SCons 等其他构建系统。
+**看不见的**（明确不支持，报告不装懂）：`${VAR}` 引用的链接项；运行时拼接的动态库名；qmake 平台作用域块的归属区分；只写在 README/INSTALL 而构建文件从未声明的"运行期才用"的依赖；**shallow clone 未初始化的 submodule 内容**（某 IM 客户端复盘：cmake_helpers 子模块里的声明不可见，e2e 对账会如实归因而非漏报）；Bazel/Gradle/SCons 等其他构建系统。
 
 ### 3.2 分析边界——怎么处理
 
@@ -149,7 +149,7 @@ flowchart TB
 
 每个例子三段式：**工程里的原文 → 报告实际输出 → 这条输出驱动什么动作**（输出均为最新代码实测摘录）。
 
-### 例 1：qBittorrent——变量版本 + 选项守卫 + 运行时推导
+### 例 1：某下载器——变量版本 + 选项守卫 + 运行时推导
 
 **输入**（两个文件配合，版本藏在 `${变量}` 里，find_package 藏在项目自带 .cmake 模块里）：
 
@@ -184,7 +184,7 @@ find_package(ZLIB ${minZlibVersion} REQUIRED)         # :48
 
 **驱动的动作**：Boost/OpenSSL/ZLIB 由 fetch-deps 直接拉 bottle；libtorrent-rasterbar 进源码交叉编译清单（find_package 的 CamelCase 名与 pkg_check_modules 的连字符名已归并为单条，不再双幽灵）；**Systemd 标 optional**——`if (SYSTEMD)` 守卫且选项默认 OFF，默认构建不含，不进闭包；**icu4c@78 等六个运行时库没出现在任何构建文件里**，但缺了设备上起不来——由 boost 的依赖边推导而来，fetch-deps 会一并拉。这就是"编译过了 ≠ 能跑"的防线。
 
-### 例 2：flameshot——FetchContent 自带源码 + in-tree 归并
+### 例 2：某截图工具——FetchContent 自带源码 + in-tree 归并
 
 **输入**：
 
@@ -215,7 +215,7 @@ find_package(KDSingleApplication-qt6 REQUIRED)   # :132（bundled 关闭时的�
 
 **驱动的动作**：`target_link_libraries` 里的裸名 qhotkey/QtColorWidgets 命中了项目的 FetchContent 声明，归并为 **in-tree**（源码随项目编译）——早期版本会把它们误报成"无产物→需源码编译"的外部缺口；vendored 段给出锁定的 commit，离线环境据此预置源码。
 
-### 例 3：qTox——自定义包装函数 + 条件块注记
+### 例 3：某 IM 客户端——自定义包装函数 + 条件块注记
 
 **输入**（项目自定义了 `search_dependency()` 包装函数，不是任何标准 CMake 指令）：
 
@@ -244,7 +244,7 @@ search_dependency(OPENAL       PACKAGE openal)       # :135
 
 **驱动的动作**：包装函数按 `PACKAGE`/`LIBRARY`/`MINIMUM_VERSION` 关键字约定提取；openal 经别名解析落到 cmd-pkgs 的 openal-soft 直链；KF5 声明位于条件块内，标注"默认构建未必启用"供 agent 评估裁剪。
 
-### 例 4：tdesktop——e2e 对账（质量的输入输出）
+### 例 4：某 IM 客户端——e2e 对账（质量的输入输出）
 
 语料最重的项目（README 22 项三方依赖、6358 个源文件），e2e 对账报告结论速览：
 
@@ -263,10 +263,10 @@ search_dependency(OPENAL       PACKAGE openal)       # :135
 | 层 | 内容 | 规模 |
 |---|---|---|
 | 单元测试 | `tests/test_port_graph.py` | 120 项 |
-| e2e 对账 | corpus 4 项目（keepassxc/musescore/qbittorrent/tdesktop）× oracle（README/INSTALL 人工复核）→ 召回率/精确率/Bug 候选 + 差异归因基线 | qBittorrent 召回 100%/精确 100%/Bug 0 |
-| 语料外泛化 | 9+ 真实项目轮测（krita/okular/konsole/lmms/strawberry/QOwnNotes/openshot/notepadqq/cutter…），每轮暴露问题回流修复 | 多轮，报告归档 |
+| e2e 对账 | corpus 4 项目（代号 corpus-a~d）× oracle（README/INSTALL 人工复核）→ 召回率/精确率/Bug 候选 + 差异归因基线 | 最优基线：召回 100%/精确 100%/Bug 0 |
+| 语料外泛化 | 9+ 真实项目轮测（绘画 / 文档查看 / 终端 / 音乐播放 / 视频剪辑 / 编辑器 / 逆向分析等多类型…），每轮暴露问题回流修复 | 多轮，报告归档 |
 
-性能同轮做了工程化：runtime 闭包 BFS 共享图缓存（krita 此前 24 万次 SQL 查询 → analyze 阶段 0.13s）；平台接口规则字面量锚点前置过滤（krita 35MB 源码，deps 全流程 12.4s → 3.1s）。
+性能同轮做了工程化：runtime 闭包 BFS 共享图缓存（某大型绘画应用此前 24 万次 SQL 查询 → analyze 阶段 0.13s）；平台接口规则字面量锚点前置过滤（该应用 35MB 源码，deps 全流程 12.4s → 3.1s）。
 
 ## 六、交付件长什么样
 

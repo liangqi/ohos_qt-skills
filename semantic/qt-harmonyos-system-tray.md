@@ -78,7 +78,7 @@ tray 经 libqohos eval 的模块(须在 `OhosExportModules.ts` 注册为"已知�
 - `@ohos.notificationManager`(showMessage `publish` + `ContentType`)
 
 > **5.12 vs 5.15 关键区别**:
-> - **5.12 libqohos = factories API**(读 `modulesFactories` 字段,`makeJsModulesFactoriesMap`)。源码树模板的 `OhosExportModules.ts`(5 个 @kit.* lazy + `getOhosExportModulesFactories` 箭头工厂)**正是 5.12 对应代际**,且**已含 `@kit.StatusBarExtensionKit`** → 核心 tray 开箱即用,**不要**换成 qView-ohos objects 版(那是 5.15 读 `modules` 字段的)。
+> - **5.12 libqohos = factories API**(读 `modulesFactories` 字段,`makeJsModulesFactoriesMap`)。源码树模板的 `OhosExportModules.ts`(5 个 @kit.* lazy + `getOhosExportModulesFactories` 箭头工厂)**正是 5.12 对应代际**,且**已含 `@kit.StatusBarExtensionKit`** → 核心 tray 开箱即用,**不要**换成完整版参考模板的 objects 版(那是 5.15 读 `modules` 字段的)。
 > - tray 额外依赖 `@ohos.display` + `@ohos.notificationManager`,源码树模板**未注册**。tray demo 主动补这两个(eager default-import + factories map 条目,匹配现有 5 行模式)。
 > - `@ohos.deviceInfo` 裸 eval 崩溃 trap([[problem-runtime-crash-ohos-deviceinfo-global-expression]])是 **5.15 代际**机制;5.12 单实例 demo 不触发(见该 problem 页判据:`strings libqohos.so | grep "global expression"` 区分代际)。
 

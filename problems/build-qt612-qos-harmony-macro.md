@@ -44,9 +44,9 @@ ld.lld: error: undefined symbol: Ui::Platform::TranslucentWindowsSupported()
 
 ## 场景
 
-tdesktop 等大型工程向 OHOS 移植：按知识库惯例写 `#if defined Q_OS_OHOS` 分发守卫、
-在 cmake_helpers 的 `nice_target_sources` 里加 ohos 标签分支。编译 2088 个目标全部
-通过，最后链接 libTelegram.so 集中爆 20+ 个 platform 符号 undefined。
+某 2000+ 编译目标的大型工程向 OHOS 移植：按知识库惯例写 `#if defined Q_OS_OHOS` 分发守卫、
+在 cmake_helpers 的 `nice_target_sources` 里加 ohos 标签分支。编译全部目标
+通过，最后链接主业务 so 时集中爆 20+ 个 platform 符号 undefined。
 
 ## 原因（两个叠加陷阱）
 

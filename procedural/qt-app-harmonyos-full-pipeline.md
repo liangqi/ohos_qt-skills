@@ -613,7 +613,7 @@ target_link_libraries(myapp PRIVATE Qt5::QOhosPlatformIntegrationPlugin)   # ④
 
 来源：`qt-app-harmonyos-migration` / `qt-harmonyos-api-mapping` / `qt-harmonyos-code-patterns`
 
-- **Qt5 声明但实为 Qt6 代码陷阱**：Qt 版本按代码实际 API 判定，不按 .pro/`QT +=`/xlsx 声明（canonic/B23Downloader 翻车，3-4 次编译 attempt 才确认）
+- **Qt5 声明但实为 Qt6 代码陷阱**：Qt 版本按代码实际 API 判定，不按 .pro/`QT +=`/xlsx 声明（两个真实案例翻车，3-4 次编译 attempt 才确认）
 
 - `QFileDialog` 在 OHOS 上原生可用，无需 `#ifdef` 替代（平台插件 QOhosPlatformIntegrationPlugin 已内置原生文件对话框支持）
 
@@ -1181,7 +1181,7 @@ Qt 特有运行时日志关键字：`dlopen failed: library "libqohos.so" not fo
 
 - **元教训**：libqohos.so 的 NAPI setupQtApplicationImpl 在不同源码版本读字段名不同（5.12 读 modulesFactories，5.15 读 modules），SDK 的 libqohos 与 .ets 模板必须同源版本，否则启动即崩 `jscrash object has no property named 'modules'`
 
-- **编译产出 HAP ≠ 能跑**，须真机验证（qView 用 QT5\_15\_OHOS\_SDK + 5.12 模板能跑；误用 FULL SDK + 5.12 模板编译成功但运行崩）
+- **编译产出 HAP ≠ 能跑**，须真机验证（参考实现用 QT5\_15\_OHOS\_SDK + 5.12 模板能跑；误用 FULL SDK + 5.12 模板编译成功但运行崩）
 
 - **Debug vs Release**：Q\_ASSERT 在 Release 静默编译消失；首次端到端用 Debug 暴露断言，通过后补一轮 Release 回归
 
@@ -1429,7 +1429,7 @@ source-only 附加模块不在预构建安装器，但预构建 OHOS kit 带 `Qt
 
 1. **需求理解**：明确 demo 目标（功能验证/渲染效果/API 用法展示/性能测试）、核心功能、目标平台（桌面/OHOS）、Qt 版本、特殊要求
 2. **技术设计**：Qt 模块选择、构建系统选择（桌面 qmake / 鸿蒙 CMake / 跨平台 CMake 统一）、工程结构、技术方案
-3. **工程创建**：鸿蒙工程必须从 Qt 源码内置胶水模板创建（`<QT_SRC>/qtbase/src/harmonyos/templates`）。**⚠️陷阱**：源码树模板的 OhosExportModules.ts 是陈旧最小版，直接用必崩（缺所有 @ohos.\* eager import，libqohos 启动时裸 eval "@ohos.deviceInfo" 会被 ArkTS 拒 → SIGABRT）。必做检查点：`strings <SDK>/plugins/platforms/libqohos.so | grep -E "^modules$|^modulesFactories$"` 定 API（modules=objects / modulesFactories=factories），用 qView-ohos 钦定完整版替换
+3. **工程创建**：鸿蒙工程必须从 Qt 源码内置胶水模板创建（`<QT_SRC>/qtbase/src/harmonyos/templates`）。**⚠️陷阱**：源码树模板的 OhosExportModules.ts 是陈旧最小版，直接用必崩（缺所有 @ohos.\* eager import，libqohos 启动时裸 eval "@ohos.deviceInfo" 会被 ArkTS 拒 → SIGABRT）。必做检查点：`strings <SDK>/plugins/platforms/libqohos.so | grep -E "^modules$|^modulesFactories$"` 定 API（modules=objects / modulesFactories=factories），用钦定完整版参考模板替换
 4. **代码编写**：单文件优先、Qt 5.12 兼容 API、中文注释、文件头注释含用途/结构图/兼容版本/用法、有意义的视觉输出
 5. **编译验证**：桌面 `qmake && mingw32-make.exe -j8`；鸿蒙 DevEco 或 hdc 命令行构建部署。编译失败查 `problems/_lookup.md`
 6. **文档与知识沉淀**：README 可选但推荐；提交 `git commit`（消息格式 `<type>: <简述>`）；新发现沉淀到 `episodic/` 或 `problems/`

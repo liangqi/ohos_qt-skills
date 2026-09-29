@@ -10,7 +10,7 @@ severity: high
 audience: public
 refs: [semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-build]
 summary: >
-  OHOS NDK clang 15/libc++ 15 编译现代 C++20 大型工程（tdesktop/TooManyCooks 等）
+  OHOS NDK clang 15/libc++ 15 编译现代 C++20 大型 C++20 工程（含自带基础库）
   的 8 类系统性缺口与逐项兼容写法（含完整 stop_token/atomic_ref polyfill 思路）。
 leader_summary: >
   一页沉淀 clang15/libc++15 的 C++20 能力边界，新工程遇到同类报错直接查表修复
@@ -31,13 +31,13 @@ error_code: ""
 keywords: [clang15, libc++15, c++20, 结构化绑定, 聚合初始化, stop_token, atomic_ref, ranges, operator<=>, variant]
 symptoms: "现代 C++20 代码在 OHOS NDK 下编译大面积报错，但同一代码在桌面 clang/gcc 正常"
 
-environment: "OHOS NDK（clang 15.0.4 + libc++ 15, musl）交叉编译 tdesktop（C++20）"
+environment: "OHOS NDK（clang 15.0.4 + libc++ 15, musl）交叉编译大型 C++20 工程"
 ---
 
-# clang 15 / libc++ 15 的 C++20 缺口速查（tdesktop 全量验证）
+# clang 15 / libc++ 15 的 C++20 缺口速查（大型工程全量验证）
 
 OHOS NDK 的 clang 15 比"标准 C++20"缺若干语言/库特性（多数在 clang 16+ 或
-libc++ 16~19 才齐）。以下是 tdesktop 全量编译实战遇到的 8 类缺口与修复写法。
+libc++ 16~19 才齐）。以下是大型工程全量编译实战遇到的 8 类缺口与修复写法。
 
 ## 1. lambda 捕获结构化绑定（P1091，clang 16+）
 
@@ -90,7 +90,7 @@ template <typename T> class atomic_ref { /* __atomic_load_n/store_n/
 
 ## 6. std::ranges 算法缺失（libc++ 15 只有部分）
 
-`std::ranges::any_of` 等 → 换 range-v3 的 `ranges::any_of`（tdesktop 自带 range-v3）。
+`std::ranges::any_of` 等 → 换 range-v3 的 `ranges::any_of`（工程自带 range-v3）。
 
 ## 7. defaulted operator<=> 含 shared_ptr 成员（P1614 未落地）
 

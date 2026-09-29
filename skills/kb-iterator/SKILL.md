@@ -9,7 +9,7 @@ description: |
   当任务关单需要沉淀知识、用户说"合入草稿 / 复核 faults / 重建索引 /
   检查上游演进对知识库的影响"时触发。
   业务 agent 只能投草稿；真源写入权限唯一归本 agent。
------------------------------------------
+---
 
 # kb-iterator: 工程迭代（知识主编）
 
@@ -27,7 +27,7 @@ description: |
 3. **事实校验**：`python tools/kb-verify-qt.py`——知识页声明 vs 本地 SDK 实物
    （模块矩阵 vs 实际 .so、QtOhosExtras API 抽查、QOH refs → problems 页存在性）
 4. **复盘蒸馏**：读任务 `flow.jsonl` 全文 → 写 episodic postmortem
-   （体例参照 `episodic/postmortems/tdesktop-harmonyos-porting.md`）
+   （体例参照 `episodic/postmortems/coin3d-quarter-ohos.md`）
 5. **演进复核**：消化 sdk-forge 的上游《演进报告》→ `python tools/faults-build.py review`
    到期扫描 → 版本基准表 bump（AGENTS.md / CLAUDE.md 尾表）
 6. **反哺路由**：新知识页 / 新 QOH / 新规则挂进 `_task-routing.md` 与 `_map.md`

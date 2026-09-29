@@ -11,7 +11,7 @@
 [![Qt](https://img.shields.io/badge/Qt-5.12%20%7C%205.15%20%7C%206.12-green.svg)](#qt-源码获取渠道)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg)](#30-秒上手)
 [![Platform](https://img.shields.io/badge/平台-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#本地环境配置)
-[![Pages](https://img.shields.io/badge/知识页-120%2B-orange.svg)](_index/_map.md)
+[![Pages](https://img.shields.io/badge/知识页-115%2B-orange.svg)](_index/_map.md)
 
 **当前版本 v2.3.0** ｜ [变更日志](CHANGELOG.md) ｜ [能力规格](#能力规格) ｜ [任务路由](#按任务找入口)
 
@@ -100,7 +100,7 @@ python tools/qt-ohos-run.py verify                  # G0-G12 门禁——唯一�
 | [H] | QtOhosExtras API | `semantic/qt-ohos-extras`（145+ API 签名与示例） |
 | [L] | Qt6 状态 | `semantic/qt-harmonyos-qt6-status` |
 | [M] | 三方库 | `semantic/qt-harmonyos-third-party-libs` + `portgraph deps` / `fetch-deps` |
-| [N] | 工具链 | `ohos-common-kb-public/procedural/deveco-cli-usage-rules` + `semantic/deveco-mcp-capabilities` |
+| [N] | 工具链 | `ohos-common-kb-public/procedural/deveco-cli-usage-rules` + `ohos-common-kb-public/semantic/deveco-mcp-capabilities` |
 | [P] | 自动迁移（执行层） | `skills/qt-app-porting` + `tools/qt-ohos-run.py`（assess 为第 0 步，blocked 即止并出报告） |
 | [Q] | Demo 生成 | `procedural/demo-generation`（六步闭环；Qt+CEF / WebEngine 迁移见 `procedural/qt-cef-ohos-dev-guide`） |
 | [R] | 故障跟踪 | `faults/_registry` §症状索引 → 根因页（定性 / 责任 / 临时方案 / 跟踪单）；`tools/faults-build.py` |
@@ -159,7 +159,7 @@ ohos_qt-skills/
 ├── _index/                 # 索引层：_map 知识地图 · _tags · _dashboard · _task-routing · _agent-mesh
 ├── semantic/               # 语义知识 26 页：API 映射、窗口模型、平台限制、模块状态、35 条铁律
 ├── procedural/             # 程序知识 14 页：迁移工作流、Demo 生成、编译配方、Qt+CEF 指南
-├── episodic/               # 情景知识 8 篇：真实移植复盘（SARibbon / Coin3D / tdesktop / 退出死锁…）
+├── episodic/               # 情景知识 6 篇：三方库移植与 bug 复盘（SARibbon / Coin3D / 退出死锁…）
 ├── problems/               # 错误库 46 页：实战踩坑一错一文件，速查入口 _lookup.md
 ├── faults/                 # 故障库：症状 S × 根因 C × 方案 W × 跟踪单 T 图模型（17/18/15/5）
 │                           #   真源 _data/*.yaml + C 页；_graph.yaml/_registry.md 自动重建
@@ -169,7 +169,7 @@ ohos_qt-skills/
 │                           #   + qt_ohos/ qt_sdk/ 纯标准库引擎包
 ├── portgraph/              # 可移植性图谱子项目：CLI + port_graph/ 包 + Web 图谱 + 测试 + 文档
 ├── templates/              # qt-ohos-app/ 鸿蒙应用壳模板（CMake 胶水内嵌铁律 B1/B2/B10）
-├── tests/                  # 引擎自测 12 用例（portgraph/ 另有 120 单测 + e2e 对账）
+├── tests/                  # 引擎自测 12 用例（portgraph/ 另有 119 单测 + e2e 对账）
 ├── skills/                 # 5 个 Agent skills：kb-init · qt-app-porting · qt-sdk-forge · task-dispatcher · kb-iterator
 └── preference/             # 预留域
 ```

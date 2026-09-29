@@ -15,14 +15,14 @@ python portgraph.py fetch-deps <app> [--out DIR] [--force] [--dry-run] [--json]
 
 ```bash
 # ① 先预览：闭包里有什么、哪些能下载、哪些要移植（不写盘）
-python portgraph.py fetch-deps tdesktop --dry-run
+python portgraph.py fetch-deps sample-app --dry-run
 
 # ② 确认可接受后执行下载（产物落在 workspace/ohos-libs/，跨应用共享缓存）
-python portgraph.py fetch-deps tdesktop
+python portgraph.py fetch-deps sample-app
 
 # ③ 读取 manifest，拿集成参数（CMAKE_PREFIX_PATH 等）
-python portgraph.py fetch-deps tdesktop --json        # 或直接读 manifest 文件
-#   → workspace/ohos-libs/manifest-tdesktop.json
+python portgraph.py fetch-deps sample-app --json        # 或直接读 manifest 文件
+#   → workspace/ohos-libs/manifest-sample-app.json
 
 # ④ 对 need_port 的依赖（无产物）：拿源码链接，自行交叉编译
 #    （source_url / repo_url 已在 manifest 每个条目中给出）
@@ -32,7 +32,7 @@ python portgraph.py fetch-deps tdesktop --json        # 或直接读 manifest �
 
 | 参数 | 说明 |
 |---|---|
-| `app` | 应用 ID 或名称：`tdesktop` / `app:tdesktop`（模糊匹配） |
+| `app` | 应用 ID 或名称：`sample-app` / `app:sample-app`（模糊匹配） |
 | `--out DIR` | 下载解压目录，默认 `workspace/ohos-libs/`（跨应用共享，已有产物自动跳过） |
 | `--force` | 已存在也重新下载（覆盖旧产物，含 brew 只读文件） |
 | `--dry-run` | 只输出分类清单，不下载、不写盘、不写 manifest |
@@ -61,7 +61,7 @@ manifest 中每个依赖条目带 `status`，agent 按下表决策：
 
 ```jsonc
 {
-  "app": {"id": "app:tdesktop", "name": "tdesktop"},
+  "app": {"id": "app:sample-app", "name": "sample-app"},
   "generated_at": "2026-09-09T12:00:00",
   "out_dir": "workspace/ohos-libs",
   "closure_size": 35,                      // 依赖闭包节点总数

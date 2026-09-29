@@ -227,7 +227,7 @@ Copy-Item "$env:QT5_15_OHOS_SDK\qml" -Destination "entry\src\main\resources\resf
 | `${QT5_15_SRC}`(ENV 标 5.15 实为脏 5.12 树) | `modulesFactories` | `${QT5_15_OHOS_SDK}`(旧 SDK,libqohos 读 modulesFactories) |
 | 5.15 模板(源码树未含,需另行获取) | `modules` | `${QT5_15_OHOS_SDK_FULL}`(全量 SDK,libqohos 读 modules) |
 
-**判据**：qView(参考实现)用 `${QT5_15_OHOS_SDK}` + 5.12 模板 → 一致 → 能跑。port agent 若误用 `${QT5_15_OHOS_SDK_FULL}` + 5.12 模板 → 编译成功但运行崩。**编译产出 HAP ≠ 能跑**,须 §4 真机验证。
+**判据**：参考实现用 `${QT5_15_OHOS_SDK}` + 5.12 模板 → 一致 → 能跑。port agent 若误用 `${QT5_15_OHOS_SDK_FULL}` + 5.12 模板 → 编译成功但运行崩。**编译产出 HAP ≠ 能跑**,须 §4 真机验证。
 
 ### 循环退出条件（必须全部满足）
 
