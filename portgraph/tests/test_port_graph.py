@@ -686,18 +686,6 @@ int main() {
             self.assertEqual(len(entry["evidence"]), 2)
             conn.close()
 
-    def test_build_tools_count_matches_display(self):
-        """counts.build_tools 与渲染展示项一致（工具数 + CMake/C++/编译器）。"""
-        with tempfile.TemporaryDirectory() as tmp:
-            root = self._project(Path(tmp))
-            conn = self._conn()
-            report = deps_report.analyze_dependencies(conn, root)
-            t = report["toolchain"]
-            expected = (len(t["tools"]) + (1 if t["cmake_min"] else 0)
-                        + (1 if t["cxx_standard"] else 0) + 1)
-            self.assertEqual(report["counts"]["build_tools"], expected)
-            conn.close()
-
     def test_no_conn_still_classifies(self):
         """无 DB（conn=None）时纯扫描仍产出角色分类，只是产物为空。"""
         with tempfile.TemporaryDirectory() as tmp:

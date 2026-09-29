@@ -1,9 +1,9 @@
-# CLAUDE.md
+# AGENTS.md
 
-本文件指导 AI 工具（Claude Code / Codex / Cursor 等）使用本知识库。
+本文件指导 AI 工具（Claude Code / Codex / Cursor 等）使用本知识库（`CLAUDE.md` 为本地等价副本，由本文件复制生成）。
 
 > **这是一份 Qt for HarmonyOS 移植参考知识库**，面向进行 Qt 应用鸿蒙化与 Qt 应用问题分析的开发者。
-> 它由一个更大的个人工作流知识库裁剪、脱敏后生成（见 `_scripts/kb-dev-edition.sh`）。
+> 它由一个更大的个人工作流知识库裁剪、脱敏后生成（开发者版）。
 
 ---
 
@@ -111,7 +111,7 @@ skills/      → Agent skills（自动化脚本和工具）
 
 - 迁移"成功"只以 `python tools/qt-ohos-run.py verify` 的门禁结果（G0-G12）为准；
   编译通过 ≠ 迁移成功。LLM 负责推理，tool 负责事实。
-- 日志报错先用 `python tools/qt-ohos-run.py analyze-log <日志>` 做机器匹配（36 条
+- 日志报错先用 `python tools/qt-ohos-run.py analyze-log <日志>` 做机器匹配（41 条
   QOH 模式），再沿命中条目的 `refs` 读 problems/ 知识页。
 - 每次自动修改都被追踪（`.qt-ohos/changes.json` + patches/）；禁止盲目扩写
   `Q_OS_LINUX` 守卫——鸿蒙下 `Q_OS_OHOS` 隐含 `Q_OS_LINUX`。
