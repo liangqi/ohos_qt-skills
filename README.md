@@ -117,6 +117,7 @@ python tools/qt-ohos-run.py verify                  # G0-G12 门禁——唯一�
 | `portgraph/portgraph.py` | 可移植性图谱与依赖解决（10 子命令 + Web 图谱 + REST API） | `python portgraph/portgraph.py analyze <app> --summary` |
 | `tools/faults-build.py` | 故障库派生物重建与一致性门禁（build / check / review） | `python tools/faults-build.py check` |
 | `tools/kb-verify-qt.py` | 知识事实校验：模块矩阵 vs 本地 SDK 实物、QOH refs 存在性 | `python tools/kb-verify-qt.py` |
+| `tools/cpp20-gap-scan.py` | clang15/libc++15 的 C++20 缺口**编译前**预检与机械修复（8 规则，scan/fix） | `python tools/cpp20-gap-scan.py scan <src>` |
 
 <details>
 <summary><b>三个主 CLI 的完整子命令清单</b></summary>

@@ -89,6 +89,16 @@ python tools/qt-ohos-run.py verify            # G0-G12 门禁（唯一成功判�
 暂停并给指引，模板见 `templates/qt-ohos-app/`）；跨会话恢复：
 `status` / `resume --run`。
 
+**C++20 缺口预检（大型 C++ 工程编译前）**：OHOS clang15/libc++15 缺若干
+C++20 特性，编译期逐轮撞错代价高。先扫后编：
+
+```bash
+python tools/cpp20-gap-scan.py scan <src>          # 8 规则缺口报告
+python tools/cpp20-gap-scan.py fix <src> --apply   # 机械项自动修复
+```
+
+（规则对齐 `problems/build-clang15-libcpp15-cpp20-gaps.md`）
+
 构建失败立刻机器诊断（41 条 QOH 错误模式，命中条目带根因、诊断步骤
 与知识页引用）：
 
@@ -197,6 +207,12 @@ failed），`need_port` / `failed` 才转人工源码交叉编译。
    跑 `python tools/faults-build.py build` 重建派生物。
 5. **依赖判断不靠人肉**：≥3 个三方库的可行性以 portgraph 闭包分析
    输出为准（见 Step 0 纪律）。
+6. **工具可用性预检**：开始任何构建/装机/签名/日志工作前，先定位并
+   验证工具链（`devecocli --version`、`hdc version`、Qt kit 存在性）。
+   devecocli 定位顺序：`ENV.local.md` 的 `DEVECO_CLI` → PATH → npm 全局
+   → DevEco 捆绑（详见 `ohos-common-kb-public/procedural/deveco-cli-usage-rules.md`
+   §工具可用性预检）。解析失败立即向用户报告缺什么与安装命令，
+   **禁止用猜测的路径继续干活**。
 
 ## 版本基线
 

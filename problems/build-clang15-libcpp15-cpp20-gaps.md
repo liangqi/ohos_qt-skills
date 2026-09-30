@@ -112,3 +112,26 @@ std::less<> 回退时选中已删除的 <=> 直接报错。修复：显式 opera
 - musl 无 `pthread_setaffinity_np`：`TD_LINUX && defined(__GLIBC__)` 守卫
 - 平台守卫要用 `Q_OS_HARMONY || Q_OS_OHOS`（见 build-qt612-qos-harmony-macro）
 - 工具链只保证 `__MUSL__`/`__OHOS__`，不定义 glibc 宏
+- `std::make_unique_for_overwrite`（libc++15 缺）：数组型换
+  `std::unique_ptr<T[]>(new T[n])`，单对象换 `std::unique_ptr<T>(new T())`
+- 纯 init-capture 的 lambda（`[name = val]`）若体内使用 `this`/成员，
+  clang15 报错：需补默认捕获 `[=, name = val]`（§1 同族）
+
+## 预检工具（编译前扫描，代替编译期逐轮撞错）
+
+`tools/cpp20-gap-scan.py` 把上述缺口前移到**编译前静态扫描**——大工程
+全量编译一轮数十分钟，每轮"撞错→定位→修复"成本高；预检一次出全部命中点：
+
+```bash
+python tools/cpp20-gap-scan.py scan <src_dir>           # 扫描报告（有缺口 exit 1）
+python tools/cpp20-gap-scan.py fix  <src_dir> --apply   # 机械项自动修复（默认 dry-run）
+```
+
+- GAP-02（make_unique_for_overwrite）可自动修复且幂等；
+- GAP-01/03/04/05/06/07/08 为启发式报告（无语义分析，少量误报），命中后按
+  本页各节写法预修；
+- P0634（typename）、P0960（聚合括号）、construct_at 实例化、variant
+  best_match 只能编译期发现，不在扫描范围。
+
+接入位置：迁移工作流阶段零预检第 8 项（见
+`procedural/qt-app-harmonyos-migration.md`）。

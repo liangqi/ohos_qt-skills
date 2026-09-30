@@ -41,6 +41,7 @@ summary: >
 | **平台绑定** | grep `X11`/`xcb`/`windows.h`/`HWND`/`WM_`/`QDBus`/`Cocoa` 是否为**核心功能**（非可选分支）| 核心绑定→infeasible（如 QHotkey/Qt-Nice-Frameless-Window）|
 | **foreach 用法** | grep `foreach(`/`Q_FOREACH` | 用了→**OMIT** `QT_NO_FOREACH`（定义会编译失败）|
 | **三方依赖** | **首选：portgraph 依赖闭包分析**（`python portgraph/portgraph.py fetch-deps <app> --dry-run`，输出 bottle 直下数 + 源码编译缺口清单，见下方第 0 步门禁）；仓库工具不可用时再人工 grep：bundled（仓内）vs system；header-only=ok、纯 C 小库=maybe、FFmpeg/Skia/Boost/OpenCV/PCL=no | 系统重型库无 bottle → blocked 或单独交叉编译（工作量以闭包缺口清单为准） |
+| **C++20 缺口（clang15/libc++15）** | `python tools/cpp20-gap-scan.py scan <src_dir>`（8 规则：结构化绑定捕获 / make_unique_for_overwrite / stop_token / atomic_ref / ranges / `<=>` / init-capture / setaffinity，详见 [[build-clang15-libcpp15-cpp20-gaps]]） | 命中 → 机械项 `fix --apply` 预修、其余按 problems 页写法预修——**避免编译期逐轮撞错**（大工程一轮编译数十分钟） |
 
 **输出**：预检报告（Qt 版本 + SDK 选型 + Playbook + 模块缺口 + 平台绑定 + foreach + 三方依赖），决定是否进入阶段一。
 
