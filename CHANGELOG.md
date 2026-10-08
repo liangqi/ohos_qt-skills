@@ -50,6 +50,7 @@
 - **FIX（测试驱动）** 回合收尾纪律（SKILL.md 纪律红线 #7 + AGENTS.md 执行纪律）——干净环境全流程测试第二轮实测死因：非交互 CLI 会话中主 agent 输出"进行中"总结后结束回合（回合结束=会话退出），3 个脱管子进程完成各自 stub 后就地解散，无人接管构建阶段，流水线断链。新纪律：未达 verify 终态或人工确认点禁止收尾，后台任务必须 wait 至完成；确需中止时状态落盘 .qt-ohos/ 并写明续跑方式
 - **NEW（测试驱动）** libc++15 实验性开关 `-D_LIBCPP_ENABLE_EXPERIMENTAL`（problems/build-clang15-libcpp15-cpp20-gaps.md §9 + cpp20-gap-scan GAP-05 建议前置）——实测默认缺 16 项 ranges 算法、加开关后全部可用且 <format> 同步解锁，可省逐算法改写；jthread/expected/source_location/clock_cast 仍缺按原章节处理
 - **NEW（测试驱动）** 大仓库获取韧性（SKILL.md Step 0）——弱网下 clone 大 pack 被掐断（curl 56 early EOF）重试仍失败时，改 codeload tarball 断点续传（github.com/<owner>/<repo>/tar.gz/refs/heads/<branch>），解压入 portgraph workspace 后 scan 照常
+- **FIX（测试驱动）** 回合收尾纪律升级为操作级（SKILL.md 红线 #7 + AGENTS.md）——第三轮测试 42 分钟即死于同一模式（拉到纪律版 KB 仍"委派 3 个后台代理后收尾"），纯"禁止收尾"表述不足以纠正模型行为；升级为操作级禁令：**禁止"委派后台代理后收尾等待"**（该模式在此环境=任务中断），长任务必须回合内同步等待或顺序自己执行，确要并行只能会话内阻塞式等待；并强调"没有任何机制会唤醒你"
 - note: `RELEASE-MANIFEST.yaml` 的 `content_tree_sha256` 将在下次发版时由发版脚本重新生成
 
 ## v2.2.1 — 2026-08-29
