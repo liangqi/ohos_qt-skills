@@ -70,6 +70,12 @@ python portgraph/portgraph.py fetch-deps <app> --dry-run  # 依赖闭包预览
 详见 `portgraph/README.md`、`portgraph/docs/deps-report.md`、
 `portgraph/docs/fetch-deps.md`。
 
+**大仓库获取韧性**：`clone` 在弱网下大 pack 易被掐断（`curl 56` early
+EOF）——重试 2-3 次仍失败就改 **codeload tarball 断点续传**（GitHub：
+`https://codeload.github.com/<owner>/<repo>/tar.gz/refs/heads/<branch>`，
+或 `.../tar.gz/<tag|sha>`），解压到 portgraph workspace 后 `scan` 入库
+照常。
+
 ### Step 1 自动迁移流水线（tools/qt-ohos-run.py）
 
 ```bash
@@ -212,7 +218,12 @@ failed），`need_port` / `failed` 才转人工源码交叉编译。
    devecocli 定位顺序：`ENV.local.md` 的 `DEVECO_CLI` → PATH → npm 全局
    → DevEco 捆绑（详见 `ohos-common-kb-public/procedural/deveco-cli-usage-rules.md`
    §工具可用性预检）。解析失败立即向用户报告缺什么与安装命令，
-   **禁止用猜测的路径继续干活**。
+   禁止用猜测的路径继续。
+7. **回合收尾纪律**：非交互 CLI 会话（`opencode run` / `claude -p` 等）
+   中**回合结束 = 会话退出**——流水线未到达 `verify` 终态或明确的人工
+   确认点，禁止输出"进行中"式总结并结束回合。后台任务/子代理必须
+   wait/轮询至完成再走下一步；确需中止时把状态落盘到 `.qt-ohos/` 并
+   写明续跑方式。脱管的后台进程没有协调者，写完自己的活就散伙。
 
 ## 版本基线
 

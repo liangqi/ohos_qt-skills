@@ -121,6 +121,11 @@ skills/      → Agent skills（自动化脚本和工具）
   **勿假设它随 DevEco Studio 安装**）；不可用即停下向用户报告并附安装
   命令，禁止用猜测的路径继续。详见
   `ohos-common-kb-public/procedural/deveco-cli-usage-rules.md` §工具可用性预检。
+- **回合收尾纪律**：非交互 CLI 会话（`opencode run` / `claude -p` 等）中
+  **回合结束 = 会话退出**。流水线任务未到达 `verify` 终态或明确的人工确认点，
+  禁止输出"进行中"式总结并结束回合——后台任务/子代理必须 wait/轮询至完成
+  再继续；确需中止时状态落盘 `.qt-ohos/` 并写明续跑方式（实测教训：主会话
+  提前收尾后，脱管子进程完成各自工作就地解散，无人接管下一阶段）。
 - 修改故障库真源（`faults/_data/*.yaml` 或 C 页）后必须跑
   `python tools/faults-build.py build` 重建派生物（`_graph.yaml`/`_registry.md`），
   ERROR 必须清零；复核用 `review` 子命令扫到期与状态推进。

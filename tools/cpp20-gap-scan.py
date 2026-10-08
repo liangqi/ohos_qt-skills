@@ -87,7 +87,8 @@ RULES = [
     ("GAP-04", "atomic_ref", "report",
      "libc++ 19 才有：__atomic_* 透传 polyfill（§5）"),
     ("GAP-05", "std::ranges", "report",
-     "libc++ 15 只有部分 ranges 算法：换 std::X(iter...) 或工程自带 range-v3（§6）"),
+     "先试加 -D_LIBCPP_ENABLE_EXPERIMENTAL（实测解锁 libc++15 全部 ranges 算法与 <format>，"
+     "jthread/clock_cast/expected/source_location 仍缺）；不行再换 std::X(iter...) 或自带 range-v3（§6/§9）"),
     ("GAP-06", "operator<=> shared_ptr", "report",
      "P1614 未落地：defaulted <=> 含 shared_ptr 成员会隐式删除，需显式 operator==/<（§7）"),
     ("GAP-07", "init-capture this", "report",

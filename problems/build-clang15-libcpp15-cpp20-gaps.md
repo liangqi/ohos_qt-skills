@@ -90,7 +90,10 @@ template <typename T> class atomic_ref { /* __atomic_load_n/store_n/
 
 ## 6. std::ranges 算法缺失（libc++ 15 只有部分）
 
-`std::ranges::any_of` 等 → 换 range-v3 的 `ranges::any_of`（工程自带 range-v3）。
+`std::ranges::any_of` 等 → **先看 §9**：加
+`-D_LIBCPP_ENABLE_EXPERIMENTAL` 可一键解锁全部 ranges 算法（实测），
+不必逐个改写；确实仍缺的再换 range-v3 的 `ranges::any_of`（工程自带
+range-v3）。
 
 ## 7. defaulted operator<=> 含 shared_ptr 成员（P1614 未落地）
 
@@ -106,6 +109,23 @@ std::less<> 回退时选中已删除的 <=> 直接报错。修复：显式 opera
 `MakeInformBox({ .text = QStringValue })` 触发
 `__decay<void&>` 硬错误。修复：改传精确替代类型（如 `TextWithEntities{ str }`），
 让 best_match 无歧义。
+
+## 9. 一键解锁：`-D_LIBCPP_ENABLE_EXPERIMENTAL`（实测）
+
+OHOS SDK 的 libc++15 自带**实验性特性开关**，编译全局加：
+
+```cmake
+add_compile_definitions(_LIBCPP_ENABLE_EXPERIMENTAL)
+```
+
+实测（大型工程全量验证）：**默认缺 16 项 ranges 算法，加此开关后全部
+可用**；`<format>` 同步解锁。可省掉 §6 的逐算法改写和大量降级补丁。
+
+仍缺（开关无效，按各自章节处理）：`std::jthread`/`stop_token`（§4）、
+`std::expected`、`std::source_location`、`std::chrono::clock_cast`。
+
+> 注意：开关同时会启用其他 libc++ 实验内容，ABI/行为风险自担；建议
+> 只在鸿蒙目标分支加，并保留 §各节降级路径作为后备。
 
 ## 其他同类坑
 
