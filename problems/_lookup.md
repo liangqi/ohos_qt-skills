@@ -30,6 +30,7 @@ description: >
 | N/A | [build-fail-qtdbus-deprecated-copy](build-fail-qtdbus-deprecated-copy.md) | qdbusreply.h -Wdeprecated-copy 类警告被 -Werror 拦下：鸿蒙无 DBus，configure 必须 -no-dbus（CLI 已内置，QOH039） |
 | N/A | [build-fail-stale-build-state](build-fail-stale-build-state.md) | 改 -no-dbus / 换 SDK 后 ibus 插件仍构建报 unknown type name QDBusArgument：旧模块 pri 残留，qtHaveModule 误判；CLI 已加 configure 指纹防护自动清目录（QOH040） |
 | N/A | [build-fail-ohos-sdk-api-too-old](build-fail-ohos-sdk-api-too-old.md) | qarkui/input.cpp 报 no member named OH_ArkUI_PointerEvent_GetGlobalDisplayX 等：SDK API 版本过旧，需 OpenHarmony ≥ 6.1（API 23，QOH041） |
+| N/A | [runtime-harmonydeployqt-deploy-gaps](runtime-harmonydeployqt-deploy-gaps.md) | 签名 HAP 设备侧 dlopen 连环失败：QPA 插件 fontconfig 链不部署、无 SONAME bottle 截断依赖解析、libz namespace 外、设备系统库非标路径、bottle 缺无版本名（QOH042，5 条检查清单） |
 
 ## 按症状速查
 

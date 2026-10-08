@@ -1,4 +1,4 @@
-﻿# knowledge/errors - error pattern database for the automatic diagnosis engine
+# knowledge/errors - error pattern database for the automatic diagnosis engine
 #
 #     python tools/qt-ohos-run.py analyze-log <logfile>
 #
@@ -26,7 +26,7 @@
 # the counts below (single source of truth principle - keep numbers real).
 
 version: 1
-entry_count: 41
+entry_count: 42
 namespace: QOH
 source_of_truth: problems/
 entry: qt-ohos-run analyze-log <logfile>

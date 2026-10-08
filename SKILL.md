@@ -10,7 +10,7 @@ description: |
   blocked/uncertain）+ deps 依赖角色分类（link/build-tool/runtime/test/
   vendored 等）+ fetch-deps 依赖闭包一键下载约 6000 个鸿蒙预编译 bottle；
   ② qt-ohos-run.py 自动迁移流水线——扫描→计划→受追踪修改→编译→打 HAP→
-  装机→启动→G0-G12 验证门禁；③ 知识层——35 条黄金铁律、41 条 QOH 错误
+  装机→启动→G0-G12 验证门禁；③ 知识层——35 条黄金铁律、42 条 QOH 错误
   模式机器诊断、故障库症状→根因→临时方案检索。
   触发词：鸿蒙化、移植 Qt、porting、HarmonyOS、Qt OHOS、三方依赖分析、
   交叉编译、bottle、HAP、构建报错、dlopen、QOH。
@@ -99,7 +99,7 @@ python tools/cpp20-gap-scan.py fix <src> --apply   # 机械项自动修复
 
 （规则对齐 `problems/build-clang15-libcpp15-cpp20-gaps.md`）
 
-构建失败立刻机器诊断（41 条 QOH 错误模式，命中条目带根因、诊断步骤
+构建失败立刻机器诊断（42 条 QOH 错误模式，命中条目带根因、诊断步骤
 与知识页引用）：
 
 ```bash

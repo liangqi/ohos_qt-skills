@@ -185,7 +185,7 @@ summary: >
 > 端到端数据流：`app → scan → assess → plan → project_generation → patch → compile → package → install → launch → smoke → verify → report → draft → promote → 索引再生成 → kb-release 发布`。assess 为迁移第 0 步：blocked 即止并出报告（`assessment.json`）。
 
 > 关键约束：成功与否只以 `qt-ohos-run verify` 的门禁结果为准（LLM 负责推理，tool 负责事实）。
-> 机器知识：`knowledge/rules/`（18 条预扫描规则）、`knowledge/errors/`（41 条错误模式，对应 problems/）。
+> 机器知识：`knowledge/rules/`（18 条预扫描规则）、`knowledge/errors/`（42 条错误模式，对应 problems/）。
 
 ### [Q] Demo 生成
 

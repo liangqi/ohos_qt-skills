@@ -32,7 +32,7 @@
 | 📦 三方依赖分析与下载 | `deps` 按 link / build-tool / runtime / test / vendored 角色分类并校验版本范围；`fetch-deps` 一键下载约 6000 个鸿蒙 arm64 预编译 bottle（Harmonybrew + cmd-pkgs 双源），附 sha256 校验与 CMake/qmake 集成片段 |
 | 🤖 自动迁移流水线 | `qt-ohos-run.py` 24 个子命令：扫描 → 计划 → 受追踪修改 → 编译 → 打 HAP → 装机 → 启动 → 冒烟，全程 checkpoint 可恢复 |
 | 🚦 机器验证门禁 | 应用迁移 **G0-G12**、SDK 构建 **SV0-SV8** 门禁；TIMEOUT 永远不是 PASS |
-| 📚 蒸馏知识库 | 35 条铁律 ｜ 41 条 QOH 错误模式 ｜ 13 类 API 映射 ｜ 145+ QtOhosExtras API ｜ 46 个实战踩坑 ｜ S→C→W→T 故障图（17/18/15/5） |
+| 📚 蒸馏知识库 | 35 条铁律 ｜ 42 条 QOH 错误模式 ｜ 13 类 API 映射 ｜ 145+ QtOhosExtras API ｜ 47 个实战踩坑 ｜ S→C→W→T 故障图（17/18/15/5） |
 | 🧩 AI 原生接入 | 根级 [SKILL.md](SKILL.md) 总入口 + 5 个 Agent skills + `AGENTS.md`，Claude Code / Codex / Cursor / Trae 开箱即用 |
 
 ## 30 秒上手
@@ -106,7 +106,7 @@ python tools/qt-ohos-run.py verify                  # G0-G12 门禁——唯一�
 | [R] | 故障跟踪 | `faults/_registry` §症状索引 → 根因页（定性 / 责任 / 临时方案 / 跟踪单）；`tools/faults-build.py` |
 | [S] | SDK 工程（执行层） | `skills/qt-sdk-forge` + `tools/qt-sdk-run.py`（SV0-SV8 门禁 + 补丁溯源 manifest） |
 
-遇到报错：**第一步读 [problems/_lookup.md](problems/_lookup.md)**——按错误码 / 错误信息关键字 / 症状检索，46 个实战踩坑一错一文件。
+遇到报错：**第一步读 [problems/_lookup.md](problems/_lookup.md)**——按错误码 / 错误信息关键字 / 症状检索，47 个实战踩坑一错一文件。
 
 ## CLI 工具
 
@@ -161,11 +161,11 @@ ohos_qt-skills/
 ├── semantic/               # 语义知识 26 页：API 映射、窗口模型、平台限制、模块状态、35 条铁律
 ├── procedural/             # 程序知识 14 页：迁移工作流、Demo 生成、编译配方、Qt+CEF 指南
 ├── episodic/               # 情景知识 6 篇：三方库移植与 bug 复盘（SARibbon / Coin3D / 退出死锁…）
-├── problems/               # 错误库 46 页：实战踩坑一错一文件，速查入口 _lookup.md
+├── problems/               # 错误库 47 页：实战踩坑一错一文件，速查入口 _lookup.md
 ├── faults/                 # 故障库：症状 S × 根因 C × 方案 W × 跟踪单 T 图模型（17/18/15/5）
 │                           #   真源 _data/*.yaml + C 页；_graph.yaml/_registry.md 自动重建
 ├── ohos-common-kb-public/  # 内嵌 HarmonyOS 平台通用知识 27 页（ArkTS / ArkUI / NAPI / Stage 模型…）
-├── knowledge/              # 机器知识层：rules/ 18 条预扫描规则 · errors/ 41 条 QOH 模式 · adaptation/ 可行性三库
+├── knowledge/              # 机器知识层：rules/ 18 条预扫描规则 · errors/ 42 条 QOH 模式 · adaptation/ 可行性三库
 ├── tools/                  # 执行层：qt-ohos-run.py · qt-sdk-run.py · faults-build.py · kb-verify-qt.py
 │                           #   + qt_ohos/ qt_sdk/ 纯标准库引擎包
 ├── portgraph/              # 可移植性图谱子项目：CLI + port_graph/ 包 + Web 图谱 + 测试 + 文档
@@ -182,7 +182,7 @@ ohos_qt-skills/
 | `episodic/` | 发生过什么？（真实迁移复盘、bug 根因记录） |
 | `problems/` | 遇到这个报错怎么办？（速查优先，一错一文件） |
 | `faults/` | 这个问题修了吗？归谁？怎么绕？（症状→根因→方案→跟踪单） |
-| `knowledge/` | 机器读什么？（18 条规则 / 41 条错误模式 / 可行性三库） |
+| `knowledge/` | 机器读什么？（18 条规则 / 42 条错误模式 / 可行性三库） |
 | `tools/` + `portgraph/` | 谁来执行？（三个 CLI + 引擎包 + 图谱工具） |
 | `skills/` + `SKILL.md` | AI 怎么自动用？（skill 定义与触发词） |
 | `ohos-common-kb-public/` | HarmonyOS 平台通用知识（非 Qt 特定问题优先查这里） |
@@ -199,7 +199,7 @@ ohos_qt-skills/
   → 沿 refs 字段追踪交叉引用              获取深度上下文
 ```
 
-- **遇到报错**：先查 [problems/_lookup.md](problems/_lookup.md)，或让 AI 跑 `qt-ohos-run.py analyze-log <日志>` 做机器匹配（41 条 QOH 模式，命中条目带根因与修复指引）。
+- **遇到报错**：先查 [problems/_lookup.md](problems/_lookup.md)，或让 AI 跑 `qt-ohos-run.py analyze-log <日志>` 做机器匹配（42 条 QOH 模式，命中条目带根因与修复指引）。
 - **查某问题修没修 / 归谁 / 怎么绕**：[faults/_registry.md](faults/_registry.md) §症状索引（表现→根因）；根因分 `defect` 会修 / `limitation` 规格限制→替代方案。升级 Qt/OHOS 版本前用"按版本基线"视图做方案退役检查。
 - **知识沉淀**：新问题走草稿通道（`qt-ohos-run.py draft` → `promote`；faults 走 `faults/_drafts/` + 主编六步门禁）——**未复现不合入**。
 
@@ -261,7 +261,7 @@ ohos_qt-skills/
 ## 已知限制
 
 - portgraph 平台接口检测为正则匹配，注释中的 API 名（如 `// DestroyWindow(...)`）与同名自定义函数可能误报、虚高风险等级。
-- 41 条 QOH 机器模式是 problems/ 46 页实战错误的常见子集索引；未命中的新错误走 `draft → promote` 沉淀为新模式。
+- 42 条 QOH 机器模式是 problems/ 47 页实战错误的常见子集索引；未命中的新错误走 `draft → promote` 沉淀为新模式。
 - 三方库源码交叉编译不在本库内置（可对接外部 `build_in_harmonyos`，设置 `OHC_RUN` 环境变量）；本库负责依赖检测、bottle 直下与集成指引。
 - Windows 上 `.so` 只能链接不能运行，须部署到 `entry/libs/arm64-v8a/` 后上设备。
 

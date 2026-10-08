@@ -80,7 +80,7 @@ description: >
 | 页面 | 状态 | 最后更新 |
 |------|:----:|:--------:|
 
-### problems（46 条目）
+### problems（47 条目）
 
 详见 [_lookup](../problems/_lookup.md)。
 

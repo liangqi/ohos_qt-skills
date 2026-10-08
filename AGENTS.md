@@ -111,10 +111,16 @@ skills/      → Agent skills（自动化脚本和工具）
 
 - 迁移"成功"只以 `python tools/qt-ohos-run.py verify` 的门禁结果（G0-G12）为准；
   编译通过 ≠ 迁移成功。LLM 负责推理，tool 负责事实。
-- 日志报错先用 `python tools/qt-ohos-run.py analyze-log <日志>` 做机器匹配（41 条
+- 日志报错先用 `python tools/qt-ohos-run.py analyze-log <日志>` 做机器匹配（42 条
   QOH 模式），再沿命中条目的 `refs` 读 problems/ 知识页。
 - 每次自动修改都被追踪（`.qt-ohos/changes.json` + patches/）；禁止盲目扩写
   `Q_OS_LINUX` 守卫——鸿蒙下 `Q_OS_OHOS` 隐含 `Q_OS_LINUX`。
+- **工具可用性预检**：开始构建/装机/签名/日志工作前先定位并验证
+  `devecocli`、`hdc`、Qt kit 可用（devecocli 定位顺序：`ENV.local.md` 的
+  `DEVECO_CLI` → PATH → npm 全局（`@deveco/deveco-cli`）→ DevEco 捆绑；
+  **勿假设它随 DevEco Studio 安装**）；不可用即停下向用户报告并附安装
+  命令，禁止用猜测的路径继续。详见
+  `ohos-common-kb-public/procedural/deveco-cli-usage-rules.md` §工具可用性预检。
 - 修改故障库真源（`faults/_data/*.yaml` 或 C 页）后必须跑
   `python tools/faults-build.py build` 重建派生物（`_graph.yaml`/`_registry.md`），
   ERROR 必须清零；复核用 `review` 子命令扫到期与状态推进。

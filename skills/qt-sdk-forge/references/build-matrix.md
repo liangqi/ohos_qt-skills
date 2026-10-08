@@ -169,7 +169,7 @@ make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu) install
 ## 5. 编译排障入口
 
 1. CLI 每步退出码非 0 → 先看 `.qtsdk/logs/<时间戳>-<步骤>.log` 尾部（state.json 里也有 tail 证据）
-2. `python tools/qt-ohos-run.py analyze-log <日志>`——41 条 QOH 错误模式机器匹配，沿命中条目 `refs` 读 problems/ 知识页
+2. `python tools/qt-ohos-run.py analyze-log <日志>`——42 条 QOH 错误模式机器匹配，沿命中条目 `refs` 读 problems/ 知识页
 3. `problems/_lookup.md` 按错误信息检索
 4. 增量编译三坑（只 build 不 install / bash 跑 mingw32-make / install 后 demo 未重编）由 SV4/SV7 门禁兜底；**第四坑**（跨配置/换 SDK 复用脏构建目录，QOH040）由 CLI configure 指纹防护兜底
 

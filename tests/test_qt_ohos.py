@@ -68,7 +68,7 @@ class TestYamlLite(unittest.TestCase):
     def test_parse_error_files(self):
         err_dir = REPO_ROOT / "knowledge" / "errors"
         files = list(err_dir.glob("QOH*.yaml"))
-        self.assertEqual(len(files), 41)
+        self.assertEqual(len(files), 42)
         for path in files:
             data = yaml_lite.parse(path.read_text(encoding="utf-8"))
             self.assertTrue(str(data["id"]).startswith("QOH"), path.name)
