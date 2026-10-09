@@ -35,6 +35,7 @@ python portgraph.py fetch-deps sample-app --json        # 或直接读 manifest 
 | `app` | 应用 ID 或名称：`sample-app` / `app:sample-app`（模糊匹配） |
 | `--out DIR` | 下载解压目录，默认 `workspace/ohos-libs/`（跨应用共享，已有产物自动跳过） |
 | `--force` | 已存在也重新下载（覆盖旧产物，含 brew 只读文件） |
+| `--jobs N` | **并行下载线程数（默认 8）**：bottle 先并行预取 tar 到 `.cache/`（缓存命中自动跳过，重跑只补缺），再串行解压安装。弱网实测：串行 57KB/s 曾 90 分钟超时，8 线程并行同规模约 8 分钟。`0`/`1` = 关闭并行预取 |
 | `--dry-run` | 只输出分类清单，不下载、不写盘、不写 manifest |
 | `--json` | 结束时把完整 manifest JSON 打到 stdout（配合 `--dry-run` 做机器预览） |
 

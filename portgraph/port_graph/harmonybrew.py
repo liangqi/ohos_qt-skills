@@ -410,7 +410,18 @@ def _find_package(conn, name: str) -> Optional[Dict]:
 
 def _download(url: str, dest: Path, sha256: Optional[str],
               timeout: int = 300) -> None:
-    """下载并校验 sha256（不匹配则删除并抛错）。"""
+    """下载并校验 sha256（不匹配则删除并抛错）。
+
+    缓存命中跳过：dest 已存在且 sha256 匹配（无 sha 时非空即视为完整）
+    不重下——支持并行预取后再逐个解压，也提供断点续传语义（重跑只补缺）。
+    """
+    if dest.exists() and dest.stat().st_size > 0:
+        if sha256:
+            h = hashlib.sha256(dest.read_bytes()).hexdigest()
+            if h == sha256:
+                return
+        else:
+            return  # 无 sha 元数据：信任已存在文件，解压失败会兜底报错
     req = urllib.request.Request(url, headers=_UA)
     with urllib.request.urlopen(req, timeout=timeout) as resp, \
             open(dest, "wb") as fh:
@@ -571,3 +582,51 @@ def fetch_bottle(conn, name: str, out_dir: Path,
             "installed": str(installed), "libs": libs,
             "symlinks_fixed": info["symlinks_fixed"][:10],
             "hints": hints}
+
+
+def prefetch_bottles(conn, names: List[str], out_dir: Path,
+                     force: bool = False, jobs: int = 8) -> Dict:
+    """并行预取多个 bottle 的 tar 到 out_dir/.cache（只下载，不解压）。
+
+    供 fetch_app_deps 在逐包处理前批量拉取——实测弱网下串行下载 57KB/s
+    拖垮全流程（90 分钟超时），8 线程并行后同样规模约 8 分钟。已安装
+    （pkg_dir 存在）与缓存命中（tar 已在且 sha 匹配）自动跳过；单个
+    失败不抛出（记录在 errors，后续串行阶段会对该包正确报 failed）。
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    cache = out_dir / ".cache"
+    cache.mkdir(exist_ok=True)
+
+    plans = []          # (name, url, tar_path, sha)
+    skipped_installed = 0
+    for name in names:
+        try:
+            node = _find_package(conn, name)
+        except Exception:
+            node = None
+        if node is None or not node.get("artifact_url"):
+            continue    # 解析失败/无 bottle：留给串行阶段按 need_port 报告
+        pkg_dir = out_dir / node["name"] / (node.get("version") or "")
+        if pkg_dir.exists() and any(pkg_dir.iterdir()) and not force:
+            skipped_installed += 1
+            continue
+        tar_path = cache / node["artifact_url"].rsplit("/", 1)[-1]
+        plans.append((node["name"], node["artifact_url"], tar_path,
+                      node.get("bottle_sha256")))
+
+    ok, failed = 0, []
+    if plans:
+        with ThreadPoolExecutor(max_workers=max(1, jobs)) as ex:
+            futs = {ex.submit(_download, u, t, s): (n, u) for
+                    n, u, t, s in plans}
+            for fut in as_completed(futs):
+                n, u = futs[fut]
+                try:
+                    fut.result()
+                    ok += 1
+                except Exception as exc:
+                    failed.append({"name": n, "url": u, "error": str(exc)})
+    return {"planned": len(plans), "downloaded_or_cached": ok,
+            "skipped_installed": skipped_installed, "failed": failed}

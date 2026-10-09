@@ -275,10 +275,14 @@ def _classify_special(entry: Dict, name_lower: str, node: Dict,
 
 def fetch_app_deps(conn, app_id: str, out_dir: Path,
                    force: bool = False, dry_run: bool = False,
-                   progress: Optional[Callable[[Dict], None]] = None) -> Dict:
+                   progress: Optional[Callable[[Dict], None]] = None,
+                   jobs: int = 8) -> Dict:
     """下载应用依赖闭包内全部可获取的鸿蒙产物，返回 manifest。
 
-    dry_run=True 只分类不下载不写盘；progress 为每个节点处理完的回调。
+    dry_run=True 只分类不下载不写盘；progress 为每个节点处理完的回调；
+    jobs>1 时 bottle 域先并行预取 tar（弱网实测：串行 57KB/s 90 分钟
+    超时 vs 并行 8 分钟），再逐包解压安装（解压保持串行，规避 Windows
+    杀软文件锁竞态）。
     """
     app = db.get_node(conn, app_id)
     if app is None:
@@ -295,6 +299,25 @@ def fetch_app_deps(conn, app_id: str, out_dir: Path,
     for n in nodes:
         if n.get("artifact_url"):
             downloadable.setdefault(_norm_key(n["name"]), n)
+
+    # 并行预取：bottle 域全部待下载包先批量拉 tar 到 .cache（缓存命中
+    # 自动跳过），主循环里 fetch_bottle 走缓存命中直通解压
+    if not dry_run and jobs > 1 and downloadable:
+        hb_names = [n["name"] for n in downloadable.values()
+                    if n.get("artifact_url", "").startswith(
+                        harmonybrew.BOTTLE_DOMAIN)]
+        if hb_names:
+            if progress:
+                print("[prefetch] 并行预取 %d 个 bottle（jobs=%d）..."
+                      % (len(hb_names), jobs))
+            r = harmonybrew.prefetch_bottles(conn, hb_names, out_dir,
+                                             force=force, jobs=jobs)
+            if progress:
+                print("[prefetch] 就绪 %d / 已安装跳过 %d / 失败 %d"
+                      % (r["downloaded_or_cached"], r["skipped_installed"],
+                         len(r["failed"])))
+                for f in r["failed"]:
+                    print("[prefetch]   %s: %s" % (f["name"], f["error"]))
 
     entries: List[Dict] = []
     installed_by_name: Dict[str, str] = {}

@@ -309,6 +309,7 @@ def cmd_fetch_deps(args) -> None:
         m = deps_fetch.fetch_app_deps(
             conn, app_id, out, force=getattr(args, "force", False),
             dry_run=getattr(args, "dry_run", False),
+            jobs=getattr(args, "jobs", 8),
             # --json 时 stdout 只输出 manifest（进度打印会污染机器解析）
             progress=None if getattr(args, "json", False) else on_entry)
 
@@ -436,6 +437,9 @@ def main() -> None:
     p.add_argument("app", help="应用 ID 或名称（如 corpus_a / app:corpus_a）")
     p.add_argument("--out", help="下载解压目录（默认 workspace/ohos-libs，跨应用共享缓存）")
     p.add_argument("--force", action="store_true", help="已存在也重新下载")
+    p.add_argument("--jobs", type=int, default=8,
+                   help="并行下载线程数（默认 8；弱网下串行曾 90 分钟超时，"
+                        "并行后同规模约 8 分钟；0/1 = 关闭并行预取）")
     p.add_argument("--dry-run", action="store_true",
                    help="只输出分类清单，不下载不写盘")
     p.add_argument("--json", action="store_true",

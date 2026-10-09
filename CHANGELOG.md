@@ -51,6 +51,7 @@
 - **NEW（测试驱动）** libc++15 实验性开关 `-D_LIBCPP_ENABLE_EXPERIMENTAL`（problems/build-clang15-libcpp15-cpp20-gaps.md §9 + cpp20-gap-scan GAP-05 建议前置）——实测默认缺 16 项 ranges 算法、加开关后全部可用且 <format> 同步解锁，可省逐算法改写；jthread/expected/source_location/clock_cast 仍缺按原章节处理
 - **NEW（测试驱动）** 大仓库获取韧性（SKILL.md Step 0）——弱网下 clone 大 pack 被掐断（curl 56 early EOF）重试仍失败时，改 codeload tarball 断点续传（github.com/<owner>/<repo>/tar.gz/refs/heads/<branch>），解压入 portgraph workspace 后 scan 照常
 - **FIX（测试驱动）** 回合收尾纪律升级为操作级（SKILL.md 红线 #7 + AGENTS.md）——第三轮测试 42 分钟即死于同一模式（拉到纪律版 KB 仍"委派 3 个后台代理后收尾"），纯"禁止收尾"表述不足以纠正模型行为；升级为操作级禁令：**禁止"委派后台代理后收尾等待"**（该模式在此环境=任务中断），长任务必须回合内同步等待或顺序自己执行，确要并行只能会话内阻塞式等待；并强调"没有任何机制会唤醒你"
+- **PERF（测试驱动）** portgraph `fetch-deps` 并行下载——第四轮测试实测死因：弱网下串行下载 57KB/s 拖垮全流程（单步 90 分钟超时 + 最终 manifest 30 分钟，agent 被迫自研 4 批并行下载脚本 471 秒拿下 33 包）。修复：`fetch_bottle` 拆出 `prefetch_bottles`（ThreadPoolExecutor 并行预取 tar 到 .cache，默认 8 线程，缓存命中/已安装自动跳过，单包失败不阻断）；`_download` 加缓存命中跳过（sha 匹配不重下，天然支持重跑只补缺）；解压保持串行（规避 Windows 杀软文件锁竞态）。CLI 新增 `--jobs`（默认 8，0/1 关闭）。单测 4 例（tests/test_prefetch.py：并行+缓存命中 mtime 验证 / 已安装跳过 / 坏 sha 失败清理 / 无 sha 信任已有文件）
 - note: `RELEASE-MANIFEST.yaml` 的 `content_tree_sha256` 将在下次发版时由发版脚本重新生成
 
 ## v2.2.1 — 2026-08-29
