@@ -28,8 +28,8 @@ from pathlib import Path
 
 SKILL_DIR = Path(__file__).resolve().parent
 DOCS_DIR = SKILL_DIR / "docs"
-PATCHES_DIR = SKILL_DIR / "patches"
-BUILD_DOCS_DIR = SKILL_DIR / "build"
+PATCHES_DIR = SKILL_DIR / "project-patches"
+BUILD_DOCS_DIR = SKILL_DIR / "fix-build-error"
 # Templates path: same directory as SKILL_DIR and migrate.py (SKILL_DIR)
 TEMPLATES_DIR = SKILL_DIR / "templates"
 ORIG_PROJECT_DIR = None  # set in step1_get_project_path(), used in step2
@@ -1163,7 +1163,7 @@ def _generate_patches(orig_dir, project_dir, patch_output_dir):
 
 def step2_generate_patches(project_dir):
     """Step 2: Compare official project with original, generate per-directory patches.
-    All patches are flat in patches/<orig_name>/, named by directory path."""
+    All patches are flat in project-patches/<orig_name>/, named by directory path."""
     banner("Step 2: 生成迁移 patch 文件（与原工程对比）")
 
     orig_dir = ORIG_PROJECT_DIR
@@ -1204,7 +1204,7 @@ def step2_generate_patches(project_dir):
 
 # ── Build fix document loader ───────────────────────────────────────────────
 def load_build_docs():
-    """Load all .md files from build/ directory. Returns list of (name, content)."""
+    """Load all .md files from fix-build-error/ directory. Returns list of (name, content)."""
     docs = []
     if BUILD_DOCS_DIR.exists():
         for f in sorted(BUILD_DOCS_DIR.glob("*.md")):
@@ -1354,7 +1354,7 @@ def apply_doc_auto_fix(project_dir, auto_fix):
 
 def apply_build_fix(project_dir, error_lines, build_docs):
     """
-    Read build/ docs, match errors, parse ## Auto-fix YAML sections,
+    Read fix-build-error/ docs, match errors, parse ## Auto-fix YAML sections,
     and apply fixes automatically — NO user prompts.
     Returns True if any fix was applied.
     """
@@ -1391,12 +1391,12 @@ def apply_build_fix(project_dir, error_lines, build_docs):
             if match_pat.lower() not in err_text.lower():
                 continue
 
-        info(f"  匹配 build/{doc_name}: {match_pat}")
+        info(f"  匹配 fix-build-error/{doc_name}: {match_pat}")
         count = apply_doc_auto_fix(project_dir, auto_fix)
         total_applied += count
 
     if total_applied > 0:
-        ok(f"build/ 文档自动修复完成: {total_applied} 处")
+        ok(f"fix-build-error/ 文档自动修复完成: {total_applied} 处")
         return True
     return False
 
@@ -1779,13 +1779,13 @@ def step3_build_and_fix(project_dir):
             if l_stripped and l_stripped not in [e[0] for e in all_errors]:
                 all_errors.append((l_stripped, attempt))
 
-        # ── Auto-fix: built-in + build/ docs (no user prompts) ──
+        # ── Auto-fix: built-in + fix-build-error/ docs (no user prompts) ──
         step("3.2", f"第 {attempt} 次自动修复")
 
         # Try built-in auto-fixes first (build-fix-04~08, 10)
         auto_applied = apply_compilation_auto_fixes(project_dir, el)
 
-        # If built-in didn't match, try build/ doc auto-fix
+        # If built-in didn't match, try fix-build-error/ doc auto-fix
         if not auto_applied:
             # Track which docs match for Step 3.5
             fixes = find_build_fixes(el, build_docs)
@@ -1950,7 +1950,7 @@ def step3_build_and_fix(project_dir):
             warn(f"发现 {len(uncovered_errors)} 个未被现有文档覆盖的错误:")
             for err_line, attempt_num in uncovered_errors:
                 print(f"  {C.RED}  第{attempt_num}次: {err_line[:100]}{C.R}")
-            warn("请在 build/ 目录下补充对应问题的修复文档")
+            warn("请在 fix-build-error/ 目录下补充对应问题的修复文档")
             info("文档命名: build-fix-<编号>-<错误关键词>.md")
             info(f"路径: {BUILD_DOCS_DIR}")
 
