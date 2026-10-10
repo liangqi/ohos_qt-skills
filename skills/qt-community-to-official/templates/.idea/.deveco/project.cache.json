@@ -1,0 +1,16 @@
+{
+	"CommonInfo":{
+		"project.ide.version":"6.1.1.280",
+		"current.select.product":"default",
+		"current.select.buildMode":"",
+		"crossplatform.projectType":""
+	},
+	"BuildOptions":{
+		"SELECT_BUILD_PRODUCT":"default",
+		"BUNDLE_NAME":"com.ohos.ohosqttemplate",
+		"BUILD_PATH":{
+			"OUTPUT_PATH":"/Users/xiaoliyu/code/AiProject/qt-5.12.12/qt-harmonyos-src/qtbase/src/harmonyos/templates/build/outputs/default"
+		},
+		"SELECT_BUILD_MODE":""
+	}
+}

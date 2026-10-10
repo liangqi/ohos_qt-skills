@@ -1,0 +1,1 @@
+/Users/xiaoliyu/code/AiProject/qt-5.12.12/qt-harmonyos-src/qtbase/src/harmonyos/templates/entry/src/main/cpp/CMakeLists.txt
