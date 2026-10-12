@@ -4,6 +4,7 @@
 # 用法: bash skills/kb-init/scripts/generate-env-local.sh [OPTIONS]
 # 选项:
 #   --deveco-path=PATH         DevEco Studio 路径
+#   --deveco-cli=PATH          devecocli 可执行文件路径（PATH/npm 全局/DevEco 捆绑三者解析的结果）
 #   --qt5-12-src=PATH          Qt 5.12 源码路径
 #   --qt5-15-src=PATH          Qt 5.15 源码路径
 #   --qt-build-root=PATH       Qt 编译输出根目录
@@ -23,6 +24,7 @@ KB_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 OUTPUT="$KB_ROOT/ENV.local.md"
 
 DEVECO_PATH=""
+DEVECO_CLI=""
 QT5_12_SRC=""
 QT5_15_SRC=""
 QT_BUILD_ROOT=""
@@ -37,6 +39,7 @@ MY_NAME=""
 for arg in "$@"; do
   case "$arg" in
     --deveco-path=*) DEVECO_PATH="${arg#*=}";;
+    --deveco-cli=*) DEVECO_CLI="${arg#*=}";;
     --qt5-12-src=*) QT5_12_SRC="${arg#*=}";;
     --qt5-15-src=*) QT5_15_SRC="${arg#*=}";;
     --qt-build-root=*) QT_BUILD_ROOT="${arg#*=}";;
@@ -70,6 +73,7 @@ echo "" >> "$OUTPUT"
 echo "| 变量名 | 你的值 |" >> "$OUTPUT"
 echo "|--------|--------|" >> "$OUTPUT"
 [ -n "$DEVECO_PATH" ] && echo "| \`DEVECO_PATH\` | \`$DEVECO_PATH\` |" >> "$OUTPUT"
+[ -n "$DEVECO_CLI" ] && echo "| \`DEVECO_CLI\` | \`$DEVECO_CLI\` |" >> "$OUTPUT"
 [ -n "$OHOS_SDK_NATIVE" ] && echo "| \`OHOS_SDK_NATIVE\` | \`$OHOS_SDK_NATIVE\` |" >> "$OUTPUT"
 echo "" >> "$OUTPUT"
 

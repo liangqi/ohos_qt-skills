@@ -80,6 +80,17 @@ fi
 DEVECO_VERSION=""
 DEVECO_CLI_FOUND="false"
 DEVECO_CLI_PATH=""
+# devecocli 定位优先级：PATH > npm 全局(@deveco/deveco-cli) > DevEco 捆绑(部分版本，见下方 OS 分支)
+if cmd_exists devecocli; then
+  DEVECO_CLI_FOUND="true"
+  DEVECO_CLI_PATH="$(command -v devecocli)"
+else
+  _npm_prefix="$(npm prefix -g 2>/dev/null || true)"
+  for _cand in "$HOME/AppData/Roaming/npm/devecocli" "$HOME/AppData/Roaming/npm/devecocli.cmd" "$HOME/AppData/Roaming/npm/devecocli.ps1" \
+               "$_npm_prefix/devecocli" "$_npm_prefix/devecocli.cmd" "$_npm_prefix/devecocli.ps1" "$_npm_prefix/bin/devecocli"; do
+    [ -f "$_cand" ] && { DEVECO_CLI_FOUND="true"; DEVECO_CLI_PATH="$_cand"; break; }
+  done
+fi
 OHOS_SDK_NATIVE_PATH=""
 OHOS_SDK_NATIVE_FOUND="false"
 HDC_PATH=""
@@ -105,8 +116,8 @@ if [ "$DEVECO_FOUND" = "true" ]; then
   [ -f "$_hdc" ] && { HDC_PATH="$_hdc"; HDC_FOUND="true"; }
   if [ "$OS" = "windows" ] && [ -f "$_hdc.exe" ]; then HDC_PATH="$_hdc.exe"; HDC_FOUND="true"; fi
   _cli="$_pre/tools/devecocli"
-  [ -f "$_cli" ] && { DEVECO_CLI_PATH="$_cli"; DEVECO_CLI_FOUND="true"; }
-  if [ "$OS" = "windows" ] && [ -f "$_cli.bat" ]; then DEVECO_CLI_PATH="$_cli.bat"; DEVECO_CLI_FOUND="true"; fi
+  [ "$DEVECO_CLI_FOUND" = "false" ] && [ -f "$_cli" ] && { DEVECO_CLI_PATH="$_cli"; DEVECO_CLI_FOUND="true"; }
+  if [ "$OS" = "windows" ] && [ "$DEVECO_CLI_FOUND" = "false" ] && [ -f "$_cli.bat" ]; then DEVECO_CLI_PATH="$_cli.bat"; DEVECO_CLI_FOUND="true"; fi
   [ -f "$_pre/sdk/default/openharmony/ohpm/bin/ohpm" ] && OHPM_FOUND="true"
   [ -f "$_pre/tools/hvigor/bin/hvigorw.js" ] && HVIGORW_FOUND="true"
 elif [ "$OS" = "macos" ]; then
@@ -119,7 +130,7 @@ elif [ "$OS" = "macos" ]; then
     _hdc="$DEVECO_PATH/Contents/sdk/default/openharmony/toolchains/hdc"
     [ -f "$_hdc" ] && { HDC_PATH="$_hdc"; HDC_FOUND="true"; }
     _cli="$DEVECO_PATH/Contents/tools/devecocli"
-    [ -f "$_cli" ] && { DEVECO_CLI_PATH="$_cli"; DEVECO_CLI_FOUND="true"; }
+    [ "$DEVECO_CLI_FOUND" = "false" ] && [ -f "$_cli" ] && { DEVECO_CLI_PATH="$_cli"; DEVECO_CLI_FOUND="true"; }
     [ -f "$DEVECO_PATH/Contents/sdk/default/openharmony/ohpm/bin/ohpm" ] && OHPM_FOUND="true"
     [ -f "$DEVECO_PATH/Contents/tools/hvigor/bin/hvigorw.js" ] && HVIGORW_FOUND="true"
     _pkg="$DEVECO_PATH/Contents/Resources/app/package.json"
@@ -137,7 +148,7 @@ elif [ "$OS" = "windows" ]; then
     _hdc="$DEVECO_PATH/sdk/default/openharmony/toolchains/hdc.exe"
     [ -f "$_hdc" ] && { HDC_PATH="$_hdc"; HDC_FOUND="true"; }
     _cli="$DEVECO_PATH/tools/devecocli.bat"
-    [ -f "$_cli" ] && { DEVECO_CLI_PATH="$_cli"; DEVECO_CLI_FOUND="true"; }
+    [ "$DEVECO_CLI_FOUND" = "false" ] && [ -f "$_cli" ] && { DEVECO_CLI_PATH="$_cli"; DEVECO_CLI_FOUND="true"; }
     [ -f "$DEVECO_PATH/sdk/default/openharmony/ohpm/bin/ohpm" ] && OHPM_FOUND="true"
     [ -f "$DEVECO_PATH/tools/hvigor/bin/hvigorw.js" ] && HVIGORW_FOUND="true"
     # Windows 版本检测
@@ -159,7 +170,7 @@ elif [ "$OS" = "linux" ]; then
     _hdc="$DEVECO_PATH/sdk/default/openharmony/toolchains/hdc"
     [ -f "$_hdc" ] && { HDC_PATH="$_hdc"; HDC_FOUND="true"; }
     _cli="$DEVECO_PATH/tools/devecocli"
-    [ -f "$_cli" ] && { DEVECO_CLI_PATH="$_cli"; DEVECO_CLI_FOUND="true"; }
+    [ "$DEVECO_CLI_FOUND" = "false" ] && [ -f "$_cli" ] && { DEVECO_CLI_PATH="$_cli"; DEVECO_CLI_FOUND="true"; }
     [ -f "$DEVECO_PATH/sdk/default/openharmony/ohpm/bin/ohpm" ] && OHPM_FOUND="true"
     [ -f "$DEVECO_PATH/tools/hvigor/bin/hvigorw.js" ] && HVIGORW_FOUND="true"
   fi
@@ -173,7 +184,7 @@ elif [ "$OS" = "harmonyos" ]; then
     _hdc="$DEVECO_PATH/sdk/default/openharmony/toolchains/hdc"
     [ -f "$_hdc" ] && { HDC_PATH="$_hdc"; HDC_FOUND="true"; }
     _cli="$DEVECO_PATH/tools/devecocli"
-    [ -f "$_cli" ] && { DEVECO_CLI_PATH="$_cli"; DEVECO_CLI_FOUND="true"; }
+    [ "$DEVECO_CLI_FOUND" = "false" ] && [ -f "$_cli" ] && { DEVECO_CLI_PATH="$_cli"; DEVECO_CLI_FOUND="true"; }
     [ -f "$DEVECO_PATH/sdk/default/openharmony/ohpm/bin/ohpm" ] && OHPM_FOUND="true"
     [ -f "$DEVECO_PATH/tools/hvigor/bin/hvigorw.js" ] && HVIGORW_FOUND="true"
   fi
@@ -185,10 +196,9 @@ if [ "$HDC_FOUND" = "false" ]; then
   [ "$HDC_FOUND" = "true" ] && HDC_PATH="$(command -v hdc)"
 fi
 
-# devecocli 也可能在 PATH 中
-if [ "$DEVECO_CLI_FOUND" = "false" ]; then
-  DEVECO_CLI_FOUND=$(cmd_exists devecocli)
-  [ "$DEVECO_CLI_FOUND" = "true" ] && DEVECO_CLI_PATH="$(command -v devecocli)"
+DEVECO_CLI_VERSION=""
+if [ "$DEVECO_CLI_FOUND" = "true" ]; then
+  DEVECO_CLI_VERSION="$(devecocli --version 2>/dev/null | head -1 || true)"
 fi
 
 echo "DEVECO_FOUND=$DEVECO_FOUND"
@@ -196,14 +206,16 @@ echo "DEVECO_PATH=$DEVECO_PATH"
 echo "DEVECO_VERSION=$DEVECO_VERSION"
 echo "DEVECO_CLI_FOUND=$DEVECO_CLI_FOUND"
 echo "DEVECO_CLI_PATH=$DEVECO_CLI_PATH"
+echo "DEVECO_CLI_VERSION=$DEVECO_CLI_VERSION"
 
 DEVECO_CLI_OSS_FOUND="false"
 DEVECO_CLI_OSS_PATH=""
 DEVECO_CLI_OSS_VERSION=""
-if command -v deveco-cli &>/dev/null; then
+# devecocli 的发布渠道是 npm 包 @deveco/deveco-cli（裸包名 deveco-cli 不存在）
+if command -v npm &>/dev/null && npm ls -g @deveco/deveco-cli &>/dev/null; then
   DEVECO_CLI_OSS_FOUND="true"
-  DEVECO_CLI_OSS_PATH="$(command -v deveco-cli)"
-  DEVECO_CLI_OSS_VERSION=$(deveco-cli --version 2>/dev/null || echo "")
+  DEVECO_CLI_OSS_PATH="$DEVECO_CLI_PATH"
+  DEVECO_CLI_OSS_VERSION="$(devecocli --version 2>/dev/null | head -1 || echo "")"
 fi
 echo "DEVECO_CLI_OSS_FOUND=$DEVECO_CLI_OSS_FOUND"
 echo "DEVECO_CLI_OSS_PATH=$DEVECO_CLI_OSS_PATH"

@@ -185,16 +185,25 @@ bash skills/kb-init/scripts/detect-env.sh
 
 安装完成后，重新运行 `detect-env.sh` 确认 `DEVECO_FOUND=true`。
 
-**DevEco CLI（devecocli）**：
-- macOS/Windows：DevEco Studio 安装后自带 `devecocli`，位于 `<DEVECO_PATH>/tools/devecocli`
-- Linux：需要单独下载 Command Line Tools，见 `references/deveco-install.md` Linux 章节
+**DevEco CLI（devecocli）**——先定位验证，再开工：
 
-Agent 检查 `devecocli` 是否可用：
+`devecocli` 由 npm 包 `@deveco/deveco-cli` 提供（源码 openharmony-sig/deveco-cli；封装 build/run/signature/log/emulator 等）。**不要假设它随 DevEco Studio 安装而存在**——部分版本在 `<DEVECO_PATH>/tools/devecocli{.bat}` 有捆绑副本，但多数环境走 npm 安装。定位顺序：**PATH → npm 全局目录 → DevEco 捆绑**。
+
 ```bash
-command -v devecocli || ls <DEVECO_PATH>/tools/devecocli 2>/dev/null
+# bash
+command -v devecocli && devecocli --version
+ls "$(npm prefix -g)"/devecocli* 2>/dev/null          # npm 全局
+ls <DEVECO_PATH>/tools/devecocli* 2>/dev/null         # DevEco 捆绑（部分版本）
 ```
 
-如果不可用，引导用户将其加入 PATH 或从 DevEco 下载页获取。
+```powershell
+# PowerShell
+Get-Command devecocli; devecocli --version
+```
+
+`--version` 输出版本号才算可用。不可用时引导用户安装：`npm i -g @deveco/deveco-cli`（需 Node.js ≥ 18）——**注意**：裸包名 `deveco-cli` 不存在，`@deveco-test/deveco-cli` 是测试通道，不要用。
+
+解析到的绝对路径在 Step 5 用 `--deveco-cli` 写入 `ENV.local.md`（`DEVECO_CLI` 变量），后续所有工作直接引用该变量。
 
 ### Step 3: 平台依赖检查
 
@@ -304,6 +313,7 @@ bash skills/kb-init/scripts/download-template.sh \
 ```bash
 bash skills/kb-init/scripts/generate-env-local.sh \
   --deveco-path="<DEVECO_PATH>" \
+  --deveco-cli="<DEVECO_CLI_PATH>" \
   --qt5-12-src="<KB_ROOT>/workspace/qt-src/qt5.12" \
   --qt5-15-src="<KB_ROOT>/workspace/qt-src/qt5.15" \
   --qt-build-root="<KB_ROOT>/workspace/qt-build" \
@@ -346,7 +356,7 @@ bash skills/kb-init/scripts/verify-env.sh
 | 知识库 clone 失败 | 检查网络；手动 `git clone https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills.git` |
 | `detect-env.sh` 执行失败 | `chmod +x skills/kb-init/scripts/*.sh` |
 | DevEco 安装后检测不到 | 读取 `references/deveco-install.md` 按平台检查路径 |
-| DevEco CLI 不可用 | 检查 `<DEVECO_PATH>/tools/devecocli` 是否存在；加入 PATH |
+| DevEco CLI 不可用 | 按定位顺序排查：PATH → npm 全局（`npm prefix -g`）→ `<DEVECO_PATH>/tools/devecocli{.bat}`（部分版本）；安装：`npm i -g @deveco/deveco-cli` |
 | git clone 失败 (commercial) | 检查 HTTP 凭据；检查网络 |
 | git clone 失败 (opensource) | 检查网络；尝试 `git config --global http.sslVerify false` |
 | SDK 下载失败 | 手动访问 https://gitcode.com/ohos-qt/qt-harmonyos-src/releases |

@@ -52,6 +52,8 @@
 - **NEW（测试驱动）** 大仓库获取韧性（SKILL.md Step 0）——弱网下 clone 大 pack 被掐断（curl 56 early EOF）重试仍失败时，改 codeload tarball 断点续传（github.com/<owner>/<repo>/tar.gz/refs/heads/<branch>），解压入 portgraph workspace 后 scan 照常
 - **FIX（测试驱动）** 回合收尾纪律升级为操作级（SKILL.md 红线 #7 + AGENTS.md）——第三轮测试 42 分钟即死于同一模式（拉到纪律版 KB 仍"委派 3 个后台代理后收尾"），纯"禁止收尾"表述不足以纠正模型行为；升级为操作级禁令：**禁止"委派后台代理后收尾等待"**（该模式在此环境=任务中断），长任务必须回合内同步等待或顺序自己执行，确要并行只能会话内阻塞式等待；并强调"没有任何机制会唤醒你"
 - **PERF（测试驱动）** portgraph `fetch-deps` 并行下载——第四轮测试实测死因：弱网下串行下载 57KB/s 拖垮全流程（单步 90 分钟超时 + 最终 manifest 30 分钟，agent 被迫自研 4 批并行下载脚本 471 秒拿下 33 包）。修复：`fetch_bottle` 拆出 `prefetch_bottles`（ThreadPoolExecutor 并行预取 tar 到 .cache，默认 8 线程，缓存命中/已安装自动跳过，单包失败不阻断）；`_download` 加缓存命中跳过（sha 匹配不重下，天然支持重跑只补缺）；解压保持串行（规避 Windows 杀软文件锁竞态）。CLI 新增 `--jobs`（默认 8，0/1 关闭）。单测 4 例（tests/test_prefetch.py：并行+缓存命中 mtime 验证 / 已安装跳过 / 坏 sha 失败清理 / 无 sha 信任已有文件）
+- **PATCH** devecocli 预检修复的实现文件落地（补齐上上条 FIX ①-⑥ 的脚本与文档）+ 新增 `.gitattributes` 强制 `*.sh text eol=lf`——Windows 检出把 shell 脚本变 CRLF 后 `bash detect-env.sh` 直接语法报错，是预检脚本"改了却跑不起来"的根因，入库统一 LF 一劳永逸
+- **PATCH** `tools/qt_sdk/releasing.py` `parse_version` 接受同日二次出包后缀 `.N`（如 `5.15+p1.20261009.2`）——同一天切第二个版本是 `release()` 自身支持的合法操作，却过不了自己的 SV6 版本门禁
 - note: `RELEASE-MANIFEST.yaml` 的 `content_tree_sha256` 将在下次发版时由发版脚本重新生成
 
 ## v2.2.1 — 2026-08-29

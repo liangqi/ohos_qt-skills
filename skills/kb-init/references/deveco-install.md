@@ -177,10 +177,8 @@ brew install git cmake node
 
 ## deveco-cli（全平台）
 
-`deveco-cli` 是独立的开源工具，与 DevEco Studio 内置的 `devecocli` 不同。
+`devecocli` 命令由开源工具 deveco-cli 提供（仓库: https://gitcode.com/openharmony-sig/deveco-cli，npm 包名 `@deveco/deveco-cli`），封装 DevEco 工具链（ohpm/hvigor/hdc/emulator/hilog + bundled node/JBR/SDK），覆盖构建、安装、日志、签名、模拟器、UI 自动化。部分 DevEco Studio 版本在 `tools/devecocli{.bat}` 另有捆绑副本，功能一致，以定位到的为准（定位顺序见 `ohos-common-kb-public/procedural/deveco-cli-usage-rules.md` §工具可用性预检）。
 
-- **仓库**: https://gitcode.com/openharmony-sig/deveco-cli
-- **功能**: 集成 HarmonyOS 应用开发工具集、知识文档和 AI Skills
 - **依赖**: Node.js >= 18
 
 ### 自动安装（推荐）
@@ -191,33 +189,22 @@ bash skills/kb-init/scripts/install-deveco-cli.sh --method=npm
 
 ### 手动安装
 
-**方式 1: npm**
-
 ```bash
-npm install -g deveco-cli
-deveco-cli --version
-```
-
-**方式 2: git clone**
-
-```bash
-git clone https://gitcode.com/openharmony-sig/deveco-cli.git ~/dev/deveco-cli
-cd ~/dev/deveco-cli
-npm install
-npm link  # 创建全局命令
+npm i -g @deveco/deveco-cli
+devecocli --version   # 注意：二进制名是 devecocli
 ```
 
 ### 验证
 
 ```bash
-deveco-cli --version
+devecocli --version
 ```
 
-### 与 devecocli 的区别
+### 常见误认
 
-| 工具 | 来源 | 用途 |
-|------|------|------|
-| `devecocli` | DevEco Studio / CLT 内置 | 构建、安装、日志等 IDE 操作 |
-| `deveco-cli` | 开源仓库 (npm) | AI 辅助开发、知识文档、Skills |
-
-两者可同时安装，互不冲突。
+| 名称 | 实际身份 |
+|------|---------|
+| `devecocli` | 本工具（npm `@deveco/deveco-cli`，稳定渠道；部分 DevEco 版本捆绑） |
+| `deveco-cli`（裸包名/命令） | **不存在**——npm 作用域包是 `@deveco/deveco-cli`，二进制只有 `devecocli` |
+| `@deveco-test/deveco-cli` | 测试通道包，不要作为安装命令 |
+| `devecostudio` | DevEco Studio GUI 启动器，不是构建 CLI |

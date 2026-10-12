@@ -1,7 +1,7 @@
 #!/bin/bash
-# install-deveco-cli.sh — 自动安装 deveco-cli
+# install-deveco-cli.sh — 自动安装 devecocli（npm 包 @deveco/deveco-cli）
 #
-# deveco-cli: 集成 HarmonyOS 应用开发工具集，提供知识文档和 Skills
+# devecocli: 集成 HarmonyOS 应用开发工具集（build/run/signature/log/emulator）
 # 仓库: https://gitcode.com/openharmony-sig/deveco-cli
 #
 # 安装方式:
@@ -26,15 +26,15 @@ for arg in "$@"; do
   esac
 done
 
-echo "--- deveco-cli 安装 ---"
+echo "--- devecocli 安装（@deveco/deveco-cli） ---"
 echo "  方式: $METHOD"
 echo ""
 
-if command -v deveco-cli &>/dev/null; then
-  CURRENT_VER=$(deveco-cli --version 2>/dev/null || echo "unknown")
+if command -v devecocli &>/dev/null; then
+  CURRENT_VER=$(devecocli --version 2>/dev/null || echo "unknown")
   echo "STATUS=already-installed"
   echo "DEVECO_CLI_VERSION=$CURRENT_VER"
-  echo "deveco-cli 已安装: $CURRENT_VER"
+  echo "devecocli 已安装: $CURRENT_VER"
   exit 0
 fi
 
@@ -51,21 +51,21 @@ install_via_npm() {
   NODE_VER=$(node --version 2>/dev/null | sed 's/v//')
   NODE_MAJOR=$(echo "$NODE_VER" | cut -d. -f1)
   if [ "$NODE_MAJOR" -lt 18 ] 2>/dev/null; then
-    echo "WARN: Node.js 版本过低 ($NODE_VER)，deveco-cli 需要 >= 18"
+    echo "WARN: Node.js 版本过低 ($NODE_VER)，devecocli 需要 >= 18"
     echo "请升级 Node.js: https://nodejs.org/"
     return 1
   fi
 
   echo "Node.js: $NODE_VER"
-  echo "运行: npm install -g deveco-cli"
+  echo "运行: npm install -g @deveco/deveco-cli"
   echo ""
 
-  if npm install -g deveco-cli 2>&1; then
-    if command -v deveco-cli &>/dev/null; then
+  if npm install -g @deveco/deveco-cli 2>&1; then
+    if command -v devecocli &>/dev/null; then
       echo ""
       echo "STATUS=installed"
-      echo "DEVECO_CLI_VERSION=$(deveco-cli --version 2>/dev/null || echo 'unknown')"
-      echo "DEVECO_CLI_PATH=$(command -v deveco-cli)"
+      echo "DEVECO_CLI_VERSION=$(devecocli --version 2>/dev/null || echo 'unknown')"
+      echo "DEVECO_CLI_PATH=$(command -v devecocli)"
       return 0
     fi
   fi
@@ -156,6 +156,6 @@ echo ""
 echo "STATUS=failed"
 echo ""
 echo "自动安装失败。请手动安装："
-echo "  方式 1: npm install -g deveco-cli"
+echo "  方式 1: npm install -g @deveco/deveco-cli"
 echo "  方式 2: git clone https://gitcode.com/openharmony-sig/deveco-cli.git && cd deveco-cli && npm install"
 exit 1
