@@ -38,9 +38,12 @@ def version_of(qt_version: str, patch_count: int,
 
 
 def parse_version(ver: str) -> Dict:
-    m = re.match(r"^(\d+\.\d+)\+p(\d+)\.(\d{8})$", ver.strip())
+    # NOTE: release() appends a same-day sequence suffix ".N" when a version
+    # is cut twice on one day (e.g. 5.15+p1.20261009.2); accept it here so a
+    # legitimate same-day second cut does not fail its own SV6 gate.
+    m = re.match(r"^(\d+\.\d+)\+p(\d+)\.(\d{8})(?:\.(\d+))?$", ver.strip())
     if not m:
-        raise ValueError("bad version %r (expected <qtver>+p<N>.<yyyymmdd>)"
+        raise ValueError("bad version %r (expected <qtver>+p<N>.<yyyymmdd>[.N])"
                          % ver)
     return {"qt": m.group(1), "patches": int(m.group(2)),
             "date": m.group(3)}
