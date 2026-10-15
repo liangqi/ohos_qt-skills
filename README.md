@@ -9,8 +9,7 @@
 
 加入项目：
 邀请您成为 AtomGit ohos_qt-skills 项目开发者
-邀请链接: https://gitcode.com/invite/link/2e56b63b436047228fac
-
+邀请链接: https://gitcode.com/invite/link/7a8aa925435647dbbf55
 
 ---
 
