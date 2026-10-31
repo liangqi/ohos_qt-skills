@@ -2,285 +2,353 @@
 
 # ohos_qt-skills
 
-**Qt for HarmonyOS 移植知识库与自动迁移工具链**
+**Qt → HarmonyOS 迁移工程仓：知识 · 机器规则 · 可执行流水线**
 
-可行性评估 → 三方依赖分析与下载 → 自动迁移 → 编译打包装机 → 门禁验证，
-一个仓库覆盖 Qt 应用鸿蒙化全流程。
+评估 → 迁移 → 编译 → 装机 → 验证 → 沉淀，每一步都有机器可判定的结果。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Qt](https://img.shields.io/badge/Qt-5.12%20%7C%205.15%20%7C%206.12-green.svg)](#qt-源码获取渠道)
+[![Qt](https://img.shields.io/badge/Qt-5.12%20%7C%205.15%20%7C%206.12-green.svg)](#能力规格)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg)](#30-秒上手)
-[![Platform](https://img.shields.io/badge/平台-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#本地环境配置)
-[![Pages](https://img.shields.io/badge/知识页-115%2B-orange.svg)](_index/_map.md)
+[![Platform](https://img.shields.io/badge/平台-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#质量保障)
+[![Pages](https://img.shields.io/badge/知识页-120-orange.svg)](_index/_map.md)
 
-**当前版本 v2.3.0** ｜ [变更日志](CHANGELOG.md) ｜ [能力规格](#能力规格) ｜ [任务路由](#按任务找入口)
+**版本 v2.3.0** ｜ [变更日志](CHANGELOG.md) ｜ [贡献指南](CONTRIBUTING.md) ｜ [任务路由](_index/_task-routing.md)
 
 </div>
 
-> **这是一份面向应用开发者的 Qt for HarmonyOS 移植参考知识库**：把 Qt/C++ 应用搬到鸿蒙时少踩坑、快定位。
-> 由一个更大的内部工作流知识库裁剪、脱敏后生成（开发者版）。
+> Qt 应用鸿蒙化需要的三样东西装在同一棵树里：**事实**（知识页）、**判据**（机器规则与错误模式）、
+> **动作**（可执行的 CLI 与门禁）。人和 Agent 沿同一条路径把应用搬到 HarmonyOS 上，
+> 每一步的结果由工具判定，不由"看起来没问题"判定。
 >
-> 设计原则：**LLM 负责推理，tool 负责事实**——迁移成功与否不由"看起来编译过了"决定，只以机器门禁结果（G0-G12）为准。
+> 设计原则：**LLM 负责推理，tool 负责事实**。编译通过不等于迁移成功，
+> `TIMEOUT` 永远不是 `PASS`。
+
+---
+
+## 这个仓库解决什么问题
+
+Qt/C++ 桌面应用要跑在 HarmonyOS 上，难点集中在这些地方：
+
+| 场景 | 常见做法 | 本仓做法 |
+|------|---------|-----------|
+| 不知道能不能迁 | 逐个模块翻 wiki、试编译 | `portgraph analyze` 出三态结论（portable / blocked / uncertain）+ 阻断根因归类 |
+| 迁完编译过了，装到机器上白屏/闪退 | 靠人盯着日志猜 | 门禁 G0–G12 逐条判定，缺 so 闭包、签名、部署缺口都会被点出来 |
+| 同样的报错反复踩 | 翻聊天记录 | 42 条 QOH 错误模式机器匹配 + 47 个实战踩坑页 + 故障图定位"归谁、修没修、怎么绕" |
+| 三方依赖下载/交叉编译耗掉几天 | 手工找 bottle、手工编 | `portgraph deps` / `fetch-deps` 出依赖角色分类与闭包清单 |
+| 换个人接手就断了 | 口口相传 | 状态机落盘（`.qt-ohos/`）+ 任务台账 + 知识沉淀协议 |
+
+一句话：**把"能跑通一次"变成"可重复跑通、能被别人接手、能被机器验收"**。
+
+---
+
+## 架构：四层一体，闭环回流
+
+```
+┌───────────────────────────────────────────────────────────────┐
+│  入口层   SKILL.md · AGENTS.md · README.md · SETUP.md         │
+│           → 人从这里进入：定位、能力、上手、Agent 契约        │
+├───────────────────────────────────────────────────────────────┤
+│  知识层   semantic/ procedural/ episodic/ problems/           │
+│           ohos-common-kb-public/                              │
+│           → 人读的真源：事实、流程、复盘、错误解法、平台知识  │
+├───────────────────────────────────────────────────────────────┤
+│  机器层   knowledge/errors(42 条 QOH) · rules(18 条 R)        │
+│           knowledge/adaptation · faults/(故障图)              │
+│           → 工具读的索引：从知识层提炼的可匹配模式            │
+├───────────────────────────────────────────────────────────────┤
+│  执行层   tools/qt-ohos-run.py · qt-sdk-run.py                │
+│           faults-build.py · kb-verify-qt.py · portgraph/      │
+│           templates/qt-ohos-app/                              │
+│           → 真正干活并给出 PASS/FAIL 的部分                   │
+└───────────────────────────────────────────────────────────────┘
+        ↑ 门禁结果、跑通的配方、踩到的新坑 ——— 回流沉淀 ↓
+```
+
+四条硬约束：
+
+- **知识层是人在读的唯一真源**，机器层只是它的**投影**，不另造一份事实——所以两边永远对得上；
+- **执行层的结论必须可复现**：门禁判断基于文件存在性、二进制符号、日志模式，而不是模型自述；
+- **回流是强制的**：新问题先落草稿，走主编门禁后才进真源，写进去的每条都要能被事实复核工具检查。
 
 ---
 
 ## 核心能力
 
-| 能力 | 说明 |
-|------|------|
-| 🔍 可行性评估（第 0 步） | `portgraph` 扫描应用的 Qt 模块、三方依赖与平台接口（Win32/Cocoa/X11/ALSA…）使用，递归推导 **portable / blocked / uncertain** 判定 |
-| 📦 三方依赖分析与下载 | `deps` 按 link / build-tool / runtime / test / vendored 角色分类并校验版本范围；`fetch-deps` 一键下载约 6000 个鸿蒙 arm64 预编译 bottle（Harmonybrew + cmd-pkgs 双源），附 sha256 校验与 CMake/qmake 集成片段 |
-| 🤖 自动迁移流水线 | `qt-ohos-run.py` 24 个子命令：扫描 → 计划 → 受追踪修改 → 编译 → 打 HAP → 装机 → 启动 → 冒烟，全程 checkpoint 可恢复 |
-| 🚦 机器验证门禁 | 应用迁移 **G0-G12**、SDK 构建 **SV0-SV8** 门禁；TIMEOUT 永远不是 PASS |
-| 📚 蒸馏知识库 | 35 条铁律 ｜ 42 条 QOH 错误模式 ｜ 13 类 API 映射 ｜ 145+ QtOhosExtras API ｜ 47 个实战踩坑 ｜ S→C→W→T 故障图（17/18/15/5） |
-| 🧩 AI 原生接入 | 根级 [SKILL.md](SKILL.md) 总入口 + 5 个 Agent skills + `AGENTS.md`，Claude Code / Codex / Cursor / Trae 开箱即用 |
+| 能力 | 入口 | 现状 |
+|------|------|------|
+| 🔍 可行性评估 | `portgraph/portgraph.py analyze / deps / fetch-deps` | 可 ingest 4741 个 Harmonybrew formula + 1248 个 cmd-pkg 索引（首次联网），出三态判定 |
+| 🚚 自动迁移流水线 | `tools/qt-ohos-run.py`（24 个子命令） | 扫描（18 条预扫描规则出风险报告）→计划→受追踪修改→构建→打包→装机→启动→冒烟→门禁，可 checkpoint/resume |
+| 🚦 成功判定 | `qt-ohos-run.py verify`（G0–G12） | 门禁级 PASS / PARTIAL / FAIL，`TIMEOUT` 不计通过 |
+| 🧠 日志诊断 | `qt-ohos-run.py analyze-log` | 42 条 QOH 错误模式自动匹配，命中即给知识页引用 |
+| 🧰 Qt SDK 工程平面 | `tools/qt-sdk-run.py`（24 个子命令） | 编译 / 增量 install / 补丁溯源 / SV0–SV8 发版门禁 / 上游演进跟踪 |
+| 🗺️ 故障跟踪 | `faults/` + `tools/faults-build.py` | S→C→W→T 故障图（17/18/15/5）：定性、责任领域、临时方案、在跟单、闭环缺口 |
+| 📚 知识底座 | `semantic/` `procedural/` `problems/` | 120 页（Qt 侧 93 + 内嵌平台 27），35 条铁律，13 类 API 映射，47 个实战踩坑 |
+| 🏗️ 工程模板 | `templates/qt-ohos-app/` | 71 个文件的干净鸿蒙壳工程（替代历史上带构建产物的脏模板） |
+| ✅ 自检用例 | `tests/` | 引擎自测 12 用例 + 一致性 22 用例 + C++20 扫描 9 用例 |
+
+---
 
 ## 30 秒上手
 
-前提：Python 3.10+ 与 Git（评估类功能零第三方依赖）。完整迁移另需 DevEco Studio + HarmonyOS SDK + Qt OHOS SDK——`kb-init` skill 会交互式引导配置。
+### 只想查知识（零依赖）
 
 ```bash
 git clone https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills.git
 cd ohos_qt-skills
-
-# ① 第 0 步：可行性评估（无需完整环境）
-python portgraph/portgraph.py ingest all            # 首次：构建图数据（自动拉取数据源，一次性）
-python portgraph/portgraph.py scan <你的Qt工程路径>  # 或 clone <git-url>
-python portgraph/portgraph.py analyze <app> --summary
-python portgraph/portgraph.py deps <app>            # 依赖角色分析（每条带 文件:行号 证据）
-python portgraph/portgraph.py fetch-deps <app> --dry-run
-
-# ② 执行迁移：在 AI 编程助手打开本仓库，说"把这个 Qt 项目鸿蒙化"
-python tools/qt-ohos-run.py scan <项目目录>          # 也可直接驱动 CLI
-python tools/qt-ohos-run.py verify                  # G0-G12 门禁——唯一的成功判据
+cat _index/_task-routing.md     # 你在做什么 → 读哪几页
+cat _index/_map.md              # 每页一句话摘要
 ```
 
-不写代码也能用：人类直接浏览，从 [_index/_dashboard.md](_index/_dashboard.md)（仪表盘）或 [_index/_map.md](_index/_map.md)（知识地图，每页一句话摘要）开始；Obsidian 用户可直接作为 Vault 打开。
+不需要 Python，不需要装任何东西。Obsidian 直接当 Vault 打开可以看到引用关系图。
+要固定某个版本：`git clone --branch vX.Y.Z <仓库地址>`（tag 与 `CHANGELOG.md` 一一对应）。
 
-## 接入 AI 编程助手
+### 第 0 步：可行性评估（第一次要先建图数据）
 
-| 工具 | 接入方式 |
-|------|----------|
-| Claude Code | 复制 `AGENTS.md` 为本地 `CLAUDE.md` 后自动加载（本仓不携带 CLAUDE.md） |
-| Codex / OpenCode | 仓库根目录打开，自动读 `AGENTS.md` |
-| Cursor | 建 `.cursorrules`：`请阅读并遵循 _index/_map.md 中定义的知识库结构` |
-| Windsurf | 建 `.windsurfrules`，同上 |
-| Trae / Agent Skills 兼容端 | 加载根级 [SKILL.md](SKILL.md)（触发词覆盖"鸿蒙化 / 移植 Qt / 三方依赖分析 / 构建报错"） |
-| ChatGPT / 其它 | 手动上传 `_index/_map.md` + 相关知识页，或把 `AGENTS.md` 复制进系统提示 |
+接手一个陌生项目，先判断"能不能迁"比直接改代码省几天：
 
-接入后直接用自然语言提问，AI 按 **任务路由 → 扫铁律 → 按需加载知识页 → 给方案** 处理。首次使用（或 `ENV.local.md` 不存在）时，Agent 会自动执行 `skills/kb-init/` 完成环境初始化。
+```bash
+python portgraph/portgraph.py ingest all            # 首次：拉取 Harmonybrew + cmd-pkgs 数据源建图
+python portgraph/portgraph.py scan <你的Qt工程路径>  # 或 clone <git-url>
+python portgraph/portgraph.py analyze <app> --summary     # 三态判定
+python portgraph/portgraph.py deps <app>                  # 依赖角色分析（每条带 文件:行号 证据）
+python portgraph/portgraph.py fetch-deps <app> --dry-run  # 依赖闭包预览
+```
 
-### Skills 一览
+结论是 `portable` / `blocked` / `uncertain` 之一：`blocked` 给出具体阻断项，
+`uncertain` 列出"需要源码交叉编译"的缺口清单——这份清单才是排期的依据。
 
-| Skill / 入口 | 用途 | 触发方式 |
-|--------------|------|----------|
-| [SKILL.md](SKILL.md)（根级总入口） | 整库作为一个 skill 加载：主工作流 + 依赖分析下载 + 知识检索 | "鸿蒙化 / 移植 Qt 应用 / 分析下载三方依赖"时自动加载 |
-| `skills/kb-init` | 环境初始化：检测依赖、安装引导、生成 `ENV.local.md`、验证就绪 | "初始化 / 配置环境 / 第一次使用" |
-| `skills/qt-app-porting` | 自动迁移（统一 CLI `tools/qt-ohos-run.py`，G0-G12 门禁） | "迁移 / 鸿蒙化这个项目（要执行）/ 验证迁移结果 / 分析构建运行日志" |
-| `skills/qt-sdk-forge` | Qt SDK 工程：编译、补丁应用与追踪、多版本发布（`tools/qt-sdk-run.py`，SV0-SV8） | "编译 / 重编 Qt / 打补丁 / 出 SDK 版本 / 检查上游更新" |
-| `skills/task-dispatcher` | 多 Agent 协作调度中枢：任务台账 + 流转日志 + 移交信封 | 多 agent 模式下建档路由；"查任务状态 / 续跑 / 关单" |
-| `skills/kb-iterator` | 知识库唯一真源写入门：草稿合入门禁、索引再生、事实校验、复盘蒸馏 | "合入草稿 / 复核 faults / 重建索引 / 检查上游演进影响" |
-| `portgraph/`（仓库工具，非 skills/） | 可行性评估与依赖解决：`analyze` / `deps` / `fetch-deps` | 移植任务的**强制第 0 步**；依赖 ≥3 个三方库时禁止人工逐个判断 |
+### 想让 Agent 干活
 
-多 Agent 协作契约（接口卡 / 移交信封 / 人工接入点分级）见 [_index/_agent-mesh.md](_index/_agent-mesh.md)。
+在支持 `SKILL.md` / `AGENTS.md` 的 Agent（Claude Code / Codex / Cursor 等）里打开本仓，直接说需求：
 
-## 按任务找入口
+- "把这个 Qt 项目迁移到鸿蒙" → 走 `qt-app-porting`（执行流水线）
+- "这堆编译日志什么毛病" → 走 `analyze-log` + `problems/`
+- "帮我编一个 Qt 5.15 的鸿蒙 SDK" → 走 `qt-sdk-forge`
+- "这个问题到底是 Qt 的 bug 还是鸿蒙限制" → 走故障图 `faults/`
 
-知识库覆盖 **15 类任务**（路由码详见 [_index/_task-routing.md](_index/_task-routing.md)）：
+Agent 的加载顺序、执行纪律、禁止事项写在 [AGENTS.md](AGENTS.md)。环境依赖与首次配置见 [SETUP.md](SETUP.md)。
 
-| 路由 | 任务 | 入口 |
-|------|------|------|
-| [A] | 应用移植到鸿蒙 | **第 0 步 portgraph 评估**（`analyze` + `deps` + `fetch-deps --dry-run`）→ `procedural/qt-app-harmonyos-migration` + `semantic/qt-harmonyos-porting-workflow`（8 步决策树） |
-| [B] | API 替换查询 | `semantic/qt-harmonyos-api-mapping`（13 类映射）+ `qt-harmonyos-code-patterns`（Before/After） |
-| [C] | Qt 模块支持查询 | `semantic/qt-harmonyos-modules`（是否支持 + 5.12/5.15 版本 + 替代方案） |
-| [D] | 平台限制查询 | `semantic/qt-harmonyos-platform-limits`（限制 + QTBUG 编号 + Workaround） |
-| [E] | 构建排障 | `semantic/qt-harmonyos-build-run-workflow` §四步法 + `problems/_lookup` |
-| [F] | 窗口问题 | `semantic/qt-harmonyos-golden-rules` §二 + `qt-harmonyos-window-model` |
-| [G] | 生命周期 | `semantic/qt-harmonyos-lifecycle`（行为 + 代码 + 枚举路径） |
-| [H] | QtOhosExtras API | `semantic/qt-ohos-extras`（145+ API 签名与示例） |
-| [L] | Qt6 状态 | `semantic/qt-harmonyos-qt6-status` |
-| [M] | 三方库 | `semantic/qt-harmonyos-third-party-libs` + `portgraph deps` / `fetch-deps` |
-| [N] | 工具链 | `ohos-common-kb-public/procedural/deveco-cli-usage-rules` + `ohos-common-kb-public/semantic/deveco-mcp-capabilities` |
-| [P] | 自动迁移（执行层） | `skills/qt-app-porting` + `tools/qt-ohos-run.py`（assess 为第 0 步，blocked 即止并出报告） |
-| [Q] | Demo 生成 | `procedural/demo-generation`（六步闭环；Qt+CEF / WebEngine 迁移见 `procedural/qt-cef-ohos-dev-guide`） |
-| [R] | 故障跟踪 | `faults/_registry` §症状索引 → 根因页（定性 / 责任 / 临时方案 / 跟踪单）；`tools/faults-build.py` |
-| [S] | SDK 工程（执行层） | `skills/qt-sdk-forge` + `tools/qt-sdk-run.py`（SV0-SV8 门禁 + 补丁溯源 manifest） |
+### 想自己在本地跑工具
 
-遇到报错：**第一步读 [problems/_lookup.md](problems/_lookup.md)**——按错误码 / 错误信息关键字 / 症状检索，47 个实战踩坑一错一文件。
+驱动一次完整迁移（每一步都会在目标项目 `.qt-ohos/` 下留状态，中断可 `resume`）：
+
+```bash
+python tools/qt-ohos-run.py scan <项目目录>   # 预扫描 + 18 条规则风险报告
+python tools/qt-ohos-run.py plan              # 迁移计划（auto / assisted / manual）
+python tools/qt-ohos-run.py patch             # 白名单自动修复（受追踪）
+python tools/qt-ohos-run.py build             # G3 编译
+python tools/qt-ohos-run.py package           # G5 打 HAP
+python tools/qt-ohos-run.py install           # G6 hdc 装机
+python tools/qt-ohos-run.py launch            # G7 启动
+python tools/qt-ohos-run.py smoke             # G8 崩溃窗口检查
+python tools/qt-ohos-run.py verify            # G0-G12 门禁 —— 唯一的成功判据
+```
+
+想一步到位就用一键模式 `python tools/qt-ohos-run.py migrate <项目>`（自动串联全流程，
+遇到需要人判断的壳工程生成会停下给指引）；跨会话恢复用 `status` / `resume --run`。
+
+快速自检与环境相关工具：
+
+```bash
+python tools/faults-build.py check         # 故障库真源 ↔ 派生物一致性
+python tools/cpp20-gap-scan.py scan <src>  # 大工程编译前先扫 C++20 缺口
+python tools/kb-verify-qt.py               # 知识页事实复核（需 ENV.local.md 指向本地 SDK）
+python -m unittest discover -s tests -v    # 用例全量
+```
+
+单步 `--help` 可查任意子命令：`python tools/qt-ohos-run.py --help`、`python tools/qt-sdk-run.py --help`。
+
+工具层**只用 Python 标准库**（3.10+），Windows / macOS / Linux 均可跑；`portgraph` 的 `serve` 子命令
+额外需要 FastAPI（可选）。
+
+---
+
+## Skills 一览
+
+`skills/` 下每个目录都是一个独立 Agent Skill，边界按"谁能写真源"划分，不是按功能随便切的：
+
+| Skill | 定位 | 写权限 |
+|-------|------|--------|
+| [`kb-init`](skills/kb-init/SKILL.md) | 环境初始化：检测 DevEco / OHOS SDK / Qt 源码，装缺失依赖，生成 `ENV.local.md` | 只写本地 `ENV.local.md` |
+| [`qt-app-porting`](skills/qt-app-porting/SKILL.md) | 应用迁移主流水线（调用 `qt-ohos-run.py`），产出报告与知识草稿 | 只写目标项目 + `.qt-ohos/` + 草稿 |
+| [`qt-sdk-forge`](skills/qt-sdk-forge/SKILL.md) | Qt SDK 编译、补丁应用与溯源、本地多版本发布（SV0–SV8） | 只写本地 SDK 目录 |
+| [`task-dispatcher`](skills/task-dispatcher/SKILL.md) | 多 Agent 协作的任务台账 / 移交信封 / 流转日志 | 只写任务台账 |
+| [`kb-iterator`](skills/kb-iterator/SKILL.md) | **唯一真源写入门**：合草稿、promote、索引再生、事实复核、复盘蒸馏 | 唯一可写知识真源 |
+
+外加一个不在 `skills/` 下的仓库工具 `portgraph`（可行性图谱），作为移植任务的第 0 步。
+
+---
 
 ## CLI 工具
 
-| CLI | 定位 | 最小示例 |
-|-----|------|----------|
-| `tools/qt-ohos-run.py` | 应用迁移执行引擎（24 子命令，G0-G12 门禁，状态平面 `.qt-ohos/`） | `python tools/qt-ohos-run.py migrate <项目>` |
-| `tools/qt-sdk-run.py` | Qt SDK 构建工程（24 子命令，SV0-SV8 门禁，补丁栈溯源） | `python tools/qt-sdk-run.py forge <proposal-dir>` |
-| `portgraph/portgraph.py` | 可移植性图谱与依赖解决（10 子命令 + Web 图谱 + REST API） | `python portgraph/portgraph.py analyze <app> --summary` |
-| `tools/faults-build.py` | 故障库派生物重建与一致性门禁（build / check / review） | `python tools/faults-build.py check` |
-| `tools/kb-verify-qt.py` | 知识事实校验：模块矩阵 vs 本地 SDK 实物、QOH refs 存在性 | `python tools/kb-verify-qt.py` |
-| `tools/cpp20-gap-scan.py` | clang15/libc++15 的 C++20 缺口**编译前**预检与机械修复（8 规则，scan/fix） | `python tools/cpp20-gap-scan.py scan <src>` |
+| 工具 | 子命令 | 干什么 |
+|------|-------|--------|
+| `tools/qt-ohos-run.py` | 24 | `scan` `plan` `patch` `build` `package` `install` `launch` `smoke` `verify` `analyze-log` `assess` `migrate` `finish` `status` `resume` `rollback` `mark-gate` `mark-ui` `mark-risk` `draft` `promote` `recipes` `config` `init` |
+| `tools/qt-sdk-run.py` | 24 | `init` `env` `config` `src-clone` `status` `patch-import` `patch-apply` `patch-list` `patch-revert` `patch-export` `patch-mark` `configure` `build` `install` `verify` `smoke-mark` `release` `release-list` `modules` `use` `diff` `upstream-check` `forge` `resume` |
+| `tools/faults-build.py` | 4 | `build` `check` `review` `all`：真源 → 派生物，闭环缺口检查 |
+| `tools/kb-verify-qt.py` | — | 知识页事实复核（版本、符号、路径） |
+| `tools/cpp20-gap-scan.py` | — | C++20 在鸿蒙工具链上的缺口扫描 |
+| `portgraph/portgraph.py` | 10 | `ingest` `clone` `scan` `analyze` `deps` `stats` `fetch` `fetch-deps` `export` `serve` |
 
-<details>
-<summary><b>三个主 CLI 的完整子命令清单</b></summary>
+`qt-sdk-run.py forge <proposal-dir>` 把一次修改方案打成可追溯的补丁提案（含 manifest），
+再由 `patch-import` / `patch-apply` 落到源码树——这样"谁为什么改了 Qt 哪一行"永远查得到。
 
-**`tools/qt-ohos-run.py`（应用迁移，24 个）**
+---
 
-```text
-init · scan · plan · patch · build · package · install · launch · smoke ·
-verify · analyze-log · status · resume · migrate · finish · assess ·
-rollback · mark-gate · mark-ui · mark-risk · draft · promote · recipes · config
-```
+## 按场景找页面
 
-**`tools/qt-sdk-run.py`（SDK 工程，24 个）**
+| 我要做什么 | 先读这些 |
+|-----------|---------|
+| 移植 Qt 应用到鸿蒙 | 上面「第 0 步」评估 → `procedural/qt-app-harmonyos-migration.md` + `semantic/qt-harmonyos-porting-workflow.md` |
+| 查 API 替换 | `semantic/qt-harmonyos-api-mapping.md` + `semantic/qt-harmonyos-code-patterns.md` |
+| 查某个 Qt 模块是否支持鸿蒙 | `semantic/qt-harmonyos-modules.md` |
+| 查鸿蒙平台限制 | `semantic/qt-harmonyos-platform-limits.md` |
+| 编译失败 / 打包 / 部署不了 | 先 `analyze-log` → `problems/_lookup.md` + `semantic/qt-harmonyos-build-run-workflow.md` |
+| 窗口 / 对话框 / 生命周期异常 | `semantic/qt-harmonyos-window-model.md` + `semantic/qt-harmonyos-lifecycle.md` |
+| QtOhosExtras 怎么用 | `semantic/qt-ohos-extras.md` + `semantic/qt-ohos-extras-examples.md` |
+| 判断问题归谁（Qt 缺陷 / 鸿蒙限制 / 应用问题） | `faults/_registry.md` §症状索引 |
+| 三方库 / 交叉编译 | `semantic/qt-harmonyos-third-party-libs.md` + `portgraph deps` / `fetch-deps` |
+| Qt6 适配现状 | `semantic/qt-harmonyos-qt6-status.md` |
+| 写 demo / 验证工程 | `procedural/demo-generation.md` + `templates/qt-ohos-app/` |
+| Qt + CEF 应用 | `procedural/qt-cef-ohos-dev-guide.md` |
+| 想通读全貌 | `_index/_map.md`（每页一句话摘要） |
+| DevEco 工具链 / MCP 能力边界 | `ohos-common-kb-public/procedural/deveco-cli-usage-rules.md` + `ohos-common-kb-public/semantic/deveco-mcp-capabilities.md` |
 
-```text
-init · env · config · src-clone · status ·
-patch-import · patch-apply · patch-list · patch-revert · patch-export · patch-mark ·
-configure · build · install · verify · smoke-mark ·
-release · release-list · modules · use · diff · upstream-check · forge · resume
-```
+**故障库怎么用**：S 是应用层表现，C 是根因，且 C 一定分了**定性**——`defect`（Qt/鸿蒙确实
+有缺陷，会修，需在跟单与临时方案）或 `limitation`（规格限制，给替代方案而非等待修复），
+W 是临时方案、T 是上游跟踪单。新问题先进 `faults/_drafts/` 走草稿 → 主编门禁 → promote
+转正，避免直接把猜测写进真源。
 
-**`portgraph/portgraph.py`（可移植性图谱，10 个）**
+## 交叉编译与依赖集成要点
 
-```text
-ingest · clone · scan · analyze · deps · fetch · fetch-deps · stats · export · serve
-```
-
-</details>
+- **CMake**：`-DCMAKE_PREFIX_PATH=<bottle路径> -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH`
+- **qmake**：`LIBS += -L<bottle>/lib -lfoo`（`-l` 列表由 `fetch` 输出）
+- `.so` 在 Windows 上**只能链接不能运行**；必须部署到 `entry/libs/arm64-v8a/` 才能上设备
+- 运行时依赖要递归拉全（`fetch-deps` 已处理），漏拉会在设备 `dlopen` 时失败，编译期无感知
 
 ## 目录结构
 
 ```
 ohos_qt-skills/
-├── SKILL.md                # ★ skill 化总入口（AI 工具直接加载整个知识库）
-├── AGENTS.md               # Agent 操作规范（CLAUDE.md 为本地等价文件，不入库）
-├── README.md / CHANGELOG.md / SETUP.md / CONTRIBUTING.md / SECURITY.md / LICENSE / TODO.md
-├── ENV.md                  # 本地路径变量模板（kb-init 生成 ENV.local.md）
-├── RELEASE-MANIFEST.yaml   # 版本可复现清单（源端 SHA + content_tree_sha256）
-├── .gitcode/               # Issue 模板（知识纠错 / 能力请求 / 跨平台差异 / 文档不一致）
-├── _index/                 # 索引层：_map 知识地图 · _tags · _dashboard · _task-routing · _agent-mesh
-├── semantic/               # 语义知识 26 页：API 映射、窗口模型、平台限制、模块状态、35 条铁律
-├── procedural/             # 程序知识 14 页：迁移工作流、Demo 生成、编译配方、Qt+CEF 指南
-├── episodic/               # 情景知识 6 篇：三方库移植与 bug 复盘（SARibbon / Coin3D / 退出死锁…）
-├── problems/               # 错误库 47 页：实战踩坑一错一文件，速查入口 _lookup.md
-├── faults/                 # 故障库：症状 S × 根因 C × 方案 W × 跟踪单 T 图模型（17/18/15/5）
-│                           #   真源 _data/*.yaml + C 页；_graph.yaml/_registry.md 自动重建
-├── ohos-common-kb-public/  # 内嵌 HarmonyOS 平台通用知识 27 页（ArkTS / ArkUI / NAPI / Stage 模型…）
-├── knowledge/              # 机器知识层：rules/ 18 条预扫描规则 · errors/ 42 条 QOH 模式 · adaptation/ 可行性三库
-├── tools/                  # 执行层：qt-ohos-run.py · qt-sdk-run.py · faults-build.py · kb-verify-qt.py
-│                           #   + qt_ohos/ qt_sdk/ 纯标准库引擎包
-├── portgraph/              # 可移植性图谱子项目：CLI + port_graph/ 包 + Web 图谱 + 测试 + 文档
-├── templates/              # qt-ohos-app/ 鸿蒙应用壳模板（CMake 胶水内嵌铁律 B1/B2/B10）
-├── tests/                  # 引擎自测 12 用例（portgraph/ 另有 119 单测 + e2e 对账）
-├── skills/                 # 5 个 Agent skills：kb-init · qt-app-porting · qt-sdk-forge · task-dispatcher · kb-iterator
-└── preference/             # 预留域
+├── SKILL.md                    # Agent Skill 入口（frontmatter + Instructions）
+├── AGENTS.md                   # Agent 行为契约（Claude Code 用本地副本即可）
+├── README.md  SETUP.md  SECURITY.md  CHANGELOG.md  CONTRIBUTING.md
+├── ENV.md                      # 环境变量名清单（真实值写 ENV.local.md，不入库）
+├── _index/                     # 索引：_map 地图 / _tags 标签 / _dashboard 仪表盘 / _task-routing 路由
+├── semantic/                   # 语义知识（26 页）：模块状态、API 映射、平台限制、窗口/生命周期
+├── procedural/                 # 程序知识（14 页）：迁移、排障、构建、发版、Demo 生成
+├── episodic/                   # 情景知识（6 页，postmortems/）：真实项目复盘
+├── problems/                   # 错误知识库（47 页）：编译/部署/运行时实报错与解法
+├── ohos-common-kb-public/      # 内嵌 HarmonyOS 平台通用知识（27 页，ArkTS/ArkUI/NAPI/Stage）
+├── knowledge/                  # 机器层：errors(QOH) / rules(R) / adaptation
+├── faults/                     # 故障图：_data 真源 + C 页 + 派生物 _graph/_registry
+├── tools/                      # 执行层：CLI + qt_ohos / qt_sdk 引擎包
+├── templates/qt-ohos-app/      # 干净鸿蒙壳工程模板（71 文件）
+├── portgraph/                  # 可移植性图谱子项目（CLI + 包 + Web 图谱 + 自测）
+├── tests/                      # 仓库一致性 / 引擎 / 扫描自测
+└── skills/                     # 5 个 Agent Skill
 ```
 
-| 目录 | 回答什么问题 |
-|------|--------------|
-| `semantic/` | 我知道什么？（API 映射 / 窗口模型 / 平台限制 / 铁律） |
-| `procedural/` | 我怎么做？（迁移工作流 / 编译配方 / Demo 生成） |
-| `episodic/` | 发生过什么？（真实迁移复盘、bug 根因记录） |
-| `problems/` | 遇到这个报错怎么办？（速查优先，一错一文件） |
-| `faults/` | 这个问题修了吗？归谁？怎么绕？（症状→根因→方案→跟踪单） |
-| `knowledge/` | 机器读什么？（18 条规则 / 42 条错误模式 / 可行性三库） |
-| `tools/` + `portgraph/` | 谁来执行？（三个 CLI + 引擎包 + 图谱工具） |
-| `skills/` + `SKILL.md` | AI 怎么自动用？（skill 定义与触发词） |
-| `ohos-common-kb-public/` | HarmonyOS 平台通用知识（非 Qt 特定问题优先查这里） |
+---
 
-## 知识库怎么用
+## 质量保障
 
-**AI 的处理顺序是固定的**（你不用记）：
+"文档里写的数字"在本仓是**可测断言**，由 `tests/test_kb_consistency.py` 守住：它把
+README、`SKILL.md`、`AGENTS.md`、索引页里的声称与仓库实际状态绑定：
 
-```
-你的请求
-  → _index/_task-routing.md              匹配任务类型，确定工作流和必读页
-  → semantic/qt-harmonyos-golden-rules   扫 35 条铁律（避免已知陷阱）
-  → _index/_map.md                       按 summary 判断相关性，只读需要的页
-  → 沿 refs 字段追踪交叉引用              获取深度上下文
-```
+| 层次 | 手段 | 拦截什么 |
+|------|------|---------|
+| 数字 | 一致性用例（22 个） | 页数、QOH、规则数、铁律、任务路由、API 映射、故障图规模、用例数与实际不符 |
+| 引用 | 同上（路径与锚点校验） | 文档里指的页面/小节不存在 |
+| 清单 | 同上（Skill 清单规范） | 根级/子级 `SKILL.md` frontmatter 非法、`AGENTS.md` 漏登记 skill |
+| 契约 | 同上（CLI 契约） | 三个 CLI 的子命令集合被悄悄改动 |
+| 闭环 | `tools/faults-build.py check` | 故障库真源与派生物不一致、链路未闭环 |
+| 引擎 | `tests/test_qt_ohos.py` | 状态机、门禁、错误匹配的行为回归 |
+| 图谱 | `portgraph/tests/` | 可移植性判定、依赖分类、bottle 解析 |
 
-- **遇到报错**：先查 [problems/_lookup.md](problems/_lookup.md)，或让 AI 跑 `qt-ohos-run.py analyze-log <日志>` 做机器匹配（42 条 QOH 模式，命中条目带根因与修复指引）。
-- **查某问题修没修 / 归谁 / 怎么绕**：[faults/_registry.md](faults/_registry.md) §症状索引（表现→根因）；根因分 `defect` 会修 / `limitation` 规格限制→替代方案。升级 Qt/OHOS 版本前用"按版本基线"视图做方案退役检查。
-- **知识沉淀**：新问题走草稿通道（`qt-ohos-run.py draft` → `promote`；faults 走 `faults/_drafts/` + 主编六步门禁）——**未复现不合入**。
+当前状态：用例全绿（引擎 12 + 一致性 22 + C++20 扫描 9 + 图谱 119 单测），`faults-build check` 零 ERROR。
+托管 CI 尚未接入，门禁靠本地执行与维护者把关。
+
+---
 
 ## 能力规格
 
-> 本节是外部知识库（开发者版）的正式功能规格：能做什么、输入输出契约、版本与兼容策略。
+按"你要做什么"查，共 15 类任务：
 
-### 输入 / 输出契约
+| 码 | 任务类型 | 起点 |
+|----|---------|------|
+| A | 应用移植（全流程） | `_index/_task-routing.md` → 迁移工作流 |
+| B | API 替换查询 | 13 类 API 映射 + 代码模式 |
+| C | 模块支持查询 | 模块适配状态矩阵 |
+| D | 平台限制查询 | 平台限制页 + 铁律 |
+| E | 构建排障 | 构建/运行工作流 + `problems/_lookup.md` |
+| F | 窗口/对话框行为 | 窗口模型 + 铁律 |
+| G | 生命周期 | 生命周期页（closeEvent/接续/分享） |
+| H | QtOhosExtras API | 145+ QtOhosExtras 扩展接口 |
+| L | Qt6 状态 | Qt6 适配现状与缺口 |
+| M | 三方库/依赖 | 三方库页 + `portgraph deps` |
+| N | 工具链 | devecocli / hvigor / hdc 用法与边界 |
+| P | 自动迁移（执行层） | `qt-ohos-run.py` |
+| Q | Demo 生成 | 示例工程生成流程 |
+| R | 故障跟踪 | 故障图 S→C→W→T |
+| S | SDK 工程 | `qt-sdk-run.py` |
 
-| 输入 | 处理 | 输出 |
-|------|------|------|
-| 自然语言请求（喂 AI 工具） | 任务路由 → 扫铁律 → 按需加载页 → 综合 | 替换方案 + 代码 / 模块状态 / 限制 + QTBUG / 错误解决方案 / 编译配方 |
-| Qt 工程目录 | portgraph 评估（第 0 步）→ qt-ohos-run 流水线 → 门禁 | 可行性判定 / 依赖角色清单与 bottle 直链 / HAP / G0-G12 门禁报告 / 知识草稿 |
-| 直接浏览（人类 / Obsidian） | `_dashboard` 看全貌 → `_map` 看摘要 → 点开自包含页 | 结构化技术参考 |
-
-### 版本与兼容策略
-
-- **版本号**：[SemVer](https://semver.org/lang/zh-CN/) `vMAJOR.MINOR.PATCH`，版本对象 = 外部仓整包。基线 `v2.0.0`（2026-08-19），不回填 v1。
-- **MAJOR**（破坏性）：删/移走用户依赖的页、目录重排致旧链接断、铁律/API 映射被证伪并反转。
-- **MINOR**（内容新增）：新页/新节/新 API 映射条目/新任务类型/内嵌新 KB 或 skill。
-- **PATCH**（内容修正）：typo、错误解决方案更新、Qt 参考版本 bump。
-- **Pin 某版**：`git clone --branch vX.Y.Z <本仓库>`。
-- **可复现性**：每版生成 [RELEASE-MANIFEST.yaml](RELEASE-MANIFEST.yaml)（源端 git SHA + `content_tree_sha256` + 页数计数）。
-- **Qt 框架版本校验基准**：Qt 5.15.16（tqtc/harmonyos-5.15.16, 962aa625）/ Qt 5.12.12（tqtc/harmonyos-5.12.12, 613336de）；Qt 6.12 为官方预构建安装器。
-
-## 本地环境配置
-
-知识页以变量名（如 `QT5_15_OHOS_SDK`、`OHOS_SDK_NATIVE`）引用本地路径，不硬编码。运行 `skills/kb-init/` 初始化 skill 会自动生成 `ENV.local.md`（或手动把 `ENV.md` 的 `<PLACEHOLDER_*>` 替换为本机路径）。需要的东西：
-
-- **DevEco Studio + HarmonyOS SDK**——提供 OHOS clang、sysroot、hvigorw、模拟器
-- 一个已编译的 **Qt OHOS SDK**（作为应用链接的 `CMAKE_PREFIX_PATH`）
-- 只有要自己重编 Qt 库时才需要：Qt 5.12/5.15 鸿蒙源码 + MinGW + Strawberry Perl（Windows）
-
-### Qt 源码获取渠道
-
-| 场景 | 获取方式 | 说明 |
-|------|----------|------|
-| **有 Qt 商业 license** | `git clone https://codereview.qt-project.org/qt/tqtc-qt5` | 最新补丁与完整历史 |
-| **无 license（开源）** | https://gitcode.com/ohos-qt/qt-harmonyos-src | Qt 5.12.12 开源镜像 |
-| **只需预编译 SDK** | https://gitcode.com/ohos-qt/qt-harmonyos-src/releases | Windows / macOS / HarmonyOS 多平台 SDK |
-| **Qt 6.12** | Qt 官方在线安装器（勾选 HarmonyOS target） | 预构建 kit 含 libqohos QPA |
-
-预编译 SDK 发布页包含：Windows（Desktop GL / GLES）、macOS（Desktop GL / GLES）、HarmonyOS（GLES，设备端运行）。
-
-## FAQ
-
-**凭什么说迁移成功了？**
-成功只以 `python tools/qt-ohos-run.py verify` 的门禁结果为准：`PASS`（G0-G8 全过）才可报告成功；`PARTIAL` 只能说编译级可用；TIMEOUT 永远不是 PASS。编译通过 ≠ 迁移成功。
-
-**我的 Qt 应用能不能移植到鸿蒙？**
-先跑 portgraph 三连：`analyze`（portable / blocked / uncertain）+ `deps`（依赖角色与版本校验）+ `fetch-deps --dry-run`（bottle 直下 vs 源码编译缺口清单）。依赖 ≥3 个三方库时**禁止**人工逐个判断，以闭包分析输出为准。
-
-**没有 Qt 商业 license 能用吗？**
-能。Qt 5.12.12 有开源镜像与预编译 SDK；Qt 6.12 有官方预构建安装器（含 HarmonyOS 组件）；仅 Qt 5.15 源码线需要商业 license。
-
-**QtWebEngine 支持吗？**
-不支持。鸿蒙上用 CEF for OpenHarmony 完整平替——WebEngine→CEF API 映射、迁移方案与组件包用法见 `procedural/qt-cef-ohos-dev-guide.md`；轻量展示可先用 Qt WebView 原生桥。
+---
 
 ## 已知限制
 
-- portgraph 平台接口检测为正则匹配，注释中的 API 名（如 `// DestroyWindow(...)`）与同名自定义函数可能误报、虚高风险等级。
-- 42 条 QOH 机器模式是 problems/ 47 页实战错误的常见子集索引；未命中的新错误走 `draft → promote` 沉淀为新模式。
-- 三方库源码交叉编译不在本库内置（可对接外部 `build_in_harmonyos`，设置 `OHC_RUN` 环境变量）；本库负责依赖检测、bottle 直下与集成指引。
-- Windows 上 `.so` 只能链接不能运行，须部署到 `entry/libs/arm64-v8a/` 后上设备。
+- **平台**：端到端实测以 Windows + DevEco Studio 为主；macOS/Linux 的工具链路径已覆盖但真机装机流程验证较少。
+- **CI**：没有托管 CI，门禁靠本地执行与维护者把关。
+- **portgraph**：数据来自外部索引（Harmonybrew / cmd-pkgs），首次 `ingest` 需要联网；离线只能读已入库的 `portgraph/data`。
+- **知识时效**：Qt/鸿蒙都在动，页面里的"已完成/已修复"以 `updated` 与 `last_confirmed` 字段为准，超过复核期的内容由 `faults-build review` 标出。
+- **内嵌平台知识**：`ohos-common-kb-public/` 由上游平台知识库裁剪而来，若与官方文档冲突，以官方文档为准。
+- **可行性判定的边界**：`portgraph` 的平台接口检测是正则匹配——注释里的 API 名（如 `// DestroyWindow(...)`）
+  或同名自定义函数可能误报、虚高风险等级，硬阻塞结论要人工复核守卫证据。
+- **三方库源码交叉编译不在本库内置**：可对接外部 `build_in_harmonyos` 工具链（设置 `OHC_RUN`
+  环境变量），本库负责依赖检测、bottle 直下与集成指引。
+
+---
 
 ## 设计理念
 
-- **编译而非检索**——借鉴 [Karpathy LLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)，把原始经验蒸馏成结构化知识页
-- **分层加载**——索引层常驻，知识页按需；README 做路由，细节下沉知识页
-- **文件即数据**——纯 Markdown + Git，零基础设施依赖
-- **类型化记忆**——semantic / procedural / episodic / problems 四类知识 + faults 故障图
-- **LLM 推理，tool 事实**——所有"成功"结论由机器门禁判定
+1. **真源唯一**：同一件事只写一次，机器层是投影不是副本；`kb-iterator` 是唯一写入口，防止多人各写一份。
+2. **结论可判定**：能写成断言的不写成建议——门禁用文件、符号、日志模式判断，不用模型自述。
+3. **失败要留痕**：每次自动修改进 `.qt-ohos/changes.json` + patch 目录，中断可续跑，事后可复盘。
+4. **知识要能被反驳**：每条故障都带证据类型（demo / 日志+栈 / 静态可判定），纯转述不予受理。
+5. **数字要真**：文档里的数量由用例守着，改文档不改事实会让用例红。
 
-本仓库由更大的内部工作流知识库单向裁剪生成（`audience: public` 子集），能力边界与裁剪规则见 [能力规格](#能力规格)。
+---
 
-## 反馈与贡献
+## 环境变量与多工具兼容
 
-- 发现内容错误或想补充知识：提 Issue（模板见 [`.gitcode/ISSUE_TEMPLATE/`](.gitcode/ISSUE_TEMPLATE/)，指南见 [CONTRIBUTING.md](CONTRIBUTING.md)）
-- 安全问题：见 [SECURITY.md](SECURITY.md)
-- 本仓库是只读派生视图，不接受直接修改内容文件的 PR
+知识页不写死本机路径，统一用变量名引用：`QT5_15_OHOS_SDK`、`QT5_15_SRC`、`OHOS_SDK_NATIVE`、
+`DEVECO_CLI`、`HDC` 等。变量清单见 [ENV.md](ENV.md)，真实值写 `ENV.local.md`（已 gitignore、
+不入库），由 `kb-init` 交互式生成。
 
-## License
+| 工具 | 接入方式 |
+|------|---------|
+| Claude Code | 把 [AGENTS.md](AGENTS.md) 复制为本地 `CLAUDE.md` 后自动加载 |
+| Codex | 直接读 `AGENTS.md` |
+| Cursor / Windsurf | 在 `.cursorrules` / `.windsurfrules` 里引用 `_index/_map.md` |
+| Obsidian | 直接当 Vault 打开，看引用关系图 |
 
-[MIT](LICENSE) ｜ Copyright (c) 2026 OpenHarmony PC Developer
+## 版本与发布
+
+- 版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)：**MAJOR** 破坏性（删页/移页/目录重排致链接断）、**MINOR** 新增（新页/新 CLI 子命令/新 skill）、**PATCH** 修正。
+- 每个版本的 [RELEASE-MANIFEST.yaml](RELEASE-MANIFEST.yaml) 记录源端 SHA、页面计数与
+  `content_tree_sha256`（内容树摘要），可复现、可对账。
+
+**Qt 源码获取渠道**（按许可与网络条件选一条）：
+
+- 商业 license：`git clone https://codereview.qt-project.org/qt/tqtc-qt5`（分支如 `tqtc/harmonyos-5.15.16`）
+- 开源镜像：`ohos-qt/qt-harmonyos-src`（部分快照丢执行位、带 CRLF，`src-clone` 会自动处理）
+- 预编译 SDK：上游 releases 直接取，或用 `qt-sdk-run.py` 本地编译（SV0–SV8 门禁）
+
+---
+
+## 参与
+
+内容勘误、报错补充、迁移复盘、故障情报、工具改进都欢迎，入口见 [贡献指南](CONTRIBUTING.md)；
+Issue 模板在 `.gitcode/ISSUE_TEMPLATE/`。内容只收 `audience: public` 的页面，frontmatter 必填
+`id` / `type` / `summary` / `status`，交叉引用用 `refs` 或 wikilink，不留断链。
+License: MIT（见 [LICENSE](LICENSE)）。
