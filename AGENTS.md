@@ -156,7 +156,7 @@ skills/      → Agent skills（自动化脚本和工具）
 
 | 工具 | 集成方式 |
 |------|---------|
-| Claude Code | 将 `AGENTS.md` 复制为本地 `CLAUDE.md` 后自动加载（本仓不携带 CLAUDE.md） |
+| Claude Code | 本仓同时携带 `CLAUDE.md`（`AGENTS.md` 的逐字副本，`verify` 校验两者一致） |
 | Codex | AGENTS.md 自动加载（与本文件内容相同） |
 | Cursor | 在 `.cursorrules` 中引用 `_index/_map.md` |
 | Windsurf | 在 `.windsurfrules` 中引用 `_index/_map.md` |

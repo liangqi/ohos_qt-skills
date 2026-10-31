@@ -6,6 +6,7 @@ tags: [qt, harmonyos, blocking, root-cause, taxonomy, feasibility, assess]
 created: 2026-09-08
 updated: 2026-09-08
 status: active
+audience: public
 refs: [semantic-qt-harmonyos-modules, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-third-party-libs, semantic-qt-ohos-extras, procedural-qt-app-harmonyos-migration]
 summary: >
   Qt 应用鸿蒙化「阻断根因」分类法与判定边界：先区分适配可解（QtOhosExtras 封装 /

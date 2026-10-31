@@ -1,10 +1,17 @@
 ---
+id: problem-runtime-harmonydeployqt-deploy-gaps
+type: problem
+domain: runtime
 title: harmonydeployqt 设备侧部署缺口（5 类系统性问题）
 tags: [runtime, harmonydeployqt, deployment, soname, fontconfig, libz, hap, bottle]
 summary: "harmonydeployqt 打出的签名 HAP 设备侧 dlopen 连环失败：QPA 插件非 Qt 依赖（fontconfig 链）不部署、无 SONAME bottle 截断依赖解析、libz.so.1 在应用 namespace 外、设备系统库在非标准路径、bottle 缺无版本化文件名。附 readelf 闭包检查方法与 5 条检查清单。"
 refs: [semantic-qt-harmonyos-third-party-libs, problem-runtime-hap-missing-so-closure]
 keywords: [harmonydeployqt, deploy, dlopen, MUSL-LDSO, handleAbilityStageOnCreate, fontconfig, SONAME, DT_NEEDED, libz.so.1, chipset-sdk-sp, bottle, unversioned]
 created: 2026-10-08
+status: solved
+severity: high
+audience: public
+updated: 2026-10-08
 ---
 
 # harmonydeployqt 设备侧部署缺口（5 类系统性问题）

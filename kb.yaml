@@ -1,0 +1,46 @@
+# kb.yaml — 仓库契约（_scripts/verify.sh 读取并校验）
+#
+# 这个文件定义仓库的"身份与工具契约"：入口在哪、地图在哪、怎么自检、
+# 哪些顶层路径必须存在。改造或重排目录时先改这里，再改 verify。
+#
+# 维护约定：
+#   - 键值均为标量（便于无依赖解析）；列表用 `  - item` 缩进形式。
+#   - 契约变更 = MINOR 以上版本变更，须同步 CHANGELOG。
+schema_version: 1
+id: ohos-qt-kb
+kind: framework
+entrypoint: AGENTS.md
+map: _index/_map.md
+verify: bash _scripts/verify.sh
+tooling_contract_version: 3
+default_audience: public
+canonical_repo: https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills
+
+# 顶层结构契约：这些路径必须存在（缺一即 FAIL）。
+# 分层含义：
+#   entry      入口层（Agent 与人类的第一跳）
+#   knowledge  知识层（人读：语义/程序/情景/错误库/内嵌平台知识）
+#   machine    机器层（工具读：规则、错误模式、可行性矩阵）
+#   tracking   跟踪层（症状×根因×方案×跟踪单）
+#   execution  执行层（可运行的 CLI 与引擎包）
+#   templates  模板层（鸿蒙工程骨架）
+required_paths:
+  - SKILL.md
+  - AGENTS.md
+  - CLAUDE.md
+  - README.md
+  - _index/_map.md
+  - semantic
+  - procedural
+  - episodic
+  - problems
+  - ohos-common-kb-public
+  - knowledge
+  - faults
+  - tools
+  - templates
+
+# 可选层：存在则参与校验，缺失不失败（独立子项目 / 后续拆分候选）
+optional_paths:
+  - portgraph
+  - tests

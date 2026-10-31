@@ -78,7 +78,7 @@ ps aux | grep devecostudio | grep -v grep || echo "DevEco Studio 已退出"
 #    此时无 IDE 文件监视器，磁盘修改不会被回退
 
 # 3. 重新打开 DevEco Studio
-open -a "DevEco-Studio" /Users/xiaoliyu/code/.opencode/skills/qt-community-to-official/QtBugDemo-official
+open -a "DevEco-Studio" <YOUR_HOME>/code/.opencode/skills/qt-community-to-official/QtBugDemo-official
 ```
 
 ### 方案 B：在 DevEco Studio 内部编辑（不使用外部工具）

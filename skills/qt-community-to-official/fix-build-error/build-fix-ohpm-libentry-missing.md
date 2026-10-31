@@ -14,7 +14,7 @@
 ohpm ERROR: Run install command failed
 Error: 00617301 Fetch Source Code Failed
 Error Message: Fetch local folder package error,
-  /Users/xiaoliyu/code/.opencode/skills/qt-community-to-official/QtBugDemo-official/entry/src/main/cpp/types/libentry does not exist.
+  <YOUR_HOME>/code/.opencode/skills/qt-community-to-official/QtBugDemo-official/entry/src/main/cpp/types/libentry does not exist.
 ```
 
 ## 2. 根因

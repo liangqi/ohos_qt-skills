@@ -1,9 +1,8 @@
 # 个人本地配置（不入库）
 ENV.local.md
 TODO.local.md
-# 交接/本地文档与本地工具配置（发布树不带；AGENTS.md 为入库真源）
+# 交接/本地文档（不入库）；CLAUDE.md 由 AGENTS.md 复制生成，两者均入库（verify 校验一致）
 HANDOVER.md
-CLAUDE.md
 
 # 构建产物
 dist/
@@ -28,8 +27,8 @@ _tmp_setup.cmake
 # Agent 规划文档（本地）
 .trae/
 
-# 本地门禁脚本（发布树过滤 _scripts/，公开仓不带）
-_scripts/
+# 本地门禁脚本运行产物（脚本本体入库，见 _scripts/）
+_scripts/*.log
 
 # Python 运行产物
 __pycache__/

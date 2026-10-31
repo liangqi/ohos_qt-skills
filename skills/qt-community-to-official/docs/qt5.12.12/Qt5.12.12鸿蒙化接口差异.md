@@ -1,7 +1,7 @@
 # Qt 鸿蒙化接口差异对比文档
 
-> **社区版**：`/Users/xiaoliyu/code/gitcode/qt-sig`（模块名 `QtOhExtras`，命名前缀 `QOh`/`QOpenHarmony`，平台插件 key `openharmony`）
-> **官方版**：`/Users/xiaoliyu/code/AiProject/qt-5.12.12/qt-harmonyos-src`（模块名 `QtOhosExtras`，命名前缀 `QOhos`，平台插件 key `ohos`）
+> **社区版**：`<YOUR_HOME>/code/gitcode/qt-sig`（模块名 `QtOhExtras`，命名前缀 `QOh`/`QOpenHarmony`，平台插件 key `openharmony`）
+> **官方版**：`<YOUR_HOME>/code/AiProject/qt-5.12.12/qt-harmonyos-src`（模块名 `QtOhosExtras`，命名前缀 `QOhos`，平台插件 key `ohos`）
 >
 > 本文档对比两个版本在鸿蒙（OpenHarmony/HarmonyOS）化适配中的接口实现差异，涵盖接口实现的能力范围、API 设计范式、架构层级。
 
