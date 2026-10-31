@@ -50,21 +50,38 @@ git submodule update --init --recursive
 
 ### 获取步骤
 
+**macOS / Linux（POSIX 构建）必须用构建分支**——`main`/`5.12.12` 快照带
+Windows CRLF 行尾且丢失可执行位，`sh configure` 会直接失败（QOH037）：
+
 ```bash
-git clone https://gitcode.com/ohos-qt/qt-harmonyos-src <目标路径>
+# POSIX 构建分支（推荐，LF + 构建使能补丁，即官方预构建所用分支）
+git clone --branch build/macos-arm64-qt5.12.12 --single-branch \
+  https://gitcode.com/ohos-qt/qt-harmonyos-src <目标路径>
 cd <目标路径>
+
+# 克隆后恢复执行位并固化为提交（约 620 个 shebang 脚本在初始导入中丢了 +x）
+grep -rIl "^#!" --exclude-dir=.git . > /tmp/exec-files.txt
+xargs -a /tmp/exec-files.txt chmod +x
+xargs -a /tmp/exec-files.txt git update-index --chmod=+x
+git commit -m "fix: restore executable bits lost in initial import"
 ```
 
-### 可用版本
+> 用 qt-sdk-forge 的 `src-clone --method opensource` 时以上修复全部自动完成。
 
-| 版本 | 说明 |
-|------|------|
-| qt-harmonyos-src-5.12.12-20260625 | 当前唯一的开源版本 |
+**Windows** 可直接用 `main` / `5.12.12` 快照分支。
+
+### 可用分支
+
+| 分支 | 行尾 | 适用 |
+|------|------|------|
+| `build/macos-arm64-qt5.12.12` | LF + 构建补丁 | **macOS/Linux 源码编译（推荐）** |
+| `main` / `5.12.12`（快照 20260625） | CRLF + 丢执行位 | Windows |
 
 ### 注意事项
 
 - 开源版本仅有 Qt 5.12.12，没有 5.15
 - 如果需要 Qt 5.15，必须有商业 license（场景 A）
+- 镜像**没有** `tqtc/harmonyos-*` 商业分支名（那是场景 A 的仓库）
 
 ---
 

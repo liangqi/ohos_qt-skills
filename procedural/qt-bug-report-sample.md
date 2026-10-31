@@ -7,7 +7,7 @@ created: 2026-08-01
 updated: 2026-08-01
 status: active
 audience: public
-refs: [procedural-qt-bug-report-generation, procedural-framework-issue-analysis]
+refs: [fault-C-0010, procedural-qt-bug-report-generation, procedural-framework-issue-analysis]
 summary: >
   样例（形态 A）：Qt5.15 鸿蒙应用触发 onAcceptWant 时 @ohos.deviceInfo 裸 eval 被 ArkTS 运行时拒致崩溃；
   triage 结论 Qt 框架（陈旧胶水模板未 eager-import 注册模块），已 Qt 侧修复。
@@ -25,7 +25,7 @@ summary: >
 |------|------|
 | 报告编号 | 待分配 |
 | 报告日期 | 2026-07-23 |
-| 报告人 | lzh |
+| 报告人 | <REPORTER> |
 | 来源 | 内部验证 |
 | 鸿蒙 SDK 版本 | HarmonyOS 6.0.0.29（API Level 见复现环境表） |
 | 设备信息 | HUAWEI MateBook Fold（HPR-W72）/ 系统版本 6.0.0.29 / 真机 |
@@ -218,7 +218,7 @@ QAbilityStage.onAcceptWant(want)                                    # entry/.../
 
 ## workaround (A+B, 可选)
 
-Qt 侧绕行（已实施并真机验证）：用 qView-ohos 钦定完整版替换 4 个文件——`OhosExportModules.ts`（26 个 `@ohos.*` + 13 个 `@kit.*` eager default-import）、`QtUtils.ets`（`getModulesMapForQt()` 调 `getOhosExportModules()` 取直接对象，objects API）、`QAbilityStage.ets` / `QChildProcess.ets`（`getModulesFactoriesMapForQt()` → `getModulesMapForQt()`，2 处调用点改名；保留 QAbilityStage 的 resourceDir）。重建 `build_project(entry@default, debug)` → 装机 → 触发 onAcceptWant → 不崩、QtWatchdog 持续运行 = 修复生效。
+Qt 侧绕行（已实施并真机验证）：用钦定完整版参考模板替换 4 个文件——`OhosExportModules.ts`（26 个 `@ohos.*` + 13 个 `@kit.*` eager default-import）、`QtUtils.ets`（`getModulesMapForQt()` 调 `getOhosExportModules()` 取直接对象，objects API）、`QAbilityStage.ets` / `QChildProcess.ets`（`getModulesFactoriesMapForQt()` → `getModulesMapForQt()`，2 处调用点改名；保留 QAbilityStage 的 resourceDir）。重建 `build_project(entry@default, debug)` → 装机 → 触发 onAcceptWant → 不崩、QtWatchdog 持续运行 = 修复生效。
 
 副作用与风险：`@ohos.*` / `@kit.*` 清单须以 `strings libqohos.so | grep -E "^@ohos\.|^@kit\."` 取本 libqohos 实际 eval 的模块根去重对齐；libqohos 代际变更（重建）后需重新核对清单，否则新增模块 eval 仍会崩。
 

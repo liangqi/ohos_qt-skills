@@ -11,7 +11,7 @@ summary: "Qt6 OHOS target 构建卡在 libc++/musl 不兼容（-isystem sysroot/
 severity: blocker
 domain: build
 error_message: "no member named 'nullptr_t' in the global namespace; use of undeclared identifier '__promote'; call to 'hypot' is ambiguous (libcxx-ohos c++/v1/cstddef, cmath; -isystem sysroot/usr/include 注入致 musl 遮蔽 clang builtin)"
-refs: [semantic-qt-harmonyos-qt6-status]
+refs: [fault-C-0005, fault-C-0006, semantic-qt-harmonyos-qt6-status]
 ---
 
 # Qt6 for OHOS target 构建卡在 libc++/musl 不兼容

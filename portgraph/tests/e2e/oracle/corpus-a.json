@@ -1,0 +1,128 @@
+{
+ "app": "corpus-a",
+ "source": "README.md",
+ "source_note": "README §Third-party 逐条人工复核：剥离许可后缀噪声；GYP/Ninja/CMake 改 build 型；Open Sans/Vazirmatn 字体与 Emoji alpha codes 为数据资产（非链接依赖）已删",
+ "reviewed": true,
+ "deps": [
+  {
+   "name": "qt",
+   "display": "Qt 6 and Qt 5.15",
+   "type": "runtime",
+   "raw": "Qt 6 ([LGPL](http://doc.qt.io/qt-6/lgpl.html)) and Qt 5.15 ([LGPL](http://doc.qt.io/qt-5/lgpl.html)) slightly patched"
+  },
+  {
+   "name": "openssl",
+   "display": "OpenSSL 3.2.1",
+   "type": "runtime",
+   "raw": "OpenSSL 3.2.1 ([Apache License 2.0](https://openssl-library.org/source/license/apache-license-2.0.txt))"
+  },
+  {
+   "name": "webrtc",
+   "display": "WebRTC",
+   "type": "runtime",
+   "raw": "WebRTC ([New BSD License](https://github.com/desktop-app/tg_owt/blob/master/LICENSE))"
+  },
+  {
+   "name": "zlib",
+   "display": "zlib",
+   "type": "runtime",
+   "raw": "zlib ([zlib License](http://www.zlib.net/zlib_license.html))"
+  },
+  {
+   "name": "lzma-sdk",
+   "display": "LZMA SDK 9.20",
+   "type": "runtime",
+   "raw": "LZMA SDK 9.20 ([public domain](http://www.7-zip.org/sdk.html))"
+  },
+  {
+   "name": "liblzma",
+   "display": "liblzma",
+   "type": "runtime",
+   "raw": "liblzma ([public domain](http://tukaani.org/xz/))"
+  },
+  {
+   "name": "breakpad",
+   "display": "Google Breakpad",
+   "type": "runtime",
+   "raw": "Google Breakpad ([License](https://chromium.googlesource.com/breakpad/breakpad/+/master/LICENSE))"
+  },
+  {
+   "name": "crashpad",
+   "display": "Google Crashpad",
+   "type": "runtime",
+   "raw": "Google Crashpad ([Apache License 2.0](https://chromium.googlesource.com/crashpad/crashpad/+/master/LICENSE))"
+  },
+  {
+   "name": "gyp",
+   "display": "GYP",
+   "type": "build",
+   "raw": "GYP ([BSD License](https://github.com/bnoordhuis/gyp/blob/master/LICENSE))"
+  },
+  {
+   "name": "ninja",
+   "display": "Ninja",
+   "type": "build",
+   "raw": "Ninja ([Apache License 2.0](https://github.com/ninja-build/ninja/blob/master/COPYING))"
+  },
+  {
+   "name": "openal",
+   "display": "OpenAL Soft",
+   "type": "runtime",
+   "raw": "OpenAL Soft ([LGPL](https://github.com/kcat/openal-soft/blob/master/COPYING))"
+  },
+  {
+   "name": "opus",
+   "display": "Opus codec",
+   "type": "runtime",
+   "raw": "Opus codec ([BSD License](http://www.opus-codec.org/license/))"
+  },
+  {
+   "name": "ffmpeg",
+   "display": "FFmpeg",
+   "type": "runtime",
+   "raw": "FFmpeg ([LGPL](https://www.ffmpeg.org/legal.html))"
+  },
+  {
+   "name": "gsl",
+   "display": "Guideline Support Library",
+   "type": "runtime",
+   "raw": "Guideline Support Library ([MIT License](https://github.com/Microsoft/GSL/blob/master/LICENSE))"
+  },
+  {
+   "name": "range-v3",
+   "display": "Range-v3",
+   "type": "runtime",
+   "raw": "Range-v3 ([Boost License](https://github.com/ericniebler/range-v3/blob/master/LICENSE.txt))"
+  },
+  {
+   "name": "xxhash",
+   "display": "xxHash",
+   "type": "runtime",
+   "raw": "xxHash ([BSD License](https://github.com/Cyan4973/xxHash/blob/dev/LICENSE))"
+  },
+  {
+   "name": "qr-code-generator",
+   "display": "QR Code generator",
+   "type": "runtime",
+   "raw": "QR Code generator ([MIT License](https://github.com/nayuki/QR-Code-generator#license))"
+  },
+  {
+   "name": "cmake",
+   "display": "CMake",
+   "type": "build",
+   "raw": "CMake ([New BSD License](https://github.com/Kitware/CMake/blob/master/Copyright.txt))"
+  },
+  {
+   "name": "hunspell",
+   "display": "Hunspell",
+   "type": "runtime",
+   "raw": "Hunspell ([LGPL](https://github.com/hunspell/hunspell/blob/master/COPYING.LESSER))"
+  },
+  {
+   "name": "ada",
+   "display": "Ada",
+   "type": "runtime",
+   "raw": "Ada ([Apache License 2.0](https://github.com/ada-url/ada/blob/main/LICENSE-APACHE))"
+  }
+ ]
+}

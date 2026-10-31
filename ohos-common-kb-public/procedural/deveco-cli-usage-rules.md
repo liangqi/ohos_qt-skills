@@ -32,6 +32,23 @@ audience: public
 
 devecocli 把 DevEco 工具链封装为单一入口，可统一签名解析、产物定位和错误归因。直接调用 hdc/hvigor/ohpm 仍是有效的底层能力，但应限于封装未覆盖的动作、维护封装或构造最小诊断复现。本页描述本知识生态的工具选择策略，不把它误写成 HarmonyOS 平台 invariant。
 
+## 工具可用性预检（开工前必做）
+
+在运行任何 devecocli 相关动作（build / run / signature / log / emulator）之前，先按下表定位并验证 devecocli；**找不到就停下来向用户报告缺什么与安装命令，禁止用猜测的路径继续干活**。
+
+| 顺序 | 检查点 | 怎么查 |
+|---|---|---|
+| ① | `ENV.local.md` 的 `DEVECO_CLI` 变量（kb-init 解析并写入的绝对路径） | 读文件取值 |
+| ② | PATH 直接可用 | PowerShell: `Get-Command devecocli`；bash: `command -v devecocli` |
+| ③ | npm 全局安装目录 | `npm prefix -g` 下的 `devecocli{,.cmd,.ps1}`（Windows 默认 `%APPDATA%\npm`） |
+| ④ | DevEco Studio 捆绑（仅部分版本有） | `<DEVECO_PATH>/tools/devecocli{.bat}`（Windows）/ `<DEVECO_PATH>/Contents/tools/devecocli`（macOS） |
+
+**验证可用**：用解析到的路径跑 `--version`，输出版本号才算可用。命中后把绝对路径记入 `ENV.local.md` 的 `DEVECO_CLI`（kb-init Step 5 的 `--deveco-cli` 参数），后续直接引用。
+
+**来源事实**：`devecocli` 由 npm 包 `@deveco/deveco-cli` 提供（源码 openharmony-sig/deveco-cli）；裸包名 `deveco-cli` **不存在**，`@deveco-test/deveco-cli` 是测试通道——安装命令一律 `npm i -g @deveco/deveco-cli`（Node.js ≥ 18）。不要把 `devecostudio`（GUI 启动器）当成它。
+
+**预检失败的处理**：向用户报告"devecocli 不可用"，附安装命令 `npm i -g @deveco/deveco-cli`，等用户处理后再继续；不要用 `devecostudio`、`hvigorw` 等相近命令顶替后静默继续。
+
 ## How to apply:
 
 workspace 有 `build-profile.json5`/`oh-package.json5` 时，优先按「能力→场景映射表」选 devecocli 命令。若封装没有对应能力或正在诊断封装层，可使用最小底层调用，并在操作记录中说明原因和回归到 devecocli 的验证结果。改完 `.ets`/`.ts`/`.cpp` 后，在当前 MCP server 已安装且支持时运行 `deveco-mcp check`；LSP 卡死用 `deveco-mcp restart`。详见 [[deveco-mcp-capabilities]]。
@@ -73,7 +90,7 @@ workspace 有 `build-profile.json5`/`oh-package.json5` 时，优先按「能力�
 
 - **全新 checkout 到模拟器**：`devecocli build` → `devecocli emulator list` → `devecocli emulator start "Name"` → `devecocli run`
 - **诊断崩溃**：`devecocli log --crash --bundle-name <bundle>`
-- **首次签名（全程 CLI，无需 DevEco Studio IDE）**：`devecocli auth login`（用户私有终端）→ `devecocli signature generate --product default`（生成 p12/csr/cer/profile + 写 `signingConfigs` + 关联 `product.signingConfig`，材料存 `~/.ohos/config/`）→ `devecocli build` → `devecocli run`。等价 GUI 的 "Automatically generate signature" 勾选，但可在 agent/脚本中无 GUI 完成。已由 NeoHtop（2026-08-03 首测）+ open-pencil（2026-08-06 复测）两次独立验证；框架特定陷阱（如 Tauri 的 daemon env 缓存 / `TAURI_OHOS_SKIP_DEVECO_SCRIPT`）见各领域 KB 部署流程页。
+- **首次签名（全程 CLI，无需 DevEco Studio IDE）**：`devecocli auth login`（用户私有终端）→ `devecocli signature generate --product default`（生成 p12/csr/cer/profile + 写 `signingConfigs` + 关联 `product.signingConfig`，材料存 `~/.ohos/config/`）→ `devecocli build` → `devecocli run`。等价 GUI 的 "Automatically generate signature" 勾选，但可在 agent/脚本中无 GUI 完成。已由两个独立项目（2026-08-03 首测 / 2026-08-06 复测）验证；框架特定陷阱（如 Tauri 的 daemon env 缓存 / `TAURI_OHOS_SKIP_DEVECO_SCRIPT`）见各领域 KB 部署流程页。
 - **迭代调试 UI 属性**：`devecocli run`（首次）→ 改 `.fontColor` → 写 `.hvigor/changes.txt` → `devecocli run --hotreload-apply changes.txt`（UI 即时更新，不重启）
 
 ## 边界（devecocli 不替代）
@@ -119,7 +136,7 @@ workspace 有 `build-profile.json5`/`oh-package.json5` 时，优先按「能力�
 
 ## 前提
 
-- `devecocli` 在 PATH：`npm i -g @deveco-test/deveco-cli`
+- `devecocli` 可用（定位与验证见上文"工具可用性预检"）：`npm i -g @deveco/deveco-cli`
 - 装 skill 到 AI agent：`devecocli init --skill`（或 `--mcp` 配置 deveco-mcp server）
 - DevEco Studio ≥6.1.0（`--apply` 需 ≥6.1.1 支持 hvigor `assembleDevHqf`）
 - zsh 下 `check compat` 的版本号需引号包裹

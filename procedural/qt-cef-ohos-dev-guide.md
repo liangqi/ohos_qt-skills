@@ -111,7 +111,7 @@ CEF 组件包 = **CEF 内核层**，去版本化、Qt/应用无关、按版本�
 | `cmake/` | `FindCEF.cmake` + `cef_macros` + `cef_variables`（`find_package(CEF)` 模式） |
 | OHOS adapter `.so` | CEF↔OHOS 适配桥（名随 CEF 组件版本，见 §5.2） |
 | `tests/cefsimple`（可选） | 参考样例 |
-| `tools/kb-cef-graft.py` + `tools/kb-cef-graft.config.example.json`（附带） | 嫁接脚本+配置：把 CEF 嫁接到 Qt OHOS 模板工程（§2.3 一键嫁接，`--run` 签名+装机+启动+崩溃检查；外部知识库 `tools/` 下，CEF 组件包剥离时重命名为 `tools/graft_cef.py`） |
+| `kb-cef-graft.py` + `kb-cef-graft.config.example.json` | 嫁接脚本+配置：把 CEF 嫁接到 Qt OHOS 模板工程（§2.3 一键嫁接，`--run` 签名+装机+启动+崩溃检查）——**随 CEF 组件包分发，不在本知识库**（维护者从内部维护仓取，剥离进组件包时重命名为 `tools/graft_cef.py`） |
 
 > **去版本化**的含义：版本标注在**包名/目录**（如 `cef-component-ohos-cef114/`），包内**内容是版本中性的内核层**——不混入任何 Qt/应用/胶水代码。集成方式（`find_package(CEF)`+`CEF_ROOT`）跨版本一致。开发者下载哪个版本，就用那个版本的 API（读其 `include/`）。
 

@@ -1,0 +1,19 @@
+title = "ohos-qt-kb gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Documented placeholder values"
+regexTarget = "match"
+regexes = [
+  '''<YOUR_[A-Z0-9_]+>''',
+  '''<YOUR-[A-Z0-9-]+>''',
+]
+
+[[allowlists]]
+description = "Known generic-api-key false positives in redacted Qt runtime problem records"
+targetRules = ["generic-api-key"]
+paths = [
+  '''problems/runtime-fail-libqtdbus-missing\.md''',
+]

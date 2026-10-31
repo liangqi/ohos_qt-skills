@@ -18,7 +18,7 @@ leader_summary: >
   沉淀 FFmpeg 预编译 bottle 在 OHOS 上的完整传递依赖部署方案，避免 dlopen 级联失败。
 impact: [迁移提效, 编译排障, 运行时排障]
 deliverables: [problem记录, HAP]
-evidence: [QCTools 真机运行, devecocli run 日志]
+evidence: [某视频检查工具真机运行, devecocli run 日志]
 
 error_message: >
   dlopen() failed to open library 'libOhosApp.so': Error loading shared library libavcodec.so.63
@@ -113,8 +113,8 @@ $CLANG -shared -o libopus.so.0 opus_stub.c -Wl,-soname,libopus.so.0
 |------|------|
 | 领导摘要 | 沉淀 FFmpeg 预编译 bottle 在 OHOS 上的完整传递依赖部署方案，解决 dlopen 级联失败 |
 | 影响面 | 所有依赖 FFmpeg 的 Qt OHOS 应用迁移 |
-| 交付物 | problem 记录、QCTools HAP 真机运行 |
-| 证据 | QCTools 真机运行 PID 存活、hilog 无 dlopen 错误 |
+| 交付物 | problem 记录、应用 HAP 真机运行 |
+| 证据 | 应用真机运行 PID 存活、hilog 无 dlopen 错误 |
 | 可复用方式 | 遇到 `dlopen failed` + FFmpeg 相关错误时直接匹配本页 |
 
 ## 相关

@@ -5,7 +5,7 @@
 # 鸿蒙平台限制：
 #   - DevEco Studio 无鸿蒙版，未上架应用市场
 #   - Command Line Tools 需在统一工单平台提单申请遥测版本
-#   - deveco-cli 仓库未声明鸿蒙支持，但可尝试 npm 安装
+#   - devecocli（npm 包 @deveco/deveco-cli）可尝试 npm 安装
 #
 # 状态分级：
 #   PASS    — 已就绪
@@ -81,7 +81,7 @@ if command -v node &>/dev/null; then
   ok "Node.js ($(node --version 2>/dev/null))"
 else
   if command -v brew &>/dev/null; then
-    fail "Node.js 未安装" "运行: brew install node（deveco-cli 和 hvigor 依赖 Node.js）"
+    fail "Node.js 未安装" "运行: brew install node（devecocli 和 hvigor 依赖 Node.js）"
   else
     fail "Node.js 未安装" "请先安装 HarmonyBrew，然后运行: brew install node"
   fi
@@ -162,26 +162,26 @@ else
   pending "devecocli 未找到" "随 Command Line Tools 一起获取"
 fi
 
-# 10. deveco-cli (开源工具)
+# 10. devecocli（开源工具 @deveco/deveco-cli）
 DEVECO_CLI_OSS_FOUND="false"
-if command -v deveco-cli &>/dev/null; then
+if command -v devecocli &>/dev/null; then
   DEVECO_CLI_OSS_FOUND="true"
-  ok "deveco-cli ($(deveco-cli --version 2>/dev/null || echo 'installed'))"
+  ok "devecocli ($(devecocli --version 2>/dev/null || echo 'installed'))"
 else
   if command -v npm &>/dev/null; then
-    echo "  INFO: 尝试自动安装 deveco-cli..."
-    if npm install -g deveco-cli &>/dev/null 2>&1; then
-      if command -v deveco-cli &>/dev/null; then
+    echo "  INFO: 尝试自动安装 devecocli..."
+    if npm install -g @deveco/deveco-cli &>/dev/null 2>&1; then
+      if command -v devecocli &>/dev/null; then
         DEVECO_CLI_OSS_FOUND="true"
-        ok "deveco-cli (自动安装成功)"
+        ok "devecocli (自动安装成功)"
       else
-        warn "deveco-cli npm install 完成但未找到命令" "可能需要重新打开终端"
+        warn "devecocli npm install 完成但未找到命令" "可能需要重新打开终端"
       fi
     else
-      warn "deveco-cli 自动安装失败" "仓库未声明鸿蒙支持。手动安装: npm install -g deveco-cli 或 git clone https://gitcode.com/openharmony-sig/deveco-cli.git"
+      warn "devecocli 自动安装失败" "手动安装: npm install -g @deveco/deveco-cli 或 git clone https://gitcode.com/openharmony-sig/deveco-cli.git"
     fi
   else
-    warn "deveco-cli 未安装 (npm 不可用)" "先安装 Node.js，然后运行: npm install -g deveco-cli"
+    warn "devecocli 未安装 (npm 不可用)" "先安装 Node.js，然后运行: npm install -g @deveco/deveco-cli"
   fi
 fi
 

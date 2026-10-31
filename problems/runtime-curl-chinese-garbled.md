@@ -21,7 +21,7 @@ symptoms: "curl POST/PATCH 请求体中的中文字符在 API 端显示为乱码
 
 # ====== 问题详情 ======
 environment: "Windows 10/11 + Git Bash (MSYS2) + curl 7.x/8.x"
-refs: []
+refs: [fault-C-0017]
 related_problems: []
 ---
 

@@ -23,6 +23,9 @@ builder_version: 2
 publication_schema_version: 1
 content_tree_sha256: 0e45255560440fbe77d59d412cebc01099a5e07d6b3d1771dc4449f518999f91
 built_at: "2026-08-29T16:20:03+08:00"
-skills: ["kb-init"]
+# NOTE: content_tree_sha256 below describes the v2.2.1 tree; the execution-plane
+# additions (tools/, knowledge/, templates/, skills/qt-app-porting) land after it
+# and the sha256 + release_version must be regenerated at next publish.
+skills: ["kb-init", "qt-app-porting"]
 common_pages_count: 27
 qt_pages_count: 82

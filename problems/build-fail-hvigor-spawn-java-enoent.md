@@ -113,7 +113,7 @@ node "C:\Program Files\Huawei\DevEco Studio\tools\hvigor\bin\hvigorw.js" assembl
 
 ## 相关
 
-- 见 procedural/qt-ohos-concrete-build-recipe.md（内部页）— 5.12 cmake+hvigor 命令(本 problem 补 Windows PATH 细节)
+- 见 semantic/qt-harmonyos-build-run-workflow.md（devecocli/hvigor 调用）— 5.12 cmake+hvigor 命令(本 problem 补 Windows PATH 细节)
 - [[procedural-qt-ohos-run-test]] — 构建→装机→运行 CLI 流
 - [[build-hvigor-native-skip]] — 区分:DEVECO_SDK_HOME 缺失致 native 构建**跳过**(本问题是 native 全过、仅 PackageHap java 失败)
 - signhap-bundlename-mismatch — unsigned HAP 装机签名需求

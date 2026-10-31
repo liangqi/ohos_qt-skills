@@ -4,7 +4,7 @@ type: procedural
 domain: workflow
 tags: [qt, harmonyos, device, verification, hdc, hvigor, signing, cli, build, deploy, run, troubleshoot, rendering, lifecycle, window, platform-limits, input-event, run-test, cli-build]
 created: 2026-07-08
-updated: 2026-08-14
+updated: 2026-09-29
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-build-run-workflow, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-golden-rules, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-window-model, semantic-qt-harmonyos-lifecycle, problem-render-black-rgba8-zink-mipmap, problem-ohos-mainthread-mismatch, problem-runtime-qpa-plugin-not-found, problem-runtime-fail-libqtdbus-missing, problem-runtime-sqlite-open-database, problem-runtime-dlopen-writable-path, problem-runtime-crash-sandbox-readonly-path, problem-runtime-crash-null-pointer-entry-shim, problem-surfaceholder-nativexcomponent-incompatibility, episodic-quit-deadlock-tsfn, episodic-wa-nativewindow-leave-bug, episodic-toolwindow-crossscreen-flicker, procedural-qt-app-harmonyos-completion, problem-runtime-crash-libqohos-modules-mismatch]
@@ -227,7 +227,7 @@ Copy-Item "$env:QT5_15_OHOS_SDK\qml" -Destination "entry\src\main\resources\resf
 | `${QT5_15_SRC}`(ENV 标 5.15 实为脏 5.12 树) | `modulesFactories` | `${QT5_15_OHOS_SDK}`(旧 SDK,libqohos 读 modulesFactories) |
 | 5.15 模板(源码树未含,需另行获取) | `modules` | `${QT5_15_OHOS_SDK_FULL}`(全量 SDK,libqohos 读 modules) |
 
-**判据**：qView(参考实现)用 `${QT5_15_OHOS_SDK}` + 5.12 模板 → 一致 → 能跑。port agent 若误用 `${QT5_15_OHOS_SDK_FULL}` + 5.12 模板 → 编译成功但运行崩。**编译产出 HAP ≠ 能跑**,须 §4 真机验证。
+**判据**：参考实现用 `${QT5_15_OHOS_SDK}` + 5.12 模板 → 一致 → 能跑。port agent 若误用 `${QT5_15_OHOS_SDK_FULL}` + 5.12 模板 → 编译成功但运行崩。**编译产出 HAP ≠ 能跑**,须 §4 真机验证。
 
 ### 循环退出条件（必须全部满足）
 
@@ -423,6 +423,21 @@ deveco-mcp_perform_ui_action(actionType="screenshot", hvd="<设备名>", localPa
 | Leave 事件 | 鼠标移出窗口 | Leave 事件触发 | Leave 事件不灵敏双重盲区（事件"汇聚点"修复，5 条方法论见 episodic-wa-nativewindow-leave-bug） |
 
 > **验证方法**：操作 + `hilog` 同步观察事件序列，确认事件投递路径完整。
+
+### 4.5.1 UI 注入实操（CLI 自动化验证，2026-09 实战沉淀）
+
+> **⚠️ 元教训（误点遮挡窗口）**：注入点击前必须先 `hidumper -s WindowManagerService -a '-a'` 取目标窗口 rect **并确认其为最高 Z 序应用窗口**。实战中残留测试应用的窗口（更高 ZOrd）恰好覆盖目标点，注入点击落在遮挡窗口上，把被测应用送进了最近任务，需 owner 人工介入。**测试开始前先 force-stop 无关三方测试应用**，注入前核对目标点只落在被测窗口内。
+
+| 注入需求 | 命令 | 要点 |
+|---------|------|------|
+| 按键 | `hdc shell "uitest uiInput keyEvent <keyID>"` | OHOS 键码：数字 0-9=2000-2009，字母 A=2017 起递增（R=2034、E=2021）；注入前先点击目标窗口中心聚焦 |
+| 点击 | `uitest uiInput click <x> <y>` | 绝对坐标；先核对窗口 rect 与 Z 序（见上元教训） |
+| PC 窗口边缘 resize | `uitest uiInput drag <角部x> <角部y> <x2> <y2> 200` | **边中点触摸拖拽不触发 PC resize，角部拖拽才有效**；窗口 resize 后正常几何记忆会变，拖拽前重新取 rect |
+| 鼠标相对移动 | `uinput -M -m <dx> <dy>` | **受加速度影响，无法用于绝对定位**（-q 也不报坐标）；勿用 |
+| 分档/连续 resize 判定 | 拖拽期间循环 `hidumper` 采样 rect | keyframe 策略开启=保持 ~interval 后跳变；关闭=每采样点连续小步；两者时间序列可客观区分，不依赖目测 |
+
+- **hilog 缓冲**：默认环形缓冲在多日志设备上 ~1min 即冲掉验证日志，长会话先 `hdc shell "hilog -G 16M"` 扩容，并按场景独立落盘（`hilog -x > logs/hilog-s<n>.log`）。
+- 后台流式抓取（`hdc shell hilog -x > file &`）会随宿主 shell 退出而中断，勿依赖；用按场景快照替代。
 
 ### 4.6 平台限制回归清单
 

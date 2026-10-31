@@ -7,6 +7,7 @@
 | 变量名 | 含义 | 示例值 |
 |--------|------|--------|
 | `DEVECO_PATH` | DevEco Studio 安装路径 | macOS: `/Applications/DevEco-Studio.app`<br>Windows: `C:\Program Files\Huawei\DevEco Studio` |
+| `DEVECO_CLI` | devecocli 可执行文件绝对路径（kb-init 按 PATH → npm 全局 → DevEco 捆绑解析并写入） | Windows: `C:\Users\<u>\AppData\Roaming\npm\devecocli.ps1` |
 | `OHOS_SDK_NATIVE` | OHOS SDK native 工具链路径（含 clang/sysroot） | macOS: `/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native` |
 
 ## DevEco 自带工具
@@ -18,7 +19,7 @@
 
 | 工具 | Windows/Linux 路径 | macOS 路径 | 用途 | 引用次数 |
 |------|-------------------|------------|------|----------|
-| **devecocli** | `<DEVECO>/tools/devecocli.bat` | `<DEVECO>/Contents/tools/devecocli` | DevEco 命令行工具（构建、安装、日志） | 13 次 |
+| **devecocli** | npm 全局（`npm prefix -g`）`devecocli{,.cmd,.ps1}`；或 `<DEVECO>/tools/devecocli.bat`（部分版本捆绑） | `<DEVECO>/Contents/tools/devecocli`（部分版本捆绑） | DevEco 命令行工具（构建、安装、日志）；安装：`npm i -g @deveco/deveco-cli` | 13 次 |
 | **hvigorw** | `<DEVECO>/tools/hvigor/bin/hvigorw.js` | `<DEVECO>/Contents/tools/hvigor/bin/hvigorw.js` | HarmonyOS 项目构建工具（类似 Gradle） | 41 次 |
 | **ohpm** | `<DEVECO>/sdk/default/openharmony/ohpm/bin/ohpm` | `<DEVECO>/Contents/sdk/default/openharmony/ohpm/bin/ohpm` | HarmonyOS 包管理器（安装依赖） | 3 次 |
 | **hdc** | `<DEVECO>/sdk/default/openharmony/toolchains/hdc.exe` | `<DEVECO>/Contents/sdk/default/openharmony/toolchains/hdc` | 设备连接器（安装应用、日志、调试） | 95 次 |

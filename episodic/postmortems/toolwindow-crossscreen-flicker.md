@@ -7,7 +7,7 @@ created: 2026-06-05
 updated: 2026-06-05
 status: active
 audience: public
-refs: [semantic-qt-harmonyos-window-model]
+refs: [fault-C-0014, semantic-qt-harmonyos-window-model]
 summary: >
   ToolWindow跨屏闪烁系统问题分析：moveWindowToGlobalDisplay与resizeAsync在跨屏拖拽场景冲突，
   screenIdChanged仅拖拽结束时触发，Qt已通过完整调用链追踪定位根因，归属鸿蒙系统接口。

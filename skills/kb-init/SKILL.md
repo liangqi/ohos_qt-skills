@@ -64,15 +64,24 @@ bash skills/kb-init/scripts/clone-kb.sh --dest=<KB_PARENT_DIR>
 ### Q1: 你的应用需要哪个 Qt 版本？
 
 > 你的 Qt 应用需要哪个版本？
-> 1. **Qt 5.15** — 推荐，新项目使用
-> 2. **Qt 5.12** — 旧项目维护
-> 3. **不确定** — 推荐选 Qt 5.15
+> 1. **Qt 6.12** — 官方预构建安装器（新项目推荐；完整 kit 含 libqohos QPA，仅缺 WebEngine/DBus/Pdf/Script）
+> 2. **Qt 5.15** — 商业 license 源码编译
+> 3. **Qt 5.12** — 旧项目维护（有开源版本）
+> 4. **不确定** — 推荐选 Qt 6.12（预构建最快上手）
 
-记录为 `QT_VERSION`（`5.15` / `5.12`）。
+记录为 `QT_VERSION`（`6.12` / `5.15` / `5.12`）。
 
 ### Q2: Qt 获取方式
 
 根据 Q1 的版本，走不同分支：
+
+**如果 Q1 = 6.12**：
+
+> Qt 6.12 鸿蒙版有官方预构建安装器。你的机器上已经装了 Qt 6.12（含 `harmonyos_arm64_v8a` 组件）吗？
+> 1. **已安装** — 请告诉我 kit 路径（如 `C:\Qt\Qt6.12-beta3\6.12.0\harmonyos_arm64_v8a`）和 host 工具链路径（如 `C:\Qt\Qt6.12-beta3\6.12.0\mingw_64`）
+> 2. **未安装** — 从 Qt 官方在线安装器安装（自定义安装勾选 **HarmonyOS** target），装好后回来告诉我路径
+
+记录为 `QT6_OHOS_SDK` / `QT6_HOST_SDK`（跳过 Q3 编译参数，直接到 Q4）。
 
 **如果 Q1 = 5.15**：
 
@@ -176,16 +185,25 @@ bash skills/kb-init/scripts/detect-env.sh
 
 安装完成后，重新运行 `detect-env.sh` 确认 `DEVECO_FOUND=true`。
 
-**DevEco CLI（devecocli）**：
-- macOS/Windows：DevEco Studio 安装后自带 `devecocli`，位于 `<DEVECO_PATH>/tools/devecocli`
-- Linux：需要单独下载 Command Line Tools，见 `references/deveco-install.md` Linux 章节
+**DevEco CLI（devecocli）**——先定位验证，再开工：
 
-Agent 检查 `devecocli` 是否可用：
+`devecocli` 由 npm 包 `@deveco/deveco-cli` 提供（源码 openharmony-sig/deveco-cli；封装 build/run/signature/log/emulator 等）。**不要假设它随 DevEco Studio 安装而存在**——部分版本在 `<DEVECO_PATH>/tools/devecocli{.bat}` 有捆绑副本，但多数环境走 npm 安装。定位顺序：**PATH → npm 全局目录 → DevEco 捆绑**。
+
 ```bash
-command -v devecocli || ls <DEVECO_PATH>/tools/devecocli 2>/dev/null
+# bash
+command -v devecocli && devecocli --version
+ls "$(npm prefix -g)"/devecocli* 2>/dev/null          # npm 全局
+ls <DEVECO_PATH>/tools/devecocli* 2>/dev/null         # DevEco 捆绑（部分版本）
 ```
 
-如果不可用，引导用户将其加入 PATH 或从 DevEco 下载页获取。
+```powershell
+# PowerShell
+Get-Command devecocli; devecocli --version
+```
+
+`--version` 输出版本号才算可用。不可用时引导用户安装：`npm i -g @deveco/deveco-cli`（需 Node.js ≥ 18）——**注意**：裸包名 `deveco-cli` 不存在，`@deveco-test/deveco-cli` 是测试通道，不要用。
+
+解析到的绝对路径在 Step 5 用 `--deveco-cli` 写入 `ENV.local.md`（`DEVECO_CLI` 变量），后续所有工作直接引用该变量。
 
 ### Step 3: 平台依赖检查
 
@@ -278,17 +296,34 @@ bash skills/kb-init/scripts/download-qt-sdk.sh \
   --dest=<KB_ROOT>/workspace/qt-sdk
 ```
 
+**场景 C 补充（无 Qt 源码时的壳工程模板）**：sdk-only 用户没有
+`qtbase/src/harmonyos/templates`，需要下载独立模板归档供 `qt-ohos-run.py
+migrate` 的壳工程自动生成使用：
+
+```bash
+bash skills/kb-init/scripts/download-template.sh \
+  --dest=<KB_ROOT>/workspace/templates
+```
+
+> 注：知识库自带 `templates/qt-ohos-app/`（同一模板的入库副本），Qt 6.12
+> 预构建 kit 也内置 `src/harmonyos/templates`——两者任一可用时跳过本步。
+
 ### Step 5: 生成 ENV.local.md
 
 ```bash
 bash skills/kb-init/scripts/generate-env-local.sh \
   --deveco-path="<DEVECO_PATH>" \
+  --deveco-cli="<DEVECO_CLI_PATH>" \
   --qt5-12-src="<KB_ROOT>/workspace/qt-src/qt5.12" \
   --qt5-15-src="<KB_ROOT>/workspace/qt-src/qt5.15" \
   --qt-build-root="<KB_ROOT>/workspace/qt-build" \
   --qt5-12-ohos-sdk="<SDK_PATH>" \
   --qt5-15-ohos-sdk="<SDK_PATH>" \
-  --ohos-sdk-native="<OHOS_SDK_NATIVE_PATH>"
+  --qt6-ohos-sdk="<QT6_OHOS_SDK>" \
+  --qt6-host-sdk="<QT6_HOST_SDK>" \
+  --ohos-sdk-native="<OHOS_SDK_NATIVE_PATH>" \
+  --ohos-template-src="<模板目录，如 Qt6 kit 的 src/harmonyos/templates>" \
+  --my-name="<贡献者名，用于知识沉淀署名>"
 ```
 
 只传用户实际有的路径，缺失的参数不传。
@@ -321,7 +356,7 @@ bash skills/kb-init/scripts/verify-env.sh
 | 知识库 clone 失败 | 检查网络；手动 `git clone https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills.git` |
 | `detect-env.sh` 执行失败 | `chmod +x skills/kb-init/scripts/*.sh` |
 | DevEco 安装后检测不到 | 读取 `references/deveco-install.md` 按平台检查路径 |
-| DevEco CLI 不可用 | 检查 `<DEVECO_PATH>/tools/devecocli` 是否存在；加入 PATH |
+| DevEco CLI 不可用 | 按定位顺序排查：PATH → npm 全局（`npm prefix -g`）→ `<DEVECO_PATH>/tools/devecocli{.bat}`（部分版本）；安装：`npm i -g @deveco/deveco-cli` |
 | git clone 失败 (commercial) | 检查 HTTP 凭据；检查网络 |
 | git clone 失败 (opensource) | 检查网络；尝试 `git config --global http.sslVerify false` |
 | SDK 下载失败 | 手动访问 https://gitcode.com/ohos-qt/qt-harmonyos-src/releases |

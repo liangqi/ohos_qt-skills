@@ -8,7 +8,7 @@ updated: 2026-07-14
 status: solved
 severity: high
 audience: public
-refs: [semantic-qt-harmonyos-platform-limits]
+refs: [fault-C-0018, semantic-qt-harmonyos-platform-limits]
 summary: >
   OHOS ZINK(Qt5 OpenGL-over-Vulkan)下 Qt3D Texture2D 用 RGBA8 alpha-PNG + generateMipMaps:true 时，
   glGenerateMipmap 对 RGBA8 失败/坏 mipchain→纹理 mipmap 不完整→采样器返回黑(0,0,0,1)→实体纯黑；

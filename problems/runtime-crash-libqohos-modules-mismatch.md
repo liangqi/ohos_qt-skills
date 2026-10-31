@@ -62,7 +62,7 @@ libqohos.so 的 NAPI `setupQtApplicationImpl` 在不同源码版本读取的字�
 
 ## 解决方案(首选: 对齐版本)
 
-**首选**: 用与 .ets 模板版本一致的 Qt OHOS SDK 重建。5.12 .ets 模板(传 modulesFactories)→ 用 `${QT5_15_OHOS_SDK}`(旧 libqohos 读 modulesFactories,与模板一致,qView 同款能跑):
+**首选**: 用与 .ets 模板版本一致的 Qt OHOS SDK 重建。5.12 .ets 模板(传 modulesFactories)→ 用 `${QT5_15_OHOS_SDK}`(旧 libqohos 读 modulesFactories,与模板一致,参考实现同款能跑):
 ```json5
 // entry/build-profile.json5 的 externalNativeOptions.arguments
 "-DCMAKE_PREFIX_PATH=${QT5_15_OHOS_SDK}"   // 不是 ${QT5_15_OHOS_SDK_FULL}
@@ -73,7 +73,7 @@ libqohos.so 的 NAPI `setupQtApplicationImpl` 在不同源码版本读取的字�
 
 ## 关键判据
 
-- qView(参考实现)用 ${QT5_15_OHOS_SDK} + 5.12 模板 → 一致 → 能跑。
+- 参考实现用 ${QT5_15_OHOS_SDK} + 5.12 模板 → 一致 → 能跑。
 - 批量移植若 port agent 误用 ${QT5_15_OHOS_SDK_FULL} + 5.12 模板 → **全部 HAP 运行时崩同样错误**(编译成功≠能跑)。
 - 故「编译产出 HAP」后必须真机跑一次(见 [[qt-ohos-run-test]])才能确认非本崩溃。
 

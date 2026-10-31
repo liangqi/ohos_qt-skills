@@ -1,0 +1,19 @@
+id: QOH033
+name: curl_chinese_garbled
+stage: [runtime]
+severity: medium
+patterns:
+  - 'Cyrillic'
+  - 'garbled'
+  - 'curl'
+root_causes:
+  - curl POST/PATCH request body Chinese characters arrive garbled
+  - request body encoding not set to UTF-8 before sending
+diagnosis:
+  - check the charset of the outgoing request body
+solutions:
+  - encode the body as UTF-8 explicitly and set the Content-Type charset
+refs:
+  problems: [problems/runtime-curl-chinese-garbled.md]
+  kb:
+    - semantic/qt-harmonyos-api-mapping.md

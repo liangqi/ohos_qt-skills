@@ -1,6 +1,6 @@
 ---
-updated: 2026-08-29
-total_problems: 36
+updated: 2026-09-19
+total_problems: 46
 description: >
   错误速查索引（从 problem 页 frontmatter 重建）。
 ---
@@ -20,6 +20,17 @@ description: >
 | N/A | [build-fail-qtohosextras-camelcase-headers](build-fail-qtohosextras-camelcase-headers.md) | fatal error: 'QtOhosExtras/QOhosAppContext' file not found |
 | N/A | [runtime-curl-chinese-garbled](runtime-curl-chinese-garbled.md) | curl POST/PATCH 请求体中的中文字符在 API 端显示为乱码（如 Cyrillic 字符 ֪ʶ⽻） |
 | errno=22 (EINVAL) | [runtime-fail-dlopen-writable-path](runtime-fail-dlopen-writable-path.md) | 运行时加载 .so 插件失败，dlopen 返回 EINVAL，路径在 /data/storage/el2/ 下 |
+| N/A | [build-qt612-qos-harmony-macro](build-qt612-qos-harmony-macro.md) | Qt 6.12 kit 平台宏是 Q_OS_HARMONY 非 Q_OS_OHOS；nice_target_sources 标记 not_linux 会静默排除全部 ohos 实现文件，链接集中爆 undefined |
+| N/A | [build-clang15-libcpp15-cpp20-gaps](build-clang15-libcpp15-cpp20-gaps.md) | clang15/libc++15 的 8 类 C++20 缺口：lambda 捕获结构化绑定/P0960 聚合圆括号/P0634 省略 typename/stop_token/atomic_ref/ranges/shared_ptr<=>/variant QString |
+| N/A | [runtime-hap-missing-so-closure](runtime-hap-missing-so-closure.md) | HAP 启动 64ms 即死无 cppcrash、jscrash TypeError handleAbilityStageOnCreate of undefined——libqohos 依赖 .so 闭包缺失（libbz2/libz/libdav1d/libaom）+ aom 源码编译/dav1d 静态转 so |
+| N/A | [build-qt612-ohos-plugin-rebuild](build-qt612-ohos-plugin-rebuild.md) | 重编 Qt 6.12 ohos 平台插件五连坑：qt-cmake 拒绝构建 qtbase 本体→cmake BUILD_SUBMODULES；缺 NODE_ADDON_API_ROOT；FIND_ROOT_PATH_MODE_INCLUDE=ONLY 重根化致 find 失败→预填 cache 变量；缺 OHOS_SDK_ROOT→QtPriHelpers TO_CMAKE_PATH 报错；QT_FEATURE_fontconfig 条件作用域看不到 Fontconfig_FOUND→patch gui CMakeLists；产物须替换 kit（deploy 从 kit 复制） |
+| N/A | [runtime-ohos-ime-reset-detach](runtime-ohos-ime-reset-detach.md) | Qt ohos 插件 QOhosInputContext::reset() 的 Detach/Attach 使拼音组合中键盘收起+拼音字母污染文本；修复=只 finalize preedit；含 IMF 探针排查法（IMEPROBE）与「中文搜索无结果」三角验证定性（服务器不索引中文短词，非移植 bug） |
+| N/A | [build-fail-configure-exec-bit-crlf](build-fail-configure-exec-bit-crlf.md) | Linux/macOS 下 sh configure 报 Permission denied / bad interpreter ^M：开源镜像初始导入丢执行位 + CRLF；src-clone 已默认 POSIX 构建分支并自动恢复执行位（QOH037） |
+| N/A | [build-fail-python-not-found](build-fail-python-not-found.md) | qtdeclarative 报 `sh: 1: python: not found` / Building QtQml requires Python：Linux 无 python 别名；CLI 已内置 .qtsdk/pyshim 自动 shim（QOH038） |
+| N/A | [build-fail-qtdbus-deprecated-copy](build-fail-qtdbus-deprecated-copy.md) | qdbusreply.h -Wdeprecated-copy 类警告被 -Werror 拦下：鸿蒙无 DBus，configure 必须 -no-dbus（CLI 已内置，QOH039） |
+| N/A | [build-fail-stale-build-state](build-fail-stale-build-state.md) | 改 -no-dbus / 换 SDK 后 ibus 插件仍构建报 unknown type name QDBusArgument：旧模块 pri 残留，qtHaveModule 误判；CLI 已加 configure 指纹防护自动清目录（QOH040） |
+| N/A | [build-fail-ohos-sdk-api-too-old](build-fail-ohos-sdk-api-too-old.md) | qarkui/input.cpp 报 no member named OH_ArkUI_PointerEvent_GetGlobalDisplayX 等：SDK API 版本过旧，需 OpenHarmony ≥ 6.1（API 23，QOH041） |
+| N/A | [runtime-harmonydeployqt-deploy-gaps](runtime-harmonydeployqt-deploy-gaps.md) | 签名 HAP 设备侧 dlopen 连环失败：QPA 插件 fontconfig 链不部署、无 SONAME bottle 截断依赖解析、libz namespace 外、设备系统库非标路径、bottle 缺无版本名（QOH042，5 条检查清单） |
 
 ## 按症状速查
 

@@ -2,22 +2,22 @@
 id: problem-runtime-crash-ohos-deviceinfo-global-expression
 type: problem
 domain: runtime
-tags: [runtime, crash, @ohos.deviceInfo, global-expression, ArkTS, bare-eval, known-module-path, OhosExportModules, QtUtils, demo-gen, stale-template, objects-api, qView]
+tags: [runtime, crash, @ohos.deviceInfo, global-expression, ArkTS, bare-eval, known-module-path, OhosExportModules, QtUtils, demo-gen, stale-template, objects-api, reference-template]
 created: 2026-07-23
 updated: 2026-07-23
 status: solved
 severity: critical
 audience: public
-refs: [problem-runtime-crash-libqohos-libqt5core-version-mismatch, procedural-demo-generation, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-build-run-workflow]
+refs: [fault-C-0010, problem-runtime-crash-libqohos-libqt5core-version-mismatch, procedural-demo-generation, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-build-run-workflow]
 summary: >
   Qt5 鸿蒙应用运行崩:Napi::Error "global expression doesn't start with known module path: '@ohos.deviceInfo'"。
   根因:libqohos(515 代际) 启动时 jsState.eval("@ohos.deviceInfo") 做裸全局表达式 eval,ArkTS 运行时拒绝裸 @ohos.* eval
   除非该模块路径已被 eager import 注册为"已知"。从 Qt 源码树模板(qtbase/src/harmonyos/templates)生成的 demo
   带的是陈旧最小版 OhosExportModules.ts(仅 5 个 @kit.* lazy import + factories API),无任何 @ohos.* import
-  → deviceInfo 未注册 → 裸 eval 被拒 → 崩。修复:用 qView-ohos 钦定完整版 OhosExportModules.ts + QtUtils.ets
+  → deviceInfo 未注册 → 裸 eval 被拒 → 崩。修复:用钦定完整版参考模板的 OhosExportModules.ts + QtUtils.ets
   (26 个 @ohos.* + 13 个 @kit.* eager default-import + objects API + getModulesMapForQt)替换。
 leader_summary: >
-  沉淀 Qt 鸿蒙 demo 生成时"陈旧胶水模板导致 @ohos.deviceInfo 裸 eval 崩"的根因与修复(qView-ohos 完整版对齐),
+  沉淀 Qt 鸿蒙 demo 生成时"陈旧胶水模板导致 @ohos.deviceInfo 裸 eval 崩"的根因与修复(完整版参考模板对齐),
   补全 @ohos.deviceInfo 崩溃谱的另一代际错误(515 裸 eval vs 7/14 napi_get_named_property)。
 impact: [迁移提效, 框架支撑, demo 生成]
 deliverables: [problem 记录, qapp-recreate-test 修复(4 文件), 真机运行通过]
@@ -36,7 +36,7 @@ error_message: >
   栈底 .so: libqohos.so (515 代际, 无 qohosplugincore.cpp 回退) + libQt5Core.so + libark_jsruntime.so
   先兆: 进程存活数分钟后(或 recreate/二次构造触发 onAcceptWant 时)才崩,非启动即崩。
 error_code: ""
-keywords: [global expression doesn't start with known module path, @ohos.deviceInfo, Napi::Error, bare eval, known module path, ArkTS runtime, OhosExportModules, getOhosExportModulesFactories, getModulesMapForQt, objects api vs factories api, stale template, demo 生成, qView-ohos, eager default-import, onAcceptWant, initQtAppContextImpl, setupQtApplication]
+keywords: [global expression doesn't start with known module path, @ohos.deviceInfo, Napi::Error, bare eval, known module path, ArkTS runtime, OhosExportModules, getOhosExportModulesFactories, getModulesMapForQt, objects api vs factories api, stale template, demo 生成, reference-template, eager default-import, onAcceptWant, initQtAppContextImpl, setupQtApplication]
 symptoms: >
   签名 HAP 安装成功,aa start 后应用能启动(Qt 窗口出现、QtWatchdog 运行),但触发 onAcceptWant
   (多实例/窗口 recreate/QApplication 二次构造)时进程崩溃;faultlog LAST_FATAL_MESSAGE 即上述 Napi::Error。
@@ -115,17 +115,17 @@ export function getOhosExportModulesFactories(): object {
 
 ## 解决方案
 
-**用 qView-ohos 钦定完整版替换 4 个文件**(KB 钦定参考实现,见 [[problem-runtime-crash-libqohos-libqt5core-version-mismatch]] 也指向同款修复):
+**用钦定完整版参考模板替换 4 个文件**(KB 钦定参考实现,见 [[problem-runtime-crash-libqohos-libqt5core-version-mismatch]] 也指向同款修复):
 
-1. `entry/src/main/ets/qability/OhosExportModules.ts` ← qView-ohos 版:
+1. `entry/src/main/ets/qability/OhosExportModules.ts` ← 完整版参考模板:
    - 26 个 `import __ohos__X from '@ohos.X'`(eager default-import,覆盖 deviceInfo/display/window/font/resourceManager/i18n/intl/settings/abilityAccessCtrl/bundle.bundleManager/... )
    - 13 个 `import { Y as __kit__... } from '@kit.Z'`(eager,覆盖 .so 实际 eval 的 @kit.* 根)
    - `export function getOhosExportModules(): object` 返回**直接对象**(非箭头工厂)
-2. `entry/src/main/ets/qability/QtUtils.ets` ← qView-ohos 版:`getModulesMapForQt()` 调 `getOhosExportModules()` + `getLocalStorageTsInterface()` + `getQEmbeddedComponentCreatorTsInterface()`(**调用取对象**,非存函数)
+2. `entry/src/main/ets/qability/QtUtils.ets` ← 完整版参考模板:`getModulesMapForQt()` 调 `getOhosExportModules()` + `getLocalStorageTsInterface()` + `getQEmbeddedComponentCreatorTsInterface()`(**调用取对象**,非存函数)
 3. `QAbilityStage.ets` / `QChildProcess.ets`:`getModulesFactoriesMapForQt()` → `getModulesMapForQt()`(2 处调用点改名;保留 QAbilityStage 的 resourceDir)
 4. 重建 `build_project(entry@default, debug)` → 装机 → 触发 onAcceptWant → 不崩、QtWatchdog 持续运行 = 修复生效
 
-> **@ohos.* / @kit.* 清单来源**:以 `strings libqohos.so | grep -E "^@ohos\.|^@kit\."` 取本 libqohos 实际 eval 的模块根(去重),确保每个都有 eager import。qView-ohos 的 26+13 是经验证的超集,可直接套用。
+> **@ohos.* / @kit.* 清单来源**:以 `strings libqohos.so | grep -E "^@ohos\.|^@kit\."` 取本 libqohos 实际 eval 的模块根(去重),确保每个都有 eager import。完整版参考模板的 26+13 是经验证的超集,可直接套用。
 
 ## 关键判据
 
@@ -139,4 +139,4 @@ export function getOhosExportModulesFactories(): object {
 - [[problem-runtime-crash-libqohos-libqt5core-version-mismatch]] — @ohos.deviceInfo 崩溃谱的 7/14 新代际分支("object has no property named 'deviceType'");同款 eager import 修复。
 - [[procedural-demo-generation]] 阶段三 3.2 — 源码树模板陷阱检查点(本次新增)。
 - [[semantic-qt-harmonyos-project-structure]] — 鸿蒙工程模板来源。
-- qView-ohos(参考实现,见 ENV.local 路径)— 钦定完整版 OhosExportModules.ts/QtUtils.ets 参考实现。
+- 钦定完整版参考模板（本地路径见 ENV.local）— OhosExportModules.ts/QtUtils.ets 参考实现。

@@ -9,7 +9,7 @@ status: open
 audience: public
 severity: high
 error_message: "Q_ASSERT(receiver->d_func()->threadData.loadAcquire()->thread.loadRelaxed() == mainThread()) in QCoreApplicationPrivate::sendThroughApplicationEventFilters (Debug 构建鼠标点击事件触发)"
-refs: [semantic-qt-harmonyos-overview]
+refs: [fault-C-0011, semantic-qt-harmonyos-overview]
 summary: >
   OHOS 鼠标点击事件崩溃在 QCoreApplication::sendThroughApplicationEventFilters 的 Q_ASSERT，
   根因是 theMainThread 与 QCoreApplication::instance()->thread() 指向不同的 QThread 对象。

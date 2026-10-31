@@ -20,13 +20,13 @@ description: >
 - [qt-harmonyos-code-patterns](../semantic/qt-harmonyos-code-patterns.md) — HarmonyOS 平台能力的 Qt adapter 代码速查：14 组 Before/After，覆盖子进程、Want、 独立对话框→tagged子窗口、关闭事件处理、文件权限守卫、参数解析、 平台构建配置、深色模式、拖放、等宽字体、浮窗、分享数据、Qt6→Qt5 shim移植(不改原src)、 数据库文件路径。
 - [qt-harmonyos-golden-rules](../semantic/qt-harmonyos-golden-rules.md) — Qt 鸿蒙化铁律速查：35 条黄金规则覆盖构建部署、窗口管理、API/枚举路径、 平台限制对 Qt 的影响、生命周期 adapter、跨平台守卫。每条含严重度（🔴🟠🟡🟢）、"为什么"和出处。 Agent 执行任何 Qt for HarmonyOS 任务前应先扫描此页。
 - [qt-harmonyos-lifecycle](../semantic/qt-harmonyos-lifecycle.md) — Stage/UIAbility 生命周期的 Qt adapter：平台回调到 Qt main/event loop 的桥接、启动其他应用 (显式/隐式Want)、被其他应用启动(module.json5 skills)、多实例管理、 3级关闭拦截(WindowStageClose/AbilityClose/InternalClose)、 应用接续(跨设备迁移)、分享(ShareKit)、无UI子进程、argv组装规则、主题管理。
-- [qt-harmonyos-modules](../semantic/qt-harmonyos-modules.md) — Qt 5.12/5.15 鸿蒙模块适配状态速查：核心模块(QtCore/GUI/Widgets/QML/Quick/ Network/SQL)全部完成；**QtMultimedia 未包含在 SDK 中**（需自行编译）； 不支持的模块(QtWebEngine/D-Bus/RemoteObjects/SerialBus)； 部分支持的模块(QtPDF/QtQuickTimeline 仅5.15)。
+- [qt-harmonyos-modules](../semantic/qt-harmonyos-modules.md) — Qt 5.12/5.15 鸿蒙模块适配状态速查（对照 wiki 矩阵 2026-09-18 刷新）：核心模块全部 Completed；QtMultimedia wiki Completed 但官方 Qt5 SDK 未含、Qt-full 全量构建已含；不支持(QtWebEngine/D-Bus/RemoteObjects/SerialBus/VirtualKeyboard 等)；仅 5.15：QtPDF/QuickTimeline/Lottie/Quick3D；仅 5.12：QtXmlPatterns。
 - [qt-harmonyos-overview](../semantic/qt-harmonyos-overview.md) — Qt for HarmonyOS 总览：鸿蒙系统简介、Qt 鸿蒙化架构（QPA 插件机制）、 适配进展（Qt 5.12.12/5.15.16，适配率约90%）、 支持设备（手机/平板/PC/2in1）、源码获取方式（Gerrit tqtc-qt5）。
 - [qt-harmonyos-platform-limits](../semantic/qt-harmonyos-platform-limits.md) — HarmonyOS 平台限制的 Qt/QPA/QML adapter：记录 QFile/QStandardPaths/QPluginLoader/QTimeZone、 字体、XComponent、ZINK 与 Qt.platform 的可观察症状、Qt workaround 和 QTBUG；平台状态与原因由 common 维护。
 - [qt-harmonyos-porting-workflow](../semantic/qt-harmonyos-porting-workflow.md) — 面向 Qt 应用的 HarmonyOS 移植编排：将公共库中的生命周期、窗口模型与平台限制 落到 Qt/QPA、QtOhosExtras、构建系统和模块验收的 8 步适配流程。
 - [qt-harmonyos-project-structure](../semantic/qt-harmonyos-project-structure.md) — Qt 鸿蒙工程结构详解：OHOS 模板（胶水代码）目录布局、CMake 交叉编译配置、 库名规则（QtAppConstants.ets ↔ add_library）、两种场景（从零创建 / 已有工程鸿蒙化）。
 - [qt-harmonyos-pyqt-status](../semantic/qt-harmonyos-pyqt-status.md) — PyQt5 for HarmonyOS 可行性状态：已通过 pyqt5-demo 验证可行（Qt 5.15.16）。 架构与标准 C++ Qt 完全一致（libqohos.so QPA 插件），差异仅在 C++ launcher 层 嵌入 CPython 3.12 运行时解释执行 Python 脚本。依赖 DevPython-OH（CPython 交叉编译） 和 PythonForArkUI（PyQt5 site-packages）。已知坑：openblas 需二进制补丁、 sys.exit() 触发 appspawn 崩溃日志、仅支持 tablet/2in1。
-- [qt-harmonyos-qt6-status](../semantic/qt-harmonyos-qt6-status.md) — Qt 6 鸿蒙化状态：qtbase dev 已合并 HarmonyOS 支持（Gerrit 733351）， 最低 SDK API 20（HarmonyOS 6.0.0），CMake 构建系统。 **Qt 6.12.0 Windows superbuild 已验证（2026-07-13）**：MinGW host + OHOS Clang target， gallery demo 真机运行通过（"Widget Gallery Qt 6.12.0"）。 **⚠️ 2026-07-25 重大修正：Qt 6.12 预构建安装器 SDK 是完整发行版**（libQt6Quick.so/Multimedia/ Charts/3D/OpenGL/DataVisualization/Bluetooth/Location/Sensors/SerialBus/UiTools/Core5Compat 全在, QtQuick qml runtime 全在），仅缺 WebEngine/DBus/Wayland/Pdf/Script。本文旧记"非 qtbase 未开始" "Quick .so absent""Multimedia missing"是**源码 superbuild（策略 B）**时代过时记录，对**预构建（策略 B'）**不成立。 第 2 批 10 应用（MathMod/SolveSpace/CopyQ/SQLiteStudio 等用 opengl/qml/uitools）全编译成功佐证。 **⚠️ 2026-08-25 beta3 复核**：Qt6HarmonyExtras 重新独立成模块（libQt6HarmonyExtras.so + cmake，公开头仅 exports/version 桩，16 个功能头全私有 `_p.h`）——翻 beta2「不作为独立模块存在」结论；文件权限授予=QtCore `QPermissions` 公开 API（无文件类权限类型，仅定位/日历/联系人/蓝牙/相机/麦克风）+ `QtHarmonyExtras::FileShare::persistPermission` 私有 API（对应鸿蒙 `@ohos.fileshare`）。 Qt5→Qt6 关键差异（QStandardPaths、CMake API、QML、QPA API）。
+- [qt-harmonyos-qt6-status](../semantic/qt-harmonyos-qt6-status.md) — Qt 6 鸿蒙化状态：qtbase dev 已合并 HarmonyOS 支持（Gerrit 733351）， 最低 SDK API 20（HarmonyOS 6.0.0），CMake 构建系统。 **Qt 6.12.0 Windows superbuild 已验证（2026-07-13）**：MinGW host + OHOS Clang target， gallery demo 真机运行通过（"Widget Gallery Qt 6.12.0"）。 **⚠️ 2026-07-25 重大修正：Qt 6.12 预构建安装器 SDK 是完整发行版**（libQt6Quick.so/Multimedia/ Charts/3D/OpenGL/DataVisualization/Bluetooth/Location/Sensors/SerialBus/UiTools/Core5Compat 全在, QtQuick qml runtime 全在），仅缺 WebEngine/DBus/Wayland/Pdf/Script。本文旧记"非 qtbase 未开始" "Quick .so absent""Multimedia missing"是**源码 superbuild（策略 B）**时代过时记录，对**预构建（策略 B'）**不成立。 第 2 批 10 应用（扩展 opengl/qml/uitools 等模块）全编译成功佐证。 **⚠️ 2026-08-25 beta3 复核**：Qt6HarmonyExtras 重新独立成模块（libQt6HarmonyExtras.so + cmake，公开头仅 exports/version 桩，16 个功能头全私有 `_p.h`）——翻 beta2「不作为独立模块存在」结论；文件权限授予=QtCore `QPermissions` 公开 API（无文件类权限类型，仅定位/日历/联系人/蓝牙/相机/麦克风）+ `QtHarmonyExtras::FileShare::persistPermission` 私有 API（对应鸿蒙 `@ohos.fileshare`）。 Qt5→Qt6 关键差异（QStandardPaths、CMake API、QML、QPA API）。
 - [qt-harmonyos-system-tray](../semantic/qt-harmonyos-system-tray.md) — Qt 鸿蒙系统托盘(QSystemTrayIcon)实现与行为:底层 QOhosSystemTrayIcon(qohossystemtrayicon.cpp)经 @kit.StatusBarExtensionKit.statusBarManager 把图标放进鸿蒙状态栏(addToStatusBar/updateIcon/updateMenu/ removeFromStatusBar/updateStatusBarHoverTips),菜单走 QOhosStatusBarMenuImpl(rightMenuClick/menuCode), showMessage 走 @ohos.notificationManager.publish。列全 stub/坑(geometry 恒值/messageClicked 永不/ activated 仅 Trigger/菜单仅 text+顶层 separator+一层子菜单/图标强转单色 mask/tooltip 需 API≥22)。
 - [qt-harmonyos-third-party-libs](../semantic/qt-harmonyos-third-party-libs.md) — Qt 应用接入 OHOS 三方库的 adapter：Qt find_package/CMake、Qt 模块与插件部署、 静态/动态链接选择、Qt 项目迁移检查和实测兼容清单；平台 NDK、ABI、sysroot、 HAP native 部署与 loader 契约由 common 维护。
 - [qt-harmonyos-window-model](../semantic/qt-harmonyos-window-model.md) — ArkUI Window/XComponent 的 Qt QPA adapter：MainWindow(有Dock/任务图标/独立生命周期) vs Subwindow(无Dock/属于主窗口/随主窗口关闭最小化恢复)。核心规则： 首个窗口自动绑定、后续窗口默认新主窗口、tagging必须在show/winId之前。 QOhosFunctions API、6种代码模式、浮窗、全屏规则、嵌入式子窗口、跨进程嵌入。 含【QPA层】visible的来源（QWindowPrivate::visible）、OHOS系统回调链 （window.on('windowEvent')→WINDOW_SHOWN/HIDDEN/ACTIVE/INACTIVE）、 所有修改visible的7个位置、QOhosFloatingWindow命名陷阱、浮窗hide销毁链(setOrResetWindowProxy→destroyWindow)。 含【激活语义】activateWindow()→@ohos.window.shiftAppWindowFocus(非 showWindow!)异步~94ms、 D1 no-op 缺口(无focus_window时静默无效)、焦点状态≠激活态(标题灰⇒未获焦⇒Tab不响应)。 详见 episodic/postmortems/ 下复盘(内部文档)。
@@ -57,7 +57,6 @@ description: >
 
 - [coin3d-quarter-ohos](../episodic/postmortems/coin3d-quarter-ohos.md) — Coin3D Quarter 鸿蒙化完整迁移：交叉编译 libQuarter.so (ARM aarch64) + Demo 应用构建 (37MB HAP) + 3D 渲染验证通过。关键发现：OHOS Qt5 不含 UiTools 模块、FindOpenGL 需自定义（OHOS 用 GLES/EGL）、 CMAKE_FIND_ROOT_PATH_MODE ONLY 需绝对路径绕过、hvigor 需 DEVECO_SDK_HOME。 可复用：OHOS 交叉编译 CMake 模板 + FindOpenGL 映射模式 + 预编译库集成模式。
 - [ohostemplate-blockedbymodal-patch](../episodic/postmortems/ohostemplate-blockedbymodal-patch.md) — ohostemplate matplotlib 三级窗口(Configure subplots->Export values)关不掉。根因：无 parent 的 QDialog 经 syntheticParent fallback 分类为 SubWindow，但 OHOS QPA 从不调 setTransientParent() 反写 Qt 层， 导致 blockedByModalWindow=1 拦截 close()。Qt 源码修复：showImmediate() 在 fallback 后反写 transientParent（约8 行 qohosview.cpp），设备日志验证 blockedByModalWindow=0、close()=1。 同时发现并修复 ArkTS 模板版本不匹配崩溃（modules->modulesFactories）。
-- [qt-opensource-apps-harmonyos-survey](../episodic/postmortems/qt-opensource-apps-harmonyos-survey.md) — 2026-06-25 多 agent 工作流扫描 GitHub/KDE Apps/Gitee/SourceForge/Wikipedia，筛选 229 个 Qt 开源桌面应用并逐个评估鸿蒙化难度。难度分布：低 3 / 中 23 / 高 126 / 阻断 77；D-Bus(107)、 QtMultimedia(76)、QtWebEngine(62) 为三大阻断模块。产出清单在 <INTERNAL_OUTPUT>。沉淀"大 schema 输出失败→主循环生成"的工作流教训。
 - [quit-deadlock-tsfn](../episodic/postmortems/quit-deadlock-tsfn.md) — 退出死锁复盘：<STAKEHOLDER>(<PRODUCT>) qApp->quit()后应用卡死~2分钟。 根因：HarmonyOS在Ability销毁阶段不处理N-API ThreadSafeFunction回调， 导致qWindowDestroyPromise的resolve回调永远不被执行，Promise永不resolve。 修复：外部补丁通过原子变量+并行轮询绕过TSFN机制，已验证有效。 关联确认：退出流程中sensor插件触发崩溃，伙伴确认移除即规避（2026-07-13）。
 - [saribbon-ohos](../episodic/postmortems/saribbon-ohos.md) — SARibbon v2.5.5 鸿蒙化完整迁移：独立构建文件 + MainWindowExample 应用编译 (48MB HAP) + 两个编译问题修复（QDesktopWidget::screen 类型不匹配 + lazy import 语法不兼容）。 关键发现：SARibbon 源码内 QDesktopWidget API 在 Qt 5.12 OHOS 下返回 QWidget* 而非 QScreen*、 模板 lazy import 语法需 API 12 beta3、需为项目创建独立 CMakeLists.txt 避免改源码。 可复用：三方 Qt 库鸿蒙化时保持源码完整性的独立构建文件模式。
 - [toolwindow-crossscreen-flicker](../episodic/postmortems/toolwindow-crossscreen-flicker.md) — ToolWindow跨屏闪烁系统问题分析：moveWindowToGlobalDisplay与resizeAsync在跨屏拖拽场景冲突， screenIdChanged仅拖拽结束时触发，Qt已通过完整调用链追踪定位根因，归属鸿蒙系统接口。
@@ -69,7 +68,13 @@ _（本域无活跃页）_
 
 ## problems
 
-- [_lookup](../problems/_lookup.md) — 错误速查表（36 条）
+- [_lookup](../problems/_lookup.md) — 错误速查表（41 条）
+
+## faults
+
+- [_index](../faults/_index.md) — 故障库规范（四实体图模型）：症状 S × 根因 C（defect/limitation）× 临时方案 W × 跟踪单 T；三类状态机、单一真源与派生物、录入复核规则、tools/faults-build.py 用法。
+- [_registry](../faults/_registry.md) — 故障登记总表（派生物，build 自动重建）：症状索引（主入口）、按处置分类（鸿蒙必须适配/Qt 问题/系统问题/应用使用问题）、缺陷/限制/方案/跟踪单清单、关系速览、按版本基线升级检查、复核到期。
+- [_graph.yaml](../faults/_graph.yaml) — 机读全量故障图（派生物：节点+边+聚合+反查索引，单文件一次加载）。真源在 `_data/*.yaml` + C 页。
 
 
 ---
@@ -82,10 +87,12 @@ _（本域无活跃页）_
 | 某件事怎么操作 | procedural |
 | 某个项目经验 | episodic |
 | 遇到某个错误怎么办 | problems → _lookup.md |
+| 某个问题修了没/未解决清单/临时方案 | faults → _registry.md |
 | Qt 鸿蒙化的某个方面 | semantic → qt-harmonyos-* |
 | 某个 Qt 模块是否在鸿蒙支持 | semantic → qt-harmonyos-modules |
 | 鸿蒙平台有什么限制 | semantic → qt-harmonyos-platform-limits |
 | 分析 Qt 应用 bug / 定位问题 | procedural → framework-issue-analysis |
 | 验证修复是否生效 | procedural → framework-fix-verification |
 | 把 Qt 应用迁移到鸿蒙 | procedural → qt-app-harmonyos-migration |
+| 让工具自动执行迁移/验证 | skills → qt-app-porting + tools/qt-ohos-run.py |
 | 创建独立 demo / 测试工程 | procedural → demo-generation |

@@ -1,0 +1,50 @@
+{
+ "app": "corpus-d",
+ "source": "INSTALL",
+ "source_note": "手工编写：依赖清单在仓库根 INSTALL 文件（无扩展名，corpus oracle_files 误配为 INSTALL.md；且为纯文本编号列表非 markdown 标题，自动提取器无法解析）。已逐条对照 INSTALL 原文复核。",
+ "reviewed": true,
+ "deps": [
+  {
+   "name": "boost",
+   "display": "Boost >= 1.76",
+   "type": "runtime",
+   "raw": "Boost >= 1.76"
+  },
+  {
+   "name": "libtorrent-rasterbar",
+   "display": "libtorrent-rasterbar 1.2.19 - 1.2.x || 2.0.10 - 2.0.x",
+   "type": "runtime",
+   "raw": "libtorrent-rasterbar 1.2.19 - 1.2.x || 2.0.10 - 2.0.x"
+  },
+  {
+   "name": "openssl",
+   "display": "OpenSSL >= 3.0.2",
+   "type": "runtime",
+   "raw": "OpenSSL >= 3.0.2"
+  },
+  {
+   "name": "qt",
+   "display": "Qt 6.6.0 - 6.x",
+   "type": "runtime",
+   "raw": "Qt 6.6.0 - 6.x"
+  },
+  {
+   "name": "zlib",
+   "display": "zlib >= 1.2.11",
+   "type": "runtime",
+   "raw": "zlib >= 1.2.11"
+  },
+  {
+   "name": "cmake",
+   "display": "CMake >= 3.16",
+   "type": "build",
+   "raw": "CMake >= 3.16 (Compile-time only)"
+  },
+  {
+   "name": "python",
+   "display": "Python >= 3.13.0",
+   "type": "optional",
+   "raw": "Python >= 3.13.0 (Optional, run-time only; used by the bundled search engine)"
+  }
+ ]
+}

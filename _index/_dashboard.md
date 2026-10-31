@@ -1,20 +1,20 @@
 ---
-updated: 2026-08-29
-total_pages: 45
+updated: 2026-09-29
+total_pages: 46
 description: >
-  知识库健康仪表盘（派生计数，从 frontmatter 自动生成）。审计/评分快照见 _dashboard-audit.md。
+  知识库健康仪表盘（派生计数，从 frontmatter 自动生成）。
 ---
 
 # 知识库健康仪表盘
 
-> **最后更新**：2026-08-29 | **总活跃页面**：45 | **归档**：1
+> **最后更新**：2026-09-29 | **总活跃页面**：46 | **归档**：1
 
 ---
 
 ## 一、文件清单（派生）
 
 
-### semantic（24 活跃）
+### semantic（26 活跃）
 
 | 页面 | 状态 | 最后更新 |
 |------|:----:|:--------:|
@@ -22,9 +22,11 @@ description: >
 | `qt-harmonyos-accessibility.md` | ✅ 活跃 | 2026-07-23 |
 | `qt-harmonyos-api-mapping.md` | ✅ 活跃 | 2026-08-15 |
 | `qt-harmonyos-api.md` | ✅ 活跃 | 2026-08-06 |
+| `qt-harmonyos-blocking-taxonomy.md` | ✅ 活跃 | 2026-09-08 |
 | `qt-harmonyos-build-run-workflow.md` | ✅ 活跃 | 2026-08-15 |
 | `qt-harmonyos-build.md` | ✅ 活跃 | 2026-07-03 |
 | `qt-harmonyos-code-patterns.md` | ✅ 活跃 | 2026-08-14 |
+| `qt-harmonyos-dev-guide.md` | ✅ 活跃 | 2026-06-02 |
 | `qt-harmonyos-golden-rules.md` | ✅ 活跃 | 2026-08-14 |
 | `qt-harmonyos-lifecycle.md` | ✅ 活跃 | 2026-08-14 |
 | `qt-harmonyos-modules.md` | ✅ 活跃 | 2026-06-11 |
@@ -62,13 +64,12 @@ description: >
 | `qt6-ohos-manual-deploy.md` | ✅ 活跃 | 2026-08-06 |
 | `qt6-ohos-windows-cli-deploy.md` | ✅ 活跃 | 2026-08-01 |
 
-### episodic（7 活跃）
+### episodic（6 活跃）
 
 | 页面 | 状态 | 最后更新 |
 |------|:----:|:--------:|
 | `coin3d-quarter-ohos.md` | ✅ 活跃 | 2026-06-08 |
 | `ohostemplate-blockedbymodal-patch.md` | ✅ 活跃 | 2026-08-06 |
-| `qt-opensource-apps-harmonyos-survey.md` | ✅ 活跃 | 2026-06-26 |
 | `quit-deadlock-tsfn.md` | ✅ 活跃 | 2026-07-13 |
 | `saribbon-ohos.md` | ✅ 活跃 | 2026-06-26 |
 | `toolwindow-crossscreen-flicker.md` | ✅ 活跃 | 2026-06-05 |
@@ -79,9 +80,13 @@ description: >
 | 页面 | 状态 | 最后更新 |
 |------|:----:|:--------:|
 
-### problems（36 条目）
+### problems（47 条目）
 
 详见 [_lookup](../problems/_lookup.md)。
+
+### faults（55 记录：17 症状 S + 18 根因 C + 15 方案 W + 5 跟踪单 T）
+
+详见 [_registry](../faults/_registry.md)（症状索引主入口 + 按处置分类）与 [_graph.yaml](../faults/_graph.yaml)（机读全量图）。真源 `_data/*.yaml` + C 页；派生物由 `tools/faults-build.py` 重建。根因：defect 11 / limitation 4 / undetermined 3；处置：Qt 问题 6 · 鸿蒙必须适配 4 · 待定性 3 · 系统问题 2 · 应用使用问题 2 · 三方库 1。
 
 ---
 
@@ -89,10 +94,10 @@ description: >
 
 | 域 | 活跃页 | 备注 |
 |----|:------:|------|
-| semantic | 24 | 见各页 frontmatter refs |
+| semantic | 26 | 见各页 frontmatter refs |
 | procedural | 14 | 见各页 frontmatter refs |
-| episodic | 7 | 项目经验，无外部来源 |
+| episodic | 6 | 项目经验，无外部来源 |
 | preference | 0 | 个人偏好 |
-| **合计活跃** | **45** | |
+| faults | 55 | 问题跟踪图（17 症状 + 18 根因 + 15 方案 + 5 跟踪单，同 problems 不计入活跃页） |
+| **合计活跃** | **46** | |
 
-> 审计状态、质量评分、主题覆盖矩阵、已知空白、变更历史见 [_dashboard-audit.md](_dashboard-audit.md)（人工快照，⚠️ SNAPSHOT）。

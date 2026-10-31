@@ -4,7 +4,7 @@ type: procedural
 domain: workflow
 tags: [workflow, qt, harmonyos, porting, migration, ohos]
 created: 2026-06-02
-updated: 2026-07-21
+updated: 2026-09-12
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-api-mapping,semantic-qt-harmonyos-build-run-workflow,semantic-qt-harmonyos-code-patterns,semantic-qt-harmonyos-lifecycle,semantic-qt-harmonyos-porting-workflow,semantic-qt-harmonyos-project-structure,semantic-qt-harmonyos-window-model]
@@ -30,7 +30,7 @@ summary: >
 ## 阶段零：预检（Pre-flight）
 
 > 进入阶段一前，用 grep/源码扫描做 7 项预检。预检的目的是**在写任何 CMake 之前**就把"必然失败的项目"拦下、把"Qt5/Qt6 路径"选对、把"应用/库 Playbook"定下来。
-> 三批次实战（10apps / rows 300-399 / rows 400-499，共 207 应用）证明：缺预检会让 agent 在 Qt6 代码上浪费 3-4 次编译 attempt（canonic、B23Downloader）。
+> 三批次实战（10apps / rows 300-399 / rows 400-499，共 207 应用）证明：缺预检会让 agent 在 Qt6 代码上浪费 3-4 次编译 attempt（两个真实案例）。
 
 | 预检项 | 方法（grep/扫描） | 判定 |
 |--------|-------------------|------|
@@ -40,17 +40,57 @@ summary: >
 | **项目类型** | grep `int main(` → application/example（Playbook A）；无 → library/plugin/header-only（B）；**source-only 无构建文件**看 `.cpp`/`.h` 存在（QtCustomControls 教训）| 决定 Playbook（见 §1.0a）|
 | **平台绑定** | grep `X11`/`xcb`/`windows.h`/`HWND`/`WM_`/`QDBus`/`Cocoa` 是否为**核心功能**（非可选分支）| 核心绑定→infeasible（如 QHotkey/Qt-Nice-Frameless-Window）|
 | **foreach 用法** | grep `foreach(`/`Q_FOREACH` | 用了→**OMIT** `QT_NO_FOREACH`（定义会编译失败）|
-| **三方依赖** | bundled（仓内）vs system；交叉编译可行性：header-only=ok、纯 C 小库=maybe、FFmpeg/Skia/Boost/OpenCV/PCL=no | 系统重型库→blocked 或单独交叉编译 |
+| **三方依赖** | **首选：portgraph 依赖闭包分析**（`python portgraph/portgraph.py fetch-deps <app> --dry-run`，输出 bottle 直下数 + 源码编译缺口清单，见下方第 0 步门禁）；仓库工具不可用时再人工 grep：bundled（仓内）vs system；header-only=ok、纯 C 小库=maybe、FFmpeg/Skia/Boost/OpenCV/PCL=no | 系统重型库无 bottle → blocked 或单独交叉编译（工作量以闭包缺口清单为准） |
+| **C++20 缺口（clang15/libc++15）** | `python tools/cpp20-gap-scan.py scan <src_dir>`（8 规则：结构化绑定捕获 / make_unique_for_overwrite / stop_token / atomic_ref / ranges / `<=>` / init-capture / setaffinity，详见 [[build-clang15-libcpp15-cpp20-gaps]]） | 命中 → 机械项 `fix --apply` 预修、其余按 problems 页写法预修——**避免编译期逐轮撞错**（大工程一轮编译数十分钟） |
 
 **输出**：预检报告（Qt 版本 + SDK 选型 + Playbook + 模块缺口 + 平台绑定 + foreach + 三方依赖），决定是否进入阶段一。
+
+### 🚧 第 0 步门禁：portgraph 依赖闭包评估（多依赖应用必执行）
+
+> **触发条件**：应用有 ≥3 个三方依赖，或依赖来自外部仓库（非 bundled）。
+> 此时「三方依赖」预检项必须用 portgraph 工具出结论，**禁止人工逐个判断**。
+> 错过代价实证（2026-09，某 68 依赖大型应用）：首轮未跑闭包分析，agent 直接进入逐库
+> 源码交叉编译的错误路径，纠正后 portgraph `fetch-deps` 一次给出
+> **59 bottle 直下 + 9 源码编译**的解——bottle 覆盖 87%，工作量差两个数量级。
+
+```bash
+# ① 可移植性判定（portable / blocked / uncertain + 阻断原因）
+python portgraph/portgraph.py analyze <app>
+
+# ② 综合依赖分析：谁要编译产物（link）/谁是构建工具（build-tool）/
+#    谁只运行时用（runtime）/自带源码（vendored）+ 版本范围与要求校验
+python portgraph/portgraph.py deps <app>
+
+# ③ 依赖闭包预览：哪些有现成 bottle（.so 直下）、哪些要源码交叉编译（不写盘）
+python portgraph/portgraph.py fetch-deps <app> --dry-run
+
+# ④ 确认可行后执行下载（产物落 portgraph/workspace/ohos-libs/，跨应用共享缓存）
+python portgraph/portgraph.py fetch-deps <app> --json   # 集成参数（CMAKE_PREFIX_PATH 等）
+```
+
+**判读与分流**：
+
+| 闭包结果 | 动作 |
+|----------|------|
+| `analyze` = blocked | **不是自动终止**——看 blockers 的 guard 证据：`ohos-active` 且**无条件命中**（如 `#include <X11/Xlib.h>` 无任何守卫）且在核心路径才是硬阻塞；宏守卫排除/文件级排除的大多是可选分支（实证：某大型应用 analyze 判 6 个 blockers 全在可选分支/vendored 代码，研判后放行，移植成功）。确属核心不可替代 → 止于评估出报告 |
+| `deps` 版本 conflict | 鸿蒙产物版本低于项目要求（如要求 >=9.9 只有 1.3.2）：确认能否用现有版本（min_version 常是保守声明）或源码编译新版 |
+| bottle 覆盖大部分依赖 | 优先 bottle 直下（跳过源码交叉编译），缺口走源码路径 |
+| unknowns（pkg-unknown 依赖）清单 | 即「源码编译缺口清单」：逐项查 [[fetch-ohos-third-party-lib]]（单库 bottle）与 [[qt-harmonyos-third-party-libs]]（源码交叉编译）；**解决不了的缺口必须明确报告用户**，不得静默裁剪 |
+| bottle 解压后 NTFS symlink 损坏（0 字节/EACCES） | 删损坏链接，复制真实版本文件（某大型应用实测修复 202 个） |
+
+工具文档：`portgraph/docs/deps-report.md`（依赖角色/版本范围）、`portgraph/docs/fetch-deps.md`（产物获取）。
 
 ### ⚠️ 陷阱：Qt5 声明但实为 Qt6 代码
 
 两批次实战翻车案例：
-- **canonic**（rows 400-499, row 405）：`.pro` 用 Qt5 语法、xlsx 标 Qt5，但 C++ 全用 Qt6-only API（`beginFrame/endFrame`、`QEvent::isInputEvent`、Qt6 `QHoverEvent`/`QQmlListProperty` ctor）→ 3 次编译 attempt 逐层剥开才确认，还缺 Quick3D/QuickControls2/WebSockets 三模块。
-- **B23Downloader**（rows 300-399, row 394）：`.pro` 标 Qt5 但用 `QList::emplace_back`（Qt6 API）→ 4 次重试。
+- **某表格工具**（rows 400-499, row 405）：`.pro` 用 Qt5 语法、xlsx 标 Qt5，但 C++ 全用 Qt6-only API（`beginFrame/endFrame`、`QEvent::isInputEvent`、Qt6 `QHoverEvent`/`QQmlListProperty` ctor）→ 3 次编译 attempt 逐层剥开才确认，还缺 Quick3D/QuickControls2/WebSockets 三模块。
+- **某下载器**（rows 300-399, row 394）：`.pro` 标 Qt5 但用 `QList::emplace_back`（Qt6 API）→ 4 次重试。
 
 **规则**：Qt 版本按**代码实际 API** 判定，不按 `.pro`/`QT +=`/xlsx 声明。grep 清单见上表第 1 行。`.pro` 标 Qt5 只说明作者**打算**用 Qt5，不保证代码没混入 Qt6 API（常见于"从 Qt5 迁到 Qt6 后又回退声明"或"用 Qt6 头文件但 .pro 写 Qt5"）。
+
+### ⚠️ 陷阱：同文件多处修改必须串行
+
+大型工程源码适配时，**同一文件的多个修改点必须串行完成**——并行编辑同一文件会互相覆盖（实战中竞态覆盖反复出现，静默丢改动）。多文件之间可并行，单文件内必须排队；每次修改后确认改动落盘再进行下一处。
 
 ---
 
@@ -71,7 +111,10 @@ summary: >
 
 **输出**：可行性报告（可迁移 / 有风险项 / 不可迁移）
 
-> **💡 三方库预编译捷径**：若依赖的 C/C++ 三方库在 Harmonybrew 已有 arm64_ohos 预编译 bottle，可一键下载 .so 免交叉编译——见 [[fetch-ohos-third-party-lib]]。无 bottle 时再走下方源码交叉编译路径。
+> **💡 三方库预编译捷径**：应用级依赖闭包用 portgraph（阶段零第 0 步门禁，
+> `fetch-deps <app>` 一次解决全部依赖的 bottle 下载与缺口清单）。仅**单个**三方库
+> 且已知在 Harmonybrew 有 `arm64_ohos` bottle 时，可走 [[fetch-ohos-third-party-lib]]
+> 的单库脚本 `fetch-ohos-bottle.sh`。两条路都拿不到 bottle，才走下方源码交叉编译路径。
 
 > **🎮 Playbook 选择**（阶段零已定项目类型，此处落实）
 >
@@ -408,7 +451,7 @@ glm-5.2 安全分类器间歇不可用时，主循环的 Bash/Write/Agent 调用
 ### 5.6 agent prompt 规范
 
 - **禁建共享 TaskList 子任务**：agent 在自己的上下文跟踪进度，不要调用 `TaskCreate` 建 per-app 子任务（会污染主任务表，两批次均被污染过 60+ 条）。
-- **评估读代码非构建文件**：triage 必须按阶段零预检表 grep Qt6-only API，不能只看 `.pro`/`QT +=`（canonic/B23Downloader 翻车案例）。
+- **评估读代码非构建文件**：triage 必须按阶段零预检表 grep Qt6-only API，不能只看 `.pro`/`QT +=`（真实翻车案例）。
 - **每项目最多 3 次编译 attempt**：读 error tail → 修最可能原因 → 重建。3 次未过则标 failed，附错误，不强转 success。
 
 ### 5.7 批量交付件
@@ -423,6 +466,7 @@ glm-5.2 安全分类器间歇不可用时，主循环的 Bash/Write/Agent 调用
 ## 检查清单
 
 - [ ] **阶段零预检完成**（Qt 版本按代码非声明、SDK 选型 Qt5/Qt6、模块可用性、项目类型→Playbook A/B、平台绑定、foreach、三方依赖）
+- [ ] **第 0 步门禁**：依赖 ≥3 个三方库时已跑 `portgraph analyze` + `fetch-deps --dry-run`，bottle/源码编译分流结论已出（缺口已明确报告用户）
 - [ ] 可行性评估完成（模块依赖、平台 API、UI 复杂度）
 - [ ] 项目目录已创建于 `${PROJECTS_ROOT}/<app-name>-ohos/`
 - [ ] 胶水代码模板已从源码内置路径（`<QT_SRC>/qtbase/src/harmonyos/templates`）复制至项目目录

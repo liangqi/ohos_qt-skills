@@ -7,7 +7,7 @@ created: 2026-06-09
 updated: 2026-07-13
 status: active
 audience: public
-refs: [semantic-qt-harmonyos-lifecycle]
+refs: [fault-C-0004, semantic-qt-harmonyos-lifecycle]
 summary: >
   退出死锁复盘：<STAKEHOLDER>(<PRODUCT>) qApp->quit()后应用卡死~2分钟。
   根因：HarmonyOS在Ability销毁阶段不处理N-API ThreadSafeFunction回调，

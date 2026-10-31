@@ -7,7 +7,7 @@ created: 2026-06-02
 updated: 2026-08-14
 status: active
 audience: public
-refs: [semantic-qt-harmonyos-api, semantic-qt-ohos-extras, semantic-qt-harmonyos-code-patterns, episodic-ohostemplate-blockedbymodal-patch, problem-runtime-blocked-by-modal-window-no-parent]
+refs: [fault-C-0009, fault-C-0014, semantic-qt-harmonyos-api, semantic-qt-ohos-extras, semantic-qt-harmonyos-code-patterns, episodic-ohostemplate-blockedbymodal-patch, problem-runtime-blocked-by-modal-window-no-parent]
 summary: >
   ArkUI Window/XComponent 的 Qt QPA adapter：MainWindow(有Dock/任务图标/独立生命周期) vs
   Subwindow(无Dock/属于主窗口/随主窗口关闭最小化恢复)。核心规则：

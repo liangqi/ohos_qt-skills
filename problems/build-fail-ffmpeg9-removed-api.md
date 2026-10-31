@@ -16,7 +16,7 @@ leader_summary: >
   沉淀 FFmpeg 9.x API 兼容性修复方案。
 impact: [迁移提效, 编译排障]
 deliverables: [problem记录]
-evidence: [QCTools 编译通过]
+evidence: [某视频检查工具编译通过]
 error_message: >
   error: use of undeclared identifier 'av_stream_get_codec_timebase'
 error_code: ""
@@ -35,7 +35,7 @@ error: use of undeclared identifier 'av_stream_get_codec_timebase'
 
 ## 场景
 
-QCTools 使用 `av_stream_get_codec_timebase(stream->stream())` 获取编解码器时基，FFmpeg 9.0.1 中该函数已移除。
+某视频检查工具使用 `av_stream_get_codec_timebase(stream->stream())` 获取编解码器时基，FFmpeg 9.0.1 中该函数已移除。
 
 ## 原因
 
@@ -67,7 +67,7 @@ rational_to_string(stream->stream()->time_base, '/')
 | 领导摘要 | FFmpeg 9.x API 兼容性修复 |
 | 影响面 | 使用旧 FFmpeg API 的 Qt OHOS 应用 |
 | 交付物 | problem 记录 |
-| 证据 | QCTools 编译通过 |
+| 证据 | 某视频检查工具编译通过 |
 | 可复用方式 | 遇到 av_stream_get_codec_timebase undeclared 时直接替换 |
 
 ## 相关

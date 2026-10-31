@@ -1,0 +1,33 @@
+{
+  "_comment": "portgraph E2E 依赖对账测试语料。语料代号与克隆来源的对应关系不入库（防回归走捷径）；oracle_files 按优先级依次尝试提取依赖段落。",
+  "projects": [
+    {
+      "name": "corpus-a",
+      "url": "https://github.com/telegramdesktop/tdesktop",
+      "tier": "C",
+      "oracle_files": ["README.md"],
+      "notes": "语料 A，CMake，依赖树庞大；workspace 已有克隆"
+    },
+    {
+      "name": "corpus-b",
+      "url": "https://github.com/musescore/MuseScore",
+      "tier": "C",
+      "oracle_files": ["INSTALL.md", "README.md"],
+      "notes": "语料 B，CMake 大型应用；依赖清单在项目内依赖引擎 submodule（cloner 自动浅层初始化）"
+    },
+    {
+      "name": "corpus-c",
+      "url": "https://github.com/keepassxreboot/keepassxc",
+      "tier": "B",
+      "oracle_files": ["INSTALL.md", "README.md"],
+      "notes": "语料 C，CMake，INSTALL.md 依赖清单规范；需新克隆"
+    },
+    {
+      "name": "corpus-d",
+      "url": "https://github.com/qbittorrent/qBittorrent",
+      "tier": "B",
+      "oracle_files": ["README.md", "INSTALL"],
+      "notes": "语料 D，CMake/qmake，README 有 Dependencies 段；需新克隆"
+    }
+  ]
+}
