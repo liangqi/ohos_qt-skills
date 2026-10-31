@@ -7,11 +7,23 @@
 > - **MINOR** — 内容新增：新页/新节/新 API 映射条目/新 task 类型/内嵌新 KB 或 skill
 > - **PATCH** — 内容修正：typo/措辞修正、错误解决方案更新、Qt 参考版本 bump
 >
-> 发版流程见内部 `procedural/release-external-edition.md`。每版的 `RELEASE-MANIFEST.yaml` 记录源端 KB git SHA + content_tree_sha256，可复现。
+> 发版流程：在 `trunk` 上打 `vX.Y.Z` tag，并从该 tag 拉 `release/vX.Y.Z` 归档（见 CONTRIBUTING.md）。
+> 每版的 `RELEASE-MANIFEST.yaml` 记录页面计数 + `content_tree_sha256`，可复现。
 
 ---
 
-## v2.3.0 — 未发布
+## v3.0.0 — 2026-10-31
+
+首个 `trunk` 主干版本：由 `main`（v2.2.1 内容基线）+ `bitfun-release`（执行层 / 机器层 / 故障图 / 模板）
+合并而成，并补齐仓库契约、门禁与分支模型。**旧分支 `main`、`bitfun-release` 冻结不动。**
+
+- **BREAKING** 仓库定位变更：从"Qt 迁移参考知识库"改为"Qt → HarmonyOS 迁移工程仓"（知识层 + 机器层 + 执行层 + 治理层）。README / SKILL.md / AGENTS.md 全部重写，README 按架构-能力-上手-skills-CLI-目录-分支-质量-规格-限制-理念-发版组织；根 `SKILL.md` 改为标准 Agent Skill 形态（frontmatter `name/description/metadata` + `## Instructions` 12 步）
+- **BREAKING** 分支模型改为三段式：`trunk`（主干/稳定，只收开发分支合并）/ `dev/<主题>`（开发，接受 PR）/ `release/vX.Y.Z`（归档）；`CONTRIBUTING.md` 重写，明确"本仓已从只读派生视图转为主干开发仓，上游重建管道必须停用以避免覆盖合入"
+- **NEW** 仓库契约与自检门禁：`kb.yaml`（schema v1：入口/地图/自检命令/分层必需路径/可选路径）+ `_scripts/verify.sh` + `_scripts/verify.py`（零依赖，9 类检查：契约完整性、必需路径、AGENTS==CLAUDE、内容页 frontmatter 必填字段、id 唯一、audience 仅 public、wikilink 可解析、仪表盘计数、产物目录与本机绝对路径卫生）
+- **FIX** 合并后由门禁检出并修复的 5 类结构缺陷：① 3 页 frontmatter 被格式化器破坏为 `***` 围栏 + 转义方括号（经归一化比对确认 bitfun 对该 3 页实质改动为 0 且引入 `<URL）→>` 断链，回退为 main 版本）；② `semantic/qt-harmonyos-blocking-taxonomy.md` 缺 `audience`；③ `problems/runtime-harmonydeployqt-deploy-gaps.md` 缺 `id/type/domain/status/severity/audience`；④ 3 处真实个人路径 `/Users/<name>/` → `<YOUR_HOME>`（verify 对 `you`/`currentUser` 等占位符豁免）；⑤ `skills/qt-community-to-official/SKILL.md` frontmatter `name` 与目录名不一致（`-cn` 后缀）
+- **FIX** 恢复两处被静默删除的内容：`CLAUDE.md`（改由 verify 强制与 AGENTS.md 逐字一致，避免 Claude Code 用户手工复制）与 `episodic/postmortems/qt-opensource-apps-harmonyos-survey.md`（229 应用调研，唯一生态数据，已由 `<INTERNAL_OUTPUT>` 占位脱敏）
+- **PATCH** 一致性测试修复：`_candidates` 增加仓库根相对候选（`kb.yaml`、`ENV.md` 这类根文件此前无法解析）；`_dashboard` 计数与恢复后的页面集对齐（episodic 6→7、合计 46→47）
+- **MINOR** 以下为 bitfun-release 侧本轮并入的执行层/机器层/跟踪层能力（原 v2.3.0 未发布内容）
 
 - **MINOR** 新增执行层（Execution Plane）：`tools/qt-ohos-run.py` 统一 CLI + `tools/qt_ohos/` 引擎（纯标准库实现），把迁移知识变成可执行、可恢复、可验证、可沉淀的工程闭环
   - `scan`：项目识别 + Qt 能力扫描 + 三方依赖扫描 + `knowledge/rules/` 18 条机器规则风险报告

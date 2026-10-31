@@ -64,12 +64,13 @@ description: >
 | `qt6-ohos-manual-deploy.md` | ✅ 活跃 | 2026-08-06 |
 | `qt6-ohos-windows-cli-deploy.md` | ✅ 活跃 | 2026-08-01 |
 
-### episodic（6 活跃）
+### episodic（7 活跃）
 
 | 页面 | 状态 | 最后更新 |
 |------|:----:|:--------:|
 | `coin3d-quarter-ohos.md` | ✅ 活跃 | 2026-06-08 |
 | `ohostemplate-blockedbymodal-patch.md` | ✅ 活跃 | 2026-08-06 |
+| `qt-opensource-apps-harmonyos-survey.md` | ✅ 活跃 | 2026-06-26 |
 | `quit-deadlock-tsfn.md` | ✅ 活跃 | 2026-07-13 |
 | `saribbon-ohos.md` | ✅ 活跃 | 2026-06-26 |
 | `toolwindow-crossscreen-flicker.md` | ✅ 活跃 | 2026-06-05 |
@@ -96,8 +97,8 @@ description: >
 |----|:------:|------|
 | semantic | 26 | 见各页 frontmatter refs |
 | procedural | 14 | 见各页 frontmatter refs |
-| episodic | 6 | 项目经验，无外部来源 |
+| episodic | 7 | 项目经验，无外部来源 |
 | preference | 0 | 个人偏好 |
 | faults | 55 | 问题跟踪图（17 症状 + 18 根因 + 15 方案 + 5 跟踪单，同 problems 不计入活跃页） |
-| **合计活跃** | **46** | |
+| **合计活跃** | **47** | |
 

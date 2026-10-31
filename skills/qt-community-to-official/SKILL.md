@@ -1,5 +1,5 @@
 ---
-name: qt-community-to-official-cn
+name: qt-community-to-official
 description: 指导用户将 Qt for OpenHarmony 应用从社区版（qtohextras/QtOhExtras）迁移到官方版（qtohosextras/QtOhosExtras）。当用户提到 社区版、官方版、QtOhExtras、QOhAppContext、qtohextras、ohextras、迁移 Qt OHOS 代码、修复 Qt OHOS 编译错误、生成迁移 patch、生成签名 hap 包、测试 Qt 应用启动时触发。涵盖代码迁移、patch 生成、编译修复、签名 hap 构建与测试。
 ---
 

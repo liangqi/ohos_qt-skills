@@ -260,7 +260,7 @@ def _candidates(token: str):
     _task-routing 等文档常用简写（`golden-rules.md` →
     `semantic/qt-harmonyos-golden-rules.md`），两种形态都作为候选。
     """
-    cands = []
+    cands = [token]  # 仓库根相对（如 kb.yaml、ENV.md）
     if "/" in token:
         cands.append(token)
         if not Path(token).suffix:

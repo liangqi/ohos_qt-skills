@@ -1,31 +1,45 @@
-# RELEASE-MANIFEST.yaml - Qt External Edition v2.2.1
-# Generated: 2026-08-29 by gen-release-manifest.sh (builder v2, schema v1)
-# root_commit is left empty; filled by kb-publish.ps1 -Release at push time (the manifest cannot
-# describe its own commit SHA - self-reference paradox; the release commit is identified by the vX.Y.Z tag).
-# content_tree_sha256 excludes this file (avoid loop), and excludes .git/ + _scripts/ gate artifacts.
-# ASCII-only comments so Windows PS 5.1 Get-Content (GBK codepage) does not corrupt line boundaries.
+# RELEASE-MANIFEST.yaml - ohos_qt-skills trunk v3.0.0
+# 用途：记录一次发版的内容快照，可复现、可对账。
+# content_tree_sha256 = sha256 over sorted("<relpath>\0<sha256(file)>\n")，覆盖全部入库文件，
+# 排除本文件自身（避免自引用）。生成命令与实现见 _scripts/（如需脚本化可加 gen-manifest 子命令）。
+# 注意：本文件用 ASCII 注释，避免 Windows PowerShell 5.1（GBK 代码页）读取时破坏行边界。
 
-release_version: v2.2.1
-released_at: "2026-08-29"
+release_version: v3.0.0
+status: trunk-candidate        # 通过 Windows 端到端实测后改为 released 并打 tag
+released_at: "2026-10-31"
 target:
   id: ohos_qt-skills
-  type: kb
+  type: repo                   # v2.x 为 kb（纯知识库）；v3 起为知识+工具工程仓
   kb_id: ohos-qt-kb
-root_commit: "abb12cad8dff027110a23546c368ccc33e558429"
-source_kbs:
+root_commit: ""                # 由发版打 tag 时回填（manifest 无法描述自身提交 SHA）
+
+# 血统（本版由以下分支合并而来）
+lineage:
+  content_base: main@e3f6903            # v2.2.1 内容基线
+  capability_base: bitfun-release@746bf56   # 执行层/机器层/故障图/模板
+  governance_base: trunk-flip-v3        # 契约与门禁设计参考（未直接合入代码）
+
+source_kbs:                    # 历史内嵌来源（v2.x 记录，保留可追溯）
   ohos-qt-kb: 019821769e474a61eac8f57fa4231e08fb431b4b
   ohos-common-kb: e6cfba1041585bfde97db02d06e4a554cae68e70
 embedded_dependencies:
   ohos-common-kb-public:
     source_sha: e6cfba1041585bfde97db02d06e4a554cae68e70
     content_tree_sha256: 5b9a8681c77d6831ac3fc952b0e4c662c9eab9283840f1c0995ab64da939daaf
-builder_version: 2
-publication_schema_version: 1
-content_tree_sha256: 0e45255560440fbe77d59d412cebc01099a5e07d6b3d1771dc4449f518999f91
-built_at: "2026-08-29T16:20:03+08:00"
-# NOTE: content_tree_sha256 below describes the v2.2.1 tree; the execution-plane
-# additions (tools/, knowledge/, templates/, skills/qt-app-porting) land after it
-# and the sha256 + release_version must be regenerated at next publish.
-skills: ["kb-init", "qt-app-porting"]
+
+builder_version: 3
+publication_schema_version: 2
+content_tree_sha256: 4cde95ed8efbf81c210206327ad1b3cfa6c3ac8895e1dc042972cd51eefdf8bb
+built_at: "2026-10-31T14:30:00+08:00"
+
+skills: ["kb-init", "qt-app-porting", "qt-sdk-forge", "qt-community-to-official", "task-dispatcher", "kb-iterator"]
 common_pages_count: 27
-qt_pages_count: 82
+qt_pages_count: 94             # semantic 26 + procedural 14 + episodic 7 + problems 47（不含 _index/_lookup）
+
+# 验证状态（发版前必须全绿；正式发版前补 Windows 端到端实测）
+validation:
+  verify_sh: PASS              # _scripts/verify.sh：0 error / 5 warning（产物目录，P4 清理）
+  unittests: 162               # 引擎 12 + 一致性 22 + cpp20 扫描 9 + portgraph 119
+  faults_build_check: PASS     # 真源 ↔ 派生物一致
+  cli_contract: PASS           # qt-ohos-run 24 / qt-sdk-run 24 / portgraph 10 子命令
+  windows_e2e_porting: PENDING # 待新环境实机验证（见 trunk 交付说明）
