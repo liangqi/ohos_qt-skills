@@ -1011,6 +1011,9 @@ def cmd_review():
 
 def main(argv):
     cmd = argv[0] if argv else "all"
+    if cmd in ("-h", "--help", "help"):
+        print(__doc__)
+        return 0
     if cmd == "build":
         return cmd_build()
     if cmd == "check":

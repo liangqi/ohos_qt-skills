@@ -76,7 +76,7 @@ Qt/C++ 桌面应用要跑在 HarmonyOS 上，难点从来不是"写几行 ArkTS"
 
 | 能力 | 入口 | 现状 |
 |------|------|------|
-| 🔍 可行性评估 | `portgraph/portgraph.py analyze / deps / fetch-deps` | 4741 个 Harmonybrew formula + 1248 个 cmd-pkg 索引，三态判定 |
+| 🔍 可行性评估 | `portgraph/portgraph.py analyze / deps / fetch-deps` | 可 ingest 4741 个 Harmonybrew formula + 1248 个 cmd-pkg 索引（首次联网），出三态判定 |
 | 🚚 自动迁移流水线 | `tools/qt-ohos-run.py`（24 个子命令） | 扫描（18 条预扫描规则出风险报告）→计划→受追踪修改→构建→打包→装机→启动→冒烟→门禁，可 checkpoint/resume |
 | 🚦 成功判定 | `qt-ohos-run.py verify`（G0–G12） | 门禁级 PASS / PARTIAL / FAIL，`TIMEOUT` 不计通过 |
 | 🧠 日志诊断 | `qt-ohos-run.py analyze-log` | 42 条 QOH 错误模式自动匹配，命中即给知识页引用 |
@@ -165,7 +165,7 @@ ohos_qt-skills/
 ├── SKILL.md                    # Agent Skill 入口（frontmatter + Instructions）
 ├── AGENTS.md / CLAUDE.md       # Agent 行为契约（两份逐字一致，verify 强校验）
 ├── kb.yaml                     # 仓库契约：入口/地图/自检命令/分层必需路径
-├── README.md  CHANGELOG.md  CONTRIBUTING.md
+├── README.md  CHANGELOG.md  CONTRIBUTING.md  TESTING.md
 ├── _scripts/                   # 门禁：verify.sh / verify.py
 ├── _index/                     # 索引：_map 地图 / _tags 标签 / _dashboard 仪表盘 / _task-routing 路由
 ├── semantic/                   # 语义知识（27 页）：模块状态、API 映射、平台限制、窗口/生命周期
@@ -221,6 +221,7 @@ trunk ──●────────●────────●───�
 | 闭环 | `tools/faults-build.py check` | 故障库真源与派生物不一致、未闭环链路 |
 
 当前状态：`verify.sh` PASS，用例全绿（引擎 12 + 一致性 22 + 扫描 9 + 图谱 119 单测）。
+测试分层、与 `bitfun-release` 的能力对照矩阵、Windows 端到端实测步骤见 [TESTING.md](TESTING.md)。
 CI 尚未接入（见"已知限制"），门禁靠本地执行与维护者把关。
 
 ---
