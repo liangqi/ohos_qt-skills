@@ -21,7 +21,7 @@ Windows 上没有 bash 时，用 `python _scripts/verify.py` 等价执行第一�
 |------|------|------|
 | `verify.sh` | **PASS** | 0 error / 0 warning（模板目录里 178 个历史构建产物已清理） |
 | `unittest` | **OK（41 tests）** | 引擎 12 + 一致性 20 + cpp20 扫描 9 = 41（另有 portgraph 123 单测：图谱 119 + 预取 4，不在默认 discover 范围） |
-| `faults-build check` | **PASS** | error=0 / warn=7（未闭环链路，属业务待办不是缺陷） |
+| `faults-build check` | **PASS** | error=0 / warn=0 / info=7（7 条缺失跟踪单已排期到 T-0008…T-0013） |
 | CLI 契约 | **PASS** | `qt-ohos-run` 24 / `qt-sdk-run` 24 / `portgraph` 10 子命令，由测试锁定 |
 | CLI 冒烟 | **PASS** | 6 个 CLI 的 `--help` 全部 exit 0（`faults-build --help` 此前返回 2，已修） |
 | 知识事实复核 | **SKIP** | `kb-verify-qt.py` 需要 `ENV.local.md` 里的 SDK 路径，当前环境未配置 |
@@ -39,7 +39,7 @@ Windows 上没有 bash 时，用 `python _scripts/verify.py` 等价执行第一�
 | 机器层：QOH 错误模式 | 42 | 42 | 持平 |
 | 机器层：R 预扫描规则 | 18 | 18 | 持平 |
 | 机器层：adaptation（阻断分类/检查清单/模块） | 3 | 3 | 持平 |
-| 故障图 S/C/W/T | 17/18/15/5 | 17/18/15/5 | 持平 |
+| 故障图 S/C/W/T | 17/18/15/5 | 17/18/15/11 | **+**（6 张排期占位单） |
 | 故障闭环检查 | 有 | 有 | 持平 |
 | 迁移 CLI 子命令 | 24 | 24 | 持平（契约测试锁定） |
 | SDK CLI 子命令 | 24 | 24 | 持平（契约测试锁定） |

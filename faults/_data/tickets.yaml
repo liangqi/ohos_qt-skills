@@ -15,6 +15,8 @@
 #   filed       提交日期（未记录留空）
 #   fix_version 修复版本号（如 "Qt 6.12-beta4"、"API 25"；released 起必填）
 #   fix_commit  修复 commit（可选）
+#   planned_filing 计划提交日期（仅 draft 用）：写了即视为"已排期"，
+#              链路仍算未闭环，但 check 报 INFO 而不是 WARN（表示有人在管）
 #   last_update 最近进展日期（可选）
 #   notes       说明（单据性质、答复摘要等）
 
@@ -79,3 +81,84 @@ tickets:
     fix_commit: ""
     last_update: ""
     notes: "Qt 侧平台行为记录：QPluginLoader/运行时 .so 动态插件加载限制（非修复请求）；单号来自官方平台限制页"
+
+  # ── 以下为 2026-11-02 排期的占位单：缺口客观存在，尚未真正提交上游 ──
+  # status=draft + planned_filing 表示"已排期，按计划提交"；提交后改为 submitted 并回填单号。
+
+  - id: T-0008
+    tracker: qt-bug
+    number: ""
+    url: ""
+    tracks: [C-0001]
+    status: draft
+    filed: ""
+    fix_version: ""
+    fix_commit: ""
+    planned_filing: 2026-11-30
+    last_update: 2026-11-02
+    notes: "qqmlplatform os() #ifdef 链缺 Q_OS_OHOS 分支；当前证据仅 source，需先补最小复现 demo，再按 procedural/qt-bug-report-generation.md 提交"
+
+  - id: T-0009
+    tracker: qt-bug
+    number: ""
+    url: ""
+    tracks: [C-0002]
+    status: draft
+    filed: ""
+    fix_version: ""
+    fix_commit: ""
+    planned_filing: 2026-11-30
+    last_update: 2026-11-02
+    notes: "QOhosInputContext::reset() Detach/Attach 收起 IMF 面板并 commit 污染文本；证据 logs 已具备，可直接构单"
+
+  - id: T-0010
+    tracker: qt-bug
+    number: ""
+    url: ""
+    tracks: [C-0005]
+    status: draft
+    filed: ""
+    fix_version: ""
+    fix_commit: ""
+    planned_filing: 2026-11-30
+    last_update: 2026-11-02
+    notes: "Qt cmake 向每条 CXX 命令注入 -isystem sysroot/usr/include 致 musl 头遮蔽 clang builtin；证据 logs 已具备，阻塞级"
+
+  - id: T-0011
+    tracker: qt-bug
+    number: ""
+    url: ""
+    tracks: [C-0009]
+    status: draft
+    filed: ""
+    fix_version: ""
+    fix_commit: ""
+    planned_filing: 2026-11-30
+    last_update: 2026-11-02
+    notes: "OHOS QPA syntheticParent 不回写 transientParent，无 parent 的 QDialog 被 blockedByModalWindow 误拦；证据 logs 已具备"
+
+  - id: T-0012
+    tracker: qt-bug
+    number: ""
+    url: ""
+    tracks: [C-0010]
+    status: draft
+    filed: ""
+    fix_version: ""
+    fix_commit: ""
+    planned_filing: 2026-11-30
+    last_update: 2026-11-02
+    notes: "陈旧胶水模板缺 @ohos.* eager import，libqohos 裸 eval 被 ArkTS 拒致 onAcceptWant 崩溃；证据 demo+logs 齐备，critical"
+
+  - id: T-0013
+    tracker: upstream
+    number: ""
+    url: ""
+    tracks: [C-0018]
+    status: draft
+    filed: ""
+    fix_version: ""
+    fix_commit: ""
+    planned_filing: 2026-11-30
+    last_update: 2026-11-02
+    notes: "Mesa ZINK 用 vkCmdBlitImage 实现 glGenerateMipmap 对 GL_RGBA8 失败致黑图；属第三方图形栈，拟提 freedesktop GitLab；证据 demo+logs 齐备"

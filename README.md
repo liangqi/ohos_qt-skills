@@ -81,7 +81,7 @@ Qt/C++ 桌面应用要跑在 HarmonyOS 上，难点从来不是"写几行 ArkTS"
 | 🚦 成功判定 | `qt-ohos-run.py verify`（G0–G12） | 门禁级 PASS / PARTIAL / FAIL，`TIMEOUT` 不计通过 |
 | 🧠 日志诊断 | `qt-ohos-run.py analyze-log` | 42 条 QOH 错误模式自动匹配，命中即给知识页引用 |
 | 🧰 Qt SDK 工程平面 | `tools/qt-sdk-run.py`（24 个子命令） | 编译/增量 install/补丁溯源/SV0–SV8 发版门禁/上游演进跟踪 |
-| 🗺️ 故障跟踪 | `faults/` + `tools/faults-build.py` | S→C→W→T 故障图（17/18/15/5）：定性、责任、临时方案、在跟单、闭环缺口 |
+| 🗺️ 故障跟踪 | `faults/` + `tools/faults-build.py` | S→C→W→T 故障图（17/18/15/11）：定性、责任、临时方案、在跟单、闭环缺口 |
 | 📚 知识底座 | `semantic/` `procedural/` `problems/` | 121 页（Qt 侧 94 + 内嵌平台 27），35 条铁律，13 类 API 映射，47 个实战踩坑 |
 | 🏗️ 工程模板 | `templates/qt-ohos-app/` | 71 个文件的干净鸿蒙壳工程（替代历史上带构建产物的脏模板） |
 | ✅ 自检门禁 | `_scripts/verify.sh` + `tests/` | 契约/结构/引用/卫生检查 + 用例（引擎 12 + 一致性 20 + 扫描 9） |

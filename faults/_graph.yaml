@@ -11,13 +11,13 @@
 #      depends_on C→C（仅实证阻塞）｜manifests 为 causes 的派生反查索引
 
 schema: 2
-updated: 2026-09-29
+updated: 2026-11-02
 
 counts:
   symptoms: 17
   causes: 18
   workarounds: 15
-  tickets: 5
+  tickets: 11
   nature: ["defect 11", "limitation 4", "undetermined 3"]
   cause_status: ["closed 1", "diagnosed 4", "open 1", "reported 1", "watching 1", "wontfix 3", "workaround 7"]
   disposition: ["must-adapt 4", "qt-defect 6", "system-defect 2", "app-usage 2", "third-party 1", "undetermined 3"]
@@ -210,7 +210,7 @@ causes:
     manifests: [S-0001]
     workarounds: [W-0001]
     workaround_state: adopted
-    tickets: []
+    tickets: [T-0008]
     fixed_in: ""
     depends_on: []
     affects_qt: ["Qt 5.12.12 (613336de)", "Qt 5.15.16 (962aa625)", "Qt 6.12（os() 实现一致）"]
@@ -231,7 +231,7 @@ causes:
     manifests: [S-0002]
     workarounds: [W-0002]
     workaround_state: adopted
-    tickets: []
+    tickets: [T-0009]
     fixed_in: ""
     depends_on: []
     affects_qt: ["Qt 6.12-beta3 (libqohos)"]
@@ -294,7 +294,7 @@ causes:
     manifests: [S-0005]
     workarounds: [W-0004]
     workaround_state: adopted
-    tickets: []
+    tickets: [T-0010]
     fixed_in: ""
     depends_on: []
     affects_qt: ["Qt 6.12.0 (c7581743)"]
@@ -378,7 +378,7 @@ causes:
     manifests: [S-0008]
     workarounds: [W-0007]
     workaround_state: adopted
-    tickets: []
+    tickets: [T-0011]
     fixed_in: ""
     depends_on: []
     affects_qt: ["Qt 5.15.16 (tqtc/harmonyos-5.15.16，patch 基线 commit 未记录)"]
@@ -399,7 +399,7 @@ causes:
     manifests: [S-0009]
     workarounds: [W-0008]
     workaround_state: adopted
-    tickets: []
+    tickets: [T-0012]
     fixed_in: ""
     depends_on: []
     affects_qt: ["Qt 5.15.16（libqohos 515 代际 2026-07-17 构建；源码树模板 2026-04-21 版）"]
@@ -567,7 +567,7 @@ causes:
     manifests: [S-0017]
     workarounds: [W-0015]
     workaround_state: adopted
-    tickets: []
+    tickets: [T-0013]
     fixed_in: ""
     depends_on: []
     affects_qt: ["Qt 5.12.12 (OHOS SDK，Mesa ZINK)"]
@@ -747,3 +747,57 @@ tickets:
     filed: ""
     fix_version: ""
     notes: "Qt 侧平台行为记录：QPluginLoader/运行时 .so 动态插件加载限制（非修复请求）；单号来自官方平台限制页"
+  - id: T-0008
+    tracker: qt-bug
+    number: ""
+    url: ""
+    tracks: [C-0001]
+    status: draft
+    filed: ""
+    fix_version: ""
+    notes: "qqmlplatform os() #ifdef 链缺 Q_OS_OHOS 分支；当前证据仅 source，需先补最小复现 demo，再按 procedural/qt-bug-report-generation.md 提交"
+  - id: T-0009
+    tracker: qt-bug
+    number: ""
+    url: ""
+    tracks: [C-0002]
+    status: draft
+    filed: ""
+    fix_version: ""
+    notes: "QOhosInputContext::reset() Detach/Attach 收起 IMF 面板并 commit 污染文本；证据 logs 已具备，可直接构单"
+  - id: T-0010
+    tracker: qt-bug
+    number: ""
+    url: ""
+    tracks: [C-0005]
+    status: draft
+    filed: ""
+    fix_version: ""
+    notes: "Qt cmake 向每条 CXX 命令注入 -isystem sysroot/usr/include 致 musl 头遮蔽 clang builtin；证据 logs 已具备，阻塞级"
+  - id: T-0011
+    tracker: qt-bug
+    number: ""
+    url: ""
+    tracks: [C-0009]
+    status: draft
+    filed: ""
+    fix_version: ""
+    notes: "OHOS QPA syntheticParent 不回写 transientParent，无 parent 的 QDialog 被 blockedByModalWindow 误拦；证据 logs 已具备"
+  - id: T-0012
+    tracker: qt-bug
+    number: ""
+    url: ""
+    tracks: [C-0010]
+    status: draft
+    filed: ""
+    fix_version: ""
+    notes: "陈旧胶水模板缺 @ohos.* eager import，libqohos 裸 eval 被 ArkTS 拒致 onAcceptWant 崩溃；证据 demo+logs 齐备，critical"
+  - id: T-0013
+    tracker: upstream
+    number: ""
+    url: ""
+    tracks: [C-0018]
+    status: draft
+    filed: ""
+    fix_version: ""
+    notes: "Mesa ZINK 用 vkCmdBlitImage 实现 glGenerateMipmap 对 GL_RGBA8 失败致黑图；属第三方图形栈，拟提 freedesktop GitLab；证据 demo+logs 齐备"

@@ -1,10 +1,10 @@
 ---
-updated: 2026-09-29
+updated: 2026-11-02
 counts:
   symptoms: 17
   causes: 18
   workarounds: 15
-  tickets: 5
+  tickets: 11
 description: >
   故障登记总表（症状×根因×方案×跟踪单图的人类视图）。【自动生成，勿手改——
   python tools/faults-build.py build 重建】机读全量图见 _graph.yaml，规范见 _index.md。
@@ -20,7 +20,7 @@ description: >
 
 | 维度 | 分布 |
 |------|------|
-| 节点 | 症状 17（active 4 / mitigated 12 / resolved 1）｜根因 18（defect 11 / undetermined 3 / limitation 4）｜临时方案 15｜跟踪单 5 |
+| 节点 | 症状 17（active 4 / mitigated 12 / resolved 1）｜根因 18（defect 11 / undetermined 3 / limitation 4）｜临时方案 15｜跟踪单 11 |
 | 责任领域 | app 2 · ohos-ndk 1 · ohos-runtime 6 · ohos-toolchain 1 · qt-port 6 · third-party 1 · undetermined 1 |
 | 处置分类 | 鸿蒙必须适配 4 · Qt 问题 6 · 系统问题 2 · 应用使用问题 2 · 三方库问题 1 · 待定性 3 |
 | 链路闭环 | 根治 1 · 临时了结 6 · 未闭环 11（缺单 7 · 缺方案 2 · 双缺 2） |
@@ -108,13 +108,13 @@ description: >
 
 | CID | 根因 | 处置 | 状态 | 方案（W） | 单（T） | 症状 |
 |-----|------|------|------|-----------|---------|------|
-| [C-0001](C-0001-qqmlplatform-os-ohos-branch.md) | qqmlplatform os() 的 #ifdef… | Qt 问题 | workaround | W-0001 | ✗ | S-0001 |
-| [C-0002](C-0002-ime-reset-detach.md) | QOhosInputContext::reset()… | Qt 问题 | workaround | W-0002 | ✗ | S-0002 |
-| [C-0005](C-0005-qt-cmake-isystem-injection.md) | Qt cmake 向每个 CXX 命令注入 -isy… | Qt 问题 | workaround | W-0004 | ✗ | S-0005 |
+| [C-0001](C-0001-qqmlplatform-os-ohos-branch.md) | qqmlplatform os() 的 #ifdef… | Qt 问题 | workaround | W-0001 | T-0008（计划） | S-0001 |
+| [C-0002](C-0002-ime-reset-detach.md) | QOhosInputContext::reset()… | Qt 问题 | workaround | W-0002 | T-0009（计划） | S-0002 |
+| [C-0005](C-0005-qt-cmake-isystem-injection.md) | Qt cmake 向每个 CXX 命令注入 -isy… | Qt 问题 | workaround | W-0004 | T-0010（计划） | S-0005 |
 | [C-0006](C-0006-libcxx-ohos-cmath-promote.md) | libcxx-ohos <cmath> 使用 __p… | 系统问题 | diagnosed | W-0004 | ✗ | S-0005 |
-| [C-0009](C-0009-qpa-syntheticparent-no-transientparent.md) | OHOS QPA syntheticParent f… | Qt 问题 | workaround | W-0007 | ✗ | S-0008 |
-| [C-0010](C-0010-stale-template-ohos-bare-eval.md) | 陈旧胶水模板缺 @ohos.* eager impo… | Qt 问题 | workaround | W-0008 | ✗ | S-0009 |
-| [C-0018](C-0018-zink-rgba8-mipmap-black.md) | Mesa ZINK 以 vkCmdBlitImage… | 三方库问题 | workaround | W-0015 | ✗ | S-0017 |
+| [C-0009](C-0009-qpa-syntheticparent-no-transientparent.md) | OHOS QPA syntheticParent f… | Qt 问题 | workaround | W-0007 | T-0011（计划） | S-0008 |
+| [C-0010](C-0010-stale-template-ohos-bare-eval.md) | 陈旧胶水模板缺 @ohos.* eager impo… | Qt 问题 | workaround | W-0008 | T-0012（计划） | S-0009 |
+| [C-0018](C-0018-zink-rgba8-mipmap-black.md) | Mesa ZINK 以 vkCmdBlitImage… | 三方库问题 | workaround | W-0015 | T-0013（计划） | S-0017 |
 
 ### 缺方案（无采用中的绕过/适配）（2）
 
@@ -134,17 +134,17 @@ description: >
 
 | CID | 根因 | 领域 | 严重度 | 状态 | 临时方案（W） | 跟踪单（T） | 修复到达路径 | 复核到期 |
 |-----|------|------|:------:|------|--------------|------------|-------------|---------|
-| [C-0001](C-0001-qqmlplatform-os-ohos-branch.md) | qqmlplatform os() 的 #ifdef 链缺 Q_OS… | qt-port | 🟠 high | workaround | W-0001 | — | qtdeclarative 上游加分支 → harmonyo… | 2026-12-14 |
-| [C-0002](C-0002-ime-reset-detach.md) | QOhosInputContext::reset() Detach/… | qt-port | 🟠 high | workaround | W-0002 | — | 对齐 Android 插件行为（reset 只 finali… | 2026-12-14 |
+| [C-0001](C-0001-qqmlplatform-os-ohos-branch.md) | qqmlplatform os() 的 #ifdef 链缺 Q_OS… | qt-port | 🟠 high | workaround | W-0001 | T-0008 | qtdeclarative 上游加分支 → harmonyo… | 2026-12-14 |
+| [C-0002](C-0002-ime-reset-detach.md) | QOhosInputContext::reset() Detach/… | qt-port | 🟠 high | workaround | W-0002 | T-0009 | 对齐 Android 插件行为（reset 只 finali… | 2026-12-14 |
 | [C-0003](C-0003-ime-focus-switch-race.md) | IME focus 切换瞬间 Detach→Attach 竞态，首字… | qt-port | 🟡 medium | open | — | — | 同 C-0002 组件，随其修复合并提交（commit 前校… | 2026-12-14 |
-| [C-0005](C-0005-qt-cmake-isystem-injection.md) | Qt cmake 向每个 CXX 命令注入 -isystem sys… | qt-port | ⬜ blocker | workaround | W-0004 | — | 定位并去除 Qt 对 sysroot/usr/include… | 2026-10-15 |
+| [C-0005](C-0005-qt-cmake-isystem-injection.md) | Qt cmake 向每个 CXX 命令注入 -isystem sys… | qt-port | ⬜ blocker | workaround | W-0004 | T-0010 | 定位并去除 Qt 对 sysroot/usr/include… | 2026-10-15 |
 | [C-0006](C-0006-libcxx-ohos-cmath-promote.md) | libcxx-ohos <cmath> 使用 __promote 但… | ohos-ndk | 🟡 medium | diagnosed | W-0004 | — | SDK/NDK 给 libcxx-ohos <cmath> … | 2026-10-15 |
-| [C-0009](C-0009-qpa-syntheticparent-no-transientparent.md) | OHOS QPA syntheticParent fallback … | qt-port | 🟠 high | workaround | W-0007 | — | 上游合入 showImmediate() 反写 setTra… | 2026-12-15 |
-| [C-0010](C-0010-stale-template-ohos-bare-eval.md) | 陈旧胶水模板缺 @ohos.* eager import 注册，li… | qt-port | 🔴 critical | workaround | W-0008 | — | Qt 侧模板与 libqohos 同批次更新（eager d… | 2026-12-15 |
+| [C-0009](C-0009-qpa-syntheticparent-no-transientparent.md) | OHOS QPA syntheticParent fallback … | qt-port | 🟠 high | workaround | W-0007 | T-0011 | 上游合入 showImmediate() 反写 setTra… | 2026-12-15 |
+| [C-0010](C-0010-stale-template-ohos-bare-eval.md) | 陈旧胶水模板缺 @ohos.* eager import 注册，li… | qt-port | 🔴 critical | workaround | W-0008 | T-0012 | Qt 侧模板与 libqohos 同批次更新（eager d… | 2026-12-15 |
 | [C-0014](C-0014-crossscreen-move-resize-conflict.md) | ohos window 接口 moveWindowToGlobalD… | ohos-runtime | 🟡 medium | diagnosed | W-0012 | — | 系统侧保证跨屏迁移场景 move+resize 渲染原子性（… | 2026-12-15 |
 | [C-0016](C-0016-qfiledialog-unnecessary-ohos-ifdef.md) | 应用误判 QFileDialog 无 OHOS 原生支持而添加 #i… | app | 🟢 low | closed | — | — | 改用法：直接使用标准 QFileDialog API，删除 … | 2026-12-15 |
 | [C-0017](C-0017-curl-gbk-terminal-mojibake.md) | 非 UTF-8 终端（Windows Git Bash/GBK）下向… | app | 🟡 medium | workaround | W-0014 | — | 改用法：中文 JSON 写入 UTF-8 临时文件后 cur… | 2026-12-15 |
-| [C-0018](C-0018-zink-rgba8-mipmap-black.md) | Mesa ZINK 以 vkCmdBlitImage 实现 glGe… | third-party | 🟠 high | workaround | W-0015 | — | 等 Mesa/ZINK 修复 RGBA8 mipmap 生成… | 2026-12-15 |
+| [C-0018](C-0018-zink-rgba8-mipmap-black.md) | Mesa ZINK 以 vkCmdBlitImage 实现 glGe… | third-party | 🟠 high | workaround | W-0015 | T-0013 | 等 Mesa/ZINK 修复 RGBA8 mipmap 生成… | 2026-12-15 |
 
 **未定（undetermined——等定性，跟上游答复；改判时 CID 不变）**
 
@@ -192,6 +192,12 @@ description: >
 | T-0003 | qt-bug | [QTBUG-146619](https://bugreports.qt.io/browse/QTBUG-146619) | C-0008 | submitted | — | — | QFile::setPermissions 平台行为记录（Qt … |
 | T-0004 | qt-bug | [QTBUG-146621](https://bugreports.qt.io/browse/QTBUG-146621) | C-0008 | submitted | — | — | QFile::link 平台行为记录（Qt 侧登记，非修复请求） |
 | T-0007 | qt-bug | [QTBUG-146624](https://bugreports.qt.io/browse/QTBUG-146624) | C-0012 | submitted | — | — | Qt 侧平台行为记录：QPluginLoader/运行时 .so… |
+| T-0008 | qt-bug | — | C-0001 | draft | — | — | qqmlplatform os() #ifdef 链缺 Q_OS… |
+| T-0009 | qt-bug | — | C-0002 | draft | — | — | QOhosInputContext::reset() Detac… |
+| T-0010 | qt-bug | — | C-0005 | draft | — | — | Qt cmake 向每条 CXX 命令注入 -isystem s… |
+| T-0011 | qt-bug | — | C-0009 | draft | — | — | OHOS QPA syntheticParent 不回写 tra… |
+| T-0012 | qt-bug | — | C-0010 | draft | — | — | 陈旧胶水模板缺 @ohos.* eager import，lib… |
+| T-0013 | upstream | — | C-0018 | draft | — | — | Mesa ZINK 用 vkCmdBlitImage 实现 gl… |
 
 ## 关系速览
 
@@ -304,13 +310,3 @@ C→C depends_on：暂无
 | CID | 根因 | 了结方式 | 修复/迁移版本 |
 |-----|------|---------|--------------|
 | C-0016 | 应用误判 QFileDialog 无 OHOS 原生支持而添… | closed | — |
-
-## 待处理提醒（check 的 WARN）
-
-- `C-0001`：status=workaround 但链路未闭环（缺 ticket）——按闭环规则不算临时了结，待补齐
-- `C-0001`：Qt-side defect evidenced only by 'source': 补最小复现 demo 或运行日志后更稳（提上游 T 前必备，对齐 qt-bug-report HARD 闸门）
-- `C-0002`：status=workaround 但链路未闭环（缺 ticket）——按闭环规则不算临时了结，待补齐
-- `C-0005`：status=workaround 但链路未闭环（缺 ticket）——按闭环规则不算临时了结，待补齐
-- `C-0009`：status=workaround 但链路未闭环（缺 ticket）——按闭环规则不算临时了结，待补齐
-- `C-0010`：status=workaround 但链路未闭环（缺 ticket）——按闭环规则不算临时了结，待补齐
-- `C-0018`：status=workaround 但链路未闭环（缺 ticket）——按闭环规则不算临时了结，待补齐

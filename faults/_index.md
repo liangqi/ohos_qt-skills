@@ -174,7 +174,11 @@ draft（草稿）→ submitted（已提交）→ accepted（已受理）→ fixe
 - S.status=mitigated 但背后无 adopted W → **ERROR**（缓解宣称必须有采用中方案支撑，
   否则应标 active）；
 - C.status=workaround 但链路未闭环 → **WARN**（宣称了临时解决，按闭环规则待补——
-  多为缺 T：方案已就位，待提单/在跟）。
+  多为缺 T：方案已就位，待提单/在跟）；
+- 若缺口是缺 T 且该 C 已挂 **排期占位单**（T.status=draft 且写了 `planned_filing`）→
+  降为 **INFO**：缺口仍然存在、链路仍按未闭环计（`chain_state` 不变），只是把"没人
+  管"与"已排期盼提"分开。单据真正提交后把 T.status 改为 `submitted` 并回填单号，
+  INFO 自动消失。
 
 输出口径：`_graph.yaml` S/C 节点 `chain_state`/`gaps`；`_registry.md` 统计行"链路闭环" +
 症状索引"闭环"列 + **§未闭环清单**（缺单/缺方案/双缺分组，含 W/T/症状）；`review`

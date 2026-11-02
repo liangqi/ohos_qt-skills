@@ -124,7 +124,7 @@ W.detail 指向本小节。>
 
 <!-- T 记录模板（追加到 _data/tickets.yaml）：
   - id: T-XXXX
-    tracker: qt-bug           # qt-bug/ohos-issue/gitee/partner/forum
+    tracker: qt-bug           # qt-bug/ohos-issue/gitee/partner/forum/upstream
     number: "QTBUG-xxxxxx"
     url: "https://..."
     tracks: [C-XXXX]

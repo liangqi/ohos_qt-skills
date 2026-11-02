@@ -85,7 +85,7 @@ description: >
 
 详见 [_lookup](../problems/_lookup.md)。
 
-### faults（55 记录：17 症状 S + 18 根因 C + 15 方案 W + 5 跟踪单 T）
+### faults（61 记录：17 症状 S + 18 根因 C + 15 方案 W + 11 跟踪单 T）
 
 详见 [_registry](../faults/_registry.md)（症状索引主入口 + 按处置分类）与 [_graph.yaml](../faults/_graph.yaml)（机读全量图）。真源 `_data/*.yaml` + C 页；派生物由 `tools/faults-build.py` 重建。根因：defect 11 / limitation 4 / undetermined 3；处置：Qt 问题 6 · 鸿蒙必须适配 4 · 待定性 3 · 系统问题 2 · 应用使用问题 2 · 三方库 1。
 

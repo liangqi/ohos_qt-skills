@@ -47,7 +47,8 @@ C_STATUS = {"open", "diagnosed", "workaround", "reported", "fix-confirmed",
 S_STATUS = {"active", "mitigated", "resolved"}
 W_STATUS = {"proposed", "tested", "adopted", "retired"}
 W_RANK = {"adopted": 3, "tested": 2, "proposed": 1, "retired": 0}
-T_TRACKERS = {"qt-bug", "ohos-issue", "gitee", "partner", "forum"}
+T_TRACKERS = {"qt-bug", "ohos-issue", "gitee", "partner", "forum",
+              "upstream"}   # upstream = 第三方上游（Mesa/freedesktop 等）
 T_STATUS = {"draft", "submitted", "accepted", "dup", "wontfix",
             "fixed", "released", "closed"}
 T_OPEN = {"submitted", "accepted", "fixed", "released"}   # 已在跟的单
@@ -92,6 +93,15 @@ CHAIN_LABELS = {
     "missing-workaround": "缺方案",
     "both-missing": "双缺",
 }
+
+
+def is_planned_ticket(t) -> bool:
+    """排期中的单：status=draft 且写了 planned_filing。
+
+    它不改变"链路仍有缺口"这个事实（chain_state_of 只认 T_OPEN），只是把
+    "没人管"和"已排期待提"分开呈现——前者报 WARN，后者报 INFO。
+    """
+    return t.get("status") == "draft" and bool(t.get("planned_filing"))
 
 
 def chain_state_of(fm, has_live_w, has_open_t):
@@ -202,6 +212,7 @@ def _check_date(errors, where, value, label="date"):
 def check_all(symptoms, workarounds, tickets, causes):
     errors = []
     warns = []
+    infos = []
     # 链路完备性聚合（lint 与生成共用；幂等）
     aggregate(symptoms, workarounds, tickets, causes)
     c_ids = [c["_fm"].get("cid") for c in causes]
@@ -314,20 +325,31 @@ def check_all(symptoms, workarounds, tickets, causes):
         ts = [t for t in tickets if cid in _as_list(t.get("tracks"))]
         has_live_w = any(w.get("status") in ("tested", "adopted") for w in ws)
         has_open_t = any(t.get("status") in T_OPEN for t in ts)
+        planned_ts = [t for t in ts if is_planned_ticket(t)]
+        planned_note = "、".join("%s（计划 %s 提）" % (t.get("id"), t.get("planned_filing"))
+                                for t in planned_ts)
         if fm.get("status") == "workaround" and not has_live_w:
             warns.append(("W", cid, "status=workaround but no tested/adopted W targets it"))
         if fm.get("status") == "workaround" and fm.get("_gaps"):
-            warns.append(("W", cid,
-                          "status=workaround 但链路未闭环（缺 %s）——按闭环规则不算"
-                          "临时了结，待补齐" % "/".join(fm["_gaps"])))
+            if fm["_gaps"] == ["ticket"] and planned_ts:
+                infos.append(("I", cid,
+                              "缺跟踪单已排期：%s——链路按未闭环计，提交后把该单改 submitted"
+                              % planned_note))
+            else:
+                warns.append(("W", cid,
+                              "status=workaround 但链路未闭环（缺 %s）——按闭环规则不算"
+                              "临时了结，待补齐" % "/".join(fm["_gaps"])))
         if fm.get("status") == "reported" and not has_open_t:
             warns.append(("W", cid, "status=reported but no open T tracks it"))
         if (fm.get("nature") == "defect"
                 and fm.get("responsible") in ("qt-port", "qt-upstream")
                 and fm.get("evidence_type") == "source"):
-            warns.append(("W", cid,
-                          "Qt-side defect evidenced only by 'source': 补最小复现 demo 或"
-                          "运行日志后更稳（提上游 T 前必备，对齐 qt-bug-report HARD 闸门）"))
+            msg = ("Qt-side defect evidenced only by 'source': 补最小复现 demo 或"
+                   "运行日志后更稳（提上游 T 前必备，对齐 qt-bug-report HARD 闸门）")
+            if planned_ts:
+                infos.append(("I", cid, msg + "；已排期 %s" % planned_note))
+            else:
+                warns.append(("W", cid, msg))
         for t in ts:
             if t.get("status") in ("fixed", "released") and fm.get("status") \
                     not in ("fix-confirmed", "verified", "closed"):
@@ -361,7 +383,7 @@ def check_all(symptoms, workarounds, tickets, causes):
                 errors.append(("E", s.get("id"),
                                "S.status=mitigated 但背后无 adopted W——缓解宣称必须有"
                                "采用中方案支撑（否则应标 active）"))
-    return errors, warns
+    return errors, warns, infos
 
 
 # ── 聚合与生成 ──────────────────────────────────────────────────────────────
@@ -384,8 +406,11 @@ def aggregate(symptoms, workarounds, tickets, causes):
         live_ws = [w["id"] for w in ws if w.get("status") == "adopted"]
         open_ts = [t["id"] for t in tickets
                    if cid in _as_list(t.get("tracks")) and t.get("status") in T_OPEN]
+        planned_ts = [t["id"] for t in tickets
+                      if cid in _as_list(t.get("tracks")) and is_planned_ticket(t)]
         fm["_live_ws"] = live_ws
         fm["_open_ts"] = open_ts
+        fm["_planned_ts"] = planned_ts
         fm["_chain_state"], fm["_gaps"] = chain_state_of(fm, bool(live_ws), bool(open_ts))
 
     # S 链路聚合：缺口向上传播（任一 cause 有缺口则 S 未闭环，gaps 取并集）
@@ -696,7 +721,8 @@ def gen_registry(symptoms, workarounds, tickets, causes, warns) -> str:
                 fm["cid"], c["_path"].name, _cut(fm.get("title", ""), 26),
                 DISPOSITIONS.get(fm.get("_disposition"), ""), fm.get("status"),
                 "、".join(fm.get("_live_ws") or []) or "✗",
-                "、".join(fm.get("_open_ts") or []) or "✗",
+                "、".join(list(fm.get("_open_ts") or [])
+                          + ["%s（计划）" % t for t in (fm.get("_planned_ts") or [])]) or "✗",
                 "、".join(fm.get("_manifests") or []) or "—"))
         L.append("")
     # 缺陷
@@ -881,19 +907,22 @@ def gen_registry(symptoms, workarounds, tickets, causes, warns) -> str:
 # ── 子命令 ──────────────────────────────────────────────────────────────────
 def cmd_check():
     (symptoms, workarounds, tickets, causes), errs = load_all()
-    errors, warns = check_all(symptoms, workarounds, tickets, causes)
+    errors, warns, infos = check_all(symptoms, workarounds, tickets, causes)
     errors = errs + errors
     for level, where, msg in errors:
         print("  ERROR [%s] %s" % (where, msg))
     for _, where, msg in warns:
         print("  WARN  [%s] %s" % (where, msg))
-    print("check: error=%d warn=%d" % (len(errors), len(warns)))
+    for _, where, msg in infos:
+        print("  INFO  [%s] %s" % (where, msg))
+    print("check: error=%d warn=%d info=%d"
+          % (len(errors), len(warns), len(infos)))
     return 1 if errors else 0
 
 
 def cmd_build():
     (symptoms, workarounds, tickets, causes), errs = load_all()
-    errors, warns = check_all(symptoms, workarounds, tickets, causes)
+    errors, warns, infos = check_all(symptoms, workarounds, tickets, causes)
     errors = errs + errors
     if errors:
         for level, where, msg in errors:
@@ -934,7 +963,7 @@ def list_drafts():
 
 def cmd_review():
     (symptoms, workarounds, tickets, causes), errs = load_all()
-    errors, warns = check_all(symptoms, workarounds, tickets, causes)
+    errors, warns, infos = check_all(symptoms, workarounds, tickets, causes)
     if errs + errors:
         for level, where, msg in errs + errors:
             print("  ERROR [%s] %s" % (where, msg))
