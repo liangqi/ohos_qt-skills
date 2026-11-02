@@ -66,7 +66,14 @@
 - **PERF（测试驱动）** portgraph `fetch-deps` 并行下载——第四轮测试实测死因：弱网下串行下载 57KB/s 拖垮全流程（单步 90 分钟超时 + 最终 manifest 30 分钟，agent 被迫自研 4 批并行下载脚本 471 秒拿下 33 包）。修复：`fetch_bottle` 拆出 `prefetch_bottles`（ThreadPoolExecutor 并行预取 tar 到 .cache，默认 8 线程，缓存命中/已安装自动跳过，单包失败不阻断）；`_download` 加缓存命中跳过（sha 匹配不重下，天然支持重跑只补缺）；解压保持串行（规避 Windows 杀软文件锁竞态）。CLI 新增 `--jobs`（默认 8，0/1 关闭）。单测 4 例（tests/test_prefetch.py：并行+缓存命中 mtime 验证 / 已安装跳过 / 坏 sha 失败清理 / 无 sha 信任已有文件）
 - **PATCH** devecocli 预检修复的实现文件落地（补齐上上条 FIX ①-⑥ 的脚本与文档）+ 新增 `.gitattributes` 强制 `*.sh text eol=lf`——Windows 检出把 shell 脚本变 CRLF 后 `bash detect-env.sh` 直接语法报错，是预检脚本"改了却跑不起来"的根因，入库统一 LF 一劳永逸
 - **PATCH** `tools/qt_sdk/releasing.py` `parse_version` 接受同日二次出包后缀 `.N`（如 `5.15+p1.20261009.2`）——同一天切第二个版本是 `release()` 自身支持的合法操作，却过不了自己的 SV6 版本门禁
-- note: `RELEASE-MANIFEST.yaml` 的 `content_tree_sha256` 将在下次发版时由发版脚本重新生成
+- **NEW（trunk 治理）** 发版清单可机算可对账：新增 `_scripts/gen-manifest.py`（重算 `content_tree_sha256` = sha256 over sorted `<relpath>\0<sha256>`、Qt/平台页面数、用例数、`built_at` 并原地写回；`--check` 比对、`--check --strict` 用于 tag 前、`--release` 置 released 并回填 `root_commit`），`verify.py` 增 M1 检查（第 10 类）：version/status 枚举、页面数、skills 清单、用例数必须等于实际，且只有站在 `root_commit` 上时才强制摘要一致。此前清单里的 162 用例、5 warning 均为手填过期值
+- **NEW（trunk 治理）** `_scripts/ci.sh`：一条命令跑完四条门禁（verify / faults check / 全量用例 / 5 个 CLI `--help` 冒烟），退出码即结论，供流水线或 pre-push 直接调用
+- **FIX** `qt-ohos-run.py scan` 的工程路径改为可选位置参数并让出 `--project` 的 dest——此前 `--project <dir> scan` 直接 argparse 报错（文档里写的正是这种写法），`scan <dir>` 与 `--project <dir> scan` 现已等价
+- **FIX** `plan`/`patch` 在非工程目录下的提示改为直接给出 `--project <工程>` 用法（原提示只说"run init first"，与用户刚做完 `scan ~/app` 的事实冲突）；`analyze-log` 不再要求工程状态（纯日志分析却先打一行 init 提示）
+- **FIX（测试驱动）** 用例数从 grep 计数改为 AST 实计并纳入文档守护：`test_testcase_counts` 原用 `grep -c 'def test_'`，把自身正则字符串里的两处字面量算成用例（声称 22 实际 20），portgraph 又漏数 `test_prefetch.py` 的 4 个（119 实际 123）；现按 `Test*` 类下的 `test_` 方法统计，并核对 README 与 TESTING 的每一处声称（12 + 20 + 9 = 41，另图谱 123）
+- **FIX（卫生）** 清理 `skills/qt-community-to-official/templates/` 下 178 个误入库的构建产物（`.cxx` 62 / `oh_modules` 79 / `.idea`+`.deveco` 14 / `.hvigor` 9 / `.DS_Store` 14），并补 `.gitignore` 6 条规则防复发；`verify` 的 5 条 H1 警告归零，模板目录 2.9 MB → 500 KB
+- **NEW（故障库闭环松绑）** 缺跟踪单的 defect 若已挂排期占位单（`T.status=draft` + `planned_filing`），`faults-build check` 报 INFO 而非 WARN：缺口仍按未闭环计（`chain_state` 不变、仍列在 `_registry.md` 未闭环清单并标注 `T-xxxx（计划）`），只是把"没人管"和"已排期盼提"分开。本版为 C-0001/0002/0005/0009/0010/0018 建 T-0008…T-0013（计划 2026-11-30），tracker 枚举补 `upstream`（第三方上游，如 Mesa）
+- note: `RELEASE-MANIFEST.yaml` 的 `content_tree_sha256` 现由 `_scripts/gen-manifest.py` 生成；发版流程见 `CONTRIBUTING.md` §发版流程
 
 ## v2.2.1 — 2026-08-29
 
