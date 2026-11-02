@@ -20,6 +20,7 @@ Run from the repository root:
 
 from __future__ import annotations
 
+import ast
 import os
 import re
 import subprocess
@@ -48,6 +49,31 @@ def claim(text: str, pattern: str, origin: str) -> int:
     if not m:
         raise AssertionError(f"{origin} 中找不到声称模式 {pattern!r}（措辞变了请同步更新测试）")
     return int(m.group(1))
+
+
+def claims(text: str, pattern: str, origin: str):
+    """返回文档中全部匹配的数字（同一声称散落多处时，每一处都要对）。"""
+    found = [int(m) for m in re.findall(pattern, text)]
+    if not found:
+        raise AssertionError(f"{origin} 中找不到声称模式 {pattern!r}（措辞变了请同步更新测试）")
+    return found
+
+
+def count_tests(*paths: str) -> int:
+    """按 AST 统计 Test* 类里的 test_ 方法数。
+
+    不能用 grep 数 "def test_ "：本文件里就有匹配该字面量的正则字符串，
+    会被误数成用例。AST 只认真实的函数定义。
+    """
+    total = 0
+    for rel in paths:
+        tree = ast.parse(read(rel))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and node.name.startswith("Test"):
+                total += sum(1 for item in node.body
+                             if isinstance(item, ast.FunctionDef)
+                             and item.name.startswith("test_"))
+    return total
 
 
 # --------------------------------------------------------------------------
@@ -155,6 +181,7 @@ class TestDocumentedCounts(unittest.TestCase):
         cls.agents = normalized(read("AGENTS.md"))
         cls.routing = read("_index/_task-routing.md")
         cls.dashboard = read("_index/_dashboard.md")
+        cls.testing = read("TESTING.md")
 
     def test_qoh_count(self):
         actual = len(qoh_files())
@@ -233,12 +260,32 @@ class TestDocumentedCounts(unittest.TestCase):
                           counts["workarounds"], counts["tickets"]))
 
     def test_testcase_counts(self):
-        engine = len(re.findall(r"\bdef test_",
-                                read("tests/test_qt_ohos.py")))
-        portgraph = len(re.findall(r"\bdef test_",
-                                   read("portgraph/tests/test_port_graph.py")))
-        self.assertEqual(claim(self.readme, r"引擎自测 (\d+) 用例", "README"), engine)
-        self.assertEqual(claim(self.readme, r"(\d+) 单测", "README"), portgraph)
+        """用例数按 AST 实计，并核对 README / TESTING.md 的每一处声称。
+
+        历史教训：曾用 grep 数 "def test_"，把本文件正则字符串里的两处字面量
+        算成用例（声称 22，实际 20）；portgraph 只数了图谱文件，漏掉
+        test_prefetch.py 的 4 个（声称 119，实际 123）。
+        """
+        engine = count_tests("tests/test_qt_ohos.py")
+        consistency = count_tests("tests/test_kb_consistency.py")
+        scanner = count_tests("tests/test_cpp20_gap_scan.py")
+        graph = count_tests("portgraph/tests/test_port_graph.py",
+                            "portgraph/tests/test_prefetch.py")
+        expected = (engine, consistency, scanner)
+
+        triple = re.compile(r"引擎 (\d+) \+ 一致性 (\d+) \+ (?:cpp20 )?扫描 (\d+)")
+        for origin, text in (("README", self.readme), ("TESTING.md", self.testing)):
+            found = triple.findall(text)
+            self.assertTrue(found, f"{origin} 里缺少「引擎 N + 一致性 N + 扫描 N」的用例声称")
+            for got in found:
+                self.assertEqual(tuple(int(x) for x in got), expected,
+                                 f"{origin} 声称 {got}，实际 {expected}")
+            # 图谱数：两份文档措辞不同（图谱 N 单测 / portgraph N 单测），
+            # 出现即校验，不强求每份都写（总数由上面的三元组兜底）
+            for got in (int(x) for x in re.findall(r"图谱 (\d+) 单测", text)):
+                self.assertEqual(got, graph, f"{origin} 声称图谱 {got} 单测，实际 {graph}")
+            for got in (int(x) for x in re.findall(r"portgraph (\d+) 单测", text)):
+                self.assertEqual(got, graph, f"{origin} 声称 portgraph {got} 单测，实际 {graph}")
 
 
 # --------------------------------------------------------------------------

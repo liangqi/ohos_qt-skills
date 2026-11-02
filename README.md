@@ -84,7 +84,7 @@ Qt/C++ 桌面应用要跑在 HarmonyOS 上，难点从来不是"写几行 ArkTS"
 | 🗺️ 故障跟踪 | `faults/` + `tools/faults-build.py` | S→C→W→T 故障图（17/18/15/5）：定性、责任、临时方案、在跟单、闭环缺口 |
 | 📚 知识底座 | `semantic/` `procedural/` `problems/` | 121 页（Qt 侧 94 + 内嵌平台 27），35 条铁律，13 类 API 映射，47 个实战踩坑 |
 | 🏗️ 工程模板 | `templates/qt-ohos-app/` | 71 个文件的干净鸿蒙壳工程（替代历史上带构建产物的脏模板） |
-| ✅ 自检门禁 | `_scripts/verify.sh` + `tests/` | 契约/结构/引用/卫生检查 + 引擎自测 12 用例 + 一致性 22 用例 |
+| ✅ 自检门禁 | `_scripts/verify.sh` + `tests/` | 契约/结构/引用/卫生检查 + 用例（引擎 12 + 一致性 20 + 扫描 9） |
 
 ---
 
@@ -220,7 +220,7 @@ trunk ──●────────●────────●───�
 | 图谱 | `portgraph/tests/` | 可移植性判定、依赖分类、bottle 解析 |
 | 闭环 | `tools/faults-build.py check` | 故障库真源与派生物不一致、未闭环链路 |
 
-当前状态：`verify.sh` PASS，用例全绿（引擎 12 + 一致性 22 + 扫描 9 + 图谱 119 单测）。
+当前状态：`verify.sh` PASS（0 error / 0 warning），用例全绿：引擎 12 + 一致性 20 + 扫描 9 = 41，另有图谱 123 单测。
 测试分层、与 `bitfun-release` 的能力对照矩阵、Windows 端到端实测步骤见 [TESTING.md](TESTING.md)。
 CI 尚未接入（见"已知限制"），门禁靠本地执行与维护者把关。
 

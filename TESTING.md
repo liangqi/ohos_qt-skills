@@ -15,12 +15,12 @@ python tools/faults-build.py check          # 故障库真源 ↔ 派生物（er
 
 Windows 上没有 bash 时，用 `python _scripts/verify.py` 等价执行第一条。
 
-### 当前状态（2026-10-31，macOS 14 / Python 3.13）
+### 当前状态（2026-11-02，macOS 14 / Python 3.13）
 
 | 门禁 | 结果 | 说明 |
 |------|------|------|
-| `verify.sh` | **PASS** | 0 error / 5 warning（warning 全是测试模板目录里的历史构建产物，见 P4 清理项） |
-| `unittest` | **OK（41 tests）** | 一致性 22 + 引擎 12 + cpp20 扫描 9（另有 portgraph 119 单测，未在默认 discover 范围） |
+| `verify.sh` | **PASS** | 0 error / 0 warning（模板目录里 178 个历史构建产物已清理） |
+| `unittest` | **OK（41 tests）** | 引擎 12 + 一致性 20 + cpp20 扫描 9 = 41（另有 portgraph 123 单测：图谱 119 + 预取 4，不在默认 discover 范围） |
 | `faults-build check` | **PASS** | error=0 / warn=7（未闭环链路，属业务待办不是缺陷） |
 | CLI 契约 | **PASS** | `qt-ohos-run` 24 / `qt-sdk-run` 24 / `portgraph` 10 子命令，由测试锁定 |
 | CLI 冒烟 | **PASS** | 6 个 CLI 的 `--help` 全部 exit 0（`faults-build --help` 此前返回 2，已修） |
@@ -45,8 +45,8 @@ Windows 上没有 bash 时，用 `python _scripts/verify.py` 等价执行第一�
 | SDK CLI 子命令 | 24 | 24 | 持平（契约测试锁定） |
 | portgraph 子命令 | 10 | 10 | 持平（契约测试锁定） |
 | 模板文件 | 71 | 71 | 持平 |
-| 引擎 / 一致性 / 扫描用例 | 12 / 22 / 9 | 12 / 22 / 9 | 持平 |
-| portgraph 单测 | 119 | 119 | 持平 |
+| 引擎 / 一致性 / 扫描用例 | 12 / 20 / 9 | 12 / 20 / 9 | 持平（原记 22 是 grep 误数） |
+| portgraph 单测 | 123 | 123 | 持平（图谱 119 + 预取 4） |
 | 仓库契约（`kb.yaml`） | 无 | **有** | **+** |
 | 自检门禁（`verify.sh`） | 无 | **有**（9 类检查） | **+** |
 | 根 `SKILL.md` 形态 | 自定义 | 标准 Agent Skill（frontmatter + Instructions） | **+** |
@@ -161,5 +161,5 @@ python tools/qt-ohos-run.py analyze-log <日志文件>
 | `knowledge/errors/`、`knowledge/rules/` | `analyze-log` 抽样匹配 + `faults-build check` |
 | `faults/_data/`、C 页 | `faults-build build` + `check` + `review` |
 | `templates/qt-ohos-app/` | 新建工程 → `qt-ohos-run.py build` 全流程 |
-| `portgraph/` | `portgraph` 自带 119 单测 + 一次 `analyze` 抽样 |
+| `portgraph/` | `portgraph` 自带 123 单测 + 一次 `analyze` 抽样 |
 | README / SKILL / AGENTS 数字 | `tests/test_kb_consistency.py`（会自动拦） |
