@@ -1,13 +1,13 @@
 ---
 updated: 2026-09-29
-total_pages: 46
+total_pages: 47
 description: >
   知识库健康仪表盘（派生计数，从 frontmatter 自动生成）。
 ---
 
 # 知识库健康仪表盘
 
-> **最后更新**：2026-09-29 | **总活跃页面**：46 | **归档**：1
+> **最后更新**：2026-09-29 | **总活跃页面**：47 | **归档**：1
 
 ---
 
@@ -45,7 +45,7 @@ description: >
 | `qt-ohos-project-analyzer-workflow.md` | ✅ 活跃 | 2026-07-02 |
 | `qt515-vs-qt512-api-diff.md` | ✅ 活跃 | 2026-06-13 |
 
-### procedural（14 活跃）
+### procedural（15 活跃）
 
 | 页面 | 状态 | 最后更新 |
 |------|:----:|:--------:|
@@ -96,9 +96,9 @@ description: >
 | 域 | 活跃页 | 备注 |
 |----|:------:|------|
 | semantic | 26 | 见各页 frontmatter refs |
-| procedural | 14 | 见各页 frontmatter refs |
+| procedural | 15 | 见各页 frontmatter refs |
 | episodic | 7 | 项目经验，无外部来源 |
 | preference | 0 | 个人偏好 |
 | faults | 55 | 问题跟踪图（17 症状 + 18 根因 + 15 方案 + 5 跟踪单，同 problems 不计入活跃页） |
-| **合计活跃** | **47** | |
+| **合计活跃** | **48** | |
 

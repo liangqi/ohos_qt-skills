@@ -29,6 +29,7 @@ echo "== 4/4 CLI 冒烟（--help 全部 exit 0） =="
 "$PY" tools/qt-sdk-run.py --help >/dev/null
 "$PY" tools/faults-build.py --help >/dev/null
 "$PY" tools/cpp20-gap-scan.py --help >/dev/null
+"$PY" tools/kb-cef-graft.py --help >/dev/null
 "$PY" portgraph/portgraph.py --help >/dev/null
 
 # 注：发版清单在非发版提交上必然是"快照"，不参与 CI 判定；

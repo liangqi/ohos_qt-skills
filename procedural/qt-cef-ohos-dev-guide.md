@@ -111,7 +111,7 @@ CEF 组件包 = **CEF 内核层**，去版本化、Qt/应用无关、按版本�
 | `cmake/` | `FindCEF.cmake` + `cef_macros` + `cef_variables`（`find_package(CEF)` 模式） |
 | OHOS adapter `.so` | CEF↔OHOS 适配桥（名随 CEF 组件版本，见 §5.2） |
 | `tests/cefsimple`（可选） | 参考样例 |
-| `kb-cef-graft.py` + `kb-cef-graft.config.example.json` | 嫁接脚本+配置：把 CEF 嫁接到 Qt OHOS 模板工程（§2.3 一键嫁接，`--run` 签名+装机+启动+崩溃检查）——**随 CEF 组件包分发，不在本知识库**（维护者从内部维护仓取，剥离进组件包时重命名为 `tools/graft_cef.py`） |
+| `tools/kb-cef-graft.py` + `tools/kb-cef-graft.config.example.json` | 嫁接脚本+配置：把 CEF 嫁接到 Qt OHOS 模板工程（§2.3 一键嫁接，`--run` 签名+装机+启动+崩溃检查）——本仓自带；打进 CEF 组件包时重命名为 `tools/graft_cef.py` |
 
 > **去版本化**的含义：版本标注在**包名/目录**（如 `cef-component-ohos-cef114/`），包内**内容是版本中性的内核层**——不混入任何 Qt/应用/胶水代码。集成方式（`find_package(CEF)`+`CEF_ROOT`）跨版本一致。开发者下载哪个版本，就用那个版本的 API（读其 `include/`）。
 
@@ -136,9 +136,9 @@ cp -r include cmake libcef_dll $PKG/                         # API + cmake + wra
 cp -r tests/cefsimple $PKG/                                   # 参考样例（可选）
 # 预编译内核（从构建产物或预编译 binary distribution 取）：
 cp <libcef.so + OHOS adapter .so + 依赖 .so（icu/freetype/fontconfig/expat/brotli/jpeg/png）> $PKG/libs/arm64-v8a/
-# 4. 附带嫁接工具（kb-cef-graft.py，随组件包分发；维护者从 KB 仓 _scripts/ 取）
+# 4. 附带嫁接工具（本仓 tools/kb-cef-graft.py；进组件包时重命名为 graft_cef.py）
 mkdir -p $PKG/tools
-cp <KB 仓>/_scripts/kb-cef-graft.py $PKG/tools/graft_cef.py
+cp <本仓>/tools/kb-cef-graft.py $PKG/tools/graft_cef.py
 # → $PKG/ 即"去版本化的 CEF 组件包"：版本标注在目录名，内容是版本中性的内核层 + 自带嫁接工具
 ```
 
@@ -154,7 +154,7 @@ cp <KB 仓>/_scripts/kb-cef-graft.py $PKG/tools/graft_cef.py
 
 - **方式 A（推荐，维护者分发）**：从维护者指定位置下载 `cef-component-ohos-<ver>/` → 解压 → `CEF_ROOT` 指向它。
   - 下载地址：`<维护者提供的 CEF 组件包下载地址（发布前填入）>`
-  - **一键嫁接**：用嫁接脚本把 CEF 嫁接到你的 Qt OHOS 模板工程（正确姿势：基于模板嫁接，不在 CEF demo 上改）。脚本在**外部知识库 `tools/kb-cef-graft.py`**（CEF 组件包剥离时重命名为 `tools/graft_cef.py`）+ 配置 `tools/kb-cef-graft.config.example.json`：
+  - **一键嫁接**：用嫁接脚本把 CEF 嫁接到你的 Qt OHOS 模板工程（正确姿势：基于模板嫁接，不在 CEF demo 上改）。脚本在本仓 `tools/kb-cef-graft.py`（打进 CEF 组件包时重命名为 `tools/graft_cef.py`）+ 配置 `tools/kb-cef-graft.config.example.json`：
     ```bash
     # 1. 复制配置改值（deveco/device/qt_libs 等，看 _comment）
     cp tools/kb-cef-graft.config.example.json .config.json  # 改里面的值

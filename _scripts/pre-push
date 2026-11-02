@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# pre-push hook — 轻量级泄露门禁（客户端第二道防线）
+# 安装: cp _scripts/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+#
+# 只检查最关键的 PRIVATE_PATTERNS 子集（速度优先）。
+# 完整 25-check 门禁在 PR bot 端运行。
+# 禁止使用 --no-verify 绕过。
+
+set -uo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# 快速泄露模式（最重要的几条）
+LEAK_PATTERNS=(
+  'C:[\\/]Users[\\/][A-Za-z0-9_.-]+'
+  '/home/[A-Za-z0-9_.-]+/'
+  'codereview\.qtcompany\.cn'
+  'my\.feishu\.cn/'
+  '于宗洋|刘子豪|王志铧|郭嘉伟'
+  'toTqtc|toOhos|toCustomers|fromCustomers'
+  'PRIVATE-TOKEN|oauth2:[A-Za-z0-9]'
+)
+
+ERRORS=0
+
+# 获取将要推送的文件列表
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$local_sha" = "0000000000000000000000000000000000000000" ]; then
+    continue  # delete
+  fi
+
+  if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+    # new branch: check all commits
+    files=$(git diff --name-only --diff-filter=ACMR "$local_sha" 2>/dev/null || git ls-tree -r --name-only "$local_sha")
+  else
+    files=$(git diff --name-only --diff-filter=ACMR "$remote_sha" "$local_sha")
+  fi
+
+  for f in $files; do
+    # 只检查 .md 和 .yaml 文件
+    case "$f" in
+      *.md|*.yaml|*.yml) :;;
+      *) continue;;
+    esac
+    # problems/ 的 error_message 允许包含路径
+    case "$f" in
+      problems/*) continue;;
+    esac
+
+    filepath="$REPO_ROOT/$f"
+    [ -f "$filepath" ] || continue
+
+    for pat in "${LEAK_PATTERNS[@]}"; do
+      if grep -qE "$pat" "$filepath" 2>/dev/null; then
+        printf 'BLOCKED: %s matches private pattern: %s\n' "$f" "$pat" >&2
+        ERRORS=$((ERRORS + 1))
+      fi
+    done
+  done
+done
+
+if [ "$ERRORS" -gt 0 ]; then
+  printf '\nPush BLOCKED: %d private content leak(s) detected.\n' "$ERRORS" >&2
+  printf 'Fix the issues above, or if this is a false positive, contact an editor.\n' >&2
+  printf 'Do NOT use --no-verify to bypass this check.\n' >&2
+  exit 1
+fi
+
+exit 0
