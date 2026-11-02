@@ -43,3 +43,12 @@ drafts/
 /portgraph/portgraph.db
 # portgraph 运行时依赖图 DB（ingest/scan 生成，不入库）
 portgraph/deps.db
+
+# 构建/IDE 产物（模板与样例工程里容易被误提交）
+.cxx/
+.hvigor/
+.idea/
+.deveco/
+.DS_Store
+# ohpm 依赖缓存（由 oh-package-lock.json5 + ohpm install 重建）
+oh_modules/

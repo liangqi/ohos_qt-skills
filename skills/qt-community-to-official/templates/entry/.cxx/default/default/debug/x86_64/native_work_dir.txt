@@ -1,1 +1,0 @@
-/Users/xiaoliyu/code/AiProject/qt-5.12.12/qt-harmonyos-src/qtbase/src/harmonyos/templates/entry/.cxx/default/default/debug/x86_64
