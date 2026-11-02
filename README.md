@@ -84,7 +84,7 @@ Qt/C++ 桌面应用要跑在 HarmonyOS 上，难点从来不是"写几行 ArkTS"
 | 🗺️ 故障跟踪 | `faults/` + `tools/faults-build.py` | S→C→W→T 故障图（17/18/15/11）：定性、责任、临时方案、在跟单、闭环缺口 |
 | 📚 知识底座 | `semantic/` `procedural/` `problems/` | 121 页（Qt 侧 94 + 内嵌平台 27），35 条铁律，13 类 API 映射，47 个实战踩坑 |
 | 🏗️ 工程模板 | `templates/qt-ohos-app/` | 71 个文件的干净鸿蒙壳工程（替代历史上带构建产物的脏模板） |
-| ✅ 自检门禁 | `_scripts/verify.sh` + `tests/` | 契约/结构/引用/卫生检查 + 用例（引擎 12 + 一致性 20 + 扫描 9） |
+| ✅ 自检门禁 | `_scripts/verify.sh` + `tests/` | 10 类结构自检 + 发版清单对账 + 用例（引擎 12 + 一致性 20 + 扫描 9） |
 
 ---
 
@@ -119,7 +119,7 @@ python3 tools/qt-ohos-run.py --help        # 迁移流水线
 python3 tools/qt-sdk-run.py --help         # SDK 工程平面
 python3 tools/faults-build.py check        # 故障库真源 ↔ 派生物一致性
 python3 portgraph/portgraph.py analyze <应用名>   # 可行性三态
-bash _scripts/verify.sh                    # 仓库自检（契约/结构/引用/卫生）
+bash _scripts/verify.sh                    # 仓库自检（契约/结构/引用/索引/发版清单/卫生）
 python3 -m unittest discover -s tests -v   # 用例全量
 ```
 
@@ -166,7 +166,7 @@ ohos_qt-skills/
 ├── AGENTS.md / CLAUDE.md       # Agent 行为契约（两份逐字一致，verify 强校验）
 ├── kb.yaml                     # 仓库契约：入口/地图/自检命令/分层必需路径
 ├── README.md  CHANGELOG.md  CONTRIBUTING.md  TESTING.md
-├── _scripts/                   # 门禁：verify.sh / verify.py
+├── _scripts/                   # 门禁与发版：verify.sh / verify.py / gen-manifest.py
 ├── _index/                     # 索引：_map 地图 / _tags 标签 / _dashboard 仪表盘 / _task-routing 路由
 ├── semantic/                   # 语义知识（27 页）：模块状态、API 映射、平台限制、窗口/生命周期
 ├── procedural/                 # 程序知识（15 页）：迁移、排障、构建、发版、Demo 生成

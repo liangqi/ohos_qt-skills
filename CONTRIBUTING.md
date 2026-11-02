@@ -30,6 +30,39 @@ trunk ──●────────●────────●───�
 
 ---
 
+## 发版流程（维护者）
+
+发版是**可复算的机械动作**，不是手填清单。前提：`trunk` 上门禁全绿，且 `TESTING.md`
+的真机端到端已有结论（通过，或 PARTIAL 且每条都有据）。
+
+```bash
+# 1. 确认当前提交就是你要发的树
+bash _scripts/verify.sh && python -m unittest discover -s tests
+python tools/faults-build.py check
+
+# 2. 刷新发版清单（重算内容树摘要、页面数、用例数、时间戳）
+python _scripts/gen-manifest.py
+
+# 3. 置为 released 并回填 root_commit / released_at
+python _scripts/gen-manifest.py --release
+
+# 4. 清单自洽后再打 tag（tag 打在含 released 清单的那个提交上）
+git add RELEASE-MANIFEST.yaml CHANGELOG.md
+git commit -m "release: v3.0.0"
+git tag -a v3.0.0 -m "ohos_qt-skills v3.0.0"
+git push origin trunk --tags
+
+# 5. 从 tag 拉归档线
+git branch release/v3.0.0 v3.0.0 && git push origin release/v3.0.0
+```
+
+事后校验：`python _scripts/gen-manifest.py --check` 应报"一致"。`verify.sh` 的 M1 检查
+只在**站在发版提交上**时才强制摘要一致——发版之后的正常提交不会被判红。
+
+试用版/候选版可按同样流程打 `vX.Y.Z-rc1`，并把清单 `status` 留在 `trunk-candidate`。
+
+---
+
 ## 怎么贡献
 
 ### 1. 代码 / 工具（`tools/`、`portgraph/`、`templates/`）

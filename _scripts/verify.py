@@ -15,9 +15,12 @@
 from __future__ import annotations
 
 import argparse
+import ast
+import hashlib
 import json
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -196,6 +199,156 @@ def collect_pages() -> tuple[list[tuple[str, Path, str]], dict[str, str]]:
     return pages, ids
 
 
+def head_commit() -> str:
+    try:
+        out = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT,
+                             capture_output=True, text=True, timeout=15)
+        return out.stdout.strip() if out.returncode == 0 else ""
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def tracked_files() -> list[str]:
+    """入库文件清单：优先 git ls-files（权威），否则退回文件系统遍历。"""
+    try:
+        out = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT,
+                             capture_output=True, text=True, timeout=30)
+        if out.returncode == 0 and out.stdout:
+            return [x for x in out.stdout.split("\0") if x]
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return sorted(str(p.relative_to(ROOT)) for p in walk_files(ROOT))
+
+
+def content_tree_sha256() -> str:
+    """sha256 over sorted("<relpath>\\0<sha256(file)>\\n")，排除 manifest 自身。"""
+    h = hashlib.sha256()
+    for rel in sorted(tracked_files()):
+        if rel == "RELEASE-MANIFEST.yaml":
+            continue
+        path = ROOT / rel
+        if not path.is_file():
+            continue
+        h.update(rel.encode("utf-8") + b"\0")
+        h.update(hashlib.sha256(path.read_bytes()).hexdigest().encode() + b"\n")
+    return h.hexdigest()
+
+
+def count_tests() -> int:
+    def count(*rels: str) -> int:
+        total = 0
+        for rel in rels:
+            try:
+                tree = ast.parse(read_text(ROOT / rel))
+            except SyntaxError:
+                continue
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ClassDef) and node.name.startswith("Test"):
+                    total += sum(1 for item in node.body
+                                 if isinstance(item, ast.FunctionDef)
+                                 and item.name.startswith("test_"))
+        return total
+    return (count("tests/test_qt_ohos.py", "tests/test_kb_consistency.py",
+                  "tests/test_cpp20_gap_scan.py")
+            + count("portgraph/tests/test_port_graph.py",
+                    "portgraph/tests/test_prefetch.py"))
+
+
+def _yaml_value(raw: str) -> str:
+    """取标量值：去掉行尾注释与引号（引号内不切）。"""
+    v = raw.strip()
+    if v[:1] in ('"', "'"):
+        quote = v[0]
+        end = v.find(quote, 1)
+        return v[1:end] if end != -1 else v.strip(quote)
+    idx = v.find(" #")
+    return (v[:idx] if idx != -1 else v).strip()
+
+
+def _yaml_scalars(text: str) -> dict:
+    """只取顶层 `key: value` 与一层缩进 `  key: value`，够 manifest 用。"""
+    flat: dict = {}
+    section = ""
+    for raw in text.splitlines():
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        m = re.match(r"^  ([A-Za-z0-9_]+):[ \t]*(.*)$", raw)
+        if m and section:
+            flat[f"{section}.{m.group(1)}"] = _yaml_value(m.group(2))
+            continue
+        m = re.match(r"^([A-Za-z0-9_]+):[ \t]*(.*)$", raw)
+        if m:
+            value = _yaml_value(m.group(2))
+            if value:
+                flat[m.group(1)] = value
+                section = ""
+            else:
+                section = m.group(1)
+    return flat
+
+
+def check_manifest(pages: list[tuple[str, Path, str]]) -> None:
+    """发版清单（RELEASE-MANIFEST.yaml）的字段必须与仓库实际一致。
+
+    trunk-candidate 阶段只校验结构性事实（页面数 / skills / 用例数 / 枚举值）；
+    一旦 status=released，内容树摘要与 root_commit 也必须对得上——否则"可对账"
+    只是一句话。
+    """
+    path = ROOT / "RELEASE-MANIFEST.yaml"
+    if not path.exists():
+        warn("M1", "缺少 RELEASE-MANIFEST.yaml（发版清单；trunk 起应常驻）")
+        return
+    fm = _yaml_scalars(read_text(path))
+
+    version = fm.get("release_version", "")
+    if not re.match(r"^v\d+\.\d+\.\d+$", version):
+        error("M1", f"release_version 格式不合法：{version!r}（应形如 v3.0.0）")
+    status = fm.get("status", "")
+    if status not in ("trunk-candidate", "released", "retired"):
+        error("M1", f"status 取值不合法：{status!r}（trunk-candidate / released / retired）")
+
+    common = sum(1 for d, _, _ in pages if d == "ohos-common-kb-public")
+    qt_side = len(pages) - common
+    for key, actual in (("common_pages_count", common), ("qt_pages_count", qt_side)):
+        claimed = fm.get(key, "")
+        if not claimed.isdigit():
+            error("M1", f"{key} 缺失或非整数：{claimed!r}")
+        elif int(claimed) != actual:
+            error("M1", f"{key}={claimed}，实际 {actual}（页面数变了就更新清单）")
+
+    skills = re.findall(r'"([^"]+)"', fm.get("skills", ""))
+    actual_skills = sorted(p.parent.name for p in (ROOT / "skills").glob("*/SKILL.md"))
+    if sorted(skills) != actual_skills:
+        error("M1", f"skills 清单与 skills/ 目录不符：清单 {sorted(skills)}，实际 {actual_skills}")
+
+    claimed_tests = fm.get("validation.unittests", "")
+    actual_tests = count_tests()
+    if not claimed_tests.isdigit():
+        error("M1", f"validation.unittests 缺失或非整数：{claimed_tests!r}")
+    elif int(claimed_tests) != actual_tests:
+        error("M1", f"validation.unittests={claimed_tests}，实际 {actual_tests}")
+
+    digest = fm.get("content_tree_sha256", "")
+    if not re.match(r"^[0-9a-f]{64}$", digest):
+        error("M1", "content_tree_sha256 缺失或不是 64 位小写十六进制")
+        return
+    actual_digest = content_tree_sha256()
+    if status == "released":
+        root_commit = fm.get("root_commit", "")
+        if not re.match(r"^[0-9a-f]{40}$", root_commit):
+            error("M1", "status=released 但 root_commit 未回填（40 位 SHA）")
+            return
+        # 只有站在发版提交上才强制摘要一致；发版之后的正常提交不算错（树已前进）
+        if head_commit() == root_commit and digest != actual_digest:
+            error("M1", "在发版提交上，content_tree_sha256 与树不符"
+                        "（清单被改过或提交被篡改）")
+        elif head_commit() != root_commit:
+            info("发版 %s 已归档在 %s…，当前树在此之后" % (version[:12], root_commit[:12]))
+    elif digest != actual_digest:
+        info("发版清单为 %s 快照（%s…），与当前树不同——发版时运行 "
+             "_scripts/gen-manifest.py 刷新" % (version, digest[:12]))
+
+
 def check_wikilinks(ids: dict[str, str]) -> None:
     names = {p.stem for p in ROOT.rglob("*.md") if ".git" not in p.parts}
     broken: dict[str, int] = {}
@@ -304,6 +457,7 @@ def main() -> int:
     pages, ids = collect_pages()
     check_wikilinks(ids)
     check_index_consistency(pages)
+    check_manifest(pages)
     check_hygiene()
 
     ok = not ERRORS

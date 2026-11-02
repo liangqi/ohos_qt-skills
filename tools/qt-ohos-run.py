@@ -56,7 +56,10 @@ def _resolve_project(args, required: bool) -> Path:
         sys.exit(1)
     if required or (project / state_mod.STATE_DIR_NAME).exists():
         return project
-    print("[qt-ohos-run] no migration state in %s - run `init` first" % project)
+    print("[qt-ohos-run] no migration state in %s" % project)
+    print("[qt-ohos-run] 用 `--project <项目目录>` 指向已 scan 过的工程"
+          "（例如 `qt-ohos-run --project ~/app scan` 后跟 `--project ~/app plan`），"
+          "或先在该工程内 `init`")
     sys.exit(1)
 
 
@@ -387,11 +390,14 @@ def cmd_verify(args):
 
 
 def cmd_analyze_log(args):
+    # 日志分析与工程状态无关：只有显式给了 --project 才回写 error 字段，
+    # 否则不要用"先 init"去误导一个只想看日志的用户。
     st = None
-    try:
-        st = _state(args)
-    except SystemExit:
-        st = None
+    if getattr(args, "project", None):
+        try:
+            st = _state(args)
+        except SystemExit:
+            st = None
     engine = error_engine.ErrorEngine(KB_ROOT)
     hits = engine.analyze_file(args.logfile)
     if not hits:
