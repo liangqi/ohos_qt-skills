@@ -56,8 +56,9 @@ git push origin trunk --tags
 git branch release/v3.0.0 v3.0.0 && git push origin release/v3.0.0
 ```
 
-事后校验：`python _scripts/gen-manifest.py --check` 应报"一致"。`verify.sh` 的 M1 检查
-只在**站在发版提交上**时才强制摘要一致——发版之后的正常提交不会被判红。
+事后校验：`python _scripts/gen-manifest.py --check --strict` 应报"一致"。平时用
+`--check`（不带 `--strict`）：计数必须一致，摘要允许是"旧快照"——否则每个普通提交都会红，
+检查很快就没人看了。`verify.sh` 的 M1 同样只在**站在发版提交上**时强制摘要一致。
 
 试用版/候选版可按同样流程打 `vX.Y.Z-rc1`，并把清单 `status` 留在 `trunk-candidate`。
 

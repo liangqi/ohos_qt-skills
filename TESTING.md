@@ -81,7 +81,7 @@ Windows 真机端到端——见下节。
 | 4. 自动修 | `qt-ohos-run.py --project <工程> patch` | `no automatic fixes applicable`（无命中）或 `applied N fixes`，`已改动全部记入 .qt-ohos/changes.json` |
 | 5. 门禁 | `qt-ohos-run.py --project <工程> verify` | `G0 Environment FAIL missing: qt_sdk_prefix or build_command`，G1/G2 PASS，G3–G12 NOT_RUN，`Result: FAIL`——未配 SDK 时的正确结论 |
 | 6. 日志诊断 | `qt-ohos-run.py analyze-log <日志>` | `Hits:` 列出命中模式与置信度，`Top hit: QOH001 (qpa_plugin_not_found)`，随后给出 cause / diagnose / fix / read |
-| 7. 清单对账 | `python _scripts/gen-manifest.py --check` | `gen-manifest: 一致（121 页 / 164 用例 / <hash>…）` |
+| 7. 清单对账 | `python _scripts/gen-manifest.py --check` | `gen-manifest: 计数一致（121 页 / 164 用例）…`；普通提交上摘要会显示为"旧快照"，发版前用同脚本刷新后再 `--check --strict` |
 
 第 6 步最容易验证：往日志里塞一行 `dlopen failed: library "libqohos.so" not found`，
 应当命中 QOH001，且顺着 `read:` 能打开对应的 `problems/` 页。

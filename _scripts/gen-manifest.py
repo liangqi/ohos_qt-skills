@@ -112,6 +112,8 @@ def set_scalar(text: str, key: str, value: str, indent: str = "",
 def main() -> int:
     parser = argparse.ArgumentParser(description="刷新发版清单的可计算字段")
     parser.add_argument("--check", action="store_true", help="只比对，不写文件")
+    parser.add_argument("--strict", action="store_true",
+                        help="配合 --check：内容树摘要不一致也算失败（发版提交上用）")
     parser.add_argument("--release", action="store_true",
                         help="置 status=released 并回填 root_commit/released_at")
     args = parser.parse_args()
@@ -138,12 +140,24 @@ def main() -> int:
         text = set_scalar(text, "released_at", f'"{now[:10]}"')
 
     if args.check:
-        if text != original:
-            print("gen-manifest: 清单与仓库实际不一致（运行 _scripts/gen-manifest.py 刷新）")
-            for line in text.splitlines():
-                if line not in original.splitlines() and line.strip():
-                    print("  → " + line.strip())
+        # 计数（页数/用例数/skills）必须一致；内容树摘要只在发版提交上要求一致，
+        # 否则每个普通提交都会红，"检查"很快就没人看了。
+        counts_changed = [ln for ln in text.splitlines()
+                          if ln not in original.splitlines() and ln.strip()
+                          and not ln.split(":")[0] in ("content_tree_sha256", "built_at")]
+        hash_changed = ("content_tree_sha256: " + digest) not in original
+        if counts_changed:
+            print("gen-manifest: 计数与实际不一致（运行 _scripts/gen-manifest.py 刷新）")
+            for line in counts_changed:
+                print("  → " + line.strip())
             return 1
+        if hash_changed:
+            if args.strict:
+                print("gen-manifest: 严格模式下内容树摘要不一致——发版提交上必须刷新清单")
+                return 1
+            print(f"gen-manifest: 计数一致（{common + qt_side} 页 / {tests} 用例）；"
+                  f"清单是旧快照（{digest[:12]}…），发版前用 gen-manifest.py 刷新")
+            return 0
         print(f"gen-manifest: 一致（{common + qt_side} 页 / {tests} 用例 / {digest[:12]}…）")
         return 0
 
