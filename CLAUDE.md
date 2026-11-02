@@ -26,7 +26,7 @@ SDK、Qt 源码/SDK，引导安装缺失依赖，生成 `ENV.local.md` 并验证
 kb.yaml          仓库契约：入口 / 地图 / 自检命令 / 分层必需路径
 SKILL.md         Agent 总入口（frontmatter + Instructions）
 AGENTS.md/.md    Agent 行为契约（两份一致）
-_scripts/        门禁：verify.sh / verify.py
+_scripts/        门禁与发版：ci.py / verify.py / gen-manifest.py（ci.sh 为薄壳）
 _index/          索引层（_map 地图、_tags 标签、_dashboard 仪表盘、_task-routing 路由）
 semantic/        语义知识：概念、API 映射、模块状态、平台限制、构建与窗口模型
 procedural/      程序知识：迁移、排障、构建运行、发版、Demo 生成
@@ -114,7 +114,7 @@ skills/          Agent Skills（6 个，按写权限切边界）
   单个 `main.cpp`（ohos 工程仅胶水壳）且写明编号复现步骤。
 - **链路闭环**（`faults/_index.md` §四）：defect 的"临时解决"必须同时有采用中方案（W adopted）
   与在跟单（T）；limitation 与应用问题必须有采用中方案；缺口向上传播，S 宣称 resolved 而链有缺 → ERROR。
-- **收工自检**：`bash _scripts/verify.sh` 与 `python -m unittest discover -s tests` 必须通过；
+- **收工自检**：`python _scripts/ci.py` 必须通过（等价 `bash _scripts/ci.sh`；Windows 无 bash 用前者）；
   改了文档数字却没改事实，门禁会红。
 
 ## 分支与交付

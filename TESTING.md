@@ -8,15 +8,18 @@
 ## 一、自动化门禁（每次提交必跑）
 
 ```bash
-bash _scripts/verify.sh                     # 契约 / 结构 / 引用 / 索引 / 发版清单 / 卫生（10 类检查）
-python -m unittest discover -s tests -v     # 一致性 + 引擎 + 扫描（41 用例）
+python _scripts/verify.py                   # 契约 / 结构 / 引用 / 索引 / 发版清单 / 卫生（10 类检查）
+python -m unittest discover -s tests -v     # 一致性 + 引擎 + 扫描（48 用例）
 python tools/faults-build.py check          # 故障库真源 ↔ 派生物（error 必须为 0）
 ```
+
+（`bash _scripts/verify.sh` 是同一套检查的 bash 薄壳；Windows 上直接用 `python` 形式。）
 
 一条命令跑完全部四条（CI 用这个，退出码即结论）：
 
 ```bash
-bash _scripts/ci.sh
+python _scripts/ci.py       # 纯 Python，Windows 无 bash 也能跑
+bash _scripts/ci.sh         # 等价薄壳
 ```
 
 Windows 上没有 bash 时，用 `python _scripts/verify.py` 等价执行第一条。
@@ -25,8 +28,8 @@ Windows 上没有 bash 时，用 `python _scripts/verify.py` 等价执行第一�
 
 | 门禁 | 结果 | 说明 |
 |------|------|------|
-| `verify.sh` | **PASS** | 0 error / 0 warning（模板目录里 178 个历史构建产物已清理） |
-| `unittest` | **OK（41 tests）** | 引擎 12 + 一致性 20 + cpp20 扫描 9 = 41（另有 portgraph 123 单测：图谱 119 + 预取 4，不在默认 discover 范围） |
+| `verify.py` | **PASS** | 0 error / 0 warning（模板目录里 178 个历史构建产物已清理） |
+| `unittest` | **OK（48 tests）** | 引擎 19 + 一致性 20 + cpp20 扫描 9 = 48（另有 portgraph 123 单测：图谱 119 + 预取 4，不在默认 discover 范围） |
 | `faults-build check` | **PASS** | error=0 / warn=0 / info=7（7 条缺失跟踪单已排期到 T-0008…T-0013） |
 | CLI 契约 | **PASS** | `qt-ohos-run` 24 / `qt-sdk-run` 24 / `portgraph` 10 子命令，由测试锁定 |
 | CLI 冒烟 | **PASS** | 6 个 CLI 的 `--help` 全部 exit 0（`faults-build --help` 此前返回 2，已修） |
@@ -51,7 +54,7 @@ Windows 上没有 bash 时，用 `python _scripts/verify.py` 等价执行第一�
 | SDK CLI 子命令 | 24 | 24 | 持平（契约测试锁定） |
 | portgraph 子命令 | 10 | 10 | 持平（契约测试锁定） |
 | 模板文件 | 71 | 71 | 持平 |
-| 引擎 / 一致性 / 扫描用例 | 12 / 20 / 9 | 12 / 20 / 9 | 持平（原记 22 是 grep 误数） |
+| 引擎 / 一致性 / 扫描用例 | 12 / 20 / 9 | 19 / 20 / 9 | **+7**（Qt 主版本识别、`.cmake` 检测、未知版本告警） |
 | portgraph 单测 | 123 | 123 | 持平（图谱 119 + 预取 4） |
 | 仓库契约（`kb.yaml`） | 无 | **有** | **+** |
 | 自检门禁（`verify.sh`） | 无 | **有**（10 类检查，含发版清单对账） | **+** |
@@ -75,7 +78,7 @@ Windows 真机端到端——见下节。
 
 | 步骤 | 命令（`--project` 指向样例工程） | 期望输出（2026-11-02 实测） |
 |------|------------------------------|--------------------------|
-| 1. 扫描 | `qt-ohos-run.py --project <工程> scan` | `build system: cmake \| qt modules: core, gui, network, widgets \| sources: N`，随后 `Qt HarmonyOS Porting Risk Report` 按 HIGH/MED/LOW 分组列风险（R009 `qprocess_usage`、R012 `system_tray_usage` 等，带 `文件:行号`） |
+| 1. 扫描 | `qt-ohos-run.py --project <工程> scan` | `build system: cmake \| qt: 5 (find_package(Qt5)) \| modules: core, gui, network, widgets \| sources: N`，随后 `Qt HarmonyOS Porting Risk Report` 按等级分组列风险（R009 `qprocess_usage`、R012 `system_tray_usage` 等，带 `文件:行号`）。判不出 Qt 主版本时这里显示 `qt: 未判定` 并打 WARNING |
 | 2. 计划 | `qt-ohos-run.py --project <工程> plan` | `plan: 6 steps (auto=1 assisted=3 manual=2)`，S001…S006 逐条标注 auto/assisted/manual |
 | 3. 状态 | `qt-ohos-run.py --project <工程> status` | `stage: plan` / `next: {"action": "patch"}` / `completed:` / `remaining:` 四行 |
 | 4. 自动修 | `qt-ohos-run.py --project <工程> patch` | `no automatic fixes applicable`（无命中）或 `applied N fixes`，`已改动全部记入 .qt-ohos/changes.json` |
@@ -115,12 +118,26 @@ Windows 真机端到端——见下节。
 | Qt OHOS SDK | 5.15（推荐）或 5.12 | 由 `qt-sdk-run.py` 编译或复用现成 |
 | 磁盘 | ≥ 30 GB（Qt 源码 + 构建产物） | — |
 
+### 0.1 Windows 专用预检（做错会浪费几小时）
+
+```powershell
+python --version                             # 3.10+
+git config --global core.longpaths true      # tdesktop 的路径深度会超 260 字符
+# 含子模块的工程（tdesktop 的 Qt 配置就在 cmake 子模块里）必须递归拉：
+git clone --recursive <url> <dir>
+```
+
+- 门禁不需要 bash：用 `python _scripts/ci.py`（`ci.sh` 只是它的薄壳）。
+- 工程路径里可以有空格和中文，`--project "C:\Users\张三\我的 项目"` 能直接用。
+- 判不出 Qt 主版本时（Qt 配置写在未拉取的子模块里），先 `config set qt_version 6` 再 scan，
+  否则会按 5.15 的模块矩阵评估。
+
 ### 1. 取代码并先跑门禁（不装环境也能跑）
 
 ```powershell
 git clone -b trunk https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills.git
 cd ohos_qt-skills
-python -m unittest discover -s tests -v     # 期望 41 OK
+python _scripts/ci.py                       # 期望「CI: 全部通过」（47 用例）
 python _scripts/verify.py                   # 期望 PASS（0 error / 0 warning）
 python tools/faults-build.py check          # 期望 error=0
 ```
@@ -150,6 +167,18 @@ python portgraph/portgraph.py fetch-deps <app> --dry-run
 
 记录：**三态结论、blockers、unknowns（需源码编译的依赖）**。若结论 `blocked` 且阻断项
 是硬阻塞（Qt WebEngine、必须的 D-Bus 服务等），换应用——这本身就是评估能力的一次验证。
+
+#### 用 tdesktop 这类 Qt6 重型工程试跑时的预期（2026-11-02 本机实测）
+
+| 指标 | 实测值 | 含义 |
+|------|--------|------|
+| 仓库规模 | 6920 文件 / 3298 个 C/C++ 源 | `scan` 在 macOS 上 12.3 秒；Windows 会慢一些 |
+| Qt 主版本 | 需 Qt6（`find_package(QT NAMES Qt6 …)` 优先） | 只有 Qt5 OHOS SDK 时**在 Qt 版本前置就断了**，别急着排别的错 |
+| 版本识别 | 配置写在 `cmake` 子模块里 | 非递归 clone 会显示 `qt: 未判定`，按 5.15 评估（保守）；`config set qt_version 6` 可修正 |
+| 三态结论 | `UNCERTAIN` | 不是 `blocked`：模块矩阵上 Qt6 的 core/gui/network/widgets 可用 |
+| 第三方 | 代码级抓到 ffmpeg、openssl、zlib；`portgraph deps` 另报 rnnoise、tde2e、wallet_engine 需源码交叉编译 | 这几个是本工程的主要工作量 |
+| 平台绑定代码 | 161 critical（`win32_api` 为主） | 这些是 Windows 专用实现，移植时要按 OHOS API 重写，不是"改个宏" |
+| 现实目标 | 走通 `scan → assess → plan`，再挑**一个**库（如 `lib_tl` 或 `lib_base`）编出 `.so` | 整包上真机不现实，别把"跑不完"当成工具坏了 |
 
 ### 4. 走迁移流水线
 

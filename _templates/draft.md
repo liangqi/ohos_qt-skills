@@ -1,12 +1,15 @@
 # 知识草稿模板
 
-> 新知识（概念、流程、复盘、API 差异）先写入 `drafts/E{N}-<slug>.md`。
-> 合入 main 后由 bot 自动 promote 到正式目录。
-> 编译/运行时错误请直接写 `problems/<type>-<slug>.md`（无需草稿）。
+> 三处草稿入口，按内容类型选：
+> - **故障/缺陷**（现象+根因+方案）：`faults/_drafts/`，套 `faults/_drafts/_template.md`
+>   （证据类型、复现 demo、闭环要求都在那里，本模板不覆盖）
+> - **知识页**（概念/流程/复盘/API 差异）：先写成本模板，合入时落到 `semantic/` `procedural/`
+>   `episodic/postmortems/` 之一
+> - **编译/运行时错误**（已修好）：直接写 `problems/<type>-<slug>.md`，不必草稿
 
 ```yaml
 ---
-id: e{{N}}-{{slug}}
+id: {{semantic|procedural|episodic}}-{{slug}}
 title: "{{标题}}"
 type: {{semantic|procedural|episodic}}
 status: draft

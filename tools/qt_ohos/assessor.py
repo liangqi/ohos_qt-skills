@@ -198,9 +198,19 @@ def evaluate(kb_root, scan_info: Dict, risk: Optional[Dict] = None,
                              if f.get("severity") == "critical"})
 
     # 7. verdict per taxonomy
+    hints = []
+    # 空目录/指错路径也会"评估通过"：没有任何 Qt 特征就说 portable 是假结论
+    no_qt_signal = (not scan_info.get("qt_modules")
+                    and str(scan_info.get("build_system") or "") in ("", "unknown"))
+    if no_qt_signal:
+        hints.append("未识别到 Qt 工程特征（无 Qt 模块、无构建文件）："
+                     "先确认 --project 指向的是工程根目录，而不是上一层或子目录")
+    if not str(scan_info.get("qt_version_hint") or ""):
+        hints.append("Qt 主版本未判定，下面按 5.15 的模块矩阵评估；"
+                     "Qt6 工程的结论可能偏保守（import Qt6 前先确认版本）")
     if blockers:
         verdict = "blocked"
-    elif self_compile or deps_to_verify:
+    elif self_compile or deps_to_verify or no_qt_signal:
         verdict = "uncertain"
     else:
         verdict = "portable"
@@ -219,6 +229,7 @@ def evaluate(kb_root, scan_info: Dict, risk: Optional[Dict] = None,
         "risk_summary": risk_summary,
         "critical_rules": critical_rules,
         "effort_reference": (recipes or [])[:3],
+        "hints": hints,
     }
     assessment["summary"] = _summary(assessment)
     return assessment
@@ -286,6 +297,8 @@ def render(assessment: Dict) -> str:
     lines.append("Verdict : %s   (target: %s)" % (
         verdict, assessment.get("qt_target")))
     lines.append("Summary : %s" % assessment.get("summary"))
+    for hint in assessment.get("hints", []):
+        lines.append("! %s" % hint)
 
     if assessment.get("blockers"):
         lines.append("")
@@ -335,8 +348,12 @@ def render(assessment: Dict) -> str:
         lines.append("")
         lines.append("Effort reference (similar historical migrations):")
         for r in assessment["effort_reference"]:
+            matched = r.get("matched") or []
             lines.append("  %.2f  %-40s %s" % (
                 r["score"], r["case"], r.get("summary", "")[:60]))
+            if matched:
+                lines.append("        match: %s" % ", ".join(matched[:8]))
+        lines.append("  （相似度只按模块/依赖词的重合估算，不等于工时；看 match 是否对应）")
     lines.append("")
     lines.append("Deep dependency-graph analysis: see portgraph (local tool).")
     lines.append("Taxonomy: semantic/qt-harmonyos-blocking-taxonomy.md")

@@ -20,7 +20,7 @@
 ## 如何成为贡献者
 
 1. Clone 本仓库
-2. 运行 `python _scripts/kb-init.py` 初始化
+2. 环境初始化见 `skills/kb-init/SKILL.md`（检测 DevEco/SDK/Qt，生成 `ENV.local.md`）
 3. 按照 [CONTRIBUTING.md](../CONTRIBUTING.md) 提交 PR
 4. PR 合入后，你的名字会出现在此列表
 

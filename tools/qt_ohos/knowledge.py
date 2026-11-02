@@ -307,7 +307,10 @@ def similar_recipes(kb_root, scan_info: Dict, top: int = 5) -> List[Dict]:
         overlap = project_terms & tags
         body_low = text.lower()
         body_hits = {t for t in project_terms if t in body_low}
-        score = round(0.6 * len(overlap) + 0.1 * len(body_hits), 2)
+        # 归一化到 0..1：原公式不除以项目特征数，一个 "cmake" 就能顶到 1.00，
+        # 让"相似度 1.00 的 Coin3D"这种明显无关的案例排到第一。
+        raw = 0.6 * len(overlap) + 0.1 * len(body_hits)
+        score = round(min(1.0, raw / max(1, len(project_terms))), 2)
         if score > 0:
             results.append({
                 "case": path.relative_to(Path(kb_root)).as_posix(),

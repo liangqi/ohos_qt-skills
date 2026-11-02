@@ -114,6 +114,62 @@ class TestScannerAndRules(unittest.TestCase):
         self.assertGreaterEqual(risk["summary"].get("critical", 0), 2)
 
 
+class TestQtVersionDetection(unittest.TestCase):
+    """Qt 主版本识别：真实工程（tdesktop）的 Qt 配置落在子模块 .cmake 里，
+    曾因只认 find_package(Qt6 字面量而把 Qt6 工程当成 Qt5 评估。"""
+
+    def test_literal_find_package(self):
+        self.assertEqual(scanner.detect_qt_major(["find_package(Qt6 COMPONENTS Core)"])[0], "6")
+        self.assertEqual(scanner.detect_qt_major(["find_package(Qt5 REQUIRED)"])[0], "5")
+
+    def test_link_targets_and_names(self):
+        self.assertEqual(scanner.detect_qt_major(["target_link_libraries(x Qt6::Widgets)"])[0], "6")
+        self.assertEqual(scanner.detect_qt_major(
+            ["find_package(QT NAMES Qt6 COMPONENTS Core QUIET)"])[0], "6")
+
+    def test_qt6_only_cmake_commands(self):
+        self.assertEqual(scanner.detect_qt_major(["qt_standard_project_setup()"])[0], "6")
+        self.assertEqual(scanner.detect_qt_major(["qt5_wrap_cpp(SRCS a.h)"])[0], "5")
+        # 条件分支只说明"还兼容 Qt5"，不能当成工程主版本
+        self.assertIsNone(scanner.detect_qt_major(
+            ["if (QT_VERSION_MAJOR LESS 6)\n  use_qt5()\nendif()"])[0])
+        self.assertEqual(scanner.detect_qt_major(["set(QT_VERSION_MAJOR 6)"])[0], "6")
+
+    def test_variable_form_yields_no_version(self):
+        # find_package(Qt${QT_VERSION_MAJOR} ...) 取不到字面量：不猜
+        major, _ = scanner.detect_qt_major(
+            ["find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Gui REQUIRED)"])
+        self.assertIsNone(major)
+
+    def test_cmake_files_beyond_cmakelists_are_scanned(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            (root / "cmake" / "external" / "qt").mkdir(parents=True)
+            (root / "CMakeLists.txt").write_text(
+                "project(p)\nadd_subdirectory(cmake)\n", encoding="utf-8")
+            (root / "cmake" / "external" / "qt" / "package.cmake").write_text(
+                "find_package(QT NAMES Qt6 COMPONENTS Core QUIET)\n"
+                "find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Gui Widgets REQUIRED)\n",
+                encoding="utf-8")
+            info = scanner.scan_project(root)
+            self.assertIn("cmake/external/qt/package.cmake", info["cmake_files"])
+            self.assertEqual(info["qt_version_hint"], "6", info)
+            self.assertIn("widgets", info["qt_modules"])
+
+    def test_unknown_version_warns_instead_of_assuming_qt5(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "p"
+            (root / "src").mkdir(parents=True)
+            (root / "CMakeLists.txt").write_text(
+                "project(p)\nadd_executable(p main.cpp)\n", encoding="utf-8")
+            (root / "src" / "main.cpp").write_text(
+                "#include <QtWidgets/QApplication>\nint main(){}\n", encoding="utf-8")
+            info = scanner.scan_project(root)
+            self.assertIsNone(info["qt_version_hint"])
+            self.assertTrue(any("未能从构建文件判定 Qt 主版本" in w
+                                for w in info["warnings"]))
+
+
 class TestErrorEngine(unittest.TestCase):
     def test_qpa_log_matches_qoh001(self):
         engine = error_engine.ErrorEngine(REPO_ROOT)
@@ -224,6 +280,27 @@ class TestAssessor(unittest.TestCase):
                 "third_party_hints": [], "cmake_packages": {"find_package": []},
                 "pkg_manifests": {"conan": [], "vcpkg": []},
                 "frameworks": [], "kf_components": []}
+
+    def test_empty_project_is_not_portable(self):
+        """空目录/指错路径：没有任何 Qt 特征时不许给 portable。"""
+        from qt_ohos import assessor
+        with tempfile.TemporaryDirectory() as tmp:
+            kb = Path(tmp)
+            adapt = Path(__file__).resolve().parent.parent / "knowledge" \
+                / "adaptation"
+            if not (adapt / "modules.yaml").is_file():
+                self.skipTest("adaptation matrix not available")
+            shutil.copytree(adapt, kb / "knowledge" / "adaptation")
+            empty = assessor.evaluate(kb, {
+                "qt_modules": [], "qt_version_hint": None,
+                "build_system": "unknown", "sources": [],
+                "third_party_hints": [], "cmake_packages": {"find_package": []},
+                "pkg_manifests": {"conan": [], "vcpkg": []},
+                "frameworks": [], "kf_components": []})
+            self.assertEqual(empty["verdict"], "uncertain")
+            self.assertTrue(any("未识别到 Qt 工程特征" in h
+                                for h in empty["hints"]))
+            self.assertIn("未识别到 Qt 工程特征", assessor.render(empty))
 
     def test_verdicts_against_matrix(self):
         from qt_ohos import assessor

@@ -63,6 +63,21 @@ def _resolve_project(args, required: bool) -> Path:
     sys.exit(1)
 
 
+def _require_explicit_project(args, command: str) -> None:
+    """init/scan/migrate/assess 必须显式给工程：否则会在仓根或当前目录建 .qt-ohos。"""
+    if not ((getattr(args, "path", None)) or getattr(args, "project", None)):
+        print("[qt-ohos-run] %s 需要工程目录：`%s <工程目录>` 或 "
+              "`--project <工程目录> %s`" % (command, command, command))
+        sys.exit(2)
+
+
+def _apply_positional(args) -> None:
+    """把可选的工程位置参数并进 args.project，让 `cmd <dir>` 与 `--project <dir> cmd` 等价。"""
+    path = getattr(args, "path", None)
+    if path:
+        args.project = path
+
+
 def _state(args) -> MigrationState:
     project = _resolve_project(args, required=False)
     return state_mod.load_state(project)
@@ -186,6 +201,8 @@ def _generate_shell_project(st, project: Path) -> bool:
 # ---------------------------------------------------------------- commands
 
 def cmd_init(args):
+    _apply_positional(args)
+    _require_explicit_project(args, "init")
     project = _resolve_project(args, required=True)
     st = state_mod.init_state(project)
     print("[qt-ohos-run] initialized migration state: %s" % st.state_dir)
@@ -193,9 +210,21 @@ def cmd_init(args):
     return 0
 
 
+def _scan_with_env(st, project) -> dict:
+    """扫描工程并应用 env.json 的 qt_version 覆盖（assess --force 之前会丢掉这个覆盖）。"""
+    info = scanner.scan_project(project)
+    override = str((builder.env_of(st) or {}).get("qt_version") or "").strip()
+    if override:
+        info["qt_version_hint"] = override
+        info["qt_version_evidence"] = "config set qt_version %s" % override
+        info["warnings"] = [w for w in info.get("warnings", [])
+                            if "未能从构建文件判定 Qt 主版本" not in w]
+    return info
+
+
 def cmd_scan(args):
-    if getattr(args, "path", None):
-        args.project = args.path
+    _apply_positional(args)
+    _require_explicit_project(args, "scan")
     project = _resolve_project(args, required=True)
     st = state_mod.init_state(project) if not (
         project / state_mod.STATE_DIR_NAME / "state.json").exists() else \
@@ -219,16 +248,21 @@ def cmd_scan(args):
                               "FAIL until configured)")
                 st.complete_stage(stage, next_action="scan")
             elif stage in ("project_scan", "qt_scan"):
-                info = scanner.scan_project(project)
+                info = _scan_with_env(st, project)
                 existing = st.read_json("scan.json", default={}) or {}
                 existing.update({k: v for k, v in info.items() if k != "risk"})
                 st.write_json("scan.json", existing)
                 if stage == "project_scan":
-                    print("[qt-ohos-run] build system: %s | qt modules: %s | "
-                          "sources: %d" % (
-                              info["build_system"],
+                    version = info.get("qt_version_hint") or "未判定"
+                    evidence = info.get("qt_version_evidence") or ""
+                    print("[qt-ohos-run] build system: %s | qt: %s%s | "
+                          "modules: %s | sources: %d" % (
+                              info["build_system"], version,
+                              (" (%s)" % evidence) if evidence else "",
                               ", ".join(info["qt_modules"]) or "-",
                               len(info["sources"])))
+                    for warning in info.get("warnings", []):
+                        print("[qt-ohos-run] WARNING: %s" % warning)
                 st.complete_stage(stage, next_action="scan")
             elif stage == "risk_scan":
                 info = st.read_json("scan.json", default={}) or {}
@@ -266,6 +300,11 @@ def cmd_plan(args):
                                 info.get("dependencies") or [], kb_root=KB_ROOT)
     st.write_json("migration-plan.json", plan)
     st.complete_stage("plan", next_action="patch")
+    info = st.read_json("scan.json", default={}) or {}
+    if not info.get("qt_modules"):
+        print("[qt-ohos-run] WARNING: 扫描没识别到 Qt 模块（%s），"
+              "下面的计划可能不适用——先确认工程根目录对不对" %
+              (info.get("build_system") or "无构建文件"))
     print("[qt-ohos-run] plan: %d steps (auto=%d assisted=%d manual=%d)" % (
         plan["counts"]["total"], plan["counts"]["auto"],
         plan["counts"]["assisted"], plan["counts"]["manual"]))
@@ -463,6 +502,8 @@ def cmd_resume(args):
 
 
 def cmd_migrate(args):
+    _apply_positional(args)
+    _require_explicit_project(args, "migrate")
     project = _resolve_project(args, required=True)
     st = (state_mod.init_state(project)
           if not (project / state_mod.STATE_DIR_NAME / "state.json").exists()
@@ -718,6 +759,8 @@ def cmd_promote(args):
 
 
 def cmd_recipes(args):
+    _apply_positional(args)
+    _require_explicit_project(args, "recipes")
     if getattr(args, "project", None):
         project = _resolve_project(args, required=True)
         try:
@@ -764,6 +807,8 @@ def cmd_mark_risk(args):
 
 
 def cmd_assess(args):
+    _apply_positional(args)
+    _require_explicit_project(args, "assess")
     """Feasibility verdict (portable / blocked / uncertain) - migration step 0.
 
     Runs the scan stages when needed, then evaluates against the adaptation
@@ -777,7 +822,7 @@ def cmd_assess(args):
     info = st.read_json("scan.json", default={}) or {}
     if not info or args.force:
         st.begin_stage("project_scan")
-        info = scanner.scan_project(project)
+        info = _scan_with_env(st, project)
         st.write_json("scan.json", info)
         st.complete_stage("project_scan", next_action="assess")
         st.complete_stage("qt_scan", next_action="assess")
@@ -860,7 +905,8 @@ def main(argv=None):
     sub = parser.add_subparsers(dest="command")
 
     p = sub.add_parser("init", help="create .qt-ohos state in a project")
-    p.add_argument("project")
+    p.add_argument("path", nargs="?", default=None, metavar="project",
+                   help="project directory (same as --project)")
 
     p = sub.add_parser("scan", help="pre-scan: project/Qt/risk/dependencies")
     # 位置参数可选：`scan <dir>` 与 `--project <dir> scan` 两种写法都成立
@@ -886,14 +932,16 @@ def main(argv=None):
     p.add_argument("--run", action="store_true",
                    help="continue executing remaining stages")
     p = sub.add_parser("migrate", help="run the full automatable pipeline")
-    p.add_argument("project")
+    p.add_argument("path", nargs="?", default=None, metavar="project",
+                   help="project directory (same as --project)")
     p.add_argument("--no-verify", action="store_true")
     p.add_argument("--assume-project-ready", action="store_true",
                    help="skip the assisted project_generation pause")
     sub.add_parser("finish", help="generate report + knowledge prompts")
     p = sub.add_parser("assess", help="feasibility verdict "
                      "(portable/blocked/uncertain) - migration step 0")
-    p.add_argument("project")
+    p.add_argument("path", nargs="?", default=None, metavar="project",
+                   help="project directory (same as --project)")
     p.add_argument("--force", action="store_true",
                    help="re-run the scan even if scan.json exists")
     sub.add_parser("rollback", help="restore tracked files from originals/")
@@ -916,7 +964,8 @@ def main(argv=None):
                        "knowledge/errors/ yaml + index count")
     p.add_argument("draft_id")
     p = sub.add_parser("recipes", help="similar historical migrations")
-    p.add_argument("project", nargs="?")
+    p.add_argument("path", nargs="?", default=None, metavar="project",
+                   help="project directory (same as --project)")
     p = sub.add_parser("config", help="manage .qt-ohos/env.json")
     p.add_argument("config_action", choices=["show", "set"])
     p.add_argument("key", nargs="?")

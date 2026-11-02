@@ -12,6 +12,21 @@
 
 ---
 
+## v3.0.0-rc3 — 2026-11-02
+
+真机测试前的对抗性审查（用 telegramdesktop 这类真实 Qt6 工程当靶子跑通全流程），修掉 6 类会误导判断的问题。
+
+- **FIX** Qt 主版本识别：原先只认 `find_package(Qt6` 字面量，而真实工程的 Qt 配置常写在子模块 `*.cmake` 里（tdesktop 的就在 `cmake/external/qt/package.cmake`）。旧逻辑在"找到模块但无版本"时**直接假定 Qt5**，导致 Qt6 工程被按 5.15 模块矩阵评估、`assess` 给出错的目标版本。现在按证据强度识别（`find_package(Qt6` > `Qt6::` 目标 > `find_package(QT NAMES Qt6)` > `QT_VERSION_MAJOR` > Qt6-only CMake 命令），判不出时**不再猜**：`scan` 显示 `qt: 未判定` 并告警，`assess` 显式标注"按 5.15 假设评估"，可用 `config set qt_version 6` 纠正
+- **FIX** `.cmake` 文件纳入检测：此前只扫 `CMakeLists.txt`，子模块里的 `find_package(Qt...)`（Qt 官方向导、desktop-app cmake_helpers 这类）全部漏掉
+- **FIX** CLI 参数统一：`init`/`scan`/`migrate`/`assess`/`recipes` 此前只吃位置参数，`--project <目录> init` 直接报错（而 TESTING 里写的正是这种形式）。现在两种写法等价；`recipes` 更隐蔽——`--project X recipes` 的位置参数默认值会把 `--project` 覆盖成 `None`，静默返回"没找到相似案例"
+- **FIX** 误建状态目录：`init`/`scan`/`migrate`/`assess` 不给工程目录时改为明确报错退出（码 2），不再默认在当前目录建 `.qt-ohos/`
+- **FIX** 相似案例评分归一化：原公式不除以项目特征数，一个 `cmake` 就能顶到 1.00，让明显无关的复盘排第一（tdesktop 曾被"匹配"到 Coin3D 1.00）。现在归一到 0..1 并输出 `match:` 依据行
+- **MINOR** 新增 `_scripts/ci.py`：四条门禁的纯 Python 实现，Windows 无 bash 也能一条命令跑完；`_scripts/ci.sh` 改为薄壳。AGENTS/CONTRIBUTING/TESTING/README 中的门禁命令同步为 `python _scripts/ci.py`
+- **MINOR** `TESTING.md` 新增 Windows 预检（`core.longpaths`、递归 clone 子模块、空格/中文路径）与 tdesktop 实测基线表（6920 文件 / 3298 源 / 12.3 秒扫描 / UNCERTAIN 结论 / 主要工作量在 ffmpeg 等三方交叉编译与 161 处 win32 专用代码）
+- **MINOR** 文档纠偏：`_templates/draft.md` 草稿入口改为 trunk 的 `faults/_drafts/` + 三类入口说明；`team/CONTRIBUTORS.md` 不再指向已不存在的 `_scripts/kb-init.py`；用例计数 41→48（引擎 12→19）
+
+---
+
 ## v3.0.0 — 2026-10-31
 
 首个 `trunk` 主干版本：由 `main`（v2.2.1 内容基线）+ `bitfun-release`（执行层 / 机器层 / 故障图 / 模板）

@@ -37,7 +37,7 @@ trunk ──●────────●────────●───�
 
 ```bash
 # 1. 确认当前提交就是你要发的树
-bash _scripts/verify.sh && python -m unittest discover -s tests
+python _scripts/ci.py                      # 四条门禁一条命令（Windows 无 bash 也能跑）
 python tools/faults-build.py check
 
 # 2. 刷新发版清单（重算内容树摘要、页面数、用例数、时间戳）
@@ -71,8 +71,7 @@ git branch release/v3.0.0 v3.0.0 && git push origin release/v3.0.0
 ```bash
 git switch -c dev/<your-topic> trunk
 # 改动 + 补测试
-bash _scripts/verify.sh
-python -m unittest discover -s tests
+python _scripts/ci.py
 git push origin dev/<your-topic>      # 提 PR 到 trunk
 ```
 
@@ -107,8 +106,7 @@ git push origin dev/<your-topic>      # 提 PR 到 trunk
 ## 合并前门禁（缺一不可）
 
 ```bash
-bash _scripts/verify.sh                     # 契约/结构/引用/卫生
-python -m unittest discover -s tests -v     # 一致性 + 引擎 + 扫描
+python _scripts/ci.py                       # 自检 + 故障库 + 用例 + CLI 冒烟
 python tools/faults-build.py check          # 故障库真源 ↔ 派生物（改了 faults/knowledge 必跑）
 ```
 

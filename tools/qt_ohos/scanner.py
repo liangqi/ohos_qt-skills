@@ -22,8 +22,24 @@ EXCLUDE_DIR_PREFIXES = ("build",)
 MAX_FILE_BYTES = 2 * 1024 * 1024
 
 _PRO_QT_RE = re.compile(r"^\s*QT\s*([+\-]?=)\s*(.*)$", re.M)
-# 兼容 find_package(Qt6 ${VER} CONFIG REQUIRED COMPONENTS Core Gui ...) 形式
-_CMAKE_FINDPKG_QT_RE = re.compile(r"find_package\s*\(\s*Qt(\d)\b([^)]*)\)", re.I)
+# 兼容 find_package(Qt6 ...) / find_package(Qt${QT_VERSION_MAJOR} COMPONENTS ...)
+# 后者版本号是变量，取不到字面量但组件列表仍是可用的
+_CMAKE_FINDPKG_QT_RE = re.compile(r"find_package\s*\(\s*Qt((?:\d|\$\{[^}]+\}))?([^)]*)\)", re.I)
+
+# --- Qt 主版本识别（按证据强度排序，先命中者胜） ---
+_QT_FINDPKG_LITERAL_RE = re.compile(r"find_package\s*\(\s*Qt([56])\b", re.I)
+_QT_TARGET_RE = re.compile(r"\bQt([56])::[A-Za-z]")
+_QT_NAMES_RE = re.compile(r"find_package\s*\(\s*QT\s+NAMES\s+Qt([56])", re.I)
+# 只认赋值形态（set(QT_VERSION_MAJOR 6) / QT_VERSION_MAJOR=6）。
+# `if (QT_VERSION_MAJOR LESS 6)` 这类条件分支只说明"还支持 Qt5"，不能当结论。
+_QT_MAJOR_VAR_RE = re.compile(r"""QT_VERSION_MAJOR\s*(?:=|:=)?\s*["']?([56])\b""")
+_QT6_CMD_RE = re.compile(
+    r"\b(qt_standard_project_setup|qt_add_executable|qt_add_resources"
+    r"|qt_add_qml_module|qt_add_translations|qt6_add_resources)\b")
+_QT5_CMD_RE = re.compile(
+    r"\b(qt5_use_modules|qt5_wrap_cpp|qt5_add_resources|qt5_add_translation)\b")
+_QT_PRO_MAJOR_RE = re.compile(
+    r"QT_MAJOR_VERSION\s*\+?=[^\n]*?([56])|greaterThan\s*\(\s*QT_MAJOR_VERSION\s*,\s*([56])")
 _CMAKE_FINDPKG_KF_RE = re.compile(r"find_package\s*\(\s*KF(\d)\b([^)]*)\)", re.I)
 _KF_LINK_RE = re.compile(r"KF\d::(\w+)")
 # 子目标/别名 -> 归一化组件名
@@ -116,8 +132,8 @@ def scan_project(project_root) -> Dict:
             lang_stats[ext] = lang_stats.get(ext, 0) + 1
 
     info["pro_files"] = pro_files
-    info["cmake_files"] = [c for c in cmake_files
-                           if Path(c).name.lower() == "cmakelists.txt"]
+    # 保留 .cmake：Qt 的 find_package 常写在子模块的 *.cmake 里（如 cmake/external/qt/package.cmake）
+    info["cmake_files"] = cmake_files
     info["sources"] = sources
     info["binary_artifacts"] = binaries
     info["language_stats"] = lang_stats
@@ -179,6 +195,35 @@ def _read_text(path: Path) -> str:
         return ""
 
 
+def detect_qt_major(texts: List[str]) -> tuple:
+    """从构建文件文本判定 Qt 主版本。返回 (主版本字符串或 None, 证据说明)。
+
+    证据强度：find_package(Qt6 字面量 > Qt6:: 目标 > NAMES Qt6 > QT_VERSION_MAJOR 赋值
+    > Qt6-only CMake 命令。都判不出就返回 None —— 不猜。
+    """
+    joined = "\n".join(texts)
+    checks = [
+        (_QT_FINDPKG_LITERAL_RE, "find_package(Qt{})"),
+        (_QT_TARGET_RE, "Qt{}:: 链接目标"),
+        (_QT_NAMES_RE, "find_package(QT NAMES Qt{})"),
+        (_QT_MAJOR_VAR_RE, "QT_VERSION_MAJOR={}"),
+    ]
+    for rx, label in checks:
+        match = rx.search(joined)
+        if match:
+            value = match.group(1)
+            return value, label.format(value)
+    if _QT6_CMD_RE.search(joined):
+        return "6", "Qt6-only CMake 命令"
+    if _QT5_CMD_RE.search(joined):
+        return "5", "Qt5-only CMake 命令"
+    match = _QT_PRO_MAJOR_RE.search(joined)
+    if match:
+        major = match.group(1) or match.group(2)
+        return major, "qmake QT_MAJOR_VERSION={}".format(major)
+    return None, ""
+
+
 def _detect_qt(root: Path, info: Dict):
     modules = set()
     qt_version = None
@@ -199,8 +244,10 @@ def _detect_qt(root: Path, info: Dict):
 
     frameworks = set()
     kf_components = set()
+    cmake_texts = []
     for rel in info["cmake_files"]:
         text = _read_text(root / rel)
+        cmake_texts.append(text)
         for match in _CMAKE_FINDPKG_QT_RE.finditer(text):
             qt_version = qt_version or match.group(1)
             rest = match.group(2) or ""
@@ -236,8 +283,22 @@ def _detect_qt(root: Path, info: Dict):
                 modules.add("core")
 
     modules.discard("")
-    if modules and qt_version is None:
-        qt_version = "5"  # HarmonyOS Qt currently ships 5.12 / 5.15
+    if qt_version and not qt_version.isdigit():
+        qt_version = None   # find_package(Qt${...}) 取不到字面量版本
+
+    # 构建文件里没有字面量版本时，用证据推断（Qt6 工程曾被误判为 Qt5）
+    evidence = ""
+    for rel in info["pro_files"]:
+        cmake_texts.append(_read_text(root / rel))
+    if qt_version is None:
+        qt_version, evidence = detect_qt_major(cmake_texts)
+    else:
+        evidence = "find_package(Qt%s)" % qt_version
+    info["qt_version_evidence"] = evidence
+    if qt_version is None and modules:
+        info["warnings"].append(
+            "未能从构建文件判定 Qt 主版本（Qt5 与 Qt6 的模块矩阵、CMake 接线都不同）；"
+            "递归拉取子模块，或用 `config set qt_version 5|6` 指定后再 scan")
     return modules, qt_version, frameworks, kf_components
 
 
