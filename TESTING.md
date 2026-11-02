@@ -13,6 +13,12 @@ python -m unittest discover -s tests -v     # 一致性 + 引擎 + 扫描（41 �
 python tools/faults-build.py check          # 故障库真源 ↔ 派生物（error 必须为 0）
 ```
 
+一条命令跑完全部四条（CI 用这个，退出码即结论）：
+
+```bash
+bash _scripts/ci.sh
+```
+
 Windows 上没有 bash 时，用 `python _scripts/verify.py` 等价执行第一条。
 
 ### 当前状态（2026-11-02，macOS 14 / Python 3.13）
