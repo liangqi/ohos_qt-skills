@@ -30,6 +30,10 @@ done
 | `lzh-add-qt-cef-graft-test` | 1 | **内容已并入** | CEF 开发指南与 PyQt 状态页此前已在 `trunk`；本次补入 `tools/kb-cef-graft.py` + 配置样例，并把指南里"脚本不在本知识库"的旧说法改正 |
 | `trunk-flip-v3` | 4 | **部分并入** | 补入 `team/`、`_templates/`、`procedural/knowledge-sedimentation.md`、`_scripts/pre-push`；其余见第二节 |
 
+三条内容已并入的分支同时用 `git merge -s ours` 登记了祖先关系（只记历史、不动文件树），
+所以 `--is-ancestor` 对**全部 13 条分支**都返回 YES，`trunk..<分支>` 恒为 0：
+内容与历史都不再有分支悬空。
+
 `matrix-release` 之所以单独存在，是为了让**只有知识层**的对外版本先发出去；它的文档口径
 （正面陈述、保留全部命令与操作细节）现在就是 `trunk` 的文档口径，两处不再分叉。
 
