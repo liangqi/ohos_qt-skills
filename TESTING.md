@@ -86,11 +86,13 @@ Windows 真机端到端——见下节。
 第 6 步最容易验证：往日志里塞一行 `dlopen failed: library "libqohos.so" not found`，
 应当命中 QOH001，且顺着 `read:` 能打开对应的 `problems/` 页。
 
-**已知的两个坑（本次已修）**：
+**已知的三个坑（本次已修）**：
 
 - `scan <路径>` 把状态写进**目标工程**的 `.qt-ohos/`，而 `plan`/`patch` 默认读**当前目录**。
   在仓根跑 `scan ~/app` 后再跑 `plan` 会报"no migration state"。统一用
   `--project <工程>`（或在工程目录里跑），提示语已改为直接给出这个用法；
+- `scan` 的位置参数此前是必填且与 `--project` 撞 dest，导致 `--project X scan` 直接
+  argparse 报错——两种写法（`scan <dir>` / `--project <dir> scan`）现已等价；
 - `analyze-log` 是纯日志分析，不需要工程状态；之前会先打一行"run `init` first"误导用户，
   现在只有显式传 `--project` 才尝试回写。
 
@@ -153,7 +155,7 @@ python portgraph/portgraph.py fetch-deps <app> --dry-run
 
 ```powershell
 python tools/qt-ohos-run.py --project <项目目录> init
-python tools/qt-ohos-run.py --project <项目目录> scan <项目目录>
+python tools/qt-ohos-run.py --project <项目目录> scan
 python tools/qt-ohos-run.py --project <项目目录> plan
 python tools/qt-ohos-run.py --project <项目目录> patch
 python tools/qt-ohos-run.py --project <项目目录> build

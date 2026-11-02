@@ -194,6 +194,8 @@ def cmd_init(args):
 
 
 def cmd_scan(args):
+    if getattr(args, "path", None):
+        args.project = args.path
     project = _resolve_project(args, required=True)
     st = state_mod.init_state(project) if not (
         project / state_mod.STATE_DIR_NAME / "state.json").exists() else \
@@ -861,7 +863,9 @@ def main(argv=None):
     p.add_argument("project")
 
     p = sub.add_parser("scan", help="pre-scan: project/Qt/risk/dependencies")
-    p.add_argument("project")
+    # 位置参数可选：`scan <dir>` 与 `--project <dir> scan` 两种写法都成立
+    p.add_argument("path", nargs="?", default=None, metavar="project",
+                   help="project directory (same as --project)")
     p.add_argument("--force", action="store_true")
 
     sub.add_parser("plan", help="generate migration plan")
