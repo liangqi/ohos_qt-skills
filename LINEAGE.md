@@ -24,7 +24,7 @@ done
 | `main` | 0 | **已全部并入** | v2.2.1 知识基线，是 `trunk` 的祖先 |
 | `bitfun-release` | 0 | **已全部并入** | 执行层（CLI）、机器层（QOH/R）、故障图、模板的来源 |
 | `fix/kb-init-scripts` | 0 | **已全部并入** | 祖先 |
-| `sync/rewrite-*`、`sync/sync-*`（5 条） | 0 | **已全部并入** | 历史同步点，均为祖先 |
+| `sync/rewrite-*`、`sync/sync-*`（5 条） | 0 | **已全部并入（2026-11-02 复核后补 2 页）** | 历史同步点，均为祖先。复核发现 `sync/sync-2026-09-11` 比 `main` 新 66 个提交，两个文件当时没进来：`episodic/postmortems/tdesktop-harmonyos-porting.md`（新的，已补）、`problems/runtime-icons-missing-libqico.md`（08-01 之后上游删了，但根因仍成立且本仓无覆盖，已补并修好缺失的 frontmatter 闭合）；`semantic/deveco-mcp-toolchain.md`、`semantic/harmonyos-dev-fundamentals.md` 已被内嵌公共库合并（见第二节） |
 | `release/v2.1.0` | 0 | **已全部并入** | 旧发版线，祖先 |
 | `matrix-release` | 1 | **内容已并入** | 唯一提交是 `README.md` + `SKILL.md` 重写：`trunk` 以这两份文档为基底，再叠加治理层（`kb.yaml`、`_scripts/`、`TESTING.md`、`CONTRIBUTING.md`、分支模型、发版流程） |
 | `lzh-add-qt-cef-graft-test` | 1 | **内容已并入** | CEF 开发指南与 PyQt 状态页此前已在 `trunk`；本次补入 `tools/kb-cef-graft.py` + 配置样例，并把指南里"脚本不在本知识库"的旧说法改正 |
@@ -56,6 +56,11 @@ done
 | `trunk-flip-v3` | `_scripts/kb-sync-common.sh` | 用于同步内嵌平台知识子集；本仓 `ohos-common-kb-public/` 已是裁剪后的稳定子集，无同步源 | **已知空白**：将来若恢复上游同步再补 |
 | `trunk-flip-v3` | `drafts/README.md` + `drafts/` 目录 | 与 `faults/_drafts/` 重复的草稿入口 | `faults/_drafts/`（模板 `faults/_drafts/_template.md`） |
 | `lzh-*` | `TEST-REPORT.md`（仓库根的一次性验证记录） | 根目录放一次性测试报告会让入口文件越来越杂；结论已体现在 CEF 指南的版本/集成章节 | `procedural/qt-cef-ohos-dev-guide.md` 的实测记录小节 |
+
+| `sync/*` | `semantic/deveco-mcp-toolchain.md` | 上游已并入内嵌公共库，两处并存会变成两个真源 | `ohos-common-kb-public/semantic/deveco-mcp-capabilities.md` |
+| `sync/*` | `semantic/harmonyos-dev-fundamentals.md` | 同上，同一页的新 id 版本 | `ohos-common-kb-public/semantic/harmonyos-development-fundamentals.md` |
+| `main` | `skills/qt-community-to-official/templates/{entry,oh_modules,.idea,.hvigor}` 下 139 个文件 | 构建产物（`.cxx` 缓存、`oh_modules` 依赖、IDE 索引），入库会让模板不可用且体积暴涨 | `templates/qt-ohos-app` 干净模板 |
+| `release/v2.1.0`、`fix/kb-init-scripts` | `skills/skills/kb-init/*`（路径多一层）、`.obsidian/*` | 旧布局的重复副本与编辑器配置；`kb-init` 现版本比它新（2026-10-12 对齐 devecocli 四级定位） | `skills/kb-init/` |
 
 > 未并入的内容仍完整保存在对应冻结分支上，随时可取：`git show origin/trunk-flip-v3:_scripts/kb-regen-indexes.sh`。
 

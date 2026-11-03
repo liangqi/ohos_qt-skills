@@ -103,6 +103,21 @@ git push origin dev/<your-topic>      # 提 PR 到 trunk
 
 ---
 
+## 反馈流程（只想报、不想提 PR）
+
+`.gitcode/ISSUE_TEMPLATE/` 里有现成模板，按你想反馈的类型选一个：
+
+| 你遇到的情况 | 用哪个模板 |
+|--------------|-----------|
+| 页面的知识写错了、命令跑不通 | `kb-content-fix.md` |
+| 想补一条新知识 / 新 API 映射 / 新复盘 | `kb-knowledge-request.md` |
+| 想让某个 skill 多一种能力、或结构上该拆该合 | `kb-capability-request.md` |
+| Qt 与鸿蒙行为不一致（同 API 两边结果不同） | `qt-crossplatform-diff.md` |
+| Qt 文档 / 本仓描述与实测不符 | `qt-doc-inconsistency.md` |
+| 安全问题 | 见 [SECURITY.md](SECURITY.md)，不要开公开 Issue |
+
+维护者评估后按真源规则落库：知识层走 `faults/_drafts/` 或对应目录，工具与门禁的改动必须带测试。
+
 ## 合并前门禁（缺一不可）
 
 ```bash

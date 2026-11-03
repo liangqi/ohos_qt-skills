@@ -10,7 +10,7 @@
 [![Qt](https://img.shields.io/badge/Qt-5.12%20%7C%205.15%20%7C%206.12-green.svg)](#能力规格)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg)](#30-秒上手)
 [![Platform](https://img.shields.io/badge/平台-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#质量保障)
-[![Pages](https://img.shields.io/badge/知识页-120-orange.svg)](_index/_map.md)
+[![Pages](https://img.shields.io/badge/知识页-124-orange.svg)](_index/_map.md)
 
 **版本 v2.3.0** ｜ [变更日志](CHANGELOG.md) ｜ [贡献指南](CONTRIBUTING.md) ｜ [任务路由](_index/_task-routing.md)
 
@@ -33,7 +33,7 @@ Qt/C++ 桌面应用要跑在 HarmonyOS 上，难点集中在这些地方：
 |------|---------|-----------|
 | 不知道能不能迁 | 逐个模块翻 wiki、试编译 | `portgraph analyze` 出三态结论（portable / blocked / uncertain）+ 阻断根因归类 |
 | 迁完编译过了，装到机器上白屏/闪退 | 靠人盯着日志猜 | 门禁 G0–G12 逐条判定，缺 so 闭包、签名、部署缺口都会被点出来 |
-| 同样的报错反复踩 | 翻聊天记录 | 42 条 QOH 错误模式机器匹配 + 47 个实战踩坑页 + 故障图定位"归谁、修没修、怎么绕" |
+| 同样的报错反复踩 | 翻聊天记录 | 42 条 QOH 错误模式机器匹配 + 48 个实战踩坑页 + 故障图定位"归谁、修没修、怎么绕" |
 | 三方依赖下载/交叉编译耗掉几天 | 手工找 bottle、手工编 | `portgraph deps` / `fetch-deps` 出依赖角色分类与闭包清单 |
 | 换个人接手就断了 | 口口相传 | 状态机落盘（`.qt-ohos/`）+ 任务台账 + 知识沉淀协议 |
 
@@ -82,7 +82,7 @@ Qt/C++ 桌面应用要跑在 HarmonyOS 上，难点集中在这些地方：
 | 🧠 日志诊断 | `qt-ohos-run.py analyze-log` | 42 条 QOH 错误模式自动匹配，命中即给知识页引用 |
 | 🧰 Qt SDK 工程平面 | `tools/qt-sdk-run.py`（24 个子命令） | 编译 / 增量 install / 补丁溯源 / SV0–SV8 发版门禁 / 上游演进跟踪 |
 | 🗺️ 故障跟踪 | `faults/` + `tools/faults-build.py` | S→C→W→T 故障图（17/18/15/11）：定性、责任领域、临时方案、在跟单、闭环缺口 |
-| 📚 知识底座 | `semantic/` `procedural/` `problems/` | 122 页（Qt 侧 95 + 内嵌平台 27），35 条铁律，13 类 API 映射，47 个实战踩坑 |
+| 📚 知识底座 | `semantic/` `procedural/` `problems/` | 124 页（Qt 侧 97 + 内嵌平台 27），35 条铁律，13 类 API 映射，47 个实战踩坑 |
 | 🏗️ 工程模板 | `templates/qt-ohos-app/` | 71 个文件的干净鸿蒙壳工程（替代历史上带构建产物的脏模板） |
 | ✅ 自检用例 | `tests/` | 引擎 19 + 一致性 20 + 扫描 9 = 48 用例（另有图谱 123 单测） |
 
@@ -327,6 +327,25 @@ README、`SKILL.md`、`AGENTS.md`、索引页里的声称与仓库实际状态�
 
 ---
 
+## 常见问题
+
+**凭什么说"迁移成功"？**
+只认 `python tools/qt-ohos-run.py verify` 的 G0–G12：全过才算通过；`PARTIAL` 只能说编译级可用；
+`TIMEOUT` 永远不是 PASS。编译通过 ≠ 迁移成功。
+
+**我的应用能不能移植？**
+先跑 portgraph 三连：`analyze`（portable / blocked / uncertain）、`deps`（依赖角色与版本）、
+`fetch-deps --dry-run`（哪些有鸿蒙预编译 bottle、哪些要源码交叉编译）。依赖 ≥3 个三方库时
+**不要人工逐个判断**，以闭包输出为准。
+
+**必须买 Qt 商业 license 吗？**
+看走哪条路线：Qt 6.12 用官方在线安装器的预构建鸿蒙组件、Qt 5.12 用开源镜像，都不需要商业许可；
+Qt 5.15 源码线（`tqtc-qt5`）需要商业 license。三条渠道见上一节。
+
+**Qt WebEngine 支持吗？**
+不支持。鸿蒙上用 CEF for OpenHarmony 平替，API 映射与迁移步骤见
+[qt-cef-ohos-dev-guide.md](procedural/qt-cef-ohos-dev-guide.md)；只是展示网页可以先用 Qt WebView 原生桥。
+
 ## 已知限制
 
 - **平台**：端到端实测以 Windows + DevEco Studio 为主；macOS/Linux 的工具链路径已覆盖但真机装机流程验证较少。
@@ -352,6 +371,13 @@ README、`SKILL.md`、`AGENTS.md`、索引页里的声称与仓库实际状态�
 ---
 
 ## 环境变量与多工具兼容
+
+**本地要装什么**（只是查知识/跑门禁不需要）：
+
+- **DevEco Studio + HarmonyOS SDK**——提供 OHOS clang、sysroot、`hvigorw`、模拟器与 `hdc`
+- **一个编译好的 Qt OHOS SDK**——作为应用链接的 `CMAKE_PREFIX_PATH`（Qt 6.12 用官方在线安装器的
+  鸿蒙组件，Qt 5.12/5.15 见上一节的三条渠道）
+- 只有要自己重编 Qt 库时才需要：Qt 鸿蒙源码 + MinGW + Strawberry Perl（Windows）
 
 知识页不写死本机路径，统一用变量名引用：`QT5_15_OHOS_SDK`、`QT5_15_SRC`、`OHOS_SDK_NATIVE`、
 `DEVECO_CLI`、`HDC` 等。变量清单见 [ENV.md](ENV.md)，真实值写 `ENV.local.md`（已 gitignore、

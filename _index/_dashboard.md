@@ -1,13 +1,13 @@
 ---
-updated: 2026-09-29
-total_pages: 47
+updated: 2026-11-02
+total_pages: 48
 description: >
   知识库健康仪表盘（派生计数，从 frontmatter 自动生成）。
 ---
 
 # 知识库健康仪表盘
 
-> **最后更新**：2026-09-29 | **总活跃页面**：47 | **归档**：1
+> **最后更新**：2026-11-02 | **总活跃页面**：48 | **归档**：1
 
 ---
 
@@ -64,7 +64,7 @@ description: >
 | `qt6-ohos-manual-deploy.md` | ✅ 活跃 | 2026-08-06 |
 | `qt6-ohos-windows-cli-deploy.md` | ✅ 活跃 | 2026-08-01 |
 
-### episodic（7 活跃）
+### episodic（8 活跃）
 
 | 页面 | 状态 | 最后更新 |
 |------|:----:|:--------:|
@@ -73,6 +73,7 @@ description: >
 | `qt-opensource-apps-harmonyos-survey.md` | ✅ 活跃 | 2026-06-26 |
 | `quit-deadlock-tsfn.md` | ✅ 活跃 | 2026-07-13 |
 | `saribbon-ohos.md` | ✅ 活跃 | 2026-06-26 |
+| `tdesktop-harmonyos-porting.md` | ✅ 活跃 | 2026-09-12 |
 | `toolwindow-crossscreen-flicker.md` | ✅ 活跃 | 2026-06-05 |
 | `wa-nativewindow-leave-bug.md` | ✅ 活跃 | 2026-06-09 |
 
@@ -81,7 +82,7 @@ description: >
 | 页面 | 状态 | 最后更新 |
 |------|:----:|:--------:|
 
-### problems（47 条目）
+### problems（48 条目）
 
 详见 [_lookup](../problems/_lookup.md)。
 
@@ -97,8 +98,8 @@ description: >
 |----|:------:|------|
 | semantic | 26 | 见各页 frontmatter refs |
 | procedural | 15 | 见各页 frontmatter refs |
-| episodic | 7 | 项目经验，无外部来源 |
+| episodic | 8 | 项目经验，无外部来源 |
 | preference | 0 | 个人偏好 |
-| faults | 55 | 问题跟踪图（17 症状 + 18 根因 + 15 方案 + 5 跟踪单，同 problems 不计入活跃页） |
-| **合计活跃** | **48** | |
+| faults | 61 | 问题跟踪图（17 症状 + 18 根因 + 15 方案 + 11 跟踪单，同 problems 不计入活跃页） |
+| **合计活跃** | **49** | |
 

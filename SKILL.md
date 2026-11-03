@@ -44,6 +44,14 @@ metadata:
 
 ---
 
+## 使用前提
+
+首次使用或 `ENV.local.md` 不存在时，先执行 `skills/kb-init/SKILL.md` 完成环境初始化
+（DevEco Studio / HarmonyOS SDK / Qt OHOS SDK / 工具链检测、安装引导、路径配置、验证）。
+知识页里的路径变量（如 `QT5_15_OHOS_SDK`、`OHOS_SDK_NATIVE`）都定义在 `ENV.local.md`。
+
+纯查询类任务（读知识页、查 API 支持情况）不需要初始化，也不需要本地工具链。
+
 ## Instructions
 
 1. **先判定任务属于哪条路径**。读 `_index/_task-routing.md` 的路由表（15 类任务 A–S），

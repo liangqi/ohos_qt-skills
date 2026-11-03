@@ -23,6 +23,17 @@
 - **FIX** 相似案例评分归一化：原公式不除以项目特征数，一个 `cmake` 就能顶到 1.00，让明显无关的复盘排第一（tdesktop 曾被"匹配"到 Coin3D 1.00）。现在归一到 0..1 并输出 `match:` 依据行
 - **MINOR** 新增 `_scripts/ci.py`：四条门禁的纯 Python 实现，Windows 无 bash 也能一条命令跑完；`_scripts/ci.sh` 改为薄壳。AGENTS/CONTRIBUTING/TESTING/README 中的门禁命令同步为 `python _scripts/ci.py`
 - **MINOR** `TESTING.md` 新增 Windows 预检（`core.longpaths`、递归 clone 子模块、空格/中文路径）与 tdesktop 实测基线表（6920 文件 / 3298 源 / 12.3 秒扫描 / UNCERTAIN 结论 / 主要工作量在 ffmpeg 等三方交叉编译与 161 处 win32 专用代码）
+- **MINOR** 分支内容复核补漏（追问"其他分支的知识是否都进了 trunk"后重审）：`sync/sync-2026-09-11`
+  比 `main` 新 66 个提交，此前按 `-s ours` 只登记了祖先关系、没逐文件比对内容，漏了 2 个文件——
+  补入 `episodic/postmortems/tdesktop-harmonyos-porting.md`（tdesktop v7.0.2 全量鸿蒙化复盘：
+  59 bottle + 9 个源码编译、2088 目标适配、550MB HAP、IME reset 修复）与
+  `problems/runtime-icons-missing-libqico.md`（.ico 图标不显示：缺 `imageformats/libqico.so`；
+  取回时该页 frontmatter 缺闭合 `---`，已修）；知识页 122 → 124
+- **MINOR** 补回三处被重写丢掉的文档小节：`SKILL.md`「使用前提」（此前 `§使用前提` 是悬空锚点）、
+  `CONTRIBUTING.md`「反馈流程」（Issue 模板对照表 + `SECURITY.md` 入口）、`README.md`「常见问题」
+  （成功判据 / 可移植性怎么判断 / 要不要商业 license / WebEngine 用 CEF 平替）与「本地要装什么」
+- **MINOR** `LINEAGE.md` 写入复核结论：`sync/*` 的两个旧页已被内嵌公共库合并、`main` 的 139 个模板
+  构建产物、`release/v2.1.0` 的 `skills/skills/` 旧布局副本，逐条写明不并入的原因与能力落点
 - **MINOR** 文档纠偏：`_templates/draft.md` 草稿入口改为 trunk 的 `faults/_drafts/` + 三类入口说明；`team/CONTRIBUTORS.md` 不再指向已不存在的 `_scripts/kb-init.py`；用例计数 41→48（引擎 12→19）
 
 ---
