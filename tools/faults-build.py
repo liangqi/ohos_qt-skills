@@ -956,6 +956,8 @@ def list_drafts():
                 continue
             fm, _ = parse_frontmatter(path)
             status = (fm or {}).get("status") if isinstance(fm, dict) else None
+            if status == "promoted":
+                continue          # 已合入（QOH/R 草稿 promote 后保留留痕），不再算待审
             result = (fm or {}).get("review_result") if isinstance(fm, dict) else None
             out.append((path.name, status or "draft", _draft_title(path), result or ""))
     return out

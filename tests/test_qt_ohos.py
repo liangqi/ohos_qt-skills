@@ -140,6 +140,92 @@ class TestRuleGuard(unittest.TestCase):
             self.assertIn("missing", hits[0]["snippet"])
 
 
+class TestGateHonesty(unittest.TestCase):
+    """门禁只能"证有不证无"：没有证据一律 NOT_RUN/SKIP/PARTIAL，绝不 PASS。"""
+
+    def _gates(self, runtime=None, build=None, scan=None):
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        root = Path(tmp)
+        st = state_mod.init_state(root)
+        if runtime is not None:
+            st.write_json("runtime.json", runtime)
+        if build is not None:
+            st.write_json("build.json", build)
+        if scan is not None:
+            st.write_json("scan.json", scan)
+        gates, _overall = verifier.evaluate(st)
+        return gates
+
+    def test_g2_not_run_without_risk_scan(self):
+        gates = self._gates()
+        self.assertEqual(gates["G2"]["status"], "NOT_RUN")
+
+    def test_g2_pass_only_after_scan(self):
+        gates = self._gates(scan={"risk": {"findings": [
+            {"rule": "R001", "severity": "high"}]}})
+        self.assertEqual(gates["G2"]["status"], "PASS")
+        self.assertIn("1 findings", gates["G2"]["detail"])
+
+    def test_g5_fails_when_package_says_pass_without_hap(self):
+        gates = self._gates(build={"package": {"status": "PASS"}, "hap": None})
+        self.assertEqual(gates["G5"]["status"], "FAIL")
+
+    def test_g8_partial_when_log_not_bundle_filtered(self):
+        runtime = {
+            "install": {"status": "PASS"}, "launch": {"status": "PASS"},
+            "crash_check": {"status": "PASS", "bundle_filtered": False},
+            "crash_markers_found": [],
+        }
+        gates = self._gates(runtime=runtime)
+        self.assertEqual(gates["G8"]["status"], "PARTIAL")
+        self.assertIn("bundle_name", gates["G8"]["detail"])
+
+    def test_g8_pass_when_bundle_filtered(self):
+        runtime = {
+            "install": {"status": "PASS"}, "launch": {"status": "PASS"},
+            "crash_check": {"status": "PASS", "bundle_filtered": True},
+            "crash_markers_found": [],
+        }
+        gates = self._gates(runtime=runtime)
+        self.assertEqual(gates["G8"]["status"], "PASS")
+
+
+class TestVersionedSoSibling(unittest.TestCase):
+    """版本化 .so 旁边有同名 .so 时，soname 已满足，不该报错。"""
+
+    def test_sibling_plain_so_silences_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            libs = root / "entry" / "libs" / "arm64-v8a"
+            libs.mkdir(parents=True)
+            (libs / "libfoo.so.1").write_text("x", encoding="utf-8")
+            (libs / "libfoo.so").write_text("x", encoding="utf-8")
+            st = state_mod.init_state(root)
+            st.write_json("env.json", {})
+            errors, _warns = builder_mod.preflight_package(st)
+            self.assertEqual(errors, [])
+
+
+class TestManifestHashCoversUntracked(unittest.TestCase):
+    """未 git add 的新文件也必须进摘要，否则发版清单会静默漏页。"""
+
+    def test_untracked_file_changes_digest(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "gen_manifest_probe", REPO_ROOT / "_scripts" / "gen-manifest.py")
+        gm = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(gm)
+        before = gm.content_tree_sha256()
+        probe = REPO_ROOT / "problems" / "zz-manifest-probe.md"
+        probe.write_text("# probe\n", encoding="utf-8")
+        try:
+            after = gm.content_tree_sha256()
+        finally:
+            probe.unlink()
+        self.assertNotEqual(before, after)
+
+
 class TestPackagePreflight(unittest.TestCase):
     """打包前必须拦下版本化 .so 与 compatibleSdkVersion 不一致（都是装机才炸的错）。"""
 

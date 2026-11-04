@@ -443,6 +443,11 @@ def check_index_consistency(pages: list[tuple[str, Path, str]]) -> None:
 def check_hygiene() -> None:
     artifacts: dict[str, int] = {}
     leaks: list[str] = []
+    if not INCLUDE_IGNORED and _git_visible_files() is None:
+        # 没有 git 就没有"哪些文件会被提交"的依据：此时噪声必然存在，
+        # 必须明说，否则用户会以为这堆 H2 是真的泄漏。
+        warn("H1", "未检测到 git（或不在工作树内）：卫生检查无法跳过 gitignore 的"
+                   "本地文件，H2 噪声属预期；可用 --include-ignored 显式复现")
     for path in walk_files(ROOT):
         rel = path.relative_to(ROOT)
         parts = set(rel.parts[:-1])

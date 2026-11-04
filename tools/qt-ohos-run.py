@@ -30,6 +30,7 @@ Exit codes: 0 = PASS, 1 = FAIL, 2 = budget exhausted, 3 = PARTIAL.
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import re
 import shutil
@@ -664,11 +665,17 @@ def _run_pipeline(st: MigrationState, args) -> int:
             if result.status == "PASS":
                 st.complete_stage(stage_name, next_action="verify")
                 print("[qt-ohos-run] %s: PASS" % stage_name)
+            elif result.status in ("SKIP", "NOT_RUN"):
+                st.fail_stage(stage_name, error="not-run:%s" % result.status,
+                              next_action="install+launch")
+                print("[qt-ohos-run] %s: %s（未执行，不等于通过）"
+                      % (stage_name, result.status))
+                rc = max(rc, 2)
             else:
                 st.fail_stage(stage_name, error=result.status,
                               next_action="analyze-log")
                 print("[qt-ohos-run] %s: %s" % (stage_name, result.status))
-                rc = 1
+                rc = max(rc, 1)
     except BudgetExhausted:
         raise
     return rc
@@ -812,6 +819,10 @@ def cmd_config(args):
     return 1
 
 
+def _now_iso() -> str:
+    return datetime.datetime.now().astimezone().isoformat(timespec="seconds")
+
+
 def cmd_libcheck(args):
     """库级中间门禁：把一个库的移植进展记成可核验的事实。
 
@@ -851,7 +862,7 @@ def cmd_libcheck(args):
         return 2
 
     record = {"name": args.name, "level": level,
-              "evidence": args.evidence or "", "at": st.data.get("updated")}
+              "evidence": args.evidence or "", "at": _now_iso()}
     for idx, item in enumerate(libraries):
         if item.get("name") == args.name:
             libraries[idx] = record

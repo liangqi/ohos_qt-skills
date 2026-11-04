@@ -37,8 +37,15 @@ PAGE_GLOBS = [
 
 
 def tracked_files() -> list[str]:
-    out = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT,
-                         capture_output=True, text=True, timeout=60)
+    """入库文件清单 = 已跟踪 + 未忽略的未跟踪。
+
+    只看 `--cached` 有个隐蔽后果：新写的页面在 `git add` 之前不在清单里，
+    刷新出来的 content_tree_sha256 会**静默漏掉这些文件**——页数统计是对的
+    （走文件系统），摘要却是错的，而"可对账"靠的正是摘要。
+    """
+    out = subprocess.run(
+        ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+        cwd=ROOT, capture_output=True, text=True, timeout=60)
     if out.returncode != 0:
         print("gen-manifest: 需要 git（入库文件清单以 git ls-files 为准）")
         sys.exit(1)

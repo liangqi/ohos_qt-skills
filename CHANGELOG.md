@@ -60,8 +60,26 @@
 - **MINOR** 新增 8 个 problems 页（平台双宏、两种分发、树外 app 层前提、CMake `-include`
   去重、同名头自引用、appspawn `/proc/self/exe`、托盘必须存在、本地签名链）；
   知识页 124 → 132，QOH 42 → 44，R 18 → 19，problems 48 → 56，铁律 35 → 38
-- **MINOR** 用例 48 → 52（新增 guard 匹配、G8 SKIP 传播、打包前置检查三组回归），CLI 冒烟
-  6 → 7（`ohos-platform-audit.py`）
+- **FIX** 对抗审查又抓出三处同类的假 PASS：`G2` 在根本没跑 risk scan 时输出"no critical
+  risks detected"并判 PASS（空证据读成通过），改为 NOT_RUN；`G5` 打包命令自称 PASS 但
+  找不到 `.hap` 时仍判 PASS，改判 FAIL；`G8` 未配 `bundle_name` 时抓的是全设备缓冲，
+  别的进程的崩溃会混进来或盖住自己，这种证据最高只能 PARTIAL
+- **FIX** `gen-manifest.py` 只按 `git ls-files --cached` 取文件清单：新写的页面在 `git add`
+  之前不进摘要，于是**页数是对的、摘要漏页**——而"可对账"全押在摘要上。改为 `--cached
+  --others --exclude-standard`
+- **FIX** `ohos-platform-audit.py --strict` 的帮助写"源分发文件必须有 ohos/ 对应实现"，
+  实际只检查 `ohos/` 目录存不存在；改为逐个源分发头断言核心名能在 `ohos/` 找到，缺失即退出 1
+- **FIX** 打包前置检查拦下时把记录落成了 SKIP（"没测"），与 `build.json` 的 FAIL 对不上；
+  新增 `state.fail_cmd()`，语义上"测了不合格"
+- **FIX** 版本化 `.so` 旁边已有同名 `libfoo.so` 时仍报错（soname 其实已满足）→ 放行
+- **FIX** `migrate` 链路把 smoke 的"未测"和"崩溃"都收敛成退出码 1，与 `smoke` 子命令的
+  0/1/2 不一致 → 未测走 2
+- **FIX** `faults-build review` 把 promote 之后仍留痕的草稿继续列成"待审"（改到 `faults/_drafts/`
+  后这类文件会一直积累）→ 跳过 `status: promoted`
+- **MINOR** `.qt-ohos/env.json` 的键此前只散落在代码里（`bundle_name`、`compatible_sdk`、
+  `hap_glob`、`crash_wait_sec` 等），`skills/qt-app-porting/SKILL.md` 增完整键表
+- **MINOR** 用例 48 → 59（新增 guard 匹配、G8 SKIP 传播、打包前置检查、门禁诚实性 8 条、
+  摘要覆盖未跟踪文件），CLI 冒烟 6 → 7（`ohos-platform-audit.py`）
 
 ---
 

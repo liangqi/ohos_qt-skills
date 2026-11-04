@@ -68,6 +68,8 @@ python tools/qt-ohos-run.py patch
 ```bash
 python tools/qt-ohos-run.py config set qt_sdk_prefix <Qt OHOS SDK 路径>
 python tools/qt-ohos-run.py config set build_command "<可选：自定义构建命令>"
+python tools/qt-ohos-run.py config set bundle_name  com.example.app   # G8 日志过滤
+python tools/qt-ohos-run.py config set compatible_sdk "5.0.0(12)"     # 与 build-profile 对齐
 python tools/qt-ohos-run.py build      # G3 编译
 python tools/qt-ohos-run.py package    # G5 打 HAP
 python tools/qt-ohos-run.py install    # G6 hdc install
@@ -76,6 +78,20 @@ python tools/qt-ohos-run.py smoke      # G8 崩溃窗口检查
 ```
 
 每一步都有 timeout、退出码和 `.qt-ohos/logs/` 证据；**TIMEOUT 永远不是 PASS**。
+
+`.qt-ohos/env.json` 的键（全部可 `config set`，缺省值见括号）：
+
+| 键 | 作用 | 缺省 |
+|---|---|---|
+| `qt_sdk_prefix` | Qt for OHOS SDK 前缀，自动转 `-DCMAKE_PREFIX_PATH` | — |
+| `build_command` | 整条自定义构建命令（给了就不用 cmake 分支） | — |
+| `cmake` / `build_dir` / `cmake_args` | cmake 分支的可调项 | `cmake` / `build-ohos` / 空 |
+| `package_command` | 自定义打包命令 | hvigor 链路 |
+| `hap_glob` | HAP 产物匹配 | `entry/build/**/*.hap` |
+| `bundle_name` | **G8 日志按它过滤**；不填则抓全设备缓冲，G8 最高只能 PARTIAL | 空 |
+| `compatible_sdk` | 与 `build-profile.json5` 的 `compatibleSdkVersion` 比对，打包前拦下不一致 | 空 |
+| `crash_wait_sec` | 启动后观察崩溃的秒数 | 8 |
+| `hdc` / `devecocli` | 工具路径（不在 PATH 时给绝对路径） | PATH 查找 |
 构建失败时立刻分析日志：
 
 ```bash

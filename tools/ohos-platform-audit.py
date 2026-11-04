@@ -51,7 +51,7 @@ def classify(text: str) -> str:
     return "source"
 
 
-def audit(root: Path) -> dict:
+def audit(root: Path, strict: bool = False) -> dict:
     headers = sorted(p for p in root.glob(HEADER_PREFIX + "*.h") if p.is_file())
     header_dispatch, source_dispatch, missing = [], [], []
     for path in headers:
@@ -70,6 +70,16 @@ def audit(root: Path) -> dict:
     ohos_files = sorted(p.name for p in ohos_dir.iterdir() if p.is_file()) \
         if ohos_dir.is_dir() else []
 
+    # 源分发文件：头里没有分支可改，实现必须由构建按路径选中，所以要断言
+    # `ohos/` 下真有对应实现（按去掉 platform_ 前缀的核心名匹配）。
+    unimplemented = []
+    if strict:
+        blob = "\n".join(ohos_files).lower()
+        for name in source_dispatch:
+            core = name[len(HEADER_PREFIX):-len(".h")].lower()
+            if core and core not in blob:
+                unimplemented.append(name)
+
     return {
         "root": str(root),
         "header_dispatch": header_dispatch,
@@ -77,6 +87,7 @@ def audit(root: Path) -> dict:
         "missing_both_macros": missing,
         "ohos_implementations": ohos_files,
         "ohos_dir_exists": ohos_dir.is_dir(),
+        "source_dispatch_unimplemented": unimplemented,
     }
 
 
@@ -137,7 +148,7 @@ def main() -> int:
     parser.add_argument("--undefined", metavar="FILE",
                         help="链接日志文件：反推仍缺实现的平台符号")
     parser.add_argument("--strict", action="store_true",
-                        help="源分发文件也必须有 ohos/ 对应实现，否则判失败")
+                        help="源分发文件也必须在 ohos/ 下有对应实现，否则判失败")
     args = parser.parse_args()
 
     root = Path(args.platform_dir)
@@ -145,8 +156,9 @@ def main() -> int:
         print("not a directory: %s" % root, file=sys.stderr)
         return 2
 
-    report = audit(root)
-    exit_code = 1 if report["missing_both_macros"] else 0
+    report = audit(root, strict=args.strict)
+    exit_code = 1 if (report["missing_both_macros"]
+                      or report["source_dispatch_unimplemented"]) else 0
 
     undef_report = None
     if args.undefined:
@@ -160,6 +172,7 @@ def main() -> int:
             exit_code = 1
 
     if args.strict and not report["ohos_dir_exists"]:
+        report["source_dispatch_unimplemented"] = list(report["source_dispatch"])
         exit_code = 1
 
     if args.json:
@@ -175,6 +188,11 @@ def main() -> int:
             for sym in undef_report["platform_level_missing"][:40]:
                 print("  missing: %s" % sym)
         print("")
+        if report["source_dispatch_unimplemented"]:
+            print("FAIL: %d source-dispatch header(s) have no ohos/ implementation:"
+                  % len(report["source_dispatch_unimplemented"]))
+            for name in report["source_dispatch_unimplemented"]:
+                print("  %s" % name)
         if report["missing_both_macros"]:
             print("FAIL: %d header(s) do not accept both OHOS macros:"
                   % len(report["missing_both_macros"]))

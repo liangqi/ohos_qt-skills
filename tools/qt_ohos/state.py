@@ -275,6 +275,14 @@ class MigrationState:
         self.save()
         return result
 
+    def fail_cmd(self, label: str, reason: str) -> CommandResult:
+        """记录一条"没跑但确实不合格"的命令（与 SKIP 的"没测"区分开）。"""
+        result = CommandResult(command="", label=label, status="FAIL",
+                               stderr=reason, start_time=_now())
+        self.data.setdefault("commands", []).append(result.to_dict())
+        self.save()
+        return result
+
     # ------------------------------------------------------------ helpers
     def section(self, name: str) -> Dict:
         return self.data.setdefault(name, {})

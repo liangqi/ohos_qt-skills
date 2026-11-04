@@ -95,9 +95,13 @@ def preflight_package(state):
             if not path.is_file():
                 continue
             if VERSIONED_SO_RE.search(path.name):
+                plain = path.name.split(".so")[0] + ".so"
+                if (arch_dir / plain).exists():
+                    continue          # soname 由同名副本满足，不是错误
                 errors.append(
                     "entry/libs/%s/%s 是版本化 .so：加载器按 soname 找不到它，"
-                    "请改名为 .so（或同时提供同名副本）" % (arch_dir.name, path.name))
+                    "请改名为 .so（或同时提供同名副本 %s）"
+                    % (arch_dir.name, path.name, plain))
             elif not path.name.endswith(LIBS_ALLOWED_SUFFIX):
                 warns.append(
                     "entry/libs/%s/%s 不是 .so，打包时会被忽略"
@@ -129,9 +133,10 @@ def package_hap(state, timeout: float = 1800.0):
     errors, warns = preflight_package(state)
     build_json["package_preflight"] = {"errors": errors, "warnings": warns}
     if errors:
-        # 这些错在打包后才发现就只能到设备上猜，前置拦下并给出可执行的修法
-        result = state.skip_cmd("package", "; ".join(errors))
-        result.status = "FAIL"
+        # 这些错在打包后才发现就只能到设备上猜，前置拦下并给出可执行的修法。
+        # 记录必须是 FAIL：落成 SKIP 会让 `status` 和门禁对不上（SKIP 表示"没测"，
+        # 这里明确是"测了、不合格"）。
+        result = state.fail_cmd("package", "; ".join(errors))
         result.stderr = "\n".join(errors)
         build_json["package"] = result.to_dict()
         state.write_json("build.json", build_json)
@@ -264,6 +269,7 @@ def crash_check(state, timeout: Optional[float] = None):
     else:
         result.stderr = "crash window capture failed: %s" % result.stderr.strip()[:200]
     runtime["crash_check"] = result.to_dict()
+    runtime["crash_check"]["bundle_filtered"] = bool(bundle)
     runtime["crash_markers_found"] = found
     state.write_json("runtime.json", runtime)
     return result

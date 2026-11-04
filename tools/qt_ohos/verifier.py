@@ -83,14 +83,19 @@ def evaluate(state) -> Tuple[Dict[str, Dict], str]:
          "build files: %s, plan: %s" % (has_build_files, bool(plan)), "scan.json")
 
     # G2 compatibility ---------------------------------------------------
+    # 没跑过 risk_scan 就没有任何风险数据：此时"没有 critical 风险"是
+    # "没检查"，不是"检查通过"。空证据只能判 NOT_RUN。
     risk = scan.get("risk") or {}
-    open_critical = [f for f in risk.get("findings", [])
-                     if f.get("severity") == "critical"]
+    findings = risk.get("findings")
+    open_critical = [f for f in (findings or []) if f.get("severity") == "critical"]
     addressed = state.data.get("addressed_critical", [])
     unresolved = [f for f in open_critical
                   if f.get("rule") not in addressed]
-    if not open_critical:
-        gate("G2", PASS, "no critical risks detected")
+    if findings is None:
+        gate("G2", NOT_RUN, "risk scan not run (no scan.json risk section)")
+    elif not open_critical:
+        gate("G2", PASS, "no critical risks detected (%d findings scanned)"
+             % len(findings))
     elif unresolved:
         gate("G2", FAIL, "%d unresolved critical risks: %s" % (
             len(unresolved),
@@ -122,8 +127,14 @@ def evaluate(state) -> Tuple[Dict[str, Dict], str]:
     # G5 package ---------------------------------------------------------
     pkg_status = _cmd_status(build_json, "package")
     hap = build_json.get("hap")
-    gate("G5", PASS if (pkg_status == PASS and hap) else _map_cmd(pkg_status),
-         "hap: %s" % (hap or "-"),
+    if pkg_status == PASS and hap:
+        g5, g5_detail = PASS, "hap: %s" % hap
+    elif pkg_status == PASS:
+        # 打包命令自称成功却没有产物：不能算打过包
+        g5, g5_detail = FAIL, "package reported PASS but no .hap artifact found"
+    else:
+        g5, g5_detail = _map_cmd(pkg_status), "hap: %s" % (hap or "-")
+    gate("G5", g5, g5_detail,
          (build_json.get("package") or {}).get("evidence", ""))
 
     # G6 install ---------------------------------------------------------
@@ -149,9 +160,19 @@ def evaluate(state) -> Tuple[Dict[str, Dict], str]:
         gate("G8", FAIL, "crash markers: %s" % ", ".join(markers),
              (runtime.get("crash_check") or {}).get("evidence", ""))
     else:
-        gate("G8", _map_cmd(crash_status),
-             "crash markers: %s" % (", ".join(markers) if markers else "none"),
-             (runtime.get("crash_check") or {}).get("evidence", ""))
+        filtered = bool((runtime.get("crash_check") or {}).get("bundle_filtered"))
+        marker_note = ", ".join(markers) if markers else "none"
+        if _map_cmd(crash_status) == PASS and not filtered:
+            # 没配 bundle_name 时抓的是全设备缓冲，别的进程的崩溃/日志都会混进来
+            gate("G8", PARTIAL,
+                 "crash markers: %s (no bundle_name configured - device-wide "
+                 "buffer, evidence is weak)" % marker_note,
+                 (runtime.get("crash_check") or {}).get("evidence", ""))
+        else:
+            gate("G8", _map_cmd(crash_status),
+                 "crash markers: %s%s" % (marker_note,
+                                          "" if filtered else " (unfiltered)"),
+                 (runtime.get("crash_check") or {}).get("evidence", ""))
 
     # G9 UI ----------------------------------------------------------------
     hilog_log = (runtime.get("crash_check") or {}).get("evidence", "")
