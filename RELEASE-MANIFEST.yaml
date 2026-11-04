@@ -29,8 +29,8 @@ embedded_dependencies:
 
 builder_version: 3
 publication_schema_version: 2
-content_tree_sha256: 2268ea6001f8db3e0ce7a44ea3ba581a7598d23f27806ad418e22667b0e7ef06
-built_at: "2026-11-04T14:57:13+08:00"
+content_tree_sha256: cb4aea97e181a7d622e311ef744c36438b5d838aade0eda467e8c01d42808be1
+built_at: "2026-11-04T14:57:52+08:00"
 
 skills: ["kb-init", "qt-app-porting", "qt-sdk-forge", "qt-community-to-official", "task-dispatcher", "kb-iterator"]
 common_pages_count: 27
