@@ -1,0 +1,25 @@
+id: QOH044
+name: platform_host_triple_selected
+stage: [build]
+severity: high
+patterns:
+  - "'windows.h' file not found"
+  - "'winsock2.h' file not found"
+  - "re:cannot open include file: *['\"]windows\\.h"
+  - "re:undefined reference to .*__imp_"
+root_causes:
+  - the compiler ran on the host triple because --target / the cross toolchain was missing
+  - qsystemdetection.h therefore defined Q_OS_WIN and the dispatch chain picked the win headers
+  - a manual -DQ_OS_OHOS cannot help - Q_OS_WIN sits first in the chain
+diagnosis:
+  - "clang++ --target=aarch64-linux-ohos -H -fsyntax-only <flags> probe.cpp | grep 'specific_.*\\\\.h'"
+  - run the same probe WITHOUT --target and compare - it shows the host triple
+  - "compile success" is not evidence: check which platform headers were included
+solutions:
+  - reconfigure with the OHOS cross toolchain file so the target triple is baked into the compiler invocation
+  - do not patch the build with -DQ_OS_OHOS; it hides a wrong toolchain and reappears on the next kit
+refs:
+  problems: [problems/platform-guard-needs-both-ohos-macros.md]
+  kb:
+    - semantic/qt-harmonyos-golden-rules.md
+    - semantic/qt-harmonyos-porting-workflow.md

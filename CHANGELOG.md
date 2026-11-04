@@ -46,9 +46,10 @@
 - **MINOR** 打包前置检查：`entry/libs/*/` 的版本化 `.so`（加载器按 soname 找不到）、
   非 `.so` 文件、`build-profile.json5` 的 `compatibleSdkVersion` 与 `env.json`
   `compatible_sdk` 不一致，都在打包前拦下
-- **MINOR** 机器层：新增 `QOH043`（平台守卫单宏，Qt 6 kit 上死代码）与 `R019`
+- **MINOR** 机器层：新增 `QOH043`（平台守卫单宏，Qt 6 kit 上死代码）、`QOH044`
+  （宿主编译器未带 `--target` 导致 `Q_OS_WIN` 生效，"编译通过"是假证据）与 `R019`
   （`guard` 匹配器：命中 glob 的文件必须同时包含两个 OHOS 宏），规则引擎支持
-  `match.guard`；`QOH042 → QOH043`、`R018 → R019`
+  `match.guard`；`QOH042 → QOH043/044`、`R018 → R019`
 - **MINOR** 知识层扩写：铁律 §六 从 2 条扩到 5 条（双宏守卫、两种分发、`-DQ_OS_OHOS`
   是假修复）并新增「平台模型 else 即 Linux 的 4 处失效点」；`porting-workflow` 增
   「树外消费 app 层前置清单」（5 前提 + 2 陷阱）；`third-party-libs` 增本地签名链路；
@@ -58,7 +59,7 @@
   `TrayIconSupported()` 挡不住构造，必须给完整 no-op 面
 - **MINOR** 新增 8 个 problems 页（平台双宏、两种分发、树外 app 层前提、CMake `-include`
   去重、同名头自引用、appspawn `/proc/self/exe`、托盘必须存在、本地签名链）；
-  知识页 124 → 132，QOH 42 → 43，R 18 → 19，problems 48 → 56，铁律 35 → 38
+  知识页 124 → 132，QOH 42 → 44，R 18 → 19，problems 48 → 56，铁律 35 → 38
 - **MINOR** 用例 48 → 52（新增 guard 匹配、G8 SKIP 传播、打包前置检查三组回归），CLI 冒烟
   6 → 7（`ohos-platform-audit.py`）
 

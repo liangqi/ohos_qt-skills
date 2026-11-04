@@ -26,7 +26,7 @@
 # the counts below (single source of truth principle - keep numbers real).
 
 version: 1
-entry_count: 43
+entry_count: 44
 namespace: QOH
 source_of_truth: problems/
 entry: qt-ohos-run analyze-log <logfile>

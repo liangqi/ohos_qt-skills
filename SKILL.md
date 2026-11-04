@@ -10,7 +10,7 @@ description: |
   核心能力：① 可行性三态判定（portable/blocked/uncertain）+ 依赖角色分类（link/build-tool/
   runtime/test/vendored/env）+ 应用级依赖闭包下载与交叉编译集成片段；② 自动迁移流水线（扫描→
   计划→受追踪修改→编译→打 HAP→装机→启动→G0-G12 门禁，可 checkpoint/resume）；③ 知识层
-  （38 条黄金铁律、43 条 QOH 错误模式机器诊断、56 个实战踩坑、S→C→W→T 故障图）；④ SDK 工程平面
+  （38 条黄金铁律、44 条 QOH 错误模式机器诊断、56 个实战踩坑、S→C→W→T 故障图）；④ SDK 工程平面
   （编译、补丁溯源、SV0-SV8 发版门禁）。目标平台：HarmonyOS/OpenHarmony arm64。
   触发词：鸿蒙化、移植 Qt、porting、HarmonyOS、Qt OHOS、QtOhosExtras、三方依赖、交叉编译、
   bottle、HAP、hvigor、devecocli、hdc、dlopen、白屏、闪退、构建报错、QOH。
@@ -31,7 +31,7 @@ metadata:
 都不是 PASS。
 
 知识层里有两样东西每次任务都值得先扫：**38 条黄金铁律**（已知陷阱，改代码前过一遍）和
-**43 条 QOH 错误模式**（`analyze-log` 机器匹配，命中即带根因与知识页引用）。
+**44 条 QOH 错误模式**（`analyze-log` 机器匹配，命中即带根因与知识页引用）。
 
 ## 触发场景
 
@@ -76,7 +76,7 @@ metadata:
    禁止为了让编译过而注释功能代码。需要人判断的改动写进迁移计划的 assisted/manual 段。
 
 6. **报错先机器匹配，再读知识页**（§B）。执行
-   `python tools/qt-ohos-run.py analyze-log <日志>`，命中的 43 条 QOH 模式会带出根因与
+   `python tools/qt-ohos-run.py analyze-log <日志>`，命中的 44 条 QOH 模式会带出根因与
    知识页引用；按引用读 `problems/`，或先扫 `semantic/qt-harmonyos-golden-rules.md`
    的 38 条黄金铁律。大型 C++ 工程编译前先跑 `cpp20-gap-scan`，别逐轮撞错。
 
@@ -179,7 +179,7 @@ python tools/cpp20-gap-scan.py fix <src> --apply   # 机械项自动修复
 
 （规则对齐 `problems/build-clang15-libcpp15-cpp20-gaps.md`）
 
-**构建失败立刻机器诊断**（43 条 QOH 错误模式，命中条目带根因、诊断步骤与知识页引用）：
+**构建失败立刻机器诊断**（44 条 QOH 错误模式，命中条目带根因、诊断步骤与知识页引用）：
 
 ```bash
 python tools/qt-ohos-run.py analyze-log <日志文件>

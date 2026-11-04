@@ -33,7 +33,7 @@ Qt/C++ 桌面应用要跑在 HarmonyOS 上，难点集中在这些地方：
 |------|---------|-----------|
 | 不知道能不能迁 | 逐个模块翻 wiki、试编译 | `portgraph analyze` 出三态结论（portable / blocked / uncertain）+ 阻断根因归类 |
 | 迁完编译过了，装到机器上白屏/闪退 | 靠人盯着日志猜 | 门禁 G0–G12 逐条判定，缺 so 闭包、签名、部署缺口都会被点出来 |
-| 同样的报错反复踩 | 翻聊天记录 | 43 条 QOH 错误模式机器匹配 + 56 个实战踩坑页 + 故障图定位"归谁、修没修、怎么绕" |
+| 同样的报错反复踩 | 翻聊天记录 | 44 条 QOH 错误模式机器匹配 + 56 个实战踩坑页 + 故障图定位"归谁、修没修、怎么绕" |
 | 三方依赖下载/交叉编译耗掉几天 | 手工找 bottle、手工编 | `portgraph deps` / `fetch-deps` 出依赖角色分类与闭包清单 |
 | 换个人接手就断了 | 口口相传 | 状态机落盘（`.qt-ohos/`）+ 任务台账 + 知识沉淀协议 |
 
@@ -52,7 +52,7 @@ Qt/C++ 桌面应用要跑在 HarmonyOS 上，难点集中在这些地方：
 │           ohos-common-kb-public/                              │
 │           → 人读的真源：事实、流程、复盘、错误解法、平台知识  │
 ├───────────────────────────────────────────────────────────────┤
-│  机器层   knowledge/errors(43 条 QOH) · rules(19 条 R)        │
+│  机器层   knowledge/errors(44 条 QOH) · rules(19 条 R)        │
 │           knowledge/adaptation · faults/(故障图)              │
 │           → 工具读的索引：从知识层提炼的可匹配模式            │
 ├───────────────────────────────────────────────────────────────┤
@@ -79,7 +79,7 @@ Qt/C++ 桌面应用要跑在 HarmonyOS 上，难点集中在这些地方：
 | 🔍 可行性评估 | `portgraph/portgraph.py analyze / deps / fetch-deps` | 可 ingest 4741 个 Harmonybrew formula + 1248 个 cmd-pkg 索引（首次联网），出三态判定 |
 | 🚚 自动迁移流水线 | `tools/qt-ohos-run.py`（25 个子命令） | 扫描（19 条预扫描规则出风险报告）→计划→受追踪修改→构建→打包→装机→启动→冒烟→门禁，可 checkpoint/resume；库级进展用 `libcheck` 单独记 |
 | 🚦 成功判定 | `qt-ohos-run.py verify`（G0–G12） | 门禁级 PASS / PARTIAL / FAIL，`TIMEOUT` 不计通过 |
-| 🧠 日志诊断 | `qt-ohos-run.py analyze-log` | 43 条 QOH 错误模式自动匹配，命中即给知识页引用 |
+| 🧠 日志诊断 | `qt-ohos-run.py analyze-log` | 44 条 QOH 错误模式自动匹配，命中即给知识页引用 |
 | 🧰 Qt SDK 工程平面 | `tools/qt-sdk-run.py`（25 个子命令） | 编译 / 增量 install / 补丁溯源 / SV0–SV8 发版门禁 / 上游演进跟踪 |
 | 🗺️ 故障跟踪 | `faults/` + `tools/faults-build.py` | S→C→W→T 故障图（17/18/15/11）：定性、责任领域、临时方案、在跟单、闭环缺口 |
 | 📚 知识底座 | `semantic/` `procedural/` `problems/` | 132 页（Qt 侧 105 + 内嵌平台 27），38 条铁律，13 类 API 映射，56 个实战踩坑 |
