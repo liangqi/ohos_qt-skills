@@ -29,9 +29,11 @@ from pathlib import Path
 
 HEADER_PREFIX = "platform_"
 OHOS_MACROS = ("Q_OS_OHOS", "Q_OS_HARMONY")
-# 头分发判定：链里出现 Linux 头路径，或出现至少两个 Q_OS_* 分支
-LINUX_ROUTE_RE = re.compile(r"platform/linux/")
-OS_BRANCH_RE = re.compile(r"#\s*(?:el)?if(?:def)?\s+.*Q_OS_[A-Z]+")
+# 头分发判定：任一 #if/#ifdef/#elif 行提到 Q_OS_* 宏，或 include 了按平台分目录的
+# 实现路径。旧判据要求"至少两个不同 Q_OS_ 宏"，于是只写了 `#ifdef Q_OS_OHOS` 的
+# 文件（正是要抓的那类）被判成源分发，审计直接 PASS —— 判据不能比被检对象更严格。
+OS_BRANCH_RE = re.compile(r"^\s*#\s*(?:el)?if(?:def)?\s+.*\bQ_OS_[A-Z_]+", re.M)
+ALT_DIR_RE = re.compile(r'#\s*include\s*[<"][^">]*\b(?:linux|windows|macos|darwin|win32)/')
 UNDEF_RE = re.compile(r"undefined (?:symbol|reference)[: ]+[`'\"]?([A-Za-z_][\w:~<>]*)")
 
 
@@ -43,25 +45,33 @@ def read_text(path: Path) -> str:
 
 
 def classify(text: str) -> str:
-    """header = 靠 #ifdef 链选头；source = 靠构建按路径选 .cpp。"""
-    if LINUX_ROUTE_RE.search(text):
+    """header = 靠 #ifdef 链选头；source = 靠构建按路径选 .cpp。
+
+    判据：只要出现 Q_OS_* 条件编译，或 include 了平台分目录的实现路径，
+    这个头就在做平台分发 —— 哪怕它只认一个宏（那正是要报的缺陷）。
+    """
+    if OS_BRANCH_RE.search(text):
         return "header"
-    if len(set(OS_BRANCH_RE.findall(text))) >= 2:
+    if ALT_DIR_RE.search(text):
         return "header"
     return "source"
 
 
 def audit(root: Path, strict: bool = False) -> dict:
     headers = sorted(p for p in root.glob(HEADER_PREFIX + "*.h") if p.is_file())
-    header_dispatch, source_dispatch, missing = [], [], []
+    header_dispatch, source_dispatch, missing, no_ohos = [], [], [], []
     for path in headers:
         text = read_text(path)
         kind = classify(text)
-        has_all = all(macro in text for macro in OHOS_MACROS)
+        present = [m for m in OHOS_MACROS if m in text]
+        has_all = len(present) == len(OHOS_MACROS)
         if kind == "header":
             header_dispatch.append({"file": path.name, "ok": has_all,
-                                    "macros": [m for m in OHOS_MACROS if m in text]})
-            if not has_all:
+                                    "macros": present})
+            if not present:
+                # 有分发链却完全没提 OHOS：不是"少写一个宏"，而是"少一个分支"
+                no_ohos.append(path.name)
+            elif not has_all:
                 missing.append(path.name)
         else:
             source_dispatch.append(path.name)
@@ -85,6 +95,7 @@ def audit(root: Path, strict: bool = False) -> dict:
         "header_dispatch": header_dispatch,
         "source_dispatch": source_dispatch,
         "missing_both_macros": missing,
+        "no_ohos_branch": no_ohos,
         "ohos_implementations": ohos_files,
         "ohos_dir_exists": ohos_dir.is_dir(),
         "source_dispatch_unimplemented": unimplemented,
@@ -159,6 +170,8 @@ def main() -> int:
     report = audit(root, strict=args.strict)
     exit_code = 1 if (report["missing_both_macros"]
                       or report["source_dispatch_unimplemented"]) else 0
+    if args.strict and report["no_ohos_branch"]:
+        exit_code = 1
 
     undef_report = None
     if args.undefined:
@@ -192,6 +205,12 @@ def main() -> int:
             print("FAIL: %d source-dispatch header(s) have no ohos/ implementation:"
                   % len(report["source_dispatch_unimplemented"]))
             for name in report["source_dispatch_unimplemented"]:
+                print("  %s" % name)
+        if report["no_ohos_branch"]:
+            print("WARN: %d header-dispatch file(s) never mention OHOS "
+                  "(add an OHOS branch, or confirm they are source-dispatched):"
+                  % len(report["no_ohos_branch"]))
+            for name in report["no_ohos_branch"]:
                 print("  %s" % name)
         if report["missing_both_macros"]:
             print("FAIL: %d header(s) do not accept both OHOS macros:"

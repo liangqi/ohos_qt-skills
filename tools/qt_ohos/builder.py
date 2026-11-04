@@ -216,8 +216,10 @@ def crash_check(state, timeout: Optional[float] = None):
 
     1. **上游状态向下传播**：install / launch 不是 PASS 时，"崩溃窗口"没有意义，
        这里直接记 SKIP 并说明原因，绝不记 PASS。
-    2. **日志必须按 bundleName 过滤**：`hilog` 是全设备缓冲，别的进程崩溃会被算到
-       本应用头上（既可能假阳性，也可能把本应用的崩溃淹没）。
+    2. **日志必须按本应用过滤**：`hilog` 是全设备缓冲，别的进程崩溃会被算到本应用
+       头上（既可能假阳性，也可能把本应用的崩溃淹没）。过滤词取 `bundle_name`
+       与 `process_name`（缺省取 bundle 最后一段，鸿蒙进程名常常就长这样）——
+       只认 bundle 全名时，日志里只写进程名的行会被全部丢掉，反而变成"没证据"。
     3. **过滤后没有任何本应用日志 → 判 NOT_RUN**：空证据不等于"无崩溃"。
     """
     env = env_of(state)
@@ -246,30 +248,39 @@ def crash_check(state, timeout: Optional[float] = None):
                            timeout=timeout)
     raw = result.stdout + "\n" + result.stderr
     lines = raw.splitlines()
-    if bundle:
-        scoped = [ln for ln in lines if bundle.lower() in ln.lower()]
-    else:
-        scoped = lines
+    process = env.get("process_name") or (bundle.rsplit(".", 1)[-1] if bundle else "")
+    terms = [t for t in {bundle or "", process} if t]
+    scoped = ([ln for ln in lines if any(t.lower() in ln.lower() for t in terms)]
+              if terms else lines)
+    if terms and not scoped and bundle:
+        # 日志里的进程名常与 bundle 不同（缩写/连写），先用较宽的词再找一轮：
+        # 直接判"没证据"会把真的跑起来的应用读成没测。
+        wide = [seg for seg in bundle.split(".") if len(seg) >= 4]
+        wide_scoped = [ln for ln in lines
+                       if any(t.lower() in ln.lower() for t in wide)]
+        if wide_scoped:
+            terms, scoped = wide, wide_scoped
     text = "\n".join(scoped).lower()
     crash_markers = ["cppcrash", "jscrash", "appfreeze", "sigsegv", "sigabrt",
                      "faultlog", "process died", "dlopen failed"]
     found = [m for m in crash_markers if m in text]
     result.exit_code = 0  # hilog capture exit code is not meaningful
-    if result.status == "PASS" and bundle and not scoped:
+    if result.status == "PASS" and terms and not scoped:
         # 抓到了窗口，但没有一行属于本应用：不能据此宣称"无崩溃"
         result.status = "NOT_RUN"
-        result.stderr = ("no log line matched bundle '%s' in %ss window - "
-                         "inconclusive, not a PASS" % (bundle, int(wait_sec)))
+        result.stderr = ("no log line matched %s in %ss window - inconclusive, "
+                         "not a PASS（可 config set process_name 换过滤词）"
+                         % ("/".join(terms), int(wait_sec)))
     elif result.status == "PASS":
         result.status = "FAIL" if found else "PASS"
         result.stderr = ("crash markers found: %s" % ", ".join(found)) if found else \
             ("no crash markers in %ss window (%d line(s)%s)" % (
                 int(wait_sec), len(scoped),
-                ", bundle-filtered" if bundle else ""))
+                ", filtered by %s" % "/".join(terms) if terms else ", unfiltered"))
     else:
         result.stderr = "crash window capture failed: %s" % result.stderr.strip()[:200]
     runtime["crash_check"] = result.to_dict()
-    runtime["crash_check"]["bundle_filtered"] = bool(bundle)
+    runtime["crash_check"]["bundle_filtered"] = bool(terms)
     runtime["crash_markers_found"] = found
     state.write_json("runtime.json", runtime)
     return result

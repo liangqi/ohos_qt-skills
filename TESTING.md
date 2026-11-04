@@ -29,7 +29,7 @@ Windows 上没有 bash 时，用 `python _scripts/verify.py` 等价执行第一�
 | 门禁 | 结果 | 说明 |
 |------|------|------|
 | `verify.py` | **PASS** | 0 error / 0 warning（模板目录里 178 个历史构建产物已清理） |
-| `unittest` | **OK（59 tests）** | 引擎 30 + 一致性 20 + cpp20 扫描 9 = 59（另有 portgraph 123 单测：图谱 119 + 预取 4，不在默认 discover 范围） |
+| `unittest` | **OK（67 tests）** | 引擎 38 + 一致性 20 + cpp20 扫描 9 = 67（另有 portgraph 123 单测：图谱 119 + 预取 4，不在默认 discover 范围） |
 | `faults-build check` | **PASS** | error=0 / warn=0 / info=7（7 条缺失跟踪单已排期到 T-0008…T-0013） |
 | CLI 契约 | **PASS** | `qt-ohos-run` 24 / `qt-sdk-run` 24 / `portgraph` 10 子命令，由测试锁定 |
 | 门禁诚实性 | **PASS** | `G2` 没跑 risk_scan 判 NOT_RUN（不因"没发现 critical"判 PASS）；`G5` 打包自称成功但无 `.hap` 判 FAIL；`G8` 未配 `bundle_name` 时最高 PARTIAL |
@@ -84,7 +84,7 @@ Windows 真机端到端——见下节。
 | 2. 计划 | `qt-ohos-run.py --project <工程> plan` | `plan: 6 steps (auto=1 assisted=3 manual=2)`，S001…S006 逐条标注 auto/assisted/manual |
 | 3. 状态 | `qt-ohos-run.py --project <工程> status` | `stage: plan` / `next: {"action": "patch"}` / `completed:` / `remaining:` 四行 |
 | 4. 自动修 | `qt-ohos-run.py --project <工程> patch` | `no automatic fixes applicable`（无命中）或 `applied N fixes`，`已改动全部记入 .qt-ohos/changes.json` |
-| 5. 门禁 | `qt-ohos-run.py --project <工程> verify` | `G0 Environment FAIL missing: qt_sdk_prefix or build_command`，G1/G2 PASS，G3–G12 NOT_RUN，`Result: FAIL`——未配 SDK 时的正确结论 |
+| 5. 门禁 | `qt-ohos-run.py --project <工程> verify` | `G0 Environment FAIL missing: qt_sdk_prefix or build_command`，G1 FAIL（未 scan 时没有 build files/plan），G2 NOT_RUN（没跑 risk_scan 就不能说"无 critical 风险"），G3–G12 NOT_RUN，`Result: FAIL`——未配 SDK 且未扫描时的正确结论 |
 | 6. 日志诊断 | `qt-ohos-run.py analyze-log <日志>` | `Hits:` 列出命中模式与置信度，`Top hit: QOH001 (qpa_plugin_not_found)`，随后给出 cause / diagnose / fix / read |
 | 7. 清单对账 | `python _scripts/gen-manifest.py --check` | `gen-manifest: 计数一致（121 页 / 164 用例）…`；普通提交上摘要会显示为"旧快照"，发版前用同脚本刷新后再 `--check --strict` |
 

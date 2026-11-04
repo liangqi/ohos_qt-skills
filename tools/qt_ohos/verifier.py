@@ -189,9 +189,15 @@ def evaluate(state) -> Tuple[Dict[str, Dict], str]:
     # recorded via `smoke --result` (G10) or `mark-gate G10|G11|G12` (all three)
     smoke = runtime.get("smoke")
     manual = state.data.get("manual_gates") or {}
-    gate("G10", _map_cmd(str((smoke or {}).get("status", NOT_RUN)))
-         if smoke else _map_cmd(str((manual.get("G10") or {}).get("status", NOT_RUN))),
-         (manual.get("G10") or {}).get("note") or "basic interaction test")
+    # G10 只能是人工记录（`smoke --result` 或 mark-gate）。明细里写明 manual，
+    # 否则读报告的人分不清"机器测过"和"人说我点过了"。
+    if smoke:
+        g10_note = "manual record (%s)" % (smoke.get("note") or "smoke --result")
+        gate("G10", _map_cmd(str(smoke.get("status", NOT_RUN))), g10_note)
+    else:
+        rec = manual.get("G10") or {}
+        gate("G10", _map_cmd(str(rec.get("status", NOT_RUN))),
+             rec.get("note") or "basic interaction test (manual)")
     for gid in ("G11", "G12"):
         rec = manual.get(gid) or {}
         gate(gid, _map_cmd(str(rec.get("status", NOT_RUN))),

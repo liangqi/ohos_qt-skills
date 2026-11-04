@@ -191,6 +191,57 @@ class TestGateHonesty(unittest.TestCase):
         self.assertEqual(gates["G8"]["status"], "PASS")
 
 
+def _load_platform_audit():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "ohos_platform_audit_probe",
+        REPO_ROOT / "tools" / "ohos-platform-audit.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class TestPlatformAuditClassify(unittest.TestCase):
+    """只写一个宏的文件必须被判成"头分发且缺宏"，不能落到源分发里静默放行。"""
+
+    def _audit(self, files: dict):
+        audit_mod = _load_platform_audit()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name, body in files.items():
+                (root / name).write_text(body, encoding="utf-8")
+            return audit_mod.audit(root)
+
+    def test_single_macro_is_flagged_not_skipped(self):
+        report = self._audit({"platform_tray.h": (
+            "#pragma once\n"
+            "#ifdef Q_OS_OHOS\n#include \"ohos/tray_ohos.h\"\n"
+            "#else\n#include \"linux/tray_linux.h\"\n#endif\n")})
+        self.assertEqual(report["source_dispatch"], [])
+        self.assertEqual(report["missing_both_macros"], ["platform_tray.h"])
+
+    def test_both_macros_is_ok(self):
+        report = self._audit({"platform_audio.h": (
+            "#pragma once\n"
+            "#if defined(Q_OS_OHOS) || defined(Q_OS_HARMONY)\n"
+            "#include \"ohos/audio_ohos.h\"\n#else\n#endif\n")})
+        self.assertEqual(report["header_dispatch"][0]["ok"], True)
+        self.assertEqual(report["missing_both_macros"], [])
+
+    def test_linux_include_without_ohos_branch_warns(self):
+        report = self._audit({"platform_notify.h": (
+            "#pragma once\n#if defined(Q_OS_WIN)\n#include \"win/n.h\"\n"
+            "#else\n#include \"platform/linux/n.h\"\n#endif\n")})
+        self.assertEqual(report["no_ohos_branch"], ["platform_notify.h"])
+        self.assertEqual(report["missing_both_macros"], [])
+
+    def test_plain_header_is_source_dispatch(self):
+        report = self._audit({"platform_tray.h": (
+            "#pragma once\nstruct Tray;\nvoid init_tray();\n")})
+        self.assertEqual(report["source_dispatch"], ["platform_tray.h"])
+        self.assertEqual(report["missing_both_macros"], [])
+
+
 class TestVersionedSoSibling(unittest.TestCase):
     """版本化 .so 旁边有同名 .so 时，soname 已满足，不该报错。"""
 
@@ -274,6 +325,56 @@ class TestG8Propagation(unittest.TestCase):
             gates, _overall = verifier.evaluate(st)
             self.assertEqual(gates["G8"]["status"], "SKIP")
             self.assertIn("not applicable", gates["G8"]["detail"])
+
+
+class TestCrashLogScope(unittest.TestCase):
+    """日志过滤词只有 bundle 全名时，只写进程名的行会被丢掉 —— 结果是"没证据"。
+    过滤词同时含 bundle 与进程名（缺省 bundle 末段）。"""
+
+    def _run(self, log_text, env_extra):
+        calls = []
+
+        def fake_run_cmd(cmd, label=None, timeout=None, **kw):
+            calls.append(cmd)
+            return state_mod.CommandResult(
+                command=" ".join(cmd), label=label or "", status="PASS",
+                stdout=log_text, stderr="", exit_code=0, start_time="t")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            st = state_mod.init_state(project)
+            st.write_json("env.json", dict({"hdc": "hdc",
+                                            "crash_wait_sec": 1}, **env_extra))
+            st.write_json("runtime.json", {"install": {"status": "PASS"},
+                                          "launch": {"status": "PASS"}})
+            st.run_cmd = fake_run_cmd            # 不碰真设备
+            result = builder_mod.crash_check(st, timeout=5)
+            return result, st.read_json("runtime.json")
+
+    def test_process_name_only_log_is_kept(self):
+        log = "11-04 I A00000/telegramdesktop/td: starting\n"
+        result, runtime = self._run(log, {"bundle_name": "org.telegram.desktop"})
+        self.assertEqual(result.status, "PASS")
+        self.assertTrue(runtime["crash_check"]["bundle_filtered"])
+        self.assertIn("filtered by", result.stderr)
+
+    def test_bundle_segment_fallback_keeps_log(self):
+        # 进程名与 bundle 不共享"末段"，但共享一个 >=4 字符的段 → 放宽后应命中
+        log = "11-04 I A00000/telegram/x: starting\n"
+        result, _runtime = self._run(log, {"bundle_name": "org.telegram.desktop"})
+        self.assertEqual(result.status, "PASS")
+        self.assertIn("telegram", result.stderr)
+
+    def test_no_matching_line_is_not_run(self):
+        log = "11-04 I A00000/otherapp/x: unrelated\n"
+        result, _runtime = self._run(log, {"bundle_name": "org.telegram.desktop",
+                                           "process_name": "zzz"})
+        self.assertEqual(result.status, "NOT_RUN")
+
+    def test_crash_marker_in_scoped_line_fails(self):
+        log = "11-04 E A00000/telegramdesktop/td: cppcrash happened\n"
+        result, _runtime = self._run(log, {"bundle_name": "org.telegram.desktop"})
+        self.assertEqual(result.status, "FAIL")
 
 
 class TestQtVersionDetection(unittest.TestCase):

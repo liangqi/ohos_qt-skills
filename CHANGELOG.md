@@ -76,10 +76,22 @@
   0/1/2 不一致 → 未测走 2
 - **FIX** `faults-build review` 把 promote 之后仍留痕的草稿继续列成"待审"（改到 `faults/_drafts/`
   后这类文件会一直积累）→ 跳过 `status: promoted`
+- **FIX**（第二轮审查，跑真机式的合成工程才暴露）`ohos-platform-audit.py` 的分发判定
+  要求"至少两个不同 Q_OS_ 宏"才算头分发，于是**只写一个宏的文件——正是它要抓的那类——
+  被判成源分发并整体输出 PASS**，这个工具上一轮等于空转。判据改为"出现 Q_OS_ 条件编译
+  或 include 了平台分目录实现即头分发"，并新增 `no_ohos_branch`（有链却完全没提 OHOS，
+  建议加分支而不是加宏）；补 4 条分类回归
+- **FIX** `crash_check` 只按 bundle 全名过滤日志：Qt 应用日志里常只写进程名，
+  结果"过滤后一行都不属于本应用"→ 误判 NOT_RUN。改为 bundle + `process_name`
+  （缺省取 bundle 末段）双词匹配，仍未命中时按 bundle 各段放宽一轮，再判未测
+- **FIX** `analyze-log` 对 `undefined symbol` 类日志零命中且不给方向：现在会指到
+  `ohos-platform-audit --undefined`（符号名千变万化，本来就不该塞固定模式）
+- **MINOR** `G10` 明细注明 `manual record`，读报告时能分清"机器测过"与"人声明过"；
+  规则命中给出行号（此前是 `文件:0`）
 - **MINOR** `.qt-ohos/env.json` 的键此前只散落在代码里（`bundle_name`、`compatible_sdk`、
   `hap_glob`、`crash_wait_sec` 等），`skills/qt-app-porting/SKILL.md` 增完整键表
-- **MINOR** 用例 48 → 59（新增 guard 匹配、G8 SKIP 传播、打包前置检查、门禁诚实性 8 条、
-  摘要覆盖未跟踪文件），CLI 冒烟 6 → 7（`ohos-platform-audit.py`）
+- **MINOR** 用例 48 → 67（guard 匹配、G8 SKIP 传播、打包前置检查、门禁诚实性 8 条、
+  摘要覆盖未跟踪文件、平台分发分类 4 条、crash 过滤 3 条），CLI 冒烟 6 → 7
 
 ---
 

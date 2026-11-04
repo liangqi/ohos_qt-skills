@@ -89,6 +89,7 @@ python tools/qt-ohos-run.py smoke      # G8 崩溃窗口检查
 | `package_command` | 自定义打包命令 | hvigor 链路 |
 | `hap_glob` | HAP 产物匹配 | `entry/build/**/*.hap` |
 | `bundle_name` | **G8 日志按它过滤**；不填则抓全设备缓冲，G8 最高只能 PARTIAL | 空 |
+| `process_name` | G8 的第二个过滤词（鸿蒙进程名常是 bundle 最后一段，缺省就用那一段） | bundle 末段 |
 | `compatible_sdk` | 与 `build-profile.json5` 的 `compatibleSdkVersion` 比对，打包前拦下不一致 | 空 |
 | `crash_wait_sec` | 启动后观察崩溃的秒数 | 8 |
 | `hdc` / `devecocli` | 工具路径（不在 PATH 时给绝对路径） | PATH 查找 |

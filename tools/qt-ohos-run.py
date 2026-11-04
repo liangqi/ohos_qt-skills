@@ -451,6 +451,17 @@ def cmd_analyze_log(args):
     hits = engine.analyze_file(args.logfile)
     if not hits:
         print("[qt-ohos-run] no known error patterns matched")
+        # 链接期 undefined symbol 是移植中期最常见的"没人实现"，它没有固定
+        # 错误码可匹配（符号名千变万化），指到真正能收敛它的工具上。
+        try:
+            raw = Path(args.logfile).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            raw = ""
+        if "undefined symbol" in raw or "undefined reference" in raw:
+            print("[qt-ohos-run] 日志里有 undefined symbol/reference：用\n"
+                  "  python tools/ohos-platform-audit.py <platform 目录> "
+                  "--undefined %s\n"
+                  "区分『平台层还没实现』与『三方库/工具链问题』" % args.logfile)
         if st is not None:
             print("[qt-ohos-run] consider: qt-ohos-run draft \"<new problem>\"")
         return 1

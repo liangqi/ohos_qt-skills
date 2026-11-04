@@ -141,8 +141,19 @@ class RuleEngine:
                             continue
                         missing = [raw for rx, raw in required if not rx.search(text)]
                         if missing:
+                            # 行号取守卫所在行：`文件:0` 没法点进去看
+                            line = 1
+                            for idx, row in enumerate(text.splitlines(), 1):
+                                if re.search(r"#\s*(?:el)?if(?:def)?\b.*Q_OS_", row):
+                                    line = idx
+                                    break
+                            else:
+                                for idx, row in enumerate(text.splitlines(), 1):
+                                    if re.search(r"Q_OS_[A-Z_]+", row):
+                                        line = idx
+                                        break
                             findings.append(_finding(
-                                rule, rel, 0,
+                                rule, rel, line,
                                 "missing: %s" % ", ".join(str(m) for m in missing)))
 
         return self.report(findings)
