@@ -19,11 +19,14 @@ SKIP instead of guessing):
     bundle_name     application bundleName
     ability_name    main ability name             (default: EntryAbility)
     crash_wait_sec  seconds to watch hilog after launch (default: 8)
+  compatible_sdk  build-profile compatibleSdkVersion it must match (optional)
+  package_command / package_dir  hvigor(or devecocli) packaging command
 """
 
 from __future__ import annotations
 
 import glob as globmod
+import re
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -64,9 +67,75 @@ def configure_and_build(state, timeout: float = 1800.0):
     return result
 
 
+VERSIONED_SO_RE = re.compile(r"\.so(\.\d+)+$")
+LIBS_ALLOWED_SUFFIX = (".so", ".a")
+
+
+def preflight_package(state):
+    """打包前检查 entry/libs/ 与 build-profile.json5 —— 这两处错都只在设备上炸。
+
+    1. **版本化 .so**：`libfoo.so.1` 放进 `entry/libs/arm64-v8a/` 会被原样打进 HAP，
+       但加载器按 soname 找 `libfoo.so`，结果装机后 dlopen 失败。打包前改名成 `.so`
+       （或同时放一个符号链接同名文件）。
+    2. **非 .so 文件**：hvigor 只搬 `.so`（另有 `.a` 静态库不进包），其它后缀会被静默
+       忽略，表现为"我明明放进去 libruntime.so.1.2"。
+    3. **compatibleSdkVersion**：与 CLI 记录的 `compatible_sdk` 不一致时，装机可能直接
+       被系统拒绝（版本低于设备要求）或用了高版本 API 在旧设备上崩。
+
+    返回 (errors, warnings)，都是人读字符串。
+    """
+    env = env_of(state)
+    root = Path(state.project_root)
+    errors, warns = [], []
+
+    for arch_dir in sorted(root.glob("entry/libs/*")):
+        if not arch_dir.is_dir():
+            continue
+        for path in sorted(arch_dir.iterdir()):
+            if not path.is_file():
+                continue
+            if VERSIONED_SO_RE.search(path.name):
+                errors.append(
+                    "entry/libs/%s/%s 是版本化 .so：加载器按 soname 找不到它，"
+                    "请改名为 .so（或同时提供同名副本）" % (arch_dir.name, path.name))
+            elif not path.name.endswith(LIBS_ALLOWED_SUFFIX):
+                warns.append(
+                    "entry/libs/%s/%s 不是 .so，打包时会被忽略"
+                    % (arch_dir.name, path.name))
+
+    profile = root / "build-profile.json5"
+    declared = None
+    if profile.is_file():
+        text = profile.read_text(encoding="utf-8", errors="replace")
+        match = re.search(r'"compatibleSdkVersion"\s*:\s*"([^"]+)"', text)
+        if match:
+            declared = match.group(1)
+    wanted = env.get("compatible_sdk")
+    if wanted and declared and str(wanted) != str(declared):
+        errors.append(
+            "build-profile.json5 compatibleSdkVersion=%s 与 env.json "
+            "compatible_sdk=%s 不一致（装机可能被拒或用到设备没有的 API）"
+            % (declared, wanted))
+    elif declared:
+        warns.append("compatibleSdkVersion=%s（未配置 env.json compatible_sdk，"
+                     "未做一致性校验）" % declared)
+
+    return errors, warns
+
+
 def package_hap(state, timeout: float = 1800.0):
     env = env_of(state)
     build_json = state.read_json("build.json", default={}) or {}
+    errors, warns = preflight_package(state)
+    build_json["package_preflight"] = {"errors": errors, "warnings": warns}
+    if errors:
+        # 这些错在打包后才发现就只能到设备上猜，前置拦下并给出可执行的修法
+        result = state.skip_cmd("package", "; ".join(errors))
+        result.status = "FAIL"
+        result.stderr = "\n".join(errors)
+        build_json["package"] = result.to_dict()
+        state.write_json("build.json", build_json)
+        return result
     command = env.get("package_command")
     if not command:
         result = state.skip_cmd("package", "env.json: package_command not set")
@@ -136,9 +205,33 @@ def launch_app(state, timeout: float = 120.0):
 
 
 def crash_check(state, timeout: Optional[float] = None):
-    """Capture device log for N seconds after launch and look for crashes."""
+    """Capture device log for N seconds after launch and look for crashes.
+
+    三个诚实性约束（缺一个就会把"没跑起来"读成"没崩溃"）：
+
+    1. **上游状态向下传播**：install / launch 不是 PASS 时，"崩溃窗口"没有意义，
+       这里直接记 SKIP 并说明原因，绝不记 PASS。
+    2. **日志必须按 bundleName 过滤**：`hilog` 是全设备缓冲，别的进程崩溃会被算到
+       本应用头上（既可能假阳性，也可能把本应用的崩溃淹没）。
+    3. **过滤后没有任何本应用日志 → 判 NOT_RUN**：空证据不等于"无崩溃"。
+    """
     env = env_of(state)
     runtime = state.read_json("runtime.json", default={}) or {}
+    bundle = env.get("bundle_name")
+
+    for step in ("install", "launch"):
+        status = str((runtime.get(step) or {}).get("status", "NOT_RUN"))
+        if status != "PASS":
+            result = state.skip_cmd(
+                "crash_check",
+                "upstream %s is %s - crash window is meaningless without a "
+                "running app" % (step, status))
+            result.stderr = "SKIP: upstream %s=%s; not a PASS" % (step, status)
+            runtime["crash_check"] = result.to_dict()
+            runtime["crash_markers_found"] = []
+            state.write_json("runtime.json", runtime)
+            return result
+
     hdc = env.get("hdc", "hdc")
     wait_sec = float(env.get("crash_wait_sec", 8))
     timeout = timeout or (wait_sec + 30)
@@ -146,19 +239,30 @@ def crash_check(state, timeout: Optional[float] = None):
     result = state.run_cmd([hdc, "shell", "timeout", str(int(wait_sec)),
                             "hilog"], label="hilog-crash-window",
                            timeout=timeout)
-    text = (result.stdout + "\n" + result.stderr).lower()
+    raw = result.stdout + "\n" + result.stderr
+    lines = raw.splitlines()
+    if bundle:
+        scoped = [ln for ln in lines if bundle.lower() in ln.lower()]
+    else:
+        scoped = lines
+    text = "\n".join(scoped).lower()
     crash_markers = ["cppcrash", "jscrash", "appfreeze", "sigsegv", "sigabrt",
                      "faultlog", "process died", "dlopen failed"]
     found = [m for m in crash_markers if m in text]
     result.exit_code = 0  # hilog capture exit code is not meaningful
-    # only a successfully captured window can prove "no crash markers";
-    # a failed/missing hdc run must not be reported as PASS
-    if result.status == "PASS":
+    if result.status == "PASS" and bundle and not scoped:
+        # 抓到了窗口，但没有一行属于本应用：不能据此宣称"无崩溃"
+        result.status = "NOT_RUN"
+        result.stderr = ("no log line matched bundle '%s' in %ss window - "
+                         "inconclusive, not a PASS" % (bundle, int(wait_sec)))
+    elif result.status == "PASS":
         result.status = "FAIL" if found else "PASS"
-    result.stderr = ("crash markers found: %s" % ", ".join(found)) if found else \
-        ("no crash markers in %ss window" % int(wait_sec)
-         if result.status == "PASS" else
-         "crash window capture failed: %s" % result.stderr.strip()[:200])
+        result.stderr = ("crash markers found: %s" % ", ".join(found)) if found else \
+            ("no crash markers in %ss window (%d line(s)%s)" % (
+                int(wait_sec), len(scoped),
+                ", bundle-filtered" if bundle else ""))
+    else:
+        result.stderr = "crash window capture failed: %s" % result.stderr.strip()[:200]
     runtime["crash_check"] = result.to_dict()
     runtime["crash_markers_found"] = found
     state.write_json("runtime.json", runtime)

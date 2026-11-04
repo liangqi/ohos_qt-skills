@@ -12,6 +12,58 @@
 
 ---
 
+## v3.0.0-rc5 — 2026-11-04
+
+把 telegramdesktop 真机实测的移交清单（`tdesktop-trunk-handoff-20261104`）逐条落进 trunk：
+先修"会把没测读成通过"的工具判据，再补被这件事证伪/证实的知识。
+
+- **FIX** `_scripts/ci.py` 在中文 Windows 上崩：子进程输出按 GBK 解码遇 UTF-8 字节抛
+  `UnicodeDecodeError`（栈落在 `subprocess._readerthread`，完全不像编码问题）。现在三处一起改：
+  本进程 stdio 强制 UTF-8、子进程环境带 `PYTHONUTF8=1`/`PYTHONIOENCODING=utf-8`、输出解码
+  `errors="replace"`
+- **FIX** G8 崩溃门禁会假 PASS（最严重的一条）：旧实现只跑全设备 `hilog` 就判 PASS，
+  install/launch 失败时等于"没跑起来也算没崩溃"。现在 `crash_check` 先看上游
+  install/launch 状态，非 PASS 直接 SKIP 并写明原因；日志按 `bundle_name` 过滤，
+  过滤后一行都不属于本应用则判 NOT_RUN（空证据 ≠ 无崩溃）；`smoke` 区分"未测（exit 2）"
+  与"崩溃（exit 1）"
+- **FIX** 卫生检查只看会被提交的文件：`gitignore` 的本地 `workspace/` 构建树与
+  `ENV.local.md` 曾产生 134 条 H2 噪声（真实错误被淹没）。改为按 `git ls-files` 过滤，
+  保留 `--include-ignored` 逃生口
+- **FIX** `draft` 曾写进 `.gitignore` 的 `drafts/`，按文档流程沉淀的知识进不了 trunk；
+  改为写 `faults/_drafts/`（跟踪目录），文档与用例同步
+- **FIX** 配置变更不再需要人记得 `--force`：`config set` 自动使 env_check/project_scan/
+  qt_scan/risk_scan/dependency_scan 失效
+- **FIX** `portgraph deps` 不认 `config set qt_version`：现在优先读 `.qt-ohos/env.json`，
+  Qt 6 工程不再被打印成 `Qt: 5`
+- **FIX** `analyze-log` 三条过宽模式造成误判：`QOH020` 的 `No such file or directory`
+  （nmake 缺失被当成 libuuid 缺失）、`QOH023` 的 `undefined symbol`、`QOH019` 的
+  `file not found` 全部收窄为带上下文的模式；`QOH001` 补 `Unknown platform type`
+- **MINOR** 新增 `tools/ohos-platform-audit.py`：平台层两种分发（头内 `#ifdef` / 构建按
+  路径选 `.cpp`）分类 + 断言头分发文件同时命名 `Q_OS_OHOS` 与 `Q_OS_HARMONY`；
+  `--undefined link.log` 反推仍缺实现的平台符号（symcheck）
+- **MINOR** 新增 `qt-ohos-run libcheck <lib> --level built|probed`：库级中间门禁，
+  `probed` 必须带设备证据；G4 明细里显示"n built / m probed"，移植中间成果不再被整包失败吞掉
+- **MINOR** 打包前置检查：`entry/libs/*/` 的版本化 `.so`（加载器按 soname 找不到）、
+  非 `.so` 文件、`build-profile.json5` 的 `compatibleSdkVersion` 与 `env.json`
+  `compatible_sdk` 不一致，都在打包前拦下
+- **MINOR** 机器层：新增 `QOH043`（平台守卫单宏，Qt 6 kit 上死代码）与 `R019`
+  （`guard` 匹配器：命中 glob 的文件必须同时包含两个 OHOS 宏），规则引擎支持
+  `match.guard`；`QOH042 → QOH043`、`R018 → R019`
+- **MINOR** 知识层扩写：铁律 §六 从 2 条扩到 5 条（双宏守卫、两种分发、`-DQ_OS_OHOS`
+  是假修复）并新增「平台模型 else 即 Linux 的 4 处失效点」；`porting-workflow` 增
+  「树外消费 app 层前置清单」（5 前提 + 2 陷阱）；`third-party-libs` 增本地签名链路；
+  `modules` 增 Qt 6.12+/6.13.0-dev 平台宏实测
+- **MINOR** 修正复盘里的两处过度断言：`specific_ohos.h` 的 `inline` 不是"必须去掉"
+  （未引用 TU 本就不发射符号，先 `llvm-nm` 判再改）；托盘是成员变量、
+  `TrayIconSupported()` 挡不住构造，必须给完整 no-op 面
+- **MINOR** 新增 8 个 problems 页（平台双宏、两种分发、树外 app 层前提、CMake `-include`
+  去重、同名头自引用、appspawn `/proc/self/exe`、托盘必须存在、本地签名链）；
+  知识页 124 → 132，QOH 42 → 43，R 18 → 19，problems 48 → 56，铁律 35 → 38
+- **MINOR** 用例 48 → 52（新增 guard 匹配、G8 SKIP 传播、打包前置检查三组回归），CLI 冒烟
+  6 → 7（`ohos-platform-audit.py`）
+
+---
+
 ## v3.0.0-rc3 — 2026-11-02
 
 真机测试前的对抗性审查（用 telegramdesktop 这类真实 Qt6 工程当靶子跑通全流程），修掉 6 类会误导判断的问题。

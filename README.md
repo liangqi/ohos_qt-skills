@@ -33,7 +33,7 @@ Qt/C++ 桌面应用要跑在 HarmonyOS 上，难点集中在这些地方：
 |------|---------|-----------|
 | 不知道能不能迁 | 逐个模块翻 wiki、试编译 | `portgraph analyze` 出三态结论（portable / blocked / uncertain）+ 阻断根因归类 |
 | 迁完编译过了，装到机器上白屏/闪退 | 靠人盯着日志猜 | 门禁 G0–G12 逐条判定，缺 so 闭包、签名、部署缺口都会被点出来 |
-| 同样的报错反复踩 | 翻聊天记录 | 42 条 QOH 错误模式机器匹配 + 48 个实战踩坑页 + 故障图定位"归谁、修没修、怎么绕" |
+| 同样的报错反复踩 | 翻聊天记录 | 43 条 QOH 错误模式机器匹配 + 56 个实战踩坑页 + 故障图定位"归谁、修没修、怎么绕" |
 | 三方依赖下载/交叉编译耗掉几天 | 手工找 bottle、手工编 | `portgraph deps` / `fetch-deps` 出依赖角色分类与闭包清单 |
 | 换个人接手就断了 | 口口相传 | 状态机落盘（`.qt-ohos/`）+ 任务台账 + 知识沉淀协议 |
 
@@ -52,7 +52,7 @@ Qt/C++ 桌面应用要跑在 HarmonyOS 上，难点集中在这些地方：
 │           ohos-common-kb-public/                              │
 │           → 人读的真源：事实、流程、复盘、错误解法、平台知识  │
 ├───────────────────────────────────────────────────────────────┤
-│  机器层   knowledge/errors(42 条 QOH) · rules(18 条 R)        │
+│  机器层   knowledge/errors(43 条 QOH) · rules(19 条 R)        │
 │           knowledge/adaptation · faults/(故障图)              │
 │           → 工具读的索引：从知识层提炼的可匹配模式            │
 ├───────────────────────────────────────────────────────────────┤
@@ -77,14 +77,14 @@ Qt/C++ 桌面应用要跑在 HarmonyOS 上，难点集中在这些地方：
 | 能力 | 入口 | 现状 |
 |------|------|------|
 | 🔍 可行性评估 | `portgraph/portgraph.py analyze / deps / fetch-deps` | 可 ingest 4741 个 Harmonybrew formula + 1248 个 cmd-pkg 索引（首次联网），出三态判定 |
-| 🚚 自动迁移流水线 | `tools/qt-ohos-run.py`（24 个子命令） | 扫描（18 条预扫描规则出风险报告）→计划→受追踪修改→构建→打包→装机→启动→冒烟→门禁，可 checkpoint/resume |
+| 🚚 自动迁移流水线 | `tools/qt-ohos-run.py`（25 个子命令） | 扫描（19 条预扫描规则出风险报告）→计划→受追踪修改→构建→打包→装机→启动→冒烟→门禁，可 checkpoint/resume；库级进展用 `libcheck` 单独记 |
 | 🚦 成功判定 | `qt-ohos-run.py verify`（G0–G12） | 门禁级 PASS / PARTIAL / FAIL，`TIMEOUT` 不计通过 |
-| 🧠 日志诊断 | `qt-ohos-run.py analyze-log` | 42 条 QOH 错误模式自动匹配，命中即给知识页引用 |
-| 🧰 Qt SDK 工程平面 | `tools/qt-sdk-run.py`（24 个子命令） | 编译 / 增量 install / 补丁溯源 / SV0–SV8 发版门禁 / 上游演进跟踪 |
+| 🧠 日志诊断 | `qt-ohos-run.py analyze-log` | 43 条 QOH 错误模式自动匹配，命中即给知识页引用 |
+| 🧰 Qt SDK 工程平面 | `tools/qt-sdk-run.py`（25 个子命令） | 编译 / 增量 install / 补丁溯源 / SV0–SV8 发版门禁 / 上游演进跟踪 |
 | 🗺️ 故障跟踪 | `faults/` + `tools/faults-build.py` | S→C→W→T 故障图（17/18/15/11）：定性、责任领域、临时方案、在跟单、闭环缺口 |
-| 📚 知识底座 | `semantic/` `procedural/` `problems/` | 124 页（Qt 侧 97 + 内嵌平台 27），35 条铁律，13 类 API 映射，47 个实战踩坑 |
+| 📚 知识底座 | `semantic/` `procedural/` `problems/` | 132 页（Qt 侧 105 + 内嵌平台 27），38 条铁律，13 类 API 映射，56 个实战踩坑 |
 | 🏗️ 工程模板 | `templates/qt-ohos-app/` | 71 个文件的干净鸿蒙壳工程（替代历史上带构建产物的脏模板） |
-| ✅ 自检用例 | `tests/` | 引擎 19 + 一致性 20 + 扫描 9 = 48 用例（另有图谱 123 单测） |
+| ✅ 自检用例 | `tests/` | 引擎 23 + 一致性 20 + 扫描 9 = 52 用例（另有图谱 123 单测） |
 
 ---
 
@@ -133,7 +133,7 @@ Agent 的加载顺序、执行纪律、禁止事项写在 [AGENTS.md](AGENTS.md)
 驱动一次完整迁移（每一步都会在目标项目 `.qt-ohos/` 下留状态，中断可 `resume`）：
 
 ```bash
-python tools/qt-ohos-run.py scan <项目目录>   # 预扫描 + 18 条规则风险报告
+python tools/qt-ohos-run.py scan <项目目录>   # 预扫描 + 19 条规则风险报告
 python tools/qt-ohos-run.py plan              # 迁移计划（auto / assisted / manual）
 python tools/qt-ohos-run.py patch             # 白名单自动修复（受追踪）
 python tools/qt-ohos-run.py build             # G3 编译
@@ -183,12 +183,13 @@ python -m unittest discover -s tests -v    # 用例全量
 
 | 工具 | 子命令 | 干什么 |
 |------|-------|--------|
-| `tools/qt-ohos-run.py` | 24 | `scan` `plan` `patch` `build` `package` `install` `launch` `smoke` `verify` `analyze-log` `assess` `migrate` `finish` `status` `resume` `rollback` `mark-gate` `mark-ui` `mark-risk` `draft` `promote` `recipes` `config` `init` |
+| `tools/qt-ohos-run.py` | 25 | `scan` `plan` `patch` `build` `package` `install` `launch` `smoke` `verify` `analyze-log` `assess` `migrate` `finish` `status` `resume` `rollback` `mark-gate` `mark-ui` `mark-risk` `libcheck` `draft` `promote` `recipes` `config` `init` |
 | `tools/qt-sdk-run.py` | 24 | `init` `env` `config` `src-clone` `status` `patch-import` `patch-apply` `patch-list` `patch-revert` `patch-export` `patch-mark` `configure` `build` `install` `verify` `smoke-mark` `release` `release-list` `modules` `use` `diff` `upstream-check` `forge` `resume` |
 | `tools/faults-build.py` | 4 | `build` `check` `review` `all`：真源 → 派生物，闭环缺口检查 |
 | `tools/kb-verify-qt.py` | — | 知识页事实复核（版本、符号、路径） |
 | `tools/cpp20-gap-scan.py` | — | C++20 在鸿蒙工具链上的缺口扫描 |
 | `tools/kb-cef-graft.py` | — | 把 CEF 嫁接到 Qt OHOS 模板工程（`--run` 含签名+装机+崩溃检查） |
+| `tools/ohos-platform-audit.py` | — | 平台层审计：头/源两种分发分类 + 断言双 OHOS 宏；`--undefined` 反推缺失实现 |
 | `portgraph/portgraph.py` | 10 | `ingest` `clone` `scan` `analyze` `deps` `stats` `fetch` `fetch-deps` `export` `serve` |
 
 `qt-sdk-run.py forge <proposal-dir>` 把一次修改方案打成可追溯的补丁提案（含 manifest），
@@ -298,7 +299,7 @@ README、`SKILL.md`、`AGENTS.md`、索引页里的声称与仓库实际状态�
 | 引擎 | `tests/test_qt_ohos.py` | 状态机、门禁、错误匹配的行为回归 |
 | 图谱 | `portgraph/tests/` | 可移植性判定、依赖分类、bottle 解析 |
 
-当前状态：用例全绿（引擎 19 + 一致性 20 + 扫描 9 = 48，另有图谱 123 单测），`faults-build check` 零 ERROR（info 7 为已排期的缺单）。
+当前状态：用例全绿（引擎 23 + 一致性 20 + 扫描 9 = 52，另有图谱 123 单测），`faults-build check` 零 ERROR（info 7 为已排期的缺单）。
 一条命令跑完全部门禁：`python _scripts/ci.py`（Windows 无 bash 也可；退出码即结论，可直接接到流水线）。
 
 ---

@@ -9,7 +9,7 @@ status: active
 audience: public
 refs: [semantic-qt-harmonyos-porting-workflow, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-lifecycle, semantic-qt-harmonyos-api-mapping, semantic-qt-harmonyos-code-patterns, semantic-qt-harmonyos-window-model, semantic-qt-ohos-extras, semantic-qt-harmonyos-build, semantic-qt-harmonyos-third-party-libs]
 summary: >
-  Qt 鸿蒙化铁律速查：35 条黄金规则覆盖构建部署、窗口管理、API/枚举路径、
+  Qt 鸿蒙化铁律速查：38 条黄金规则覆盖构建部署、窗口管理、API/枚举路径、
   平台限制对 Qt 的影响、生命周期 adapter、跨平台守卫。每条含严重度（🔴🟠🟡🟢）、"为什么"和出处。
   Agent 执行任何 Qt for HarmonyOS 任务前应先扫描此页。
 ---
@@ -99,12 +99,30 @@ summary: >
 
 ---
 
-## 六、跨平台守卫（2 条）
+## 六、跨平台守卫（5 条）
 
 | # | 严重度 | 规则 | 为什么 | 出处 |
 |---|:------:|------|--------|------|
 | G1 | 🟢 | `Q_OS_OHOS` **隐含** `Q_OS_LINUX` — `#ifdef Q_OS_LINUX` 在鸿蒙上也会命中 | 必须检查所有 Q_OS_LINUX 分支是否兼容鸿蒙 | [[qt-harmonyos-porting-workflow]] §原则1 |
 | G2 | 🟢 | 拖放事件数据**只能**在 `dropEvent` 中读取，`dragEnterEvent`/`dragMoveEvent` 中只有 MIME 类型 | 鸿蒙拖放协议数据传输是异步的 | [[qt-harmonyos-code-patterns]] §模式9 |
+| G3 | 🔴 | 平台守卫**必须同时接受** `Q_OS_OHOS` 与 `Q_OS_HARMONY`：`#if defined Q_OS_OHOS \|\| defined Q_OS_HARMONY` | Qt 5.15 kit 定义 `Q_OS_OHOS`，Qt 6.12+（含 6.13.0-dev）只定义 `Q_OS_HARMONY`；只写一个的守卫在另一种 kit 上是**死代码**，会静默落到 Linux 实现 | [[build-qt612-qos-harmony-macro]]、[[platform-guard-needs-both-ohos-macros]] |
+| G4 | 🔴 | 改平台分发前先分清**头文件分发**与**源文件分发**：前者改 `#ifdef` 链，后者靠构建按路径选中 `ohos/xxx_ohos.cpp` | 只改 `#ifdef` 会永久漏掉源文件分发那一半（典型 9 头 + 5 源），漏掉的表现为链接期 undefined 或运行期静默降级 | [[platform-layer-two-dispatch-modes]] |
+| G5 | 🟠 | **手动 `-DQ_OS_OHOS` 是假修复**：`Q_OS_WIN` 在分发链首，`-D` 救不了宿主 triple 的情况 | 它把"kit 事实"变成"构建脚本约定"，换 kit 就复发；判定分支要用完整编译命令 + `-H`，不是看 `flags.make` | [[platform-guard-needs-both-ohos-macros]] §四 |
+
+### 平台模型的"else 即 Linux"假设（新平台必踩全套）
+
+桌面应用（tdesktop 这类 `desktop-app` 系工程）的平台模型是"Win / Mac / **其余**"，
+而"其余"实际等于 Linux。任何新平台会一次性踩到四处，症状各不相同：
+
+| 位置 | 症状 | 现成判据 |
+|------|------|---------|
+| `cmake/nice_target_sources.cmake` | 平台过滤不认 `ohos/` 目录 → 实现文件被标成 `HEADER_FILE_ONLY` → 编译期零报错、链接期集中爆 undefined | [[build-qt612-qos-harmony-macro]] |
+| `platform/platform_specific.h` | 分发链落 Linux 头 → 拉进 D-Bus / X11 / glib 依赖 | [[platform-guard-needs-both-ohos-macros]] |
+| `platform/platform_{tray,notification,main_window,overlay_widget,file_utilities,...}.h` | 各自独立分发，改一处不漏另一处 | [[platform-layer-two-dispatch-modes]] |
+| `base/screen_reader_state.cpp` | 落 Linux 实现 → atspi/dbus 依赖 | 同上 |
+
+审计方法：`python tools/ohos-platform-audit.py <app>/SourceFiles/platform`
+（头分发文件必须同时命名两个 OHOS 宏，退出码非 0 即拦下）。
 
 ---
 
@@ -146,3 +164,5 @@ summary: >
 - [[qt-harmonyos-build]] — 构建指南
 - [[qt-harmonyos-third-party-libs]] — 三方库鸿蒙化指南
 - [[qt-harmonyos-qt6-status]] — Qt 6 鸿蒙化状态
+- [[platform-guard-needs-both-ohos-macros]] — 平台守卫双宏与分支判定方法
+- [[platform-layer-two-dispatch-modes]] — 平台层两种分发机制与审计

@@ -1,6 +1,6 @@
 ---
-updated: 2026-09-19
-total_problems: 46
+updated: 2026-11-04
+total_problems: 56
 description: >
   错误速查索引（从 problem 页 frontmatter 重建）。
 ---
@@ -93,6 +93,12 @@ description: >
 | ⬜ blocker | [build-fail-qt6-libcpp-musl-isystem](build-fail-qt6-libcpp-musl-isystem.md) | no member named 'nullptr_t' in the global namespace; use of undeclared identifier '__promote'; call to 'hypot' is ambiguous (libcxx-ohos c++/v1/cstddef, cmath; -isystem sysroot/usr/include 注入致 musl 遮蔽 clang builtin) |
 | 🟡 medium | [build-fail-qtohosextras-camelcase-headers](build-fail-qtohosextras-camelcase-headers.md) | fatal error: 'QtOhosExtras/QOhosAppContext' file not found |
 | 🟠 high | [build-hvigor-native-skip](build-hvigor-native-skip.md) | spawn java ENOENT; BuildNativeWithCmake finished after 1ms with no .so artifact (DEVECO_SDK_HOME missing) |
+| 🔴 critical | [build-app-layer-out-of-tree-prerequisites](build-app-layer-out-of-tree-prerequisites.md) | 大型 Qt 桌面应用 app 层无法直接交叉编译：预编译头/C++20/API 凭据/两套代码生成/三方 include 5 个隐式前置 |
+| 🟡 medium | [build-cmake-dedup-include-option](build-cmake-dedup-include-option.md) | CMake 去重 -include 把两个头拼成 "-include A B"，clang 把 B 当输入文件 → cannot specify -o when generating multiple output files |
+| 🟡 medium | [build-uninitialized-submodule-same-name-header](build-uninitialized-submodule-same-name-header.md) | 子模块未初始化时尖括号 include 解析到自己，被 pragma once 吞掉 → 类型不存在 |
+| 🟠 high | [platform-guard-needs-both-ohos-macros](platform-guard-needs-both-ohos-macros.md) | 平台守卫只写 Q_OS_OHOS，Qt 6.x kit 只定义 Q_OS_HARMONY → 分支静默落到 Linux 实现 |
+| 🟠 high | [platform-layer-two-dispatch-modes](platform-layer-two-dispatch-modes.md) | 平台层两种分发机制（头内 #ifdef / 构建按路径选 .cpp），只改 #ifdef 会漏掉一半 |
+| 🟡 medium | [build-local-openharmony-signing-chain](build-local-openharmony-signing-chain.md) | 无开发者证书时用 OpenHarmony 本地根证书自签 HAP 的五步链路与三个失败点 |
 | 🟡 medium | [build-missing-qt5uitools-ohos](build-missing-qt5uitools-ohos.md) | CMake Error: find_package(Qt5 COMPONENTS Widgets UiTools OpenGL QUIET) 失败 (OHOS Qt5 SDK 缺 Qt5UiTools 模块) |
 
 ### caveat
@@ -117,6 +123,8 @@ description: >
 
 | 严重度 | 问题文件 | 简述 |
 |:------:|---------|------|
+| 🟠 high | [runtime-appspawn-proc-self-exe](runtime-appspawn-proc-self-exe.md) | 应用启动即退出且无日志：现代 appspawn 重新 exec 自己，/proc/self/exe 不是 ELF |
+| 🟠 high | [runtime-tray-must-exist-noop](runtime-tray-must-exist-noop.md) | 鸿蒙无托盘 API 但 Platform::Tray 是成员变量：要完整 no-op 面（14 方法 + HasMonochromeSetting）而不是删类 |
 | 🟠 high | [ohos-mainthread-mismatch](ohos-mainthread-mismatch.md) | Q_ASSERT(receiver->d_func()->threadData.loadAcquire()->thread.loadRelaxed() == mainThread()) in QCoreApplicationPrivate::sendThroughApplicationEventFilters (Debug 构建鼠标点击事件触发) |
 | 🟠 high | [render-black-rgba8-zink-mipmap](render-black-rgba8-zink-mipmap.md) | Qt3D 实体贴图纯黑（cloud 球壳 / saturn 星环 / uranus 星环），光照与阴影正常； 同 effect 下用 RGB8 JPG 的实体贴图正常；唯一判别变量是贴图格式 RGBA8(alpha) vs RGB8(JPG)。 |
 | 🟠 high | [runtime-blocked-by-modal-window-no-parent](runtime-blocked-by-modal-window-no-parent.md) | QDialog 关不掉 + 不能滚动（同时出现），尤其在 matplotlib 三级窗口场景 |

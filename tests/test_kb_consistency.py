@@ -388,7 +388,7 @@ QT_OHOS_RUN_CMDS = {
     "init", "scan", "plan", "patch", "build", "package", "install", "launch",
     "smoke", "verify", "analyze-log", "status", "resume", "migrate", "finish",
     "assess", "rollback", "mark-gate", "mark-ui", "mark-risk", "draft",
-    "promote", "recipes", "config",
+    "promote", "recipes", "config", "libcheck",
 }
 QT_SDK_RUN_CMDS = {
     "init", "env", "config", "src-clone", "status", "patch-import",

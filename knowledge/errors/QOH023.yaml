@@ -4,7 +4,7 @@ stage: [build]
 severity: medium
 patterns:
   - 'qInitResources'
-  - 'undefined symbol'
+  - "re:undefined symbol: qInitResources_[A-Za-z0-9_]"
 root_causes:
   - entry shim uses extern "C" main with .qrc resources
   - linker cannot find qInitResources_<name> symbol

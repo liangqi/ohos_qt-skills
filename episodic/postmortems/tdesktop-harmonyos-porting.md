@@ -75,8 +75,8 @@ python portgraph.py fetch-deps tdesktop --json      # manifest 拿 CMAKE_PREFIX_
 |------|------|
 | `update_checker.cpp` | 6 处平台守卫 |
 | `platform_*.h` 分发头 | 宏改为 `HARMONY \|\| OHOS` 双兼容 |
-| `specific_ohos.h` | 去掉 `inline`（定义被弱化丢弃，用 `llvm-nm` 验证 .o 符号） |
-| `tray_ohos / webauthn_ohos / file_utilities_ohos` | 新增/去外层重复定义 |
+| `specific_ohos.h` | **先判再改**：`inline` 函数在未被引用的 TU 里本来就不发射符号（`llvm-nm specific_ohos.cpp.o` 只见 `T psAppDataPath()` / `T psCleanup()`），被引用时会以 `W`（weak）出现在调用方 TU。**只有**链接报 undefined 且 `llvm-nm` 显示该符号 weak/缺失时，才去掉 `inline` |
+| `tray_ohos / webauthn_ohos / file_utilities_ohos` | 新增实现 / 去外层重复定义。**托盘不是可选类**：`Platform::Tray _tray` 是托盘管理器的成员变量、无条件构造，`TrayIconSupported()` 只挡图标不挡构造——必须给完整 no-op 公开面（14 个方法 + `HasMonochromeSetting()`），删类会链接期暴雷 |
 | `base_power_save_blocker_ohos` | QPointer 签名适配 |
 | `lib_ui` | 新增 `ui/platform/ohos/` 3 个文件 |
 | `delayed_activation.cpp` | XCB 路径排除 |

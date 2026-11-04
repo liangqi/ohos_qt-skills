@@ -6,7 +6,7 @@
 
 release_version: v3.0.0
 status: trunk-candidate        # 通过 Windows 端到端实测后改为 released 并打 tag
-released_at: "2026-10-31"
+released_at: "2026-11-04"
 target:
   id: ohos_qt-skills
   type: repo                   # v2.x 为 kb（纯知识库）；v3 起为知识+工具工程仓
@@ -29,17 +29,17 @@ embedded_dependencies:
 
 builder_version: 3
 publication_schema_version: 2
-content_tree_sha256: 249435445eb2e94da3347da14834a0ce890db7995298a64f9902d5d045729ec4
-built_at: "2026-11-02T22:20:59+08:00"
+content_tree_sha256: f54e9ca0488b8ad7be07b8c01aa2f697e851756494ce0f86aa2f285deceac939
+built_at: "2026-11-04T14:56:39+08:00"
 
 skills: ["kb-init", "qt-app-porting", "qt-sdk-forge", "qt-community-to-official", "task-dispatcher", "kb-iterator"]
 common_pages_count: 27
-qt_pages_count: 97             # semantic 26 + procedural 15 + episodic 8 + problems 48（不含 _index/_lookup）
+qt_pages_count: 105             # semantic 26 + procedural 15 + episodic 8 + problems 56（不含 _index/_lookup）
 
 # 验证状态（发版前必须全绿；正式发版前补 Windows 端到端实测）
 validation:
   verify_sh: PASS              # _scripts/verify.sh：0 error / 5 warning（产物目录，P4 清理）
-  unittests: 171               # 引擎 12 + 一致性 22 + cpp20 扫描 9 + portgraph 119
+  unittests: 175               # 引擎 23 + 一致性 20 + cpp20 扫描 9 + portgraph 123
   faults_build_check: PASS     # 真源 ↔ 派生物一致
-  cli_contract: PASS           # qt-ohos-run 24 / qt-sdk-run 24 / portgraph 10 子命令
+  cli_contract: PASS           # qt-ohos-run 25 / qt-sdk-run 24 / portgraph 10 子命令
   windows_e2e_porting: PENDING # 待新环境实机验证（见 trunk 交付说明）

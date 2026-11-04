@@ -4,7 +4,7 @@ stage: [build]
 severity: medium
 patterns:
   - "'QtOhosExtras/"
-  - 'file not found'
+  - "re:QtOhosExtras/[A-Za-z0-9_]+\.h['\"]? file not found"
 root_causes:
   - fatal error 'QtOhosExtras/QOhosAppContext' file not found
   - CamelCase forwarding headers not generated/installed for the module

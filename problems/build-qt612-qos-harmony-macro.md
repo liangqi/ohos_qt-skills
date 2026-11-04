@@ -4,13 +4,13 @@ type: problem
 domain: build
 tags: [qt612, qsystemdetection, Q_OS_HARMONY, Q_OS_OHOS, cmake_helpers, nice_target_sources, 宏失效]
 created: 2026-09-11
-updated: 2026-09-11
+updated: 2026-11-04
 status: solved
 severity: high
 audience: public
 refs: [semantic-qt-harmonyos-golden-rules, semantic-qt-harmonyos-build]
 summary: >
-  Qt 6.12-beta3 harmonyos kit 的平台宏是 Q_OS_HARMONY（非 Q_OS_OHOS），
+  Qt 6.12+（含 6.13.0-dev）harmonyos kit 的平台宏是 Q_OS_HARMONY（非 Q_OS_OHOS），
   且 OHOS 分支若在 nice_target_sources 里标记 not_linux 集合会把 ohos 后缀
   实现文件也排除——全部 platform/ohos 静默不编译，链接期集中爆 undefined。
 leader_summary: >
@@ -28,7 +28,7 @@ error_code: ""
 keywords: [Q_OS_HARMONY, Q_OS_OHOS, __OHOS__, nice_target_sources, not_linux, HEADER_FILE_ONLY, undefined symbol]
 symptoms: "OHOS 交叉编译全部通过但链接集中报 platform 层符号 undefined；分发头始终落入 linux 分支"
 
-environment: "Windows + Qt 6.12-beta3 harmonyos_arm64_v8a kit + OHOS NDK clang15"
+environment: "Windows + Qt 6.12-beta3 / 6.13.0-dev harmonyos_arm64_v8a kit + OHOS NDK clang15（两版均验证）"
 ---
 
 # Qt 6.12 OHOS kit 平台宏是 Q_OS_HARMONY + ohos 源文件被静默排除
@@ -50,7 +50,9 @@ ld.lld: error: undefined symbol: Ui::Platform::TranslucentWindowsSupported()
 
 ## 原因（两个叠加陷阱）
 
-1. **Qt 6.12-beta3 的 qsystemdetection.h 定义的是 `Q_OS_HARMONY`，不是 `Q_OS_OHOS`**：
+1. **Qt 6.12-beta3 的 qsystemdetection.h 定义的是 `Q_OS_HARMONY`，不是 `Q_OS_OHOS`**
+   （**版本范围：6.12+，6.13.0-dev 已验证同样成立**——6.13.0-dev 的
+   `qsystemdetection.h` 仍是 `#elif defined(__OHOS__) → #define Q_OS_HARMONY`，不定义 `Q_OS_OHOS`）：
    `__OHOS__`(编译器预定义) → `Q_OS_HARMONY + Q_OS_LINUX`。Qt 5.15/5.12 harmonyos
    分支才是 `Q_OS_OHOS`。所有 `#ifdef Q_OS_OHOS` 守卫在 6.12 kit 下是死代码，
    分发头全部落入 linux 分支。
@@ -65,7 +67,7 @@ ld.lld: error: undefined symbol: Ui::Platform::TranslucentWindowsSupported()
 - 守卫写成兼容两个 Qt 大版本：
 
 ```cpp
-#if defined Q_OS_HARMONY || defined Q_OS_OHOS   // 6.12 / 5.15 两种 kit
+#if defined Q_OS_HARMONY || defined Q_OS_OHOS   // 6.12+ / 5.15 两种 kit
 #include "platform/ohos/xxx_ohos.h"
 #else
 #include "platform/linux/xxx_linux.h"

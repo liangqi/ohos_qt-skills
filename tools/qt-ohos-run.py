@@ -415,6 +415,13 @@ def cmd_smoke(args):
     if result.status == "PASS":
         st.complete_stage("smoke", next_action="verify")
         return 0
+    if result.status in ("SKIP", "NOT_RUN"):
+        # 没装上 / 没起来 / 没抓到本应用日志：这是"没测"，不是"通过"。
+        st.fail_stage("smoke", error="not-run:%s" % result.status,
+                      next_action="install+launch")
+        print("[qt-ohos-run] smoke 未执行（%s）——先让 install/launch 通过，"
+              "或确认 bundle_name 与 hilog 输出对得上" % result.status)
+        return 2
     st.fail_stage("smoke", error="crash-detected", next_action="analyze-log")
     return 1
 
@@ -794,9 +801,67 @@ def cmd_config(args):
         else:
             env[args.key] = args.value
         st.write_json("env.json", env)
+        # 配置变了，之前的扫描结论就过期了：扫过的东西要在下次 scan 时重算，
+        # 否则改了 qt_version / bundle_name 还得记得加 --force（旧行为）。
+        invalidated = st.invalidate_scan_stages()
         print("[qt-ohos-run] env.json: %s = %s" % (args.key, args.value))
+        if invalidated:
+            print("[qt-ohos-run] scan 状态已失效（%s），下次 scan 会重扫"
+                  % ", ".join(invalidated))
         return 0
     return 1
+
+
+def cmd_libcheck(args):
+    """库级中间门禁：把一个库的移植进展记成可核验的事实。
+
+    整包 HAP 上板是终点，但移植过程中真正推进的是一批库。旧模型只有
+    "整包 PASS/FAIL"，于是"这个库已经编译链接通过、平台函数在设备上调通了"
+    这种进展无处可记，也无法在 `verify` 里体现。
+
+    两个层级（只认这两个，避免自造状态）：
+      built  —— 该库编译 + 链接通过（产物存在）
+      probed —— 平台函数在设备上被真实调用过（有设备侧证据）
+    """
+    st = _state(args)
+    data = st.read_json("libs.json", default={}) or {}
+    libraries = data.get("libraries") or []
+
+    if args.list:
+        if not libraries:
+            print("[qt-ohos-run] 还没有登记任何库")
+            return 0
+        print("%-28s %-8s %-20s %s" % ("library", "level", "recorded", "evidence"))
+        for item in libraries:
+            print("%-28s %-8s %-20s %s" % (
+                item.get("name"), item.get("level"), item.get("at", "-"),
+                (item.get("evidence") or "")[:60]))
+        return 0
+
+    if not args.name:
+        print("[qt-ohos-run] 需要库名：libcheck <name> --level built|probed")
+        return 2
+    level = (args.level or "").lower()
+    if level not in ("built", "probed"):
+        print("[qt-ohos-run] --level 只能是 built 或 probed")
+        return 2
+    if level == "probed" and not args.evidence:
+        # 设备侧证据不许省略：没有证据的 "probed" 就是自欺
+        print("[qt-ohos-run] probed 必须带 --evidence（设备日志/hilog 关键行）")
+        return 2
+
+    record = {"name": args.name, "level": level,
+              "evidence": args.evidence or "", "at": st.data.get("updated")}
+    for idx, item in enumerate(libraries):
+        if item.get("name") == args.name:
+            libraries[idx] = record
+            break
+    else:
+        libraries.append(record)
+    data["libraries"] = libraries
+    st.write_json("libs.json", data)
+    print("[qt-ohos-run] library %s -> %s" % (args.name, level))
+    return 0
 
 
 def cmd_mark_risk(args):
@@ -973,6 +1038,15 @@ def main(argv=None):
     p = sub.add_parser("mark-risk", help="mark critical risks as addressed (G2)")
     p.add_argument("--rule", action="append", required=True)
 
+    p = sub.add_parser("libcheck",
+                       help="record per-library porting milestones (built/probed)")
+    p.add_argument("name", nargs="?", help="library or CMake target name")
+    p.add_argument("--level", choices=["built", "probed"],
+                   help="built=compiled+linked, probed=platform funcs called on device")
+    p.add_argument("--evidence", help="device log line / hilog key line (probed 必填)")
+    p.add_argument("--list", action="store_true", help="列出已登记的库")
+    p.add_argument("--project", help="project directory (defaults to cwd)")
+
     args = parser.parse_args(argv)
     if not args.command:
         parser.print_help()
@@ -988,6 +1062,7 @@ def main(argv=None):
         "mark-gate": cmd_mark_gate, "mark-ui": cmd_mark_ui,
         "draft": cmd_draft, "promote": cmd_promote, "recipes": cmd_recipes,
         "config": cmd_config, "mark-risk": cmd_mark_risk,
+        "libcheck": cmd_libcheck,
     }
     return handlers[args.command](args)
 

@@ -19,6 +19,9 @@ Rule schema (see knowledge/rules/index.yaml):
       cmake:  [...]             # regexes against CMakeLists.txt contents
       modules: [dbus]           # matched against detected Qt module list
       files:  ["*.so"]          # glob against project files
+      guard:                    # 文件级断言：命中 glob 的文件必须同时满足 require
+        files: ["platform_*.h"] # glob
+        require: ["Q_OS_OHOS", "Q_OS_HARMONY"]   # 任一缺失即报
     golden_rules: [B9]          # cross-ref semantic/qt-harmonyos-golden-rules.md
     kb: [semantic/qt-harmonyos-platform-limits.md]
     solution: >
@@ -119,6 +122,28 @@ class RuleEngine:
                 for rel in _all_rel_paths(root):
                     if fnmatch.fnmatch(rel, str(pattern)):
                         findings.append(_finding(rule, rel, 0, "file present"))
+
+            # guard：命中 glob 的文件必须**同时**包含 require 里全部片段。
+            # 用于"双宏守卫"这类断言——单看 files 只能报"存在"，看不出写错在哪。
+            guard = match.get("guard")
+            if isinstance(guard, dict):
+                globs = [str(g) for g in _as_list(guard.get("files"))]
+                required = [(_compile(r), r) for r in _as_list(guard.get("require"))]
+                required = [(rx, raw) for rx, raw in required if rx is not None]
+                if globs and required:
+                    for rel in _all_rel_paths(root):
+                        if not any(fnmatch.fnmatch(rel, g) for g in globs):
+                            continue
+                        try:
+                            text = (root / rel).read_text(encoding="utf-8",
+                                                          errors="replace")
+                        except OSError:
+                            continue
+                        missing = [raw for rx, raw in required if not rx.search(text)]
+                        if missing:
+                            findings.append(_finding(
+                                rule, rel, 0,
+                                "missing: %s" % ", ".join(str(m) for m in missing)))
 
         return self.report(findings)
 

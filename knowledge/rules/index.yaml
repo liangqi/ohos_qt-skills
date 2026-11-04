@@ -19,6 +19,9 @@
 #     cmake:   ["regex", ...]   # matched against CMakeLists.txt contents
 #     modules: [dbus]           # matched against detected Qt module list
 #     files:   ["*.so"]         # glob against project files
+#     guard:                    # 文件级断言：命中 glob 的文件必须同时满足 require
+#       files: ["platform_*.h"] # glob
+#       require: ["Q_OS_OHOS"]  # 任一缺失即报（用于双宏守卫等）
 #   golden_rules: [B9]          # refs to qt-harmonyos-golden-rules.md
 #   kb: [semantic/xxx.md]       # knowledge pages to read when this hits
 #   solution: >                 # machine + human readable fix guidance
@@ -34,6 +37,6 @@
 # - add new rules freely; ids must stay unique and sorted
 
 version: 1
-rule_count: 18
+rule_count: 19
 severity_levels: [critical, high, medium, low]
 entry: qt-ohos-run scan <project>

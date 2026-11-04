@@ -79,11 +79,51 @@ def fm_field(fm: str, key: str) -> str | None:
     return m.group(1).strip() if m else None
 
 
+_GIT_VISIBLE: set[str] | None = None
+_GIT_PROBED = False
+INCLUDE_IGNORED = False
+
+
+def _git_visible_files() -> set[str] | None:
+    """本仓被 git 跟踪或未忽略的文件集合；非 git 环境返回 None。
+
+    卫生检查必须只看"会被提交的东西"：本地 `workspace/` 的 Qt 构建树、
+    `ENV.local.md` 里的本机绝对路径都是 gitignore 的，扫进来会产生成百条
+    与提交无关的噪声，把真错误淹没（Windows 现场实测 134 条）。
+    """
+    global _GIT_VISIBLE, _GIT_PROBED
+    if _GIT_PROBED:
+        return _GIT_VISIBLE
+    _GIT_PROBED = True
+    try:
+        proc = subprocess.run(
+            ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+            cwd=str(ROOT), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    except OSError:
+        _GIT_VISIBLE = None
+        return None
+    if proc.returncode != 0:
+        _GIT_VISIBLE = None
+        return None
+    raw = proc.stdout.decode("utf-8", errors="replace")
+    _GIT_VISIBLE = {item for item in raw.split("\0") if item}
+    return _GIT_VISIBLE
+
+
 def walk_files(root: Path):
+    visible = None if INCLUDE_IGNORED else _git_visible_files()
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
         for name in filenames:
-            yield Path(dirpath) / name
+            path = Path(dirpath) / name
+            if visible is not None:
+                try:
+                    rel = path.relative_to(root).as_posix()
+                except ValueError:
+                    rel = path.as_posix()
+                if rel not in visible:
+                    continue
+            yield path
 
 
 # ---------------------------------------------------------------- 契约检查
@@ -449,7 +489,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="ohos-qt-skills 仓库自检")
     parser.add_argument("--quiet", action="store_true", help="只输出 ERROR/WARN")
     parser.add_argument("--json", action="store_true", help="机读输出")
+    parser.add_argument("--include-ignored", action="store_true",
+                        help="连 gitignore 的本地文件一起扫（默认只看会被提交的文件）")
     args = parser.parse_args()
+    global INCLUDE_IGNORED
+    INCLUDE_IGNORED = args.include_ignored
 
     contract = load_contract()
     check_paths(contract)

@@ -35,7 +35,7 @@ problems/        错误知识库：实际编译/部署/运行报错与解法（_
 ohos-common-kb-public/  内嵌 HarmonyOS 平台通用知识（ArkTS/ArkUI/NAPI/Stage/工具链）
 knowledge/       机器层：errors（QOH 错误模式）、rules（R 预扫描规则）、adaptation
 faults/          故障图：_data 真源 + C 根因页 → _graph.yaml / _registry.md 派生物
-tools/           执行层：qt-ohos-run.py / qt-sdk-run.py / faults-build.py / kb-verify-qt.py
+tools/           执行层：qt-ohos-run.py / qt-sdk-run.py / faults-build.py / ohos-platform-audit.py 等
 templates/       鸿蒙壳工程模板（qt-ohos-app）
 portgraph/       可移植性图谱子项目（可行性三态 + 依赖分析）
 tests/           仓库一致性与引擎自测
@@ -46,7 +46,7 @@ skills/          Agent Skills（6 个，按写权限切边界）
 
 ```
 ① _index/_task-routing.md               → 匹配 15 类任务之一，确定必读页与工作流
-② semantic/qt-harmonyos-golden-rules.md → 扫 35 条铁律，避开已知陷阱
+② semantic/qt-harmonyos-golden-rules.md → 扫 38 条铁律，避开已知陷阱
 ③ _index/_map.md                        → 按 summary 判断相关性，只读相关页
    沿 refs 追交叉引用；需要本地工具时先确认 ENV.local.md 与工具可用性
 ```
@@ -95,8 +95,8 @@ skills/          Agent Skills（6 个，按写权限切边界）
 ## 执行纪律（强制）
 
 - **成功判据唯一**：应用迁移以 `python tools/qt-ohos-run.py verify` 的 G0–G12 为准，SDK 以
-  `qt-sdk-run.py verify` 的 SV0–SV8 为准。编译通过 ≠ 迁移成功；`TIMEOUT` 永远不是 PASS。
-- **日志先机器匹配**：`analyze-log` 命中 42 条 QOH 模式后再读知识页，不要跳过匹配直接猜。
+  `qt-sdk-run.py verify` 的 SV0–SV8 为准。编译通过 ≠ 迁移成功；`TIMEOUT` 永远不是 PASS，`SKIP` / `NOT_RUN` 也不是（没测 ≠ 通过）。
+- **日志先机器匹配**：`analyze-log` 命中 43 条 QOH 模式后再读知识页，不要跳过匹配直接猜。
 - **改动受追踪**：所有自动修改进 `.qt-ohos/changes.json` 与 patches；禁止盲目扩写
   `Q_OS_LINUX` 守卫（鸿蒙下 `Q_OS_OHOS` 隐含 `Q_OS_LINUX`），禁止注释功能代码换编译通过。
 - **工具可用性预检**：构建/装机/签名/日志前先定位并验证 `devecocli`、`hdc`、Qt OHOS SDK

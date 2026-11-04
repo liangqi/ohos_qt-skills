@@ -141,6 +141,23 @@ class MigrationState:
             self.data["next"] = {"action": next_action}
         self.save()
 
+    def invalidate_scan_stages(self) -> List[str]:
+        """配置变更后让扫描类阶段失效，返回被撤销的阶段名。
+
+        扫描结论是 env.json 的函数（qt_version / bundle_name / sdk 路径都会
+        改变判定），配置一改就得重算；否则用户必须记得加 `--force`，
+        而"忘了加"的后果是拿着旧结论继续往下走。
+        """
+        scan_stages = ("env_check", "project_scan", "qt_scan", "risk_scan",
+                       "dependency_scan")
+        completed: List[str] = self.data.setdefault("completed", [])
+        dropped = [stage for stage in scan_stages if stage in completed]
+        for stage in dropped:
+            completed.remove(stage)
+        if dropped:
+            self.save()
+        return dropped
+
     def remaining_stages(self) -> List[str]:
         completed = set(self.data.get("completed", []))
         return [s for s in STAGES if s not in completed]

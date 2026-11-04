@@ -4,7 +4,7 @@ type: semantic
 domain: tech
 tags: [qt, harmonyos, modules, qt5, adaptation-status]
 created: 2026-06-02
-updated: 2026-09-18
+updated: 2026-11-04
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-overview, problem-ohos-missing-qt5uitools]
@@ -136,6 +136,18 @@ summary: >
 - **wiki Completed 但实测缺**：DataVisualization（需警告抑制 patch）、Help/UiTools（仅鸿蒙PC主机编译）、Pdf、QuickTimeline、NetworkAuthorization、Quick WebGL（QWebGL 平台插件未见）。
 - **wiki Out of scope 但实测在（适配未验证，慎用）**：Nfc、VirtualKeyboard。
 - 注意：wiki 矩阵基准为 5.15.15，本地验证为 5.15.16；wiki「Completed」指适配完成，不等于官方 SDK 二进制必含（Multimedia 为先例）。
+
+## 平台宏随版本而变（Qt 6.12+ / 6.13.0-dev 实测）
+
+`qsystemdetection.h` 的 OHOS 分支在 Qt 6 系只定义 **`Q_OS_HARMONY`**，不再定义
+`Q_OS_OHOS`；5.15 系 kit 两个都定义。14 个平台分发头在 6.13.0-dev 下的实测结论一致：
+
+- 头分发文件必须写 `#if defined Q_OS_OHOS || defined Q_OS_HARMONY`，否则分支永不成立；
+- 该 kit 含 OpenGL / OpenGLWidgets（QOpenGLWidget 可用），Svg 需单独确认是否在包内；
+- 判断"到底编了哪个模块、哪个分支"必须用完整编译命令加 `-H`，不要只读 `flags.make`。
+
+模块清单本身不随宏名变化；**宏名变化会静默改变平台分支的走向**，这是最容易漏的一环。
+审计命令：`python tools/ohos-platform-audit.py <app>/SourceFiles/platform`。
 
 ## 参考来源
 

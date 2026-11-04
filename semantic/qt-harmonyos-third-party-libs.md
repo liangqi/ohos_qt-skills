@@ -156,6 +156,23 @@ target_link_libraries(QtHarmonyApp PRIVATE
 
 ---
 
+## 7. 签名：没有开发者证书时的本地闭环
+
+三方库齐了、HAP 打出来了，装机还会卡在签名。完全没有华为开发者账号时，
+用 OpenHarmony 本地根证书自签可满足**调试设备**：
+
+```
+① 密钥对 → ② CSR → ③ 本地根证书签发应用证书(.cer)
+→ ④ 生成 profile(.p7b，绑定 bundleName + 设备标识)
+→ ⑤ hap-sign-tool 签 HAP
+```
+
+三个高频失败点：`bundleName` 三处不一致、profile 未绑定当前设备、**自签证书过期**
+（表现是"昨天能装今天全失败"，此时不要去查构建）。
+完整链路见 [[build-local-openharmony-signing-chain]]。
+
+---
+
 ## 参考来源
 
 - [Building Qt for HarmonyOS](https://wiki.qt.io/Building_Qt_for_HarmonyOS) — Qt 交叉编译工具链配置（可复用于三方库）

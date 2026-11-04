@@ -66,6 +66,25 @@ Q_OS_MAC / Q_OS_MACOS / Q_OS_DARWIN
 
 > 注意：`Q_OS_LINUX` 在鸿蒙上也会命中（因为 `Q_OS_OHOS` 隐含 `Q_OS_LINUX`），需要检查所有 `Q_OS_LINUX` 分支中的代码是否兼容鸿蒙。
 
+**守卫必须双宏**：Qt 5.15 kit 定义 `Q_OS_OHOS`，Qt 6.12+（含 6.13.0-dev）只定义
+`Q_OS_HARMONY`。只写一个宏的分支在另一种 kit 上是死代码，且**静默**落到 Linux 实现：
+
+```cpp
+#elif defined Q_OS_OHOS || defined Q_OS_HARMONY   // 唯一正确写法
+```
+
+**平台层有两种分发机制**，审计时不能只看 `#ifdef`：
+
+| 机制 | 形态 | 改哪里 |
+|------|------|--------|
+| 头文件分发 | 头内 `#ifdef` 链，`#else` 落 Linux | 改链（双宏） |
+| 源文件分发 | 头内没有 `#ifdef`，构建按路径选 `.cpp` | 新增 `ohos/xxx_ohos.cpp` |
+
+一键审计：`python tools/ohos-platform-audit.py <app>/SourceFiles/platform`
+（头分发文件必须同时命名两个宏；`--undefined link.log` 反推仍缺实现的平台符号）。
+
+细节见 [[platform-guard-needs-both-ohos-macros]] 与 [[platform-layer-two-dispatch-modes]]。
+
 ### 平台相关 API
 
 以下 API 在鸿蒙上行为不同或不可用，需逐一排查：
@@ -105,6 +124,29 @@ if(ANDROID) ...
 > **Step 1 输出**：一份列出所有需要替换或适配的代码位置的完整清单。
 
 ---
+
+### 树外消费 app 层的前置清单（编译校验必看）
+
+大型 Qt 桌面应用的 app 层不能"加进工程就能编"，有 5 个隐式前置 + 2 个陷阱。
+按顺序准备，缺一个就会得到一批方向错误的报错：
+
+- [ ] `cxx_std_20`（否则 `friend auto operator<=>` 报 `auto not allowed`）
+- [ ] `-include SourceFiles/stdafx.h`**单 token** 形式（`"-include<path>"`，见下）
+- [ ] `API_ID` / `API_HASH` 宏（`config.h` 里是硬 `#error`）
+- [ ] 两套代码生成的**宿主可执行**工具：样式（`codegen_style`）+ MTP scheme（Python）
+- [ ] 三方 include（GSL / range-v3 / expected）+ 需要的 Qt 模块
+- [ ] 子模块已初始化：`git submodule update --init --recursive`
+
+两个陷阱：
+
+1. **CMake 会去重 `-include`**：toolchain 已注入一个 `-include`，再传一个会被合并成
+   `-include A B`，clang 把 `B` 当输入文件 → `cannot specify -o when generating multiple
+   output files`。写成单 token `"-include${SRC}/SourceFiles/stdafx.h"`。详见
+   [[build-cmake-dedup-include-option]]。
+2. **子模块未初始化时同名头自引用**：`#include <translate_provider.h>` 解析到自己，
+   被 `#pragma once` 吞掉 → 类型"不存在"。详见 [[build-uninitialized-submodule-same-name-header]]。
+
+全景与最小交叉工程写法见 [[build-app-layer-out-of-tree-prerequisites]]。
 
 ## Step 2：API 映射替换
 

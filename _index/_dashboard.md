@@ -1,5 +1,5 @@
 ---
-updated: 2026-11-02
+updated: 2026-11-04
 total_pages: 48
 description: >
   知识库健康仪表盘（派生计数，从 frontmatter 自动生成）。
@@ -7,7 +7,7 @@ description: >
 
 # 知识库健康仪表盘
 
-> **最后更新**：2026-11-02 | **总活跃页面**：48 | **归档**：1
+> **最后更新**：2026-11-04 | **总活跃页面**：48（semantic/procedural/episodic）| **归档**：1
 
 ---
 
@@ -82,7 +82,7 @@ description: >
 | 页面 | 状态 | 最后更新 |
 |------|:----:|:--------:|
 
-### problems（48 条目）
+### problems（56 条目）
 
 详见 [_lookup](../problems/_lookup.md)。
 

@@ -105,12 +105,19 @@ def evaluate(state) -> Tuple[Dict[str, Dict], str]:
          (build_json.get("compile") or {}).get("evidence", ""))
 
     # G4 artifacts -------------------------------------------------------
+    # 整包链路很长，库级进展单独记（`libcheck`），否则"这个库已经能编能链"
+    # 这种事实在门禁里完全不可见，移植到一半就只能看总失败。
+    libs = state.read_json("libs.json", default={}) or {}
+    lib_records = libs.get("libraries") or []
+    probed = sum(1 for item in lib_records if item.get("level") == "probed")
+    built = sum(1 for item in lib_records if item.get("level") == "built")
+    lib_note = (" | libs: %d built, %d probed" % (built, probed)) if lib_records else ""
     artifacts = build_json.get("artifacts") or []
     if status == PASS:
         gate("G4", PASS if artifacts else PARTIAL,
-             "%d native artifact(s) found" % len(artifacts))
+             "%d native artifact(s) found%s" % (len(artifacts), lib_note))
     else:
-        gate("G4", NOT_RUN, "compile not PASS")
+        gate("G4", NOT_RUN, "compile not PASS%s" % lib_note)
 
     # G5 package ---------------------------------------------------------
     pkg_status = _cmd_status(build_json, "package")
@@ -130,11 +137,21 @@ def evaluate(state) -> Tuple[Dict[str, Dict], str]:
          (runtime.get("launch") or {}).get("evidence", ""))
 
     # G8 crash -----------------------------------------------------------
+    # 只有"应用真的装上并起来了"才谈得上崩溃窗口：install/launch 不是 PASS 时
+    # 一律 SKIP（旧实现会拿全设备 hilog 灌一个 PASS 出来，把"没跑起来"读成"没崩溃"）。
     crash_status = _cmd_status(runtime, "crash_check")
     markers = runtime.get("crash_markers_found") or []
-    gate("G8", _map_cmd(crash_status),
-         "crash markers: %s" % (", ".join(markers) if markers else "none"),
-         (runtime.get("crash_check") or {}).get("evidence", ""))
+    if inst_status != PASS or launch_status != PASS:
+        gate("G8", SKIP,
+             "install=%s launch=%s - crash window not applicable"
+             % (_map_cmd(inst_status), _map_cmd(launch_status)))
+    elif crash_status == "PASS" and markers:
+        gate("G8", FAIL, "crash markers: %s" % ", ".join(markers),
+             (runtime.get("crash_check") or {}).get("evidence", ""))
+    else:
+        gate("G8", _map_cmd(crash_status),
+             "crash markers: %s" % (", ".join(markers) if markers else "none"),
+             (runtime.get("crash_check") or {}).get("evidence", ""))
 
     # G9 UI ----------------------------------------------------------------
     hilog_log = (runtime.get("crash_check") or {}).get("evidence", "")

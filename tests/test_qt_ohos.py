@@ -18,8 +18,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 TOOLS_DIR = REPO_ROOT / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
 
-from qt_ohos import error_engine, knowledge, rule_engine, scanner, state, yaml_lite  # noqa: E402
+from qt_ohos import (error_engine, knowledge, rule_engine, scanner, state,  # noqa: E402
+                     verifier, yaml_lite)
 from qt_ohos.patch import ChangeTracker  # noqa: E402
+from qt_ohos import state as state_mod  # noqa: E402
+from qt_ohos import builder as builder_mod  # noqa: E402
 
 SAMPLE_QPA_LOG = """
 E Qt      : dlopen failed: library "libqohos.so" not found
@@ -58,7 +61,7 @@ class TestYamlLite(unittest.TestCase):
     def test_parse_rule_files(self):
         rules_dir = REPO_ROOT / "knowledge" / "rules"
         files = list(rules_dir.glob("R*.yaml"))
-        self.assertGreaterEqual(len(files), 18)
+        self.assertGreaterEqual(len(files), 19)
         for path in files:
             data = yaml_lite.parse(path.read_text(encoding="utf-8"))
             self.assertTrue(str(data["id"]).startswith("R"), path.name)
@@ -68,7 +71,7 @@ class TestYamlLite(unittest.TestCase):
     def test_parse_error_files(self):
         err_dir = REPO_ROOT / "knowledge" / "errors"
         files = list(err_dir.glob("QOH*.yaml"))
-        self.assertEqual(len(files), 42)
+        self.assertGreaterEqual(len(files), 43)
         for path in files:
             data = yaml_lite.parse(path.read_text(encoding="utf-8"))
             self.assertTrue(str(data["id"]).startswith("QOH"), path.name)
@@ -112,6 +115,79 @@ class TestScannerAndRules(unittest.TestCase):
         self.assertIn("R012", hit_rules)   # system tray
         self.assertIn("R015", hit_rules)   # unix scope without !ohos
         self.assertGreaterEqual(risk["summary"].get("critical", 0), 2)
+
+
+class TestRuleGuard(unittest.TestCase):
+    """R019：平台分发头只写一个 OHOS 宏时必须报，双宏必须不报。"""
+
+    def _scan(self, tmp: Path):
+        (tmp / "src" / "platform").mkdir(parents=True)
+        (tmp / "src" / "platform" / "platform_good.h").write_text(
+            "#elif defined Q_OS_OHOS || defined Q_OS_HARMONY\n", encoding="utf-8")
+        (tmp / "src" / "platform" / "platform_bad.h").write_text(
+            "#elif defined Q_OS_OHOS\n#include \"platform/linux/x.h\"\n",
+            encoding="utf-8")
+        info = {"sources": [], "pro_files": [], "cmake_files": []}
+        risk = rule_engine.RuleEngine(REPO_ROOT).scan(info, tmp)
+        return [f for f in risk["findings"] if f["rule"] == "R019"]
+
+    def test_flags_single_macro_header(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            hits = self._scan(Path(tmp))
+            files = {f["file"] for f in hits}
+            self.assertEqual(len(files), 1, hits)
+            self.assertTrue(next(iter(files)).endswith("platform_bad.h"))
+            self.assertIn("missing", hits[0]["snippet"])
+
+
+class TestPackagePreflight(unittest.TestCase):
+    """打包前必须拦下版本化 .so 与 compatibleSdkVersion 不一致（都是装机才炸的错）。"""
+
+    def test_blocks_versioned_so_and_sdk_mismatch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            libs = root / "entry" / "libs" / "arm64-v8a"
+            libs.mkdir(parents=True)
+            (libs / "libfoo.so.1").write_text("x", encoding="utf-8")
+            (libs / "libbar.so").write_text("x", encoding="utf-8")
+            (root / "build-profile.json5").write_text(
+                '{"app":{"products":[{"compatibleSdkVersion":"5.0.0(12)"}]}}',
+                encoding="utf-8")
+            st = state_mod.init_state(root)
+            st.write_json("env.json", {"compatible_sdk": "5.0.5(17)"})
+            errors, _warns = builder_mod.preflight_package(st)
+            joined = "\n".join(errors)
+            self.assertIn("libfoo.so.1", joined)
+            self.assertIn("compatibleSdkVersion", joined)
+            self.assertNotIn("libbar.so", joined)
+
+    def test_clean_tree_passes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            libs = root / "entry" / "libs" / "arm64-v8a"
+            libs.mkdir(parents=True)
+            (libs / "libok.so").write_text("x", encoding="utf-8")
+            st = state_mod.init_state(root)
+            st.write_json("env.json", {})
+            errors, _warns = builder_mod.preflight_package(st)
+            self.assertEqual(errors, [])
+
+
+class TestG8Propagation(unittest.TestCase):
+    """install/launch 没过时 G8 必须 SKIP —— 旧实现会拿全设备 hilog 灌出 PASS。"""
+
+    def test_g8_skip_without_launch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            st = state_mod.init_state(project)
+            st.write_json("runtime.json", {
+                "install": {"status": "FAIL", "stderr": "install failed"},
+                "launch": {"status": "NOT_RUN"},
+                "crash_check": {"status": "PASS", "stderr": "no markers"},
+            })
+            gates, _overall = verifier.evaluate(st)
+            self.assertEqual(gates["G8"]["status"], "SKIP")
+            self.assertIn("not applicable", gates["G8"]["detail"])
 
 
 class TestQtVersionDetection(unittest.TestCase):
@@ -248,7 +324,9 @@ class TestKnowledge(unittest.TestCase):
                                           summary="s", symptom="sym",
                                           log="error: boom")
             self.assertTrue(path.exists())
-            self.assertEqual(path.parent.name, "drafts")   # D2: top-level drafts/
+            # 草稿必须落在被跟踪的 faults/_drafts/（top-level drafts/ 是 gitignore 的）
+            self.assertEqual(path.parent.name, "_drafts")
+            self.assertEqual(path.parent.parent.name, "faults")
             draft_id = path.stem
             page = knowledge.promote_draft(kb, draft_id)
             # dual output: problems/ page (truth) + knowledge/errors/ yaml

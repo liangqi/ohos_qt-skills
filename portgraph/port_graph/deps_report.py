@@ -29,6 +29,7 @@ deps 回答"依赖全景是什么、各自扮演什么角色、版本要求是�
 from __future__ import annotations
 
 import os
+import json
 import re
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -529,6 +530,20 @@ class _DepBook:
         return sorted(self.by_name.values(), key=lambda d: d["name"].lower())
 
 
+def _env_json_qt_version(root: Path):
+    """读 `.qt-ohos/env.json` 的 qt_version（用户显式设定，优先于推断）。"""
+    path = Path(root) / ".qt-ohos" / "env.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    value = data.get("qt_version")
+    if value in (None, ""):
+        return None
+    value = str(value).strip()
+    return value[0] if value and value[0] in "56" else None
+
+
 def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
     """生成综合依赖分析报告。conn 可为 None（纯扫描，无产物解析）。"""
     root = Path(root).resolve()
@@ -556,6 +571,17 @@ def analyze_dependencies(conn, root, info: Dict = None) -> Dict:
     test_deps: List[Dict] = []
     build_tools: List[Dict] = []
     warnings: List[Dict] = []
+
+    qt_override = _env_json_qt_version(root)
+    if qt_override:
+        # `.qt-ohos/env.json` 是用户显式纠正过的事实（`qt-ohos-run config set
+        # qt_version 6`）；它比构建文件推断更权威，否则"改了配置 deps 还打印
+        # Qt: 5"会让人以为配置没生效。
+        qt_major = qt_override
+        warnings.append({
+            "level": "info",
+            "msg": "Qt 主版本取自 .qt-ohos/env.json（qt_version=%s）" % qt_override,
+        })
 
     # ---- 1) find_package 明细
     for fp in fp_details:

@@ -1,14 +1,16 @@
 """Learning plane: knowledge drafts, promotion, and historical recipe search.
 
-- draft:    distill a debugging session into drafts/QOHxxx.md
+- draft:    distill a debugging session into faults/_drafts/QOHxxx.md
 - promote:  turn a validated draft into problems/<slug>.md (human page, single
             source of truth) + knowledge/errors/QOHxxx.yaml (machine index);
             the errors index count is updated automatically
 - recipes:  rank episodic/*.md migration cases by similarity to the project
 
-Drafts live in the KB top-level drafts/ directory (see
-_index/_organization.md §5): E{N}-*.md retros (kb-sediment.sh) and QOHxxx.md
-error-pattern drafts (this CLI) share the same staging area.
+Drafts live in `faults/_drafts/` (the tracked staging area described in
+`faults/_index.md` §六). The old top-level `drafts/` directory is gitignored,
+so drafts written there never reached the repository — do not put new drafts
+back there. `QOHxxx.md` error-pattern drafts come from this CLI; collaborator
+drafts use the `draft-YYYYMMDD-slug.md` naming.
 
 Success criterion (borrowed from build_in_harmonyos): a migration that
 produced no reusable knowledge is incomplete.
@@ -84,7 +86,12 @@ unknown
 
 
 def _draft_dir(kb_root) -> Path:
-    return Path(kb_root) / "drafts"
+    """草稿落盘目录：`faults/_drafts/`（会被提交，走主编合入门禁）。
+
+    历史实现写的是仓根 `drafts/`，而它在 `.gitignore` 里——于是"按文档流程
+    沉淀的知识"根本进不了 trunk。草稿是知识的一部分，必须在版本控制里。
+    """
+    return Path(kb_root) / "faults" / "_drafts"
 
 
 def _existing_ids(kb_root) -> List[int]:
@@ -161,7 +168,7 @@ related_problems: []
 
 ## 原因
 
-（待补充：根本原因分析，见 drafts/{draft_id}.md 的根因段）
+（待补充：根本原因分析，见 faults/_drafts/{draft_id}.md 的根因段）
 
 ## 解决方案
 

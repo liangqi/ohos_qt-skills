@@ -10,7 +10,7 @@ description: |
   核心能力：① 可行性三态判定（portable/blocked/uncertain）+ 依赖角色分类（link/build-tool/
   runtime/test/vendored/env）+ 应用级依赖闭包下载与交叉编译集成片段；② 自动迁移流水线（扫描→
   计划→受追踪修改→编译→打 HAP→装机→启动→G0-G12 门禁，可 checkpoint/resume）；③ 知识层
-  （35 条黄金铁律、42 条 QOH 错误模式机器诊断、47 个实战踩坑、S→C→W→T 故障图）；④ SDK 工程平面
+  （38 条黄金铁律、43 条 QOH 错误模式机器诊断、56 个实战踩坑、S→C→W→T 故障图）；④ SDK 工程平面
   （编译、补丁溯源、SV0-SV8 发版门禁）。目标平台：HarmonyOS/OpenHarmony arm64。
   触发词：鸿蒙化、移植 Qt、porting、HarmonyOS、Qt OHOS、QtOhosExtras、三方依赖、交叉编译、
   bottle、HAP、hvigor、devecocli、hdc、dlopen、白屏、闪退、构建报错、QOH。
@@ -30,8 +30,8 @@ metadata:
 的 G0–G12 门禁（SDK 侧是 SV0–SV8）；"编译过了"、"装上去了"、`TIMEOUT`、"启动后 3 秒没崩"
 都不是 PASS。
 
-知识层里有两样东西每次任务都值得先扫：**35 条黄金铁律**（已知陷阱，改代码前过一遍）和
-**42 条 QOH 错误模式**（`analyze-log` 机器匹配，命中即带根因与知识页引用）。
+知识层里有两样东西每次任务都值得先扫：**38 条黄金铁律**（已知陷阱，改代码前过一遍）和
+**43 条 QOH 错误模式**（`analyze-log` 机器匹配，命中即带根因与知识页引用）。
 
 ## 触发场景
 
@@ -76,9 +76,9 @@ metadata:
    禁止为了让编译过而注释功能代码。需要人判断的改动写进迁移计划的 assisted/manual 段。
 
 6. **报错先机器匹配，再读知识页**（§B）。执行
-   `python tools/qt-ohos-run.py analyze-log <日志>`，命中的 42 条 QOH 模式会带出根因与
+   `python tools/qt-ohos-run.py analyze-log <日志>`，命中的 43 条 QOH 模式会带出根因与
    知识页引用；按引用读 `problems/`，或先扫 `semantic/qt-harmonyos-golden-rules.md`
-   的 35 条黄金铁律。大型 C++ 工程编译前先跑 `cpp20-gap-scan`，别逐轮撞错。
+   的 38 条黄金铁律。大型 C++ 工程编译前先跑 `cpp20-gap-scan`，别逐轮撞错。
 
 7. **判定"这个问题归谁"要查故障图，不要猜**（§D）。查 `faults/_registry.md` 症状索引或
    `faults/_graph.yaml`：C 页写明定性（defect 会修 / limitation 规格限制→替代方案）、
@@ -143,7 +143,7 @@ python portgraph/portgraph.py fetch-deps <app> --dry-run  # 依赖闭包预览
 ## B. 迁移流水线全量命令
 
 ```bash
-python tools/qt-ohos-run.py scan <项目目录>   # 预扫描 + 18 条规则风险报告
+python tools/qt-ohos-run.py scan <项目目录>   # 预扫描 + 19 条规则风险报告
 python tools/qt-ohos-run.py plan              # 迁移计划（auto/assisted/manual）
 python tools/qt-ohos-run.py patch             # 白名单自动修复（受追踪）
 python tools/qt-ohos-run.py config set qt_sdk_prefix <Qt OHOS SDK 路径>
@@ -151,8 +151,19 @@ python tools/qt-ohos-run.py build             # G3 编译
 python tools/qt-ohos-run.py package           # G5 打 HAP
 python tools/qt-ohos-run.py install           # G6 hdc 装机
 python tools/qt-ohos-run.py launch            # G7 启动
-python tools/qt-ohos-run.py smoke             # G8 崩溃窗口检查
+python tools/qt-ohos-run.py smoke             # G8 崩溃窗口检查（install/launch 未过则 SKIP，不判 PASS）
 python tools/qt-ohos-run.py verify            # G0-G12 门禁（唯一成功判据）
+python tools/qt-ohos-run.py libcheck <lib> --level built|probed --evidence "..."
+                                              # 库级进展：built=能编能链，probed=设备上调通
+```
+
+**平台层移植预检**（分层移植时先跑，比链接期报错早得多）：
+
+```bash
+python tools/ohos-platform-audit.py <app>/SourceFiles/platform
+#   头分发文件必须同时命名 Q_OS_OHOS 与 Q_OS_HARMONY；退出码非 0 即拦下
+python tools/ohos-platform-audit.py <platform-dir> --undefined link.log
+#   把链接日志里"没有任何 ohos/ 实现提到过"的符号列出来
 ```
 
 一键模式：`migrate <项目目录>`（自动串联，遇到需人工的壳工程生成会暂停并给指引，
@@ -168,7 +179,7 @@ python tools/cpp20-gap-scan.py fix <src> --apply   # 机械项自动修复
 
 （规则对齐 `problems/build-clang15-libcpp15-cpp20-gaps.md`）
 
-**构建失败立刻机器诊断**（42 条 QOH 错误模式，命中条目带根因、诊断步骤与知识页引用）：
+**构建失败立刻机器诊断**（43 条 QOH 错误模式，命中条目带根因、诊断步骤与知识页引用）：
 
 ```bash
 python tools/qt-ohos-run.py analyze-log <日志文件>
@@ -227,7 +238,7 @@ failed），只有 `need_port` / `failed` 需要转人工源码交叉编译。
 | 想做什么 | 入口 |
 |----------|------|
 | 任务路由（接到请求先看） | `_index/_task-routing.md` |
-| 扫 35 条铁律避已知陷阱 | `semantic/qt-harmonyos-golden-rules.md` |
+| 扫 38 条铁律避已知陷阱 | `semantic/qt-harmonyos-golden-rules.md` |
 | 遇到报错（第一步） | `problems/_lookup.md`（或 `analyze-log` 机器匹配） |
 | 某问题修了吗 / 归谁 / 怎么绕 | `faults/_registry.md` §症状索引 |
 | API 替换 | `semantic/qt-harmonyos-api-mapping.md` + `qt-harmonyos-code-patterns.md` |

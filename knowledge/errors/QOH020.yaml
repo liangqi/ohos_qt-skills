@@ -5,7 +5,6 @@ severity: high
 patterns:
   - 'uuid/uuid.h'
   - '-luuid'
-  - 'No such file or directory'
 root_causes:
   - Linux app expects libuuid; OHOS musl sysroot has no uuid/uuid.h or -luuid
 diagnosis:

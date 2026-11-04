@@ -6,6 +6,7 @@ patterns:
   - 'dlopen failed: library "libqohos.so" not found'
   - 'Cannot load Qt platform plugin "qohos"'
   - 'could not find or load the Qt platform plugin'
+  - 'unknown platform type'
 root_causes:
   - QPA plugin libqohos.so not deployed into the HAP (golden rule B2 missing)
   - CMakeLists does not link QOhosPlatformIntegrationPlugin

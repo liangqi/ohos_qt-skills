@@ -12,10 +12,18 @@
 
 发版清单不参与判定：普通提交上它必然是"旧快照"，发版时另用
 `python _scripts/gen-manifest.py --check --strict` 对账。
+
+编码：中文 Windows 的默认代码页是 GBK，子进程输出里的 UTF-8 字节会让
+`subprocess` 的读取线程抛 `UnicodeDecodeError`（栈在 `_readerthread`，
+看起来完全不像编码问题）。这里统一三件事，缺一不可：
+  ① 本进程 stdio 强制 UTF-8；
+  ② 传给子进程的环境里带 `PYTHONUTF8=1` / `PYTHONIOENCODING=utf-8`；
+  ③ 子进程输出按 UTF-8 解码并 `errors="replace"`（历史日志里的坏字节不该让门禁崩）。
 """
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -29,14 +37,31 @@ CLI_SMOKE = [
     "tools/faults-build.py",
     "tools/cpp20-gap-scan.py",
     "tools/kb-cef-graft.py",
+    "tools/ohos-platform-audit.py",
     "portgraph/portgraph.py",
 ]
+
+
+def _force_utf8_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+        except (AttributeError, ValueError):
+            pass
+
+
+def _child_env() -> dict:
+    env = dict(os.environ)
+    env["PYTHONUTF8"] = "1"
+    env["PYTHONIOENCODING"] = "utf-8"
+    env.setdefault("PYTHONLEGACYWINDOWSSTDIO", "0")
+    return env
 
 
 def run(title: str, argv: list[str]) -> bool:
     print(f"== {title} ==")
     try:
-        code = subprocess.call([PY] + argv, cwd=ROOT)
+        code = subprocess.call([PY] + argv, cwd=ROOT, env=_child_env())
     except OSError as exc:                     # 解释器/脚本缺失
         print(f"  无法执行：{exc}")
         return False
@@ -45,6 +70,7 @@ def run(title: str, argv: list[str]) -> bool:
 
 
 def main() -> int:
+    _force_utf8_stdio()
     results: list[tuple[str, bool]] = []
     results.append(("1/4 仓库自检（契约/结构/引用/索引/发版清单/卫生）",
                     run("1/4 仓库自检（契约/结构/引用/索引/发版清单/卫生，10 类）",
@@ -59,16 +85,21 @@ def main() -> int:
     smoke_ok = True
     for rel in CLI_SMOKE:
         try:
-            code = subprocess.call([PY, rel, "--help"], cwd=ROOT,
-                                   stdout=subprocess.DEVNULL,
-                                   stderr=subprocess.DEVNULL)
-        except OSError:
+            proc = subprocess.run([PY, rel, "--help"], cwd=ROOT, env=_child_env(),
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            code = proc.returncode
+            if code != 0:
+                tail = (proc.stderr or b"").decode("utf-8", errors="replace").strip()
+                print(f"  FAIL {rel}（exit {code}）")
+                if tail:
+                    print("       " + tail.splitlines()[-1][:160])
+        except OSError as exc:
             code = -1
+            print(f"  FAIL {rel}（{exc}）")
         if code != 0:
             smoke_ok = False
-            print(f"  FAIL {rel}（exit {code}）")
     if smoke_ok:
-        print("  6 个 CLI 全部 exit 0")
+        print(f"  {len(CLI_SMOKE)} 个 CLI 全部 exit 0")
     print()
     results.append(("4/4 CLI 冒烟", smoke_ok))
 
