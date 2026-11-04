@@ -29,8 +29,8 @@ embedded_dependencies:
 
 builder_version: 3
 publication_schema_version: 2
-content_tree_sha256: 41b1164e5a437b615b933341771a50808d41ea458442143aafe431ee647f53d6
-built_at: "2026-11-04T15:09:51+08:00"
+content_tree_sha256: 36a81fbd318a6955527b607c528c7c0d9fff433f0a0edf4352080669739f17e9
+built_at: "2026-11-04T15:10:30+08:00"
 
 skills: ["kb-init", "qt-app-porting", "qt-sdk-forge", "qt-community-to-official", "task-dispatcher", "kb-iterator"]
 common_pages_count: 27
@@ -39,7 +39,7 @@ qt_pages_count: 105             # semantic 26 + procedural 15 + episodic 8 + pro
 # 验证状态（发版前必须全绿；正式发版前补 Windows 端到端实测）
 validation:
   verify_sh: PASS              # _scripts/verify.sh：0 error / 5 warning（产物目录，P4 清理）
-  unittests: 191               # 引擎 39 + 一致性 20 + cpp20 扫描 9 + portgraph 123
+  unittests: 193               # 引擎 41 + 一致性 20 + cpp20 扫描 9 + portgraph 123
   faults_build_check: PASS     # 真源 ↔ 派生物一致
   cli_contract: PASS           # qt-ohos-run 25 / qt-sdk-run 24 / portgraph 10 子命令
   windows_e2e_porting: PENDING # 待新环境实机验证（见 trunk 交付说明）

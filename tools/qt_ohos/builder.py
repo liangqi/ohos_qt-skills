@@ -71,6 +71,31 @@ VERSIONED_SO_RE = re.compile(r"\.so(\.\d+)+$")
 LIBS_ALLOWED_SUFFIX = (".so", ".a")
 
 
+def _sdk_key(value) -> tuple:
+    """把 "5.0.5(17)" / "5.0.5（17）" / "17" / 17 归一成 (版本串, API 号)。"""
+    if value is None:
+        return ("", 0)
+    text = str(value).strip().replace("（", "(").replace("）", ")")
+    api = 0
+    match = re.search(r"\((\d+)\)", text)
+    if match:
+        api = int(match.group(1))
+        text = text[:match.start()].strip()
+    elif text.isdigit():
+        api, text = int(text), ""
+    return (text, api)
+
+
+def _sdk_equal(left, right) -> bool:
+    left_key, right_key = _sdk_key(left), _sdk_key(right)
+    if not left_key[1] or not right_key[1]:
+        return left_key[0] == right_key[0] and left_key[1] == right_key[1]
+    # 都有 API 号：API 号是硬约束；版本串只在两边都写了时才需要一致
+    if left_key[1] != right_key[1]:
+        return False
+    return not (left_key[0] and right_key[0]) or left_key[0] == right_key[0]
+
+
 def preflight_package(state):
     """打包前检查 entry/libs/ 与 build-profile.json5 —— 这两处错都只在设备上炸。
 
@@ -111,11 +136,14 @@ def preflight_package(state):
     declared = None
     if profile.is_file():
         text = profile.read_text(encoding="utf-8", errors="replace")
-        match = re.search(r'"compatibleSdkVersion"\s*:\s*"([^"]+)"', text)
+        # 两种写法都存在：老工程 "5.0.5(17)"（字符串），新工程 12（纯 API 号）
+        match = re.search(r'"compatibleSdkVersion"\s*:\s*'
+                          r'(?:"([^"]+)"|(\d+))', text)
         if match:
-            declared = match.group(1)
+            declared = match.group(1) or match.group(2)
     wanted = env.get("compatible_sdk")
-    if wanted and declared and str(wanted) != str(declared):
+    same = _sdk_equal(wanted, declared)
+    if wanted and declared and not same:
         errors.append(
             "build-profile.json5 compatibleSdkVersion=%s 与 env.json "
             "compatible_sdk=%s 不一致（装机可能被拒或用到设备没有的 API）"

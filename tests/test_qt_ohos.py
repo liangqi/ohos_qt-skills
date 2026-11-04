@@ -258,6 +258,32 @@ class TestVersionedSoSibling(unittest.TestCase):
             self.assertEqual(errors, [])
 
 
+class TestSdkVersionCompare(unittest.TestCase):
+    """build-profile.json5 两种写法（"5.0.5(17)" 字符串 / 12 纯 API 号）都要能比。"""
+
+    def test_normalized_forms(self):
+        same = builder_mod._sdk_equal
+        self.assertTrue(same("5.0.5(17)", "5.0.5（17）"))
+        self.assertTrue(same("5.0.5(17)", "17"))
+        self.assertTrue(same(17, "17"))
+        self.assertFalse(same("5.0.5(17)", "5.0.5(12)"))
+        self.assertFalse(same("12", "17"))
+
+    def test_numeric_build_profile_is_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "build-profile.json5").write_text(
+                '{\n  "app": {\n    "products": [{"compatibleSdkVersion": 17}]\n'
+                '  }\n}', encoding="utf-8")
+            st = state_mod.init_state(root)
+            st.write_json("env.json", {"compatible_sdk": "5.0.5(17)"})
+            errors, _warns = builder_mod.preflight_package(st)
+            self.assertEqual(errors, [])
+            st.write_json("env.json", {"compatible_sdk": "5.0.5(12)"})
+            errors, _warns = builder_mod.preflight_package(st)
+            self.assertTrue(any("compatibleSdkVersion" in e for e in errors))
+
+
 class TestManifestHashCoversUntracked(unittest.TestCase):
     """未 git add 的新文件也必须进摘要，否则发版清单会静默漏页。"""
 

@@ -84,7 +84,7 @@ Qt/C++ 桌面应用要跑在 HarmonyOS 上，难点集中在这些地方：
 | 🗺️ 故障跟踪 | `faults/` + `tools/faults-build.py` | S→C→W→T 故障图（17/18/15/11）：定性、责任领域、临时方案、在跟单、闭环缺口 |
 | 📚 知识底座 | `semantic/` `procedural/` `problems/` | 132 页（Qt 侧 105 + 内嵌平台 27），38 条铁律，13 类 API 映射，56 个实战踩坑 |
 | 🏗️ 工程模板 | `templates/qt-ohos-app/` | 71 个文件的干净鸿蒙壳工程（替代历史上带构建产物的脏模板） |
-| ✅ 自检用例 | `tests/` | 引擎 39 + 一致性 20 + 扫描 9 = 68 用例（另有图谱 123 单测） |
+| ✅ 自检用例 | `tests/` | 引擎 41 + 一致性 20 + 扫描 9 = 70 用例（另有图谱 123 单测） |
 
 ---
 
@@ -299,7 +299,7 @@ README、`SKILL.md`、`AGENTS.md`、索引页里的声称与仓库实际状态�
 | 引擎 | `tests/test_qt_ohos.py` | 状态机、门禁、错误匹配的行为回归 |
 | 图谱 | `portgraph/tests/` | 可移植性判定、依赖分类、bottle 解析 |
 
-当前状态：用例全绿（引擎 39 + 一致性 20 + 扫描 9 = 68，另有图谱 123 单测），`faults-build check` 零 ERROR（info 7 为已排期的缺单）。
+当前状态：用例全绿（引擎 41 + 一致性 20 + 扫描 9 = 70，另有图谱 123 单测），`faults-build check` 零 ERROR（info 7 为已排期的缺单）。
 一条命令跑完全部门禁：`python _scripts/ci.py`（Windows 无 bash 也可；退出码即结论，可直接接到流水线）。
 
 ---
