@@ -664,8 +664,19 @@ def _run_pipeline(st: MigrationState, args) -> int:
                             st, timeout=args.timeout),
                         "smoke": lambda: builder.crash_check(
                             st, timeout=args.timeout)}
+        broken = None
         for stage_name, fn in device_steps.items():
             if stage_done(stage_name):
+                continue
+            if broken:
+                # 上游已经失败：继续往下跑只会拿到一连串连带失败，还把"没测"
+                # 混进报告。这里明确记成未测并停链。
+                st.skip_cmd(stage_name, "skipped: upstream %s did not pass" % broken)
+                st.fail_stage(stage_name, error="upstream:%s" % broken,
+                              next_action="fix %s" % broken)
+                print("[qt-ohos-run] %s: SKIP（上游 %s 未通过）"
+                      % (stage_name, broken))
+                rc = max(rc, 2)
                 continue
             st.check_budget()
             st.begin_stage(stage_name)
@@ -677,6 +688,7 @@ def _run_pipeline(st: MigrationState, args) -> int:
                               next_action="config set ...")
                 print("[qt-ohos-run] compile skipped: env.json not configured")
                 rc = 1
+                broken = "compile"
                 continue
             result = fn()
             if stage_name == "launch" and result.status == "PASS":
@@ -691,11 +703,15 @@ def _run_pipeline(st: MigrationState, args) -> int:
                 print("[qt-ohos-run] %s: %s（未执行，不等于通过）"
                       % (stage_name, result.status))
                 rc = max(rc, 2)
+                if stage_name in ("compile", "package"):
+                    broken = stage_name
             else:
                 st.fail_stage(stage_name, error=result.status,
                               next_action="analyze-log")
                 print("[qt-ohos-run] %s: %s" % (stage_name, result.status))
                 rc = max(rc, 1)
+                if stage_name in ("compile", "package"):
+                    broken = stage_name
     except BudgetExhausted:
         raise
     return rc

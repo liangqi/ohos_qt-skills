@@ -353,6 +353,29 @@ class TestG8Propagation(unittest.TestCase):
             self.assertIn("not applicable", gates["G8"]["detail"])
 
 
+class TestPipelineShortCircuit(unittest.TestCase):
+    """编译没过就别继续调 hvigor/hdc：连带失败会把"没测"混进报告。"""
+
+    def test_device_chain_stops_after_compile(self):
+        import subprocess
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            (project / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\n"
+                "project(p LANGUAGES CXX)\n"
+                "find_package(Qt6 COMPONENTS Core REQUIRED)\n", encoding="utf-8")
+            (project / "main.cpp").write_text("int main(){}\n", encoding="utf-8")
+            tool = REPO_ROOT / "tools" / "qt-ohos-run.py"
+            proc = subprocess.run(
+                [sys.executable, tool, "--project", project, "migrate",
+                 "--no-verify"],
+                capture_output=True, text=True, timeout=180)
+            out = proc.stdout + proc.stderr
+            self.assertIn("上游 compile 未通过", out)
+            for stage in ("package", "install", "launch", "smoke"):
+                self.assertIn("%s: SKIP" % stage, out)
+
+
 class TestScanIdempotenceHint(unittest.TestCase):
     """第二次 scan 不重扫时必须说话，否则"改了代码再扫"看起来像扫过了。"""
 

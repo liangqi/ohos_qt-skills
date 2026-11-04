@@ -29,7 +29,7 @@ Windows 上没有 bash 时，用 `python _scripts/verify.py` 等价执行第一�
 | 门禁 | 结果 | 说明 |
 |------|------|------|
 | `verify.py` | **PASS** | 0 error / 0 warning（模板目录里 178 个历史构建产物已清理） |
-| `unittest` | **OK（70 tests）** | 引擎 41 + 一致性 20 + cpp20 扫描 9 = 70（另有 portgraph 123 单测：图谱 119 + 预取 4，不在默认 discover 范围） |
+| `unittest` | **OK（71 tests）** | 引擎 42 + 一致性 20 + cpp20 扫描 9 = 71（另有 portgraph 123 单测：图谱 119 + 预取 4，不在默认 discover 范围） |
 | `faults-build check` | **PASS** | error=0 / warn=0 / info=7（7 条缺失跟踪单已排期到 T-0008…T-0013） |
 | CLI 契约 | **PASS** | `qt-ohos-run` 24 / `qt-sdk-run` 24 / `portgraph` 10 子命令，由测试锁定 |
 | 门禁诚实性 | **PASS** | `G2` 没跑 risk_scan 判 NOT_RUN（不因"没发现 critical"判 PASS）；`G5` 打包自称成功但无 `.hap` 判 FAIL；`G8` 未配 `bundle_name` 时最高 PARTIAL |

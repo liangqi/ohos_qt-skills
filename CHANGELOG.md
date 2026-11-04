@@ -86,6 +86,10 @@
   （缺省取 bundle 末段）双词匹配，仍未命中时按 bundle 各段放宽一轮，再判未测
 - **FIX** `analyze-log` 对 `undefined symbol` 类日志零命中且不给方向：现在会指到
   `ohos-platform-audit --undefined`（符号名千变万化，本来就不该塞固定模式）
+- **FIX** 迁移链路缺少断链：compile 失败后仍继续调 hvigor → hdc → aa start，得到一串
+  连带失败，报告里"没测"和"测了失败"混在一起。现在上游 compile/package 没过时，
+  后续设备阶段记为 SKIP（`upstream:compile`）并停止调用，仓库里一条命令就能看出
+  哪一步真正卡住
 - **FIX** 打包前置检查只认 `"compatibleSdkVersion": "5.0.5(17)"` 这种字符串写法：新工程
   写的是纯 API 号 `"compatibleSdkVersion": 17`，正则匹配不到 → 一致性校验静默不执行。
   两种写法都读，比较时归一（全角括号、`5.0.5(17)` vs `17`）
