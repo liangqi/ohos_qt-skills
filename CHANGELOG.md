@@ -86,12 +86,15 @@
   （缺省取 bundle 末段）双词匹配，仍未命中时按 bundle 各段放宽一轮，再判未测
 - **FIX** `analyze-log` 对 `undefined symbol` 类日志零命中且不给方向：现在会指到
   `ohos-platform-audit --undefined`（符号名千变万化，本来就不该塞固定模式）
+- **FIX** `scan` 在阶段全部完成时**静默退出**：改了代码再 `scan` 看起来像重扫过，
+  其实一个阶段都没跑。现在明确说"本次未重扫（上次时间）"并给 `--force` / `config set`
+  两个入口
 - **MINOR** `G10` 明细注明 `manual record`，读报告时能分清"机器测过"与"人声明过"；
   规则命中给出行号（此前是 `文件:0`）
 - **MINOR** `.qt-ohos/env.json` 的键此前只散落在代码里（`bundle_name`、`compatible_sdk`、
   `hap_glob`、`crash_wait_sec` 等），`skills/qt-app-porting/SKILL.md` 增完整键表
-- **MINOR** 用例 48 → 67（guard 匹配、G8 SKIP 传播、打包前置检查、门禁诚实性 8 条、
-  摘要覆盖未跟踪文件、平台分发分类 4 条、crash 过滤 3 条），CLI 冒烟 6 → 7
+- **MINOR** 用例 48 → 68（guard 匹配、G8 SKIP 传播、打包前置检查、门禁诚实性 8 条、
+  摘要覆盖未跟踪文件、平台分发分类 4 条、crash 过滤 3 条、scan 幂等提示），CLI 冒烟 6 → 7
 
 ---
 

@@ -230,11 +230,13 @@ def cmd_scan(args):
     st = state_mod.init_state(project) if not (
         project / state_mod.STATE_DIR_NAME / "state.json").exists() else \
         state_mod.load_state(project)
+    ran = []
     try:
         for stage in ("env_check", "project_scan", "qt_scan", "risk_scan",
                       "dependency_scan"):
             if stage in st.data.get("completed", []) and not args.force:
                 continue
+            ran.append(stage)
             st.check_budget()
             st.begin_stage(stage)
             if stage == "env_check":
@@ -285,6 +287,13 @@ def cmd_scan(args):
     except BudgetExhausted as exc:
         print("[qt-ohos-run] %s" % exc)
         return 2
+    if not ran:
+        # 全部阶段已完成时旧实现静默退出：改了代码再 scan 看到"什么都没发生"，
+        # 很容易以为已经重扫。说清楚它没重扫、怎么重扫。
+        print("[qt-ohos-run] 扫描阶段都已完成，本次未重扫（上次 %s）"
+              % (st.data.get("updated") or "?"))
+        print("[qt-ohos-run] 代码改动后要重扫：加 --force；只改了配置则 "
+              "`config set` 会让相关阶段自动失效")
     _emit(st.read_json("scan.json"), args)
     return 0
 

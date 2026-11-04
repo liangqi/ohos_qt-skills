@@ -327,6 +327,27 @@ class TestG8Propagation(unittest.TestCase):
             self.assertIn("not applicable", gates["G8"]["detail"])
 
 
+class TestScanIdempotenceHint(unittest.TestCase):
+    """第二次 scan 不重扫时必须说话，否则"改了代码再扫"看起来像扫过了。"""
+
+    def test_second_scan_explains_it_skipped(self):
+        import subprocess
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            (project / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\n"
+                "project(p LANGUAGES CXX)\n"
+                "find_package(Qt6 COMPONENTS Core REQUIRED)\n", encoding="utf-8")
+            (project / "main.cpp").write_text("int main(){}\n", encoding="utf-8")
+            tool = REPO_ROOT / "tools" / "qt-ohos-run.py"
+            cmd = [sys.executable, tool, "--project", project, "scan"]
+            first = subprocess.run(cmd, capture_output=True, text=True)
+            second = subprocess.run(cmd, capture_output=True, text=True)
+            self.assertEqual(first.returncode, 0, first.stderr)
+            self.assertIn("未重扫", second.stdout)
+            self.assertIn("--force", second.stdout)
+
+
 class TestCrashLogScope(unittest.TestCase):
     """日志过滤词只有 bundle 全名时，只写进程名的行会被丢掉 —— 结果是"没证据"。
     过滤词同时含 bundle 与进程名（缺省 bundle 末段）。"""
