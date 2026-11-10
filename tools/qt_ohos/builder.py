@@ -26,6 +26,7 @@ SKIP instead of guessing):
 from __future__ import annotations
 
 import glob as globmod
+import os
 import re
 from pathlib import Path
 from typing import Dict, Optional
@@ -47,7 +48,7 @@ def configure_and_build(state, timeout: float = 1800.0):
     else:
         cmake = env.get("cmake", "cmake")
         build_dir = env.get("build_dir", "build-ohos")
-        cmake_args = env.get("cmake_args") or []
+        cmake_args = _cmake_args(env.get("cmake_args"))
         qt_prefix = env.get("qt_sdk_prefix")
         if qt_prefix:
             cmake_args = cmake_args + ["-DCMAKE_PREFIX_PATH=%s" % qt_prefix]
@@ -69,6 +70,20 @@ def configure_and_build(state, timeout: float = 1800.0):
 
 VERSIONED_SO_RE = re.compile(r"\.so(\.\d+)+$")
 LIBS_ALLOWED_SUFFIX = (".so", ".a")
+
+
+def _cmake_args(raw) -> list:
+    """env.json 的 cmake_args 允许两种写法：JSON 数组，或一条命令行字符串。
+
+    字符串写法是 `config set cmake_args "-G Ninja ..."` 的自然结果；旧实现直接
+    当列表用，`str + list` 抛 TypeError，把"换生成器"这个最普通的诉求变成崩溃。
+    """
+    if not raw:
+        return []
+    if isinstance(raw, str):
+        import shlex
+        return shlex.split(raw, posix=(os.name != "nt"))
+    return [str(item) for item in raw]
 
 
 def _sdk_key(value) -> tuple:

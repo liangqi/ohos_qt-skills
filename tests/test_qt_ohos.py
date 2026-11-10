@@ -140,6 +140,45 @@ class TestRuleGuard(unittest.TestCase):
             self.assertIn("missing", hits[0]["snippet"])
 
 
+class TestCmakeArgs(unittest.TestCase):
+    """config set cmake_args "-G Ninja ..." 是字符串，必须能当参数列表用。"""
+
+    def test_string_form_is_split(self):
+        self.assertEqual(builder_mod._cmake_args("-G Ninja -DFOO=1"),
+                         ["-G", "Ninja", "-DFOO=1"])
+
+    def test_list_form_passes_through(self):
+        self.assertEqual(builder_mod._cmake_args(["-G", "Ninja"]), ["-G", "Ninja"])
+
+    def test_empty_is_empty(self):
+        self.assertEqual(builder_mod._cmake_args(None), [])
+        self.assertEqual(builder_mod._cmake_args(""), [])
+
+    def test_configure_build_accepts_string_args(self):
+        """端到端：字符串 cmake_args 不能再把 G3 直接炸掉。"""
+        calls = []
+
+        def fake_run(cmd, label=None, timeout=None, **kw):
+            calls.append(list(cmd) if isinstance(cmd, (list, tuple)) else cmd)
+            return state_mod.CommandResult(
+                command=str(cmd), label=label or "", status="PASS", stdout="",
+                stderr="", exit_code=0, start_time="t")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\nproject(p LANGUAGES CXX)\n",
+                encoding="utf-8")
+            st = state_mod.init_state(root)
+            st.write_json("env.json", {"qt_sdk_prefix": "/tmp/fake-qt",
+                                       "cmake_args": "-G Ninja"})
+            st.run_cmd = fake_run
+            result = builder_mod.configure_and_build(st, timeout=5)
+            self.assertEqual(result.status, "PASS")
+            self.assertIn("-G", calls[0])
+            self.assertIn("Ninja", calls[0])
+
+
 class TestGateHonesty(unittest.TestCase):
     """门禁只能"证有不证无"：没有证据一律 NOT_RUN/SKIP/PARTIAL，绝不 PASS。"""
 

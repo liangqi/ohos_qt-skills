@@ -67,10 +67,14 @@ python tools/qt-ohos-run.py patch
 
 ```bash
 python tools/qt-ohos-run.py config set qt_sdk_prefix <Qt OHOS SDK 路径>
+# 交叉工具链 + 生成器（cmake_args 可写成一条命令行字符串）
+python tools/qt-ohos-run.py config set cmake_args \
+  "-G Ninja -DCMAKE_TOOLCHAIN_FILE=<OHOS native>/build/cmake/ohos.toolchain.cmake" 
 python tools/qt-ohos-run.py config set build_command "<可选：自定义构建命令>"
 python tools/qt-ohos-run.py config set bundle_name  com.example.app   # G8 日志过滤
 python tools/qt-ohos-run.py config set compatible_sdk "5.0.0(12)"     # 与 build-profile 对齐
-python tools/qt-ohos-run.py build      # G3 编译
+python tools/qt-ohos-run.py build      # G3：cmake -S . -B build-ohos [-DCMAKE_PREFIX_PATH] → cmake --build
+                                        #     不指定 -G 就是 CMake 默认生成器（Makefiles）；要 Ninja 见上面 cmake_args
 python tools/qt-ohos-run.py package    # G5 打 HAP
 python tools/qt-ohos-run.py install    # G6 hdc install
 python tools/qt-ohos-run.py launch     # G7 aa start
@@ -85,7 +89,7 @@ python tools/qt-ohos-run.py smoke      # G8 崩溃窗口检查
 |---|---|---|
 | `qt_sdk_prefix` | Qt for OHOS SDK 前缀，自动转 `-DCMAKE_PREFIX_PATH` | — |
 | `build_command` | 整条自定义构建命令（给了就不用 cmake 分支） | — |
-| `cmake` / `build_dir` / `cmake_args` | cmake 分支的可调项 | `cmake` / `build-ohos` / 空 |
+| `cmake` / `build_dir` / `cmake_args` | cmake 分支的可调项；`cmake_args` 给一条命令行字符串（`-G Ninja -DCMAKE_TOOLCHAIN_FILE=...`），G3 会按 shell 规则切分 | `cmake` / `build-ohos` / 空 |
 | `package_command` | 自定义打包命令 | hvigor 链路 |
 | `hap_glob` | HAP 产物匹配 | `entry/build/**/*.hap` |
 | `bundle_name` | **G8 日志按它过滤**；不填则抓全设备缓冲，G8 最高只能 PARTIAL | 空 |
