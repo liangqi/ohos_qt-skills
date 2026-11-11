@@ -171,6 +171,79 @@ def pages(domain: str):
             if not p.name.startswith("_")]
 
 
+class TestLinkAndReachabilityChecks(unittest.TestCase):
+    """新增门禁：相对 .md 链接存在性（C8）与页面索引可达性（C9）。"""
+
+    def _verify(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "kb_verify_probe", REPO_ROOT / "_scripts" / "verify.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_broken_relative_link_detected(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "sub").mkdir()
+            (root / "sub" / "a.md").write_text(
+                "见 [b](b.md) 与 [ok](../ok.md)\n", encoding="utf-8")
+            (root / "ok.md").write_text("# ok\n", encoding="utf-8")
+            mod = self._verify()
+            mod.ROOT = root
+            mod.INCLUDE_IGNORED = True
+            mod.ERRORS.clear()
+            mod.check_relative_links()
+            joined = "\n".join(mod.ERRORS)
+            self.assertIn("[C8]", joined)
+            self.assertIn("b.md", joined)
+            self.assertNotIn("ok.md", joined)
+
+    def test_inline_code_link_is_not_flagged(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.md").write_text(
+                "写法示例：`](path.md)` 不是真链接\n", encoding="utf-8")
+            mod = self._verify()
+            mod.ROOT = root
+            mod.INCLUDE_IGNORED = True
+            mod.ERRORS.clear()
+            mod.check_relative_links()
+            self.assertEqual(mod.ERRORS, [])
+
+    def test_orphan_page_detected(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "problems").mkdir()
+            page = root / "problems" / "lonely.md"
+            page.write_text("# x\n", encoding="utf-8")
+            (root / "problems" / "_lookup.md").write_text("# 其他页\n", encoding="utf-8")
+            mod = self._verify()
+            mod.ROOT = root
+            mod.ERRORS.clear()
+            mod.check_page_reachability([("problems", page, "public")])
+            self.assertTrue(any("[C9]" in e and "lonely.md" in e
+                                for e in mod.ERRORS))
+
+    def test_page_listed_in_index_passes(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "problems").mkdir()
+            page = root / "problems" / "known.md"
+            page.write_text("# x\n", encoding="utf-8")
+            (root / "problems" / "_lookup.md").write_text(
+                "- [known](known.md)\n", encoding="utf-8")
+            mod = self._verify()
+            mod.ROOT = root
+            mod.ERRORS.clear()
+            mod.check_page_reachability([("problems", page, "public")])
+            self.assertEqual(mod.ERRORS, [])
+
+
 class TestDocumentedCounts(unittest.TestCase):
     """文档中的数字声称必须等于仓库实际值；实际值变化时同步更新文档。"""
 
@@ -189,9 +262,12 @@ class TestDocumentedCounts(unittest.TestCase):
         self.assertEqual(int(index["entry_count"]), actual,
                          "knowledge/errors/index.yaml entry_count 与文件数不符")
         self.assertEqual(claim(self.readme, r"(\d+) 条 QOH", "README"), actual)
-        self.assertEqual(claim(self.skill, r"(\d+) 条 QOH", "SKILL.md"), actual)
-        self.assertEqual(claim(self.agents, r"(\d+) 条 QOH 模式", "AGENTS.md"), actual)
-        self.assertEqual(claim(self.routing, r"(\d+) 条错误模式", "_task-routing"), actual)
+        # 计数只在 README / 清单 / 仪表盘出现；指导类文档（SKILL/AGENTS/路由）
+        # 不再写数字，避免每次事实变化要手改 5 处（历史上漏改过三次）。
+        for name, text in (("SKILL.md", self.skill), ("AGENTS.md", self.agents),
+                           ("_task-routing", self.routing)):
+            self.assertIsNone(re.search(r"\d+ 条 (?:QOH|错误模式)", text),
+                              f"{name} 不应再写 QOH 计数，改用不含数字的表述")
 
     def test_rule_count(self):
         actual = len(rule_files())
@@ -204,8 +280,9 @@ class TestDocumentedCounts(unittest.TestCase):
         total = sum(int(m) for m in
                     re.findall(r"^## .*（(\d+) 条）", golden, re.M))
         self.assertEqual(claim(self.readme, r"(\d+) 条铁律", "README"), total)
-        self.assertEqual(claim(self.skill, r"(\d+) 条黄金铁律", "SKILL.md"), total)
-        self.assertEqual(claim(self.routing, r"(\d+) 条铁律", "_task-routing"), total)
+        for name, text in (("SKILL.md", self.skill), ("_task-routing", self.routing)):
+            self.assertIsNone(re.search(r"\d+ 条 (?:黄金)?铁律", text),
+                              f"{name} 不应再写铁律计数，改用不含数字的表述")
 
     def test_routing_codes(self):
         codes = re.findall(r"^### \[([A-Z])\]", self.routing, re.M)

@@ -1,6 +1,6 @@
 ---
-updated: 2026-08-29
-total_pages: 46
+updated: 2026-11-11
+total_pages: 52
 description: >
   知识地图（从 frontmatter summary 自动生成）。按 summary 判断相关性；沿 refs 追深度上下文。
 ---
@@ -42,6 +42,7 @@ description: >
 - [fetch-ohos-third-party-lib](../procedural/fetch-ohos-third-party-lib.md) — 从 Harmonybrew 一键下载 arm64-OpenHarmony 预编译 bottle（.so）并校验解压， 免交叉编译即可链接到 Qt 鸿蒙工程。含依赖递归、qmake/CMake 链接片段、版本解析陷阱。
 - [framework-fix-verification](../procedural/framework-fix-verification.md) — 框架问题修复验证工作流：获取验证清单→编写验证工程→人工手动验证→记录验证结果。 用于系统性地验证Qt框架bug修复的有效性。
 - [framework-issue-analysis](../procedural/framework-issue-analysis.md) — 框架内部问题分析工作流（四阶段闭环）：复现demo生成→编译修复迭代→问题定位(日志法)→根因分析(框架代码调用链)→系统接口验证→上游issue打包提交（工作流最终步骤）。 阶段四为工作流闭合点：生成clean patch、整理issue说明单、输出纯Qt复现demo、更新知识库索引。 适用于Qt框架在鸿蒙平台的bug分析。
+- [knowledge-sedimentation](../procedural/knowledge-sedimentation.md) — 知识沉淀的触发条件、验证事件、分类规则和操作流程 — 所有 Agent 必须遵循的通用协议
 - [llvm-ohos-cross-compile](../procedural/llvm-ohos-cross-compile.md) — Qt/QLogo 接入 OHOS arm64 LLVM 15 静态库的 adapter：保留 Qt 目标链接、QLogo JIT 所需库闭包、部署与回归检查；通用 OHOS NDK/LLVM 交叉编译流程由 common 维护。
 - [qt-app-harmonyos-completion](../procedural/qt-app-harmonyos-completion.md) — 应用鸿蒙化完善工作流（功能级测试用例闭环,四阶段）：扫描应用源码识别核心功能点→生成10核心测试用例（AI扫源码+人工review）→ 人工测试/反馈问题/修复/回归循环→10用例全pass闭合。前置：运行测试(qt-ohos-run-test)通过。 含三件套(ASCII循环图/循环退出条件✅10用例全pass/门控检查⚠️)。
 - [qt-app-harmonyos-full-pipeline](../procedural/qt-app-harmonyos-full-pipeline.md) — 把 Qt 应用鸿蒙化分散工作流缝合为一份端到端编排：公共库提供 HarmonyOS 生命周期、窗口与平台限制的规范事实，本页负责将其落到 Qt 迁移、构建、签名、部署、测试和上库的 8 个阶段。覆盖 Qt5.12/5.15/6.12，并标注 Qt6 端到端 run+test 与应用分发缺口。
@@ -57,8 +58,10 @@ description: >
 
 - [coin3d-quarter-ohos](../episodic/postmortems/coin3d-quarter-ohos.md) — Coin3D Quarter 鸿蒙化完整迁移：交叉编译 libQuarter.so (ARM aarch64) + Demo 应用构建 (37MB HAP) + 3D 渲染验证通过。关键发现：OHOS Qt5 不含 UiTools 模块、FindOpenGL 需自定义（OHOS 用 GLES/EGL）、 CMAKE_FIND_ROOT_PATH_MODE ONLY 需绝对路径绕过、hvigor 需 DEVECO_SDK_HOME。 可复用：OHOS 交叉编译 CMake 模板 + FindOpenGL 映射模式 + 预编译库集成模式。
 - [ohostemplate-blockedbymodal-patch](../episodic/postmortems/ohostemplate-blockedbymodal-patch.md) — ohostemplate matplotlib 三级窗口(Configure subplots->Export values)关不掉。根因：无 parent 的 QDialog 经 syntheticParent fallback 分类为 SubWindow，但 OHOS QPA 从不调 setTransientParent() 反写 Qt 层， 导致 blockedByModalWindow=1 拦截 close()。Qt 源码修复：showImmediate() 在 fallback 后反写 transientParent（约8 行 qohosview.cpp），设备日志验证 blockedByModalWindow=0、close()=1。 同时发现并修复 ArkTS 模板版本不匹配崩溃（modules->modulesFactories）。
+- [qt-opensource-apps-harmonyos-survey](../episodic/postmortems/qt-opensource-apps-harmonyos-survey.md) — 2026-06-25 多 agent 工作流扫描 GitHub/KDE Apps/Gitee/SourceForge/Wikipedia，筛选 229 个 Qt 开源桌面应用并逐个评估鸿蒙化难度。难度分布：低 3 / 中 23 / 高 126 / 阻断 77；D-Bus(107)、 QtMult…
 - [quit-deadlock-tsfn](../episodic/postmortems/quit-deadlock-tsfn.md) — 退出死锁复盘：<STAKEHOLDER>(<PRODUCT>) qApp->quit()后应用卡死~2分钟。 根因：HarmonyOS在Ability销毁阶段不处理N-API ThreadSafeFunction回调， 导致qWindowDestroyPromise的resolve回调永远不被执行，Promise永不resolve。 修复：外部补丁通过原子变量+并行轮询绕过TSFN机制，已验证有效。 关联确认：退出流程中sensor插件触发崩溃，伙伴确认移除即规避（2026-07-13）。
 - [saribbon-ohos](../episodic/postmortems/saribbon-ohos.md) — SARibbon v2.5.5 鸿蒙化完整迁移：独立构建文件 + MainWindowExample 应用编译 (48MB HAP) + 两个编译问题修复（QDesktopWidget::screen 类型不匹配 + lazy import 语法不兼容）。 关键发现：SARibbon 源码内 QDesktopWidget API 在 Qt 5.12 OHOS 下返回 QWidget* 而非 QScreen*、 模板 lazy import 语法需 API 12 beta3、需为项目创建独立 CMakeLists.txt 避免改源码。 可复用：三方 Qt 库鸿蒙化时保持源码完整性的独立构建文件模式。
+- [tdesktop-harmonyos-porting](../episodic/postmortems/tdesktop-harmonyos-porting.md) — Telegram Desktop (tdesktop v7.0.2) 不裁剪功能的全量鸿蒙化：portgraph fetch-deps 59 bottle + 9 源码编译解决全部依赖，2088 目标适配（Q_OS_HARMONY 宏 / not_ohos 集合 / clang15 C++20 …
 - [toolwindow-crossscreen-flicker](../episodic/postmortems/toolwindow-crossscreen-flicker.md) — ToolWindow跨屏闪烁系统问题分析：moveWindowToGlobalDisplay与resizeAsync在跨屏拖拽场景冲突， screenIdChanged仅拖拽结束时触发，Qt已通过完整调用链追踪定位根因，归属鸿蒙系统接口。
 - [wa-nativewindow-leave-bug](../episodic/postmortems/wa-nativewindow-leave-bug.md) — WA_NativeWindow Leave 事件不灵敏 Bug 完整分析：双重盲区根因（Qt Widget 层 internalWinId() 跳过 + OHOS QPA hover 回调不可靠）、完整调用链追踪、 修复策略评估（3 种方案对比）、10 场景风险矩阵、时序图。Qt 5.12 OHOS。 ✅ 手动验证通过，交付件已输出至 <WORK_DIR>/leave-event-fix/（2026-06-09 最终整理）。
 
@@ -68,7 +71,13 @@ _（本域无活跃页）_
 
 ## problems
 
-- [_lookup](../problems/_lookup.md) — 错误速查表（41 条）
+- [_lookup](../problems/_lookup.md) — 错误知识库的**唯一检索入口**：56 个实战踩坑页按「错误码 / 症状 / 领域」三维组织。
+  单页正文不在本图重复列出——按报错关键词或症状进 `_lookup`，再由条目跳到具体页。
+
+## 内嵌平台知识（ohos-common-kb-public）
+
+- [_index](../ohos-common-kb-public/_index.md) — 平台通用知识（ArkTS/ArkUI/NAPI/Stage/工具链）27 页的索引入口；
+  Qt 侧迁移知识在本图，平台侧规格与交叉编译事实在那里。
 
 ## faults
 

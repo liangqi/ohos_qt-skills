@@ -12,6 +12,29 @@
 
 ---
 
+## v3.0.0-rc8 — 2026-11-11
+
+按"只补索引、收敛事实块"的最小方案做了一轮内容核查（先只读测绘，再改）。测绘结论：
+132 页两两比对，**页级重复为 0 对**；重复发生在被复制到多个文件的事实块上。
+
+- **MINOR** 新增 `ohos-common-kb-public/_index.md`：内嵌平台库 27 页的索引入口。
+  此前 23 页不在任何索引里，其中 15 页连链接都不可达，只能靠全库搜索命中
+- **MINOR** `_index/_map.md` 补齐：补 `knowledge-sedimentation`、两篇复盘
+  （`qt-opensource-apps-harmonyos-survey`、`tdesktop-harmonyos-porting`）、
+  problems 一节改为指向 `_lookup` 的唯一入口、新增内嵌库入口；`total_pages` 按实际 52 条校正
+- **FIX** `skills/kb-iterator/SKILL.md` 的 `_index/_agent-mesh.md` 是根相对写法，
+  从该目录解析必定断链 → 改为 `../../_index/_agent-mesh.md`
+- **FIX** `problems/_lookup.md` 漏收 `runtime-icons-missing-libqico.md`（合入时索引没跟上）
+- **MINOR** 门禁新增两条：C8 相对 `.md` 链接必须存在（此前只查 wikilink）；
+  C9 每个知识页至少要进一个索引（否则 Agent 按图索骥看不到）
+- **MINOR** 计数收敛：`38 条铁律`/`44 条 QOH`/`56 个实战踩坑` 等数字此前散在
+  SKILL、AGENTS、CLAUDE、`_task-routing` 与 README 五处，每次事实变化要手改五次
+  （本轮会话为此红过三次 CI）。现在数字只留 README + `RELEASE-MANIFEST.yaml`，
+  指导类文档改用不含数字的表述，一致性测试改为反向守卫
+- **MINOR** 用例 95 → 99（C8 缺链/行内代码、C9 孤儿页/索引命中）
+
+---
+
 ## v3.0.0-rc6 — 2026-11-11
 
 另一台机器上做真实交叉编译移植后反馈的 10 条问题：前 4 条在门禁判据上，

@@ -46,7 +46,7 @@ skills/          Agent Skills（6 个，按写权限切边界）
 
 ```
 ① _index/_task-routing.md               → 匹配 15 类任务之一，确定必读页与工作流
-② semantic/qt-harmonyos-golden-rules.md → 扫 38 条铁律，避开已知陷阱
+② semantic/qt-harmonyos-golden-rules.md → 扫铁律，避开已知陷阱
 ③ _index/_map.md                        → 按 summary 判断相关性，只读相关页
    沿 refs 追交叉引用；需要本地工具时先确认 ENV.local.md 与工具可用性
 ```
@@ -96,7 +96,7 @@ skills/          Agent Skills（6 个，按写权限切边界）
 
 - **成功判据唯一**：应用迁移以 `python tools/qt-ohos-run.py verify` 的 G0–G12 为准，SDK 以
   `qt-sdk-run.py verify` 的 SV0–SV8 为准。编译通过 ≠ 迁移成功；`TIMEOUT` 永远不是 PASS，`SKIP` / `NOT_RUN` 也不是（没测 ≠ 通过）。
-- **日志先机器匹配**：`analyze-log` 命中 44 条 QOH 模式后再读知识页，不要跳过匹配直接猜。
+- **日志先机器匹配**：`analyze-log` 命中 QOH 模式后再读知识页，不要跳过匹配直接猜。
 - **改动受追踪**：所有自动修改进 `.qt-ohos/changes.json` 与 patches；禁止盲目扩写
   `Q_OS_LINUX` 守卫（鸿蒙下 `Q_OS_OHOS` 隐含 `Q_OS_LINUX`），禁止注释功能代码换编译通过。
 - **工具可用性预检**：构建/装机/签名/日志前先定位并验证 `devecocli`、`hdc`、Qt OHOS SDK

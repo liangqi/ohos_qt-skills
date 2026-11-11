@@ -389,6 +389,66 @@ def check_manifest(pages: list[tuple[str, Path, str]]) -> None:
              "_scripts/gen-manifest.py 刷新" % (version, digest[:12]))
 
 
+def _strip_inline_code(line: str) -> str:
+    """把行内代码段替换成空白，避免示例写法被当成真链接。"""
+    return re.sub(r"`[^`]*`", lambda m: " " * len(m.group(0)), line)
+
+
+def check_relative_links() -> None:
+    """Markdown 相对 .md 链接必须指向存在的文件（C8）。
+
+    C7 只查 `[[wikilink]]`；`](path.md)` 这类相对链接一直没人管，实测已有一处
+    根相对写法（从子目录解析必然断），渲染与 Obsidian 都打不开。
+    """
+    for path in walk_files(ROOT):
+        if path.suffix != ".md":
+            continue
+        rel = path.relative_to(ROOT).as_posix()
+        in_fence = False
+        for line in read_text(path).splitlines():
+            if line.lstrip().startswith("```"):
+                in_fence = not in_fence
+                continue
+            if in_fence:
+                continue
+            # 行内代码里的 `](x.md)` 是示例，不是链接
+            for match in re.finditer(r"\]\(([^)\s#]+\.md)(?:#[^)]*)?\)",
+                                     _strip_inline_code(line)):
+                target = match.group(1)
+                if target.startswith(("http://", "https://", "mailto:")):
+                    continue
+                if not (path.parent / target).exists():
+                    error("C8", f"相对链接指向不存在的文件：{rel} -> {target}")
+
+
+INDEX_ENTRY_FILES = (
+    "_index/_map.md", "_index/_tags.md", "_index/_task-routing.md",
+    "_index/_dashboard.md", "problems/_lookup.md",
+    "ohos-common-kb-public/_index.md",
+)
+
+
+def check_page_reachability(pages: list) -> None:
+    """每个知识页至少要在一个索引里出现（C9）。
+
+    132 页里曾只有 45 页进 `_map`，其余靠全库搜索；页写好了但没人能按图索骥，
+    等于 Agent 看不见。索引入口可以是 _map/_tags/_task-routing/_lookup/内嵌库索引。
+    """
+    texts = []
+    for rel in INDEX_ENTRY_FILES:
+        path = ROOT / rel
+        if path.exists():
+            texts.append(read_text(path))
+    orphan = []
+    for dirname, path, _aud in pages:
+        if path.name.startswith("_"):
+            continue
+        if not any(path.name in text for text in texts):
+            orphan.append(path.relative_to(ROOT).as_posix())
+    for rel in orphan:
+        error("C9", f"页面未进任何索引（Agent 按图索骥看不到）：{rel}")
+
+
 def check_wikilinks(ids: dict[str, str]) -> None:
     names = {p.stem for p in ROOT.rglob("*.md") if ".git" not in p.parts}
     broken: dict[str, int] = {}
@@ -505,6 +565,8 @@ def main() -> int:
     check_entrypoints()
     pages, ids = collect_pages()
     check_wikilinks(ids)
+    check_relative_links()
+    check_page_reachability(pages)
     check_index_consistency(pages)
     check_manifest(pages)
     check_hygiene()

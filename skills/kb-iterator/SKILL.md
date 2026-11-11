@@ -15,7 +15,7 @@ description: |
 
 > 定位：任务链的终点、知识闭环的起点。所有 agent 的 draft-produced 产出汇到这里，
 > 过主编门禁后进入真源，再经索引再生反哺下一轮任务的路由与门禁。
-> 契约见 [_agent-mesh](_index/_agent-mesh.md)（单一真源）。
+> 契约见 [_agent-mesh](../../_index/_agent-mesh.md)（单一真源）。
 
 ## 职责（六项，全部有现成机制）
 

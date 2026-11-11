@@ -1,5 +1,5 @@
 ---
-updated: 2026-11-04
+updated: 2026-11-11
 total_problems: 56
 description: >
   错误速查索引（从 problem 页 frontmatter 重建）。
@@ -125,6 +125,7 @@ description: >
 |:------:|---------|------|
 | 🟠 high | [runtime-appspawn-proc-self-exe](runtime-appspawn-proc-self-exe.md) | 应用启动即退出且无日志：现代 appspawn 重新 exec 自己，/proc/self/exe 不是 ELF |
 | 🟠 high | [runtime-tray-must-exist-noop](runtime-tray-must-exist-noop.md) | 鸿蒙无托盘 API 但 Platform::Tray 是成员变量：要完整 no-op 面（14 方法 + HasMonochromeSetting）而不是删类 |
+| 🟠 high | [runtime-icons-missing-libqico](runtime-icons-missing-libqico.md) | 应用图标（.ico）不显示：HAP 里缺 imageformats/libqico.so，Qt 运行时没有 ICO 解码插件 |
 | 🟠 high | [ohos-mainthread-mismatch](ohos-mainthread-mismatch.md) | Q_ASSERT(receiver->d_func()->threadData.loadAcquire()->thread.loadRelaxed() == mainThread()) in QCoreApplicationPrivate::sendThroughApplicationEventFilters (Debug 构建鼠标点击事件触发) |
 | 🟠 high | [render-black-rgba8-zink-mipmap](render-black-rgba8-zink-mipmap.md) | Qt3D 实体贴图纯黑（cloud 球壳 / saturn 星环 / uranus 星环），光照与阴影正常； 同 effect 下用 RGB8 JPG 的实体贴图正常；唯一判别变量是贴图格式 RGBA8(alpha) vs RGB8(JPG)。 |
 | 🟠 high | [runtime-blocked-by-modal-window-no-parent](runtime-blocked-by-modal-window-no-parent.md) | QDialog 关不掉 + 不能滚动（同时出现），尤其在 matplotlib 三级窗口场景 |
