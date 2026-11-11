@@ -12,6 +12,22 @@
 
 ---
 
+## v3.0.0-rc10 — 2026-11-11
+
+收尾：把最后一处手写的派生数字（`_index/_dashboard.md`）改成脚本生成，并纳入门禁。
+
+- **FIX** `_index/_dashboard.md` 一直是手写：表头写"procedural（15 活跃）"而表里只列 14 页，
+  `total_pages` 48 与真实 49 不符。新增 `_scripts/gen-dashboard.py`，从页面 frontmatter、
+  `problems/` 与 `faults/_registry.md` 重新投影；归档页单独成节（此前直接从清单里消失，
+  等于从所有索引里掉出）
+- **MINOR** 门禁 +1：`verify` C9 比对仪表盘与生成器输出，手改数字即 ERROR；
+  AGENTS 契约新增"派生视图禁手改"
+- **MINOR** 检查码去重：相对链接检查 → C10，索引可达性 → C11（C8/C9 原本已被
+  仪表盘与索引一致性检查占用）；TESTING 同步
+- **MINOR** 用例 99 → 100（仪表盘生成一致性、归档页仍在索引内两条覆盖）
+
+---
+
 ## v3.0.0-rc9 — 2026-11-11
 
 对外可读层换成打磨过的叙事结构（以 `matrix-release` 的 README 为骨架），并把 trunk

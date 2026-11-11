@@ -265,7 +265,7 @@ README、`SKILL.md`、`AGENTS.md`、索引页里的声称与仓库实际状态�
 
 | 层次 | 手段 | 拦截什么 |
 |------|------|---------|
-| 数字 | 一致性用例（24 个） | 页数、QOH、规则数、铁律、任务路由、API 映射、故障图规模、用例数与实际不符 |
+| 数字 | 一致性用例（25 个） | 页数、QOH、规则数、铁律、任务路由、API 映射、故障图规模、用例数与实际不符 |
 | 引用 | 同上（路径与锚点校验） | 文档里指的页面/小节不存在 |
 | 清单 | 同上（Skill 清单规范） | 根级/子级 `SKILL.md` frontmatter 非法、`AGENTS.md` 漏登记 skill |
 | 契约 | 同上（CLI 契约） | 七个 CLI 的子命令集合被悄悄改动 |
@@ -273,7 +273,11 @@ README、`SKILL.md`、`AGENTS.md`、索引页里的声称与仓库实际状态�
 | 引擎 | `tests/test_qt_ohos.py` | 状态机、门禁、错误匹配的行为回归 |
 | 图谱 | `portgraph/tests/` | 可移植性判定、依赖分类、bottle 解析 |
 
-当前状态：用例全绿（引擎 66 + 一致性 24 + 扫描 9 = 99 用例，另有图谱 127 单测），`faults-build check` 零 ERROR。
+派生视图由脚本生成、门禁校验：`_index/_dashboard.md`（页数/活跃数/problems/故障规模）跑
+`python _scripts/gen-dashboard.py`，`faults/_graph.yaml` 与 `_registry.md` 跑
+`python tools/faults-build.py build`——手改数字会被 `verify` 拦下。
+
+当前状态：用例全绿（引擎 66 + 一致性 25 + 扫描 9 = 100 用例，另有图谱 127 单测），`faults-build check` 零 ERROR。
 一条命令跑完四道门禁：`python _scripts/ci.py`（Windows 无 bash 也可用）。
 
 ---

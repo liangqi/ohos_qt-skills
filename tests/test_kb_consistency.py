@@ -172,7 +172,7 @@ def pages(domain: str):
 
 
 class TestLinkAndReachabilityChecks(unittest.TestCase):
-    """新增门禁：相对 .md 链接存在性（C8）与页面索引可达性（C9）。"""
+    """新增门禁：相对 .md 链接存在性（C10）与页面索引可达性（C11）。"""
 
     def _verify(self):
         import importlib.util
@@ -196,7 +196,7 @@ class TestLinkAndReachabilityChecks(unittest.TestCase):
             mod.ERRORS.clear()
             mod.check_relative_links()
             joined = "\n".join(mod.ERRORS)
-            self.assertIn("[C8]", joined)
+            self.assertIn("[C10]", joined)
             self.assertIn("b.md", joined)
             self.assertNotIn("ok.md", joined)
 
@@ -225,7 +225,7 @@ class TestLinkAndReachabilityChecks(unittest.TestCase):
             mod.ROOT = root
             mod.ERRORS.clear()
             mod.check_page_reachability([("problems", page, "public")])
-            self.assertTrue(any("[C9]" in e and "lonely.md" in e
+            self.assertTrue(any("[C11]" in e and "lonely.md" in e
                                 for e in mod.ERRORS))
 
     def test_page_listed_in_index_passes(self):
@@ -301,13 +301,31 @@ class TestDocumentedCounts(unittest.TestCase):
             claim(self.dashboard, r"problems（(\d+) 条目）", "_dashboard"), actual)
 
     def test_dashboard_domain_counts(self):
+        """「活跃」不含 archived：口径要与 verify 的 C8 检查一致。"""
+        def active(domain):
+            return [p for p in pages(domain)
+                    if "status: archived" not in
+                    read(p.relative_to(REPO_ROOT).as_posix())]
+
         for domain in ("semantic", "procedural", "episodic"):
-            actual = len(pages(domain))
             claimed = claim(self.dashboard, rf"{domain}（(\d+) 活跃）", "_dashboard")
-            self.assertEqual(claimed, actual, f"_dashboard {domain} 计数过时")
-        total = len(pages("semantic")) + len(pages("procedural")) + len(pages("episodic"))
+            self.assertEqual(claimed, len(active(domain)),
+                             f"_dashboard {domain} 计数过时")
+        total = sum(len(active(d)) for d in ("semantic", "procedural", "episodic"))
         self.assertEqual(
             claim(self.dashboard, r"合计活跃\*\* \| \*\*(\d+)", "_dashboard"), total)
+
+    def test_dashboard_is_generated(self):
+        """仪表盘是派生视图：必须与生成器输出一致（数字不许手改）。"""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "gen_dashboard_probe", REPO_ROOT / "_scripts" / "gen-dashboard.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        generated = re.sub(r"^updated: .*$", "", mod.render(), count=1, flags=re.M)
+        current = re.sub(r"^updated: .*$", "", self.dashboard, count=1, flags=re.M)
+        self.assertEqual(current, generated,
+                         "_dashboard.md 与生成器输出不一致：跑 python _scripts/gen-dashboard.py")
 
     def test_ohos_extras_api_claim(self):
         semantic = read("semantic/qt-ohos-extras.md")

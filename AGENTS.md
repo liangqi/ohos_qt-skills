@@ -105,6 +105,7 @@ skills/          Agent Skills（6 个，按写权限切边界）
 - **回合收尾纪律**：非交互会话（`opencode run` / `claude -p` 等）中回合结束即会话退出，
   没有任何机制会唤醒你。禁止"派后台代理后收尾等待"；长任务必须在本回合内同步等待或顺序执行；
   未到 `verify` 终态或人工确认点禁止输出总结停止；中止需把状态落盘 `.qt-ohos/` 并写明续跑方式。
+- **派生视图禁手改**：`_index/_dashboard.md` 由 `python _scripts/gen-dashboard.py` 生成（页数/活跃数/problems/故障规模）；改数字请改真源后重跑脚本，`verify` C9 会拦手改。
 - **故障库真源改动后必须重建**：跑 `python tools/faults-build.py build`，`check` 零 ERROR；
   复核用 `review` 扫到期与状态推进。
 - **草稿合入走主编门禁**（`faults/_index.md` §六）：defect/undetermined 类必须**复现 demo 必测**，

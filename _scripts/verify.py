@@ -395,7 +395,7 @@ def _strip_inline_code(line: str) -> str:
 
 
 def check_relative_links() -> None:
-    """Markdown 相对 .md 链接必须指向存在的文件（C8）。
+    """Markdown 相对 .md 链接必须指向存在的文件（C10）。
 
     C7 只查 `[[wikilink]]`；`](path.md)` 这类相对链接一直没人管，实测已有一处
     根相对写法（从子目录解析必然断），渲染与 Obsidian 都打不开。
@@ -418,7 +418,7 @@ def check_relative_links() -> None:
                 if target.startswith(("http://", "https://", "mailto:")):
                     continue
                 if not (path.parent / target).exists():
-                    error("C8", f"相对链接指向不存在的文件：{rel} -> {target}")
+                    error("C10", f"相对链接指向不存在的文件：{rel} -> {target}")
 
 
 INDEX_ENTRY_FILES = (
@@ -429,7 +429,7 @@ INDEX_ENTRY_FILES = (
 
 
 def check_page_reachability(pages: list) -> None:
-    """每个知识页至少要在一个索引里出现（C9）。
+    """每个知识页至少要在一个索引里出现（C11）。
 
     132 页里曾只有 45 页进 `_map`，其余靠全库搜索；页写好了但没人能按图索骥，
     等于 Agent 看不见。索引入口可以是 _map/_tags/_task-routing/_lookup/内嵌库索引。
@@ -446,7 +446,33 @@ def check_page_reachability(pages: list) -> None:
         if not any(path.name in text for text in texts):
             orphan.append(path.relative_to(ROOT).as_posix())
     for rel in orphan:
-        error("C9", f"页面未进任何索引（Agent 按图索骥看不到）：{rel}")
+        error("C11", f"页面未进任何索引（Agent 按图索骥看不到）：{rel}")
+
+
+def check_dashboard_generated() -> None:
+    """`_index/_dashboard.md` 必须与生成器输出一致（C9）。
+
+    仪表盘里的页数、每域活跃数、problems 条目数、故障图规模都是派生事实；手写必漂移
+    （实测出现过表头 15、表里 14 页）。数字只许通过 `_scripts/gen-dashboard.py` 更新。
+    """
+    import importlib.util
+    gen = ROOT / "_scripts" / "gen-dashboard.py"
+    dash = ROOT / "_index" / "_dashboard.md"
+    if not gen.exists() or not dash.exists():
+        warn("C9", "缺少 _scripts/gen-dashboard.py 或 _index/_dashboard.md")
+        return
+    try:
+        spec = importlib.util.spec_from_file_location("kb_gen_dashboard", gen)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        generated = module.render()
+    except Exception as exc:                       # pragma: no cover - 生成器坏了要能看见
+        warn("C9", f"gen-dashboard.py 执行失败：{exc}")
+        return
+    strip = lambda text: re.sub(r"^updated: .*$", "", text, count=1, flags=re.M)  # noqa: E731
+    if strip(generated) != strip(read_text(dash)):
+        error("C9", "_index/_dashboard.md 与生成器输出不一致"
+                    "（跑 python _scripts/gen-dashboard.py，不要手改数字）")
 
 
 def check_wikilinks(ids: dict[str, str]) -> None:
@@ -568,6 +594,7 @@ def main() -> int:
     check_relative_links()
     check_page_reachability(pages)
     check_index_consistency(pages)
+    check_dashboard_generated()
     check_manifest(pages)
     check_hygiene()
 
