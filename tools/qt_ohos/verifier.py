@@ -27,6 +27,7 @@ Overall: PASS only if G0-G8 all PASS; PARTIAL if G3-G5 PASS; else FAIL.
 
 from __future__ import annotations
 
+import datetime
 import shutil
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -71,8 +72,12 @@ def evaluate(state) -> Tuple[Dict[str, Dict], str]:
         missing.append("qt_sdk_prefix or build_command")
     if env.get("qt_sdk_prefix") and not Path(env["qt_sdk_prefix"]).exists():
         missing.append("qt_sdk_prefix path does not exist")
-    if shutil.which(env.get("cmake", "cmake")) is None and not env.get("build_command"):
-        missing.append("cmake not on PATH")
+    cmake = env.get("cmake", "cmake")
+    if shutil.which(cmake) is None and not env.get("build_command"):
+        # 交叉编译机常把 cmake 装在非 PATH 位置：这里给出可执行的修法，
+        # 而不是只报一句 "not on PATH"
+        missing.append("cmake not on PATH (config set cmake <%s 绝对路径> 或 "
+                       "config set build_command <整条命令>)" % "cmake")
     gate("G0", FAIL if missing else PASS,
          "missing: %s" % ", ".join(missing) if missing else "environment configured",
          "env.json")
@@ -88,9 +93,16 @@ def evaluate(state) -> Tuple[Dict[str, Dict], str]:
     risk = scan.get("risk") or {}
     findings = risk.get("findings")
     open_critical = [f for f in (findings or []) if f.get("severity") == "critical"]
-    addressed = state.data.get("addressed_critical", [])
-    unresolved = [f for f in open_critical
-                  if f.get("rule") not in addressed]
+    records = addressed_critical_records(state)
+    unresolved, no_evidence = [], []
+    for item in open_critical:
+        rid = str(item.get("rule"))
+        rec = records.get(rid)
+        if rec is None:
+            unresolved.append(item)
+        elif not str(rec.get("evidence") or "").strip():
+            # 标记过但没有证据：等价于"标过去了"，不能算已处理
+            no_evidence.append(rid)
     if findings is None:
         gate("G2", NOT_RUN, "risk scan not run (no scan.json risk section)")
     elif not open_critical:
@@ -101,8 +113,14 @@ def evaluate(state) -> Tuple[Dict[str, Dict], str]:
             len(unresolved),
             ", ".join(sorted({str(u.get("rule")) for u in unresolved}))),
             "scan.json")
+    elif no_evidence:
+        gate("G2", FAIL, "%d critical risk(s) marked addressed without evidence: "
+             "%s（用 mark-risk --rule <id> --evidence <改动位置/验证方式> 补证据）"
+             % (len(no_evidence), ", ".join(sorted(set(no_evidence)))),
+             ".qt-ohos/state.json")
     else:
-        gate("G2", PASS, "all critical risks addressed")
+        gate("G2", PASS, "all critical risks addressed (with evidence)",
+             ".qt-ohos/state.json")
 
     # G3 compile ---------------------------------------------------------
     status = _cmd_status(build_json, "compile")
@@ -118,11 +136,35 @@ def evaluate(state) -> Tuple[Dict[str, Dict], str]:
     built = sum(1 for item in lib_records if item.get("level") == "built")
     lib_note = (" | libs: %d built, %d probed" % (built, probed)) if lib_records else ""
     artifacts = build_json.get("artifacts") or []
-    if status == PASS:
-        gate("G4", PASS if artifacts else PARTIAL,
-             "%d native artifact(s) found%s" % (len(artifacts), lib_note))
-    else:
+    project_root = Path(getattr(state, "project_root", ".") or ".")
+    present, absent = [], []
+    for item in artifacts:
+        raw = item.get("path") if isinstance(item, dict) else str(item)
+        if not raw:
+            continue
+        path = Path(raw)
+        if not path.is_absolute():
+            path = project_root / path
+        # 手写/过期的产物路径不该被当成"有产物"
+        if path.is_file() and path.stat().st_size > 0:
+            present.append(raw)
+        else:
+            absent.append(raw)
+    if status != PASS:
         gate("G4", NOT_RUN, "compile not PASS%s" % lib_note)
+    elif present:
+        detail = "%d native artifact(s) on disk%s" % (len(present), lib_note)
+        if absent:
+            detail += " | %d listed but missing: %s" % (
+                len(absent), ", ".join(absent[:3]))
+        gate("G4", PASS if not absent else PARTIAL, detail)
+    elif artifacts:
+        gate("G4", FAIL,
+             "%d artifact(s) listed in build.json but none exists on disk "
+             "(过期或手写的路径)%s" % (len(artifacts), lib_note))
+    else:
+        gate("G4", PARTIAL, "no artifact recorded - compile PASS without "
+                            "any .so/.a path%s" % lib_note)
 
     # G5 package ---------------------------------------------------------
     pkg_status = _cmd_status(build_json, "package")
@@ -215,12 +257,23 @@ def _map_cmd(status: str) -> str:
 
 
 def _overall(gates: Dict[str, Dict]) -> str:
+    """PASS / PARTIAL / FAIL 三档。
+
+    PARTIAL 存在的意义：交叉编译能做到"编过 + 链过"，而打包/装机还没开始。
+    这种情况如果判 FAIL，所有只做到编译阶段的迁移都会被读成"失败"，
+    与"编译通过 ≠ 迁移成功"同样失真。所以：
+      - 编译 PASS 且产物在（G3/G4），且打包没被判失败（G5 ∈ PASS/PARTIAL/NOT_RUN/SKIP）
+        → PARTIAL（阶段性成果，不是可交付状态）
+      - 打包真的失败（G5 FAIL）或编译没通过 → FAIL
+    """
     statuses = [gates[g]["status"] for g in GATE_ORDER]
     core = statuses[0:9]          # G0..G8
     if all(s == PASS for s in core):
         return PASS
-    if statuses[3] == PASS and statuses[5] in (PASS, PARTIAL):
-        return PARTIAL            # compiled (+ packaged) but not fully verified
+    compiled = statuses[3] == PASS and statuses[4] in (PASS, PARTIAL)
+    package_not_failed = statuses[5] in (PASS, PARTIAL, NOT_RUN, SKIP)
+    if compiled and package_not_failed:
+        return PARTIAL
     return FAIL
 
 
@@ -233,14 +286,46 @@ def render(gates: Dict[str, Dict], overall: str) -> str:
             gid, info["title"], info["status"], info["detail"][:60]))
     lines.append("")
     lines.append("Result: %s" % overall)
+    if overall == PARTIAL:
+        lines.append("NOTE: PARTIAL = 编译/链接已通过，打包·装机·启动未完成或未验证；"
+                     "这不是可交付状态。")
     if overall != PASS:
         lines.append("NOTE: tool verdict only - an LLM must not report migration "
                      "success when this result is not PASS.")
     return "\n".join(lines)
 
 
-def mark_critical_addressed(state, rule_ids: List[str]) -> None:
-    addressed = set(state.data.get("addressed_critical", []))
-    addressed.update(rule_ids)
-    state.data["addressed_critical"] = sorted(addressed)
+def addressed_critical_records(state) -> Dict[str, Dict]:
+    """读取"已处理 critical"记录，兼容历史的纯 id 列表。
+
+    历史格式（`addressed_critical: ["R001"]`）没有证据，读出来也当"没证据"，
+    由 G2 判 FAIL 并提示补证据——否则一次 `mark-risk --rule R001` 就能把
+    437 条 critical 清零，门禁等于没有。
+    """
+    raw = state.data.get("addressed_critical") or []
+    records: Dict[str, Dict] = {}
+    if isinstance(raw, dict):
+        for rid, rec in raw.items():
+            records[str(rid)] = rec if isinstance(rec, dict) else {}
+    else:
+        for item in raw:
+            if isinstance(item, dict):
+                rid = str(item.get("rule") or "")
+                if rid:
+                    records[rid] = item
+            else:
+                records[str(item)] = {}
+    return records
+
+
+def mark_critical_addressed(state, rule_ids: List[str], evidence: str = "",
+                            note: str = "") -> None:
+    records = addressed_critical_records(state)
+    for rid in rule_ids:
+        records[str(rid)] = {
+            "evidence": (evidence or "").strip(),
+            "note": (note or "").strip(),
+            "at": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
+        }
+    state.data["addressed_critical"] = records
     state.save()

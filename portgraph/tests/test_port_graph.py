@@ -323,6 +323,25 @@ class TestFilePlatformExclusion(unittest.TestCase):
                 "src/ui/win/helper.cpp"),
             "windows")
 
+    def test_filename_suffix_excluded(self):
+        # 桌面工程常把平台实现写成 xxx_win.cpp / xxx.mm，不放在 platform/win 下
+        self.assertEqual(
+            project_scanner._file_platform_excluded("src/core/app_win.cpp"),
+            "windows")
+        self.assertEqual(
+            project_scanner._file_platform_excluded("src/ui/view.mm"),
+            "macos")
+        self.assertEqual(
+            project_scanner._file_platform_excluded("src/core/window_win.h"),
+            "windows")
+
+    def test_generic_suffix_not_excluded(self):
+        # 不能把 darwin_helper.cpp / windowsless.cpp 这类名字误伤
+        self.assertIsNone(project_scanner._file_platform_excluded(
+            "src/core/darwin_helper.cpp"))
+        self.assertIsNone(project_scanner._file_platform_excluded(
+            "src/core/win.cpp"))
+
     def test_linux_path_not_excluded(self):
         # Linux 通用代码鸿蒙会编译，不应排除
         self.assertIsNone(project_scanner._file_platform_excluded(
@@ -331,6 +350,25 @@ class TestFilePlatformExclusion(unittest.TestCase):
     def test_generic_path_not_excluded(self):
         self.assertIsNone(project_scanner._file_platform_excluded(
             "src/core/main.cpp"))
+
+
+class TestWin32ApiPrecision(unittest.TestCase):
+    """函数型符号必须带调用括号：engine::SendMessage{ 是同名成员，不是 Win32 API。"""
+
+    def _win32(self):
+        for rule in project_scanner.PLATFORM_API_RULES:
+            if rule["iface"] == "iface:win32":
+                return rule["re"]
+        raise AssertionError("iface:win32 rule missing")
+
+    def test_member_like_identifier_not_matched(self):
+        self.assertIsNone(self._win32().search("engine::SendMessage{"))
+        self.assertIsNone(self._win32().search("auto msg = SendMessage;"))
+
+    def test_real_calls_matched(self):
+        self.assertIsNotNone(self._win32().search("SendMessage(hwnd, WM_CLOSE, 0, 0);"))
+        self.assertIsNotNone(self._win32().search("HWND h = nullptr;"))
+        self.assertIsNotNone(self._win32().search("#include <windows.h>"))
 
 
 class TestDepsFetch(unittest.TestCase):

@@ -12,6 +12,40 @@
 
 ---
 
+## v3.0.0-rc6 — 2026-11-11
+
+另一台机器上做真实交叉编译移植后反馈的 10 条问题：前 4 条在门禁判据上，
+其余在扫描取证与 CLI 交互。逐条核对后 8 条为真（1 条诊断有偏差、2 条已在此前修掉）。
+
+- **FIX** `PARTIAL` 判定名存实亡：旧条件要求 G5 ∈ (PASS, PARTIAL)，而 G5 永远不会
+  产出 PARTIAL，于是"编译+链接全过、打包还没做"一律判 FAIL——所有只做到编译阶段的
+  迁移都被读成失败。现在 `G3 PASS 且 G4 PASS 且 G5 未失败` → PARTIAL，并在结果后
+  补一行解释"阶段性成果、不可交付"；G5 真失败仍判 FAIL
+- **FIX** G4 只看 `build.json` 的产物路径字符串，不查磁盘：手写或过期的路径也能过线。
+  现在逐个 stat：全在 → PASS，部分缺 → PARTIAL，全缺 → FAIL
+- **FIX** G2 的"已处理"没有证据链：`mark-risk --rule R001` 一次就能把 437 条 critical
+  清零，无法区分"真隔离了"和"标过去了"。现在 `--evidence` 必填，记录存进
+  `state.json`（rule → evidence/note/at）；历史纯 id 列表按"无证据"处理并判 FAIL
+- **FIX** 扫描把鸿蒙不编译的代码算成 critical：`ThirdParty/`（如 tdesktop 的
+  fcitx5-qt DBus 头）与平台专属目录（platform/win、windows/、macos/）里的命中
+  现在自动降一档并标 `scope`，规则可用 `exclude` 排除路径、`scope: keep` 关闭降级
+- **FIX** portgraph 平台取证：文件级排除原先只认 `platform/win/**`，漏 `*_win.cpp`
+  与 `*.mm`；win32 规则把 `engine::SendMessage{` 这类同名成员当 API 调用。现在按
+  文件名后缀识别平台专属文件，函数型符号要求调用括号
+- **FIX** 无法登记外部构建结果：自定义 `build_ohos_k.py` 交叉编译成功后，`build`
+  只会自己重跑一遍，逼得手写 `build.json` 才能让 G3/G4 反映真实状态（等于绕过工具且
+  无证据）。新增 `build --record-only --artifacts <glob>`、`package --record-only --hap`
+- **FIX** 子进程输出乱码：`text=True` 按 locale（中文 Windows = cp936）解码 UTF-8
+  输出。改为读 bytes 后 UTF-8 优先、locale/gb18030 兜底
+- **MINOR** `--project` 写在子命令之后此前被当成未知参数（或静默忽略）；现在两种写法
+  等价，写在后面时打印一行说明
+- **MINOR** G0 的 `cmake not on PATH` 补上可执行的修法（`config set cmake <绝对路径>`
+  或 `build_command`）
+- **MINOR** 用例 75 → 91（三档判定、G4 产物、G2 证据、作用域降级、登记式构建、
+  参数位置），portgraph 123 → 127（后缀排除、win32 精度）
+
+---
+
 ## v3.0.0-rc5 — 2026-11-04
 
 把 telegramdesktop 真机实测的移交清单（`tdesktop-trunk-handoff-20261104`）逐条落进 trunk：

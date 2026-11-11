@@ -29,9 +29,14 @@ Windows 上没有 bash 时，用 `python _scripts/verify.py` 等价执行第一�
 | 门禁 | 结果 | 说明 |
 |------|------|------|
 | `verify.py` | **PASS** | 0 error / 0 warning（模板目录里 178 个历史构建产物已清理） |
-| `unittest` | **OK（75 tests）** | 引擎 46 + 一致性 20 + cpp20 扫描 9 = 75（另有 portgraph 123 单测：图谱 119 + 预取 4，不在默认 discover 范围） |
+| `unittest` | **OK（91 tests）** | 引擎 62 + 一致性 20 + cpp20 扫描 9 = 91（另有 portgraph 127 单测：图谱 123 + 预取 4，不在默认 discover 范围） |
 | `faults-build check` | **PASS** | error=0 / warn=0 / info=7（7 条缺失跟踪单已排期到 T-0008…T-0013） |
 | CLI 契约 | **PASS** | `qt-ohos-run` 24 / `qt-sdk-run` 24 / `portgraph` 10 子命令，由测试锁定 |
+| 三档判定 | **PASS** | 编译+链接过、打包未做 → `PARTIAL`（阶段性成果）；打包失败 → `FAIL`；G0–G8 全过 → `PASS` |
+| G4 产物校验 | **PASS** | `build.json` 里列的产物必须在磁盘上存在且非空；全缺 → FAIL，部分缺 → PARTIAL |
+| G2 证据链 | **PASS** | `mark-risk` 必须带 `--evidence`；无证据的标记不算已处理（G2 仍 FAIL） |
+| 外部构建登记 | **PASS** | `build --record-only --artifacts` / `package --record-only --hap`：不重跑，只登记并校验产物 |
+| 全局参数位置 | **PASS** | `--project` 写在子命令前后等价（写在后面会打印一行说明） |
 | 门禁诚实性 | **PASS** | `G2` 没跑 risk_scan 判 NOT_RUN（不因"没发现 critical"判 PASS）；`G5` 打包自称成功但无 `.hap` 判 FAIL；`G8` 未配 `bundle_name` 时最高 PARTIAL |
 | `smoke` 退出码 | **PASS** | `0` 通过 / `1` 崩溃或抓取失败 / `2` 未测（install·launch 未 PASS 或日志无本应用记录） |
 | CLI 冒烟 | **PASS** | 7 个 CLI 的 `--help` 全部 exit 0（含 `ohos-platform-audit.py`；Windows 下子进程强制 UTF-8，见 `_scripts/ci.py`） |
@@ -233,5 +238,5 @@ python tools/qt-ohos-run.py analyze-log <日志文件>
 | `knowledge/errors/`、`knowledge/rules/` | `analyze-log` 抽样匹配 + `faults-build check` |
 | `faults/_data/`、C 页 | `faults-build build` + `check` + `review` |
 | `templates/qt-ohos-app/` | 新建工程 → `qt-ohos-run.py build` 全流程 |
-| `portgraph/` | `portgraph` 自带 123 单测 + 一次 `analyze` 抽样 |
+| `portgraph/` | `portgraph` 自带 127 单测 + 一次 `analyze` 抽样 |
 | README / SKILL / AGENTS 数字 | `tests/test_kb_consistency.py`（会自动拦） |

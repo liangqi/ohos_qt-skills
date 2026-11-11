@@ -240,6 +240,172 @@ def _load_platform_audit():
     return mod
 
 
+class TestOverallVerdict(unittest.TestCase):
+    """三档判定：编译链过 = PARTIAL（阶段性成果），打包失败 = FAIL。"""
+
+    def _run(self, build, runtime=None):
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        root = Path(tmp)
+        st = state_mod.init_state(root)
+        st.write_json("scan.json", {"risk": {"findings": []},
+                                    "cmake_files": ["CMakeLists.txt"]})
+        st.write_json("migration-plan.json", {"steps": []})
+        st.write_json("build.json", build)
+        if runtime:
+            st.write_json("runtime.json", runtime)
+        gates, overall = verifier.evaluate(st)
+        return gates, overall
+
+    def test_compiled_not_packaged_is_partial(self):
+        gates, overall = self._run(
+            {"compile": {"status": "PASS"}, "artifacts": []})
+        self.assertEqual(gates["G3"]["status"], "PASS")
+        self.assertEqual(gates["G5"]["status"], "NOT_RUN")
+        self.assertEqual(overall, "PARTIAL")
+
+    def test_package_failed_is_fail(self):
+        _gates, overall = self._run(
+            {"compile": {"status": "PASS"}, "artifacts": [],
+             "package": {"status": "FAIL"}})
+        self.assertEqual(overall, "FAIL")
+
+    def test_compile_failed_is_fail(self):
+        _gates, overall = self._run({"compile": {"status": "FAIL"}})
+        self.assertEqual(overall, "FAIL")
+
+
+class TestG4ArtifactExists(unittest.TestCase):
+    """G4 不能只看 build.json 里的路径字符串：产物必须真的在磁盘上。"""
+
+    def _gates(self, artifacts):
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        root = Path(tmp)
+        st = state_mod.init_state(root)
+        st.write_json("build.json", {"compile": {"status": "PASS"},
+                                     "artifacts": artifacts})
+        gates, _overall = verifier.evaluate(st)
+        return gates["G4"], root
+
+    def test_missing_artifact_fails(self):
+        gate, _root = self._gates(["build-ohos/nope.so"])
+        self.assertEqual(gate["status"], "FAIL")
+        self.assertIn("none exists on disk", gate["detail"])
+
+    def test_existing_artifact_passes(self):
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        root = Path(tmp)
+        (root / "build-ohos").mkdir()
+        (root / "build-ohos" / "libok.so").write_bytes(b"\x7fELF")
+        st = state_mod.init_state(root)
+        st.write_json("build.json", {"compile": {"status": "PASS"},
+                                     "artifacts": ["build-ohos/libok.so"]})
+        gates, _overall = verifier.evaluate(st)
+        self.assertEqual(gates["G4"]["status"], "PASS")
+        self.assertIn("on disk", gates["G4"]["detail"])
+
+    def test_partial_when_some_listed_but_missing(self):
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        root = Path(tmp)
+        (root / "build-ohos").mkdir()
+        (root / "build-ohos" / "libok.so").write_bytes(b"\x7fELF")
+        st = state_mod.init_state(root)
+        st.write_json("build.json", {"compile": {"status": "PASS"}, "artifacts": [
+            "build-ohos/libok.so", "build-ohos/gone.so"]})
+        gates, _overall = verifier.evaluate(st)
+        self.assertEqual(gates["G4"]["status"], "PARTIAL")
+
+
+class TestG2EvidenceChain(unittest.TestCase):
+    """mark-risk 必须带证据，否则 437 条 critical 一键清零，门禁失真。"""
+
+    def _gates(self, state_mutator):
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        root = Path(tmp)
+        st = state_mod.init_state(root)
+        st.write_json("scan.json", {"risk": {"findings": [
+            {"rule": "R003", "severity": "critical", "file": "a.cpp", "line": 1}]}})
+        state_mutator(st)
+        gates, _overall = verifier.evaluate(st)
+        return gates["G2"]
+
+    def test_unresolved_critical_fails(self):
+        gate = self._gates(lambda st: None)
+        self.assertEqual(gate["status"], "FAIL")
+        self.assertIn("unresolved", gate["detail"])
+
+    def test_marked_without_evidence_fails(self):
+        gate = self._gates(
+            lambda st: st.__setattr__("data", dict(st.data, addressed_critical=["R003"])))
+        self.assertEqual(gate["status"], "FAIL")
+        self.assertIn("without evidence", gate["detail"])
+
+    def test_marked_with_evidence_passes(self):
+        def mark(st):
+            verifier.mark_critical_addressed(
+                st, ["R003"], evidence="a.cpp:12 用 #ifdef Q_OS_OHOS 隔离")
+        gate = self._gates(mark)
+        self.assertEqual(gate["status"], "PASS")
+        self.assertIn("with evidence", gate["detail"])
+
+    def test_evidence_survives_reload(self):
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        root = Path(tmp)
+        st = state_mod.init_state(root)
+        verifier.mark_critical_addressed(st, ["R003"], evidence="改在 a.cpp")
+        st2 = state_mod.load_state(root)
+        rec = verifier.addressed_critical_records(st2)["R003"]
+        self.assertEqual(rec["evidence"], "改在 a.cpp")
+        self.assertTrue(rec["at"])
+
+
+class TestRuleScopeDowngrade(unittest.TestCase):
+    """第三方/平台专属目录里的命中降级：不参与 OHOS 编译的代码不该阻塞 G2。"""
+
+    def test_third_party_downgraded(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        (tmp / "ThirdParty" / "dbus").mkdir(parents=True)
+        (tmp / "ThirdParty" / "dbus" / "x.h").write_text(
+            "#include <QtDBus/QDBusConnection>\n", encoding="utf-8")
+        (tmp / "app.cpp").write_text(
+            "#include <QtDBus/QDBusConnection>\n", encoding="utf-8")
+        info = {"sources": [
+            {"path": "ThirdParty/dbus/x.h", "ext": ".h"},
+            {"path": "app.cpp", "ext": ".cpp"}], "pro_files": [], "cmake_files": []}
+        risk = rule_engine.RuleEngine(REPO_ROOT).scan(info, tmp)
+        by_file = {}
+        for f in risk["findings"]:
+            if f["rule"] == "R001":
+                by_file.setdefault(f["file"], f)
+        self.assertEqual(by_file["ThirdParty/dbus/x.h"]["severity"], "high")
+        self.assertEqual(by_file["ThirdParty/dbus/x.h"]["scope"], "third-party")
+        self.assertEqual(by_file["app.cpp"]["severity"], "critical")
+        self.assertEqual(by_file["app.cpp"]["scope"], "")
+
+    def test_exclude_globs_skip_file(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        (tmp / "gen").mkdir()
+        (tmp / "gen" / "y.h").write_text(
+            "#include <QtDBus/QDBusConnection>\n", encoding="utf-8")
+        # 自定义规则：源匹配 + exclude
+        rules_dir = tmp / "knowledge" / "rules"
+        rules_dir.mkdir(parents=True)
+        (rules_dir / "R900.yaml").write_text(
+            "id: R900\nname: probe\nseverity: high\nmatch:\n"
+            "  source: ['QtDBus']\n  exclude: ['gen/**']\n", encoding="utf-8")
+        info = {"sources": [{"path": "gen/y.h", "ext": ".h"}],
+                "pro_files": [], "cmake_files": []}
+        risk = rule_engine.RuleEngine(tmp).scan(info, tmp)
+        self.assertEqual([f for f in risk["findings"] if f["rule"] == "R900"], [])
+
+
 class TestPlatformAuditClassify(unittest.TestCase):
     """只写一个宏的文件必须被判成"头分发且缺宏"，不能落到源分发里静默放行。"""
 
@@ -607,6 +773,68 @@ class TestStateAndPatches(unittest.TestCase):
         # rollback restores the original
         tracker.rollback()
         self.assertEqual(pro.read_text(encoding="utf-8"), original)
+
+
+class TestRecordOnlyAndFlagOrder(unittest.TestCase):
+    """外部构建/打包结果可登记；--project 写在子命令前后都生效。"""
+
+    def _project(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        (tmp / "CMakeLists.txt").write_text(
+            "cmake_minimum_required(VERSION 3.16)\nproject(p LANGUAGES CXX)\n"
+            "find_package(Qt6 COMPONENTS Core REQUIRED)\n", encoding="utf-8")
+        (tmp / "main.cpp").write_text("int main(){}\n", encoding="utf-8")
+        return tmp
+
+    def _cli(self, *argv, cwd=None):
+        import subprocess
+        return subprocess.run(
+            [sys.executable, str(REPO_ROOT / "tools" / "qt-ohos-run.py"), *argv],
+            capture_output=True, text=True, cwd=str(cwd) if cwd else None)
+
+    def test_build_record_only_pass(self):
+        project = self._project()
+        (project / "build-ohos").mkdir()
+        (project / "build-ohos" / "libx.so").write_bytes(b"\x7fELF")
+        self._cli("--project", str(project), "init")
+        proc = self._cli("--project", str(project), "build", "--record-only",
+                         "--artifacts", "build-ohos/*.so")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIn("已登记外部构建", proc.stdout)
+        build = state_mod.load_state(project).read_json("build.json")
+        self.assertEqual(build["compile"]["status"], "PASS")
+        self.assertEqual(build["mode"], "recorded")
+        self.assertEqual(build["artifacts"], ["build-ohos/libx.so"])
+
+    def test_build_record_only_without_artifact_fails(self):
+        project = self._project()
+        self._cli("--project", str(project), "init")
+        proc = self._cli("--project", str(project), "build", "--record-only",
+                         "--artifacts", "build-ohos/*.so")
+        self.assertEqual(proc.returncode, 1)
+        build = state_mod.load_state(project).read_json("build.json")
+        self.assertEqual(build["compile"]["status"], "FAIL")
+
+    def test_package_record_only(self):
+        project = self._project()
+        (project / "out").mkdir()
+        (project / "out" / "app.hap").write_bytes(b"PK\x03\x04")
+        self._cli("--project", str(project), "init")
+        proc = self._cli("--project", str(project), "package", "--record-only",
+                         "--hap", "out/app.hap")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        build = state_mod.load_state(project).read_json("build.json")
+        self.assertEqual(build["hap"], "out/app.hap")
+
+    def test_project_flag_after_subcommand_works(self):
+        project = self._project()
+        self._cli("--project", str(project), "init")
+        proc = self._cli("verify", "--project", str(project))
+        # 未配环境时 verify 本来就返回 1；关键是不能是 2（用法错误）
+        self.assertNotEqual(proc.returncode, 2, proc.stdout + proc.stderr)
+        self.assertIn("G0", proc.stdout)
+        self.assertIn("写在子命令之后", proc.stdout)
 
 
 class TestKnowledge(unittest.TestCase):

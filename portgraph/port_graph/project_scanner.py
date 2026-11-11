@@ -32,12 +32,15 @@ from .qt_scanner import (  # noqa: F401
 # 因为平台宏引用本身就是条件编译守卫，由宏栈追踪处理
 PLATFORM_API_RULES: List[Dict] = [
     {"iface": "iface:win32",
+     # 函数型符号必须带调用括号：`engine::SendMessage{` 这种同名成员/普通标识符
+     # 曾被算成 Win32 API 调用（实测误报）。类型名（HWND/HDC…）保留裸匹配。
      "re": re.compile(r"#\s*include\s*<\s*(windows|shellapi|shlobj|winuser|"
                       r"wingdi|winbase|winsock2|commctrl|commdlg)\.h\s*>|"
                       r"\b(CreateWindow|SendMessage|PostMessage|GetMessage|"
                       r"LoadLibrary|GetProcAddress|CreateFile|ReadFile|WriteFile|"
-                      r"VirtualAlloc|HeapAlloc|RegOpenKey|RegQueryValue|CoCreateInstance|"
-                      r"IDispatch|IUnknown|HWND|HDC|HINSTANCE)\b"),
+                      r"VirtualAlloc|HeapAlloc|RegOpenKey|RegQueryValue|"
+                      r"CoCreateInstance)\s*\(|"
+                      r"\b(IDispatch|IUnknown|HWND|HDC|HINSTANCE)\b"),
      "pre": ("windows.h", "shellapi", "shlobj", "winuser", "wingdi",
              "winbase", "winsock2", "commctrl", "commdlg", "CreateWindow",
              "SendMessage", "PostMessage", "GetMessage", "LoadLibrary",
@@ -114,12 +117,29 @@ NON_OHOS_PLATFORM_PATH_HINTS = (
 )
 
 
+# 文件名后缀也表达平台归属：桌面工程常用 `xxx_win.cpp` / `xxx_mac.mm`
+# 而不放在 platform/win 目录里。只看目录会漏掉一整类文件。
+NON_OHOS_FILE_SUFFIX = (
+    ("macos", (".mm", "_macos.cpp", "_macos.mm", "_osx.cpp", "_osx.mm",
+               "_darwin.cpp", "_darwin.mm", "_cocoa.mm")),
+    ("windows", ("_win.cpp", "_win32.cpp", "_windows.cpp", "_winrt.cpp",
+                 "_win.h", "_win32.h")),
+)
+
+
 def _file_platform_excluded(file_rel: str) -> Optional[str]:
     """根据文件路径判断是否为非鸿蒙平台专属文件。"""
     rel = file_rel.lower().replace("\\", "/")
     for plat, hints in NON_OHOS_PLATFORM_PATH_HINTS:
         for hint in hints:
             if hint in rel:
+                return plat
+    # `_win.cpp` 这类后缀：只认文件名，避免 `darwin_helper.cpp`（mac 的
+    # darwin 是路径提示）之外误伤；`_osx`/`_macos` 同时被路径提示覆盖。
+    name = rel.rsplit("/", 1)[-1]
+    for plat, suffixes in NON_OHOS_FILE_SUFFIX:
+        for suffix in suffixes:
+            if name.endswith(suffix):
                 return plat
     return None
 

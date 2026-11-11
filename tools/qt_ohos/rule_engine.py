@@ -39,7 +39,18 @@ from . import yaml_lite
 from .scanner import TEXT_SCAN_EXTS
 
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+SEVERITY_DOWN = {"critical": "high", "high": "medium", "medium": "low", "low": "low"}
 MAX_MATCHES_PER_RULE = 50
+
+# 这些路径里的代码在鸿蒙目标上根本不参与编译（第三方源码树按平台裁剪、
+# 或平台专属目录）。把它们算成 critical 会让风险面虚高（实测 tdesktop
+# ThirdParty/fcitx5-qt 的 DBus 头被算成 critical），G2 也就失去判别力。
+THIRD_PARTY_HINTS = ("/thirdparty/", "/third_party/", "/3rdparty/", "/3rd-party/",
+                     "/vendor/", "/external/", "/extern/", "/contrib/")
+PLATFORM_EXCLUDED_HINTS = ("/platform/win/", "/platform/windows/", "/windows/",
+                           "/win32/", "/winrt/", "/platform/macos/", "/macos/",
+                           "/osx/", "/platform/apple/", "/darwin/",
+                           "/platform/android/", "/platform/ios/")
 
 
 def load_rules(kb_root) -> List[Dict]:
@@ -76,6 +87,7 @@ class RuleEngine:
                     findings.append(_finding(rule, "qt-module:%s" % pattern,
                                              0, "Qt module '%s'" % pattern))
 
+            excludes = [str(g) for g in _as_list(match.get("exclude"))]
             for pattern in _as_list(match.get("source")):
                 rx = _compile(pattern)
                 if rx is None:
@@ -85,6 +97,8 @@ class RuleEngine:
                     if src["ext"] not in TEXT_SCAN_EXTS:
                         continue
                     rel = src["path"]
+                    if excludes and any(fnmatch.fnmatch(rel, g) for g in excludes):
+                        continue
                     if rel not in sources_text:
                         try:
                             sources_text[rel] = (root / rel).read_text(
@@ -93,8 +107,8 @@ class RuleEngine:
                             sources_text[rel] = ""
                     for lineno, line in enumerate(sources_text[rel].splitlines(), 1):
                         if rx.search(line):
-                            findings.append(_finding(rule, rel, lineno,
-                                                     line.strip()[:120]))
+                            findings.append(_scoped_finding(
+                                rule, rel, lineno, line.strip()[:120]))
                             count += 1
                             if count >= MAX_MATCHES_PER_RULE:
                                 break
@@ -172,6 +186,30 @@ class RuleEngine:
         }
 
 
+def _path_scope(rel: str) -> str:
+    """路径是不是"鸿蒙目标不编译"的代码：third-party / 平台专属目录。"""
+    norm = "/" + rel.replace("\\", "/").lower().strip("/") + "/"
+    if any(hint in norm for hint in THIRD_PARTY_HINTS):
+        return "third-party"
+    if any(hint in norm for hint in PLATFORM_EXCLUDED_HINTS):
+        return "platform-excluded"
+    return ""
+
+
+def _scoped_finding(rule: Dict, rel: str, line: int, snippet: str) -> Dict:
+    """按文件作用域降级：不参与 OHOS 编译的代码不该按 critical 阻塞 G2。
+
+    规则可以用 `scope: keep` 关掉降级（确实需要在第三方目录里报问题的场景）。
+    """
+    finding = _finding(rule, rel, line, snippet)
+    scope = _path_scope(rel)
+    if scope and str(rule.get("scope", "")).lower() != "keep":
+        finding["severity"] = SEVERITY_DOWN.get(finding["severity"],
+                                                finding["severity"])
+        finding["scope"] = scope
+    return finding
+
+
 def _finding(rule: Dict, rel: str, line: int, snippet: str) -> Dict:
     return {
         "rule": rule.get("id"),
@@ -185,6 +223,7 @@ def _finding(rule: Dict, rel: str, line: int, snippet: str) -> Dict:
         "golden_rules": _as_list(rule.get("golden_rules")),
         "kb": _as_list(rule.get("kb")),
         "solution": rule.get("solution"),
+        "scope": "",
     }
 
 

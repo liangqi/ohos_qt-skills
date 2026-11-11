@@ -24,6 +24,7 @@ Design rules (borrowed from build_in_harmonyos):
 from __future__ import annotations
 
 import json
+import locale
 import os
 import shlex
 import subprocess
@@ -241,11 +242,13 @@ class MigrationState:
         try:
             proc = subprocess.run(
                 argv, cwd=str(cwd or self.project_root),
-                capture_output=True, text=True, timeout=timeout,
-                errors="replace", shell=isinstance(args, str) and os.name == "nt")
+                capture_output=True, timeout=timeout,
+                shell=isinstance(args, str) and os.name == "nt")
             result.exit_code = proc.returncode
-            result.stdout = _clip(proc.stdout)
-            result.stderr = _clip(proc.stderr)
+            # 不要 text=True：它按 locale（中文 Windows = cp936）解码 UTF-8 的
+            # 子进程输出，日志里就是乱码。统一 utf-8 优先、locale 兜底。
+            result.stdout = _clip(_decode_output(proc.stdout))
+            result.stderr = _clip(_decode_output(proc.stderr))
             result.status = "PASS" if proc.returncode == expect_rc else "FAIL"
         except subprocess.TimeoutExpired as exc:
             result.stdout = _clip(_bytes_to_str(exc.stdout))
@@ -332,9 +335,32 @@ def _clip(text: str, limit: int = 20000) -> str:
     return text
 
 
+def _decode_output(data) -> str:
+    """子进程输出解码：UTF-8 优先，失败退回 locale（cp936 等），最后 replace。"""
+    if data is None:
+        return ""
+    if isinstance(data, str):
+        return data
+    candidates = ["utf-8"]
+    try:
+        preferred = locale.getpreferredencoding(False)
+    except Exception:                      # pragma: no cover - 平台缺 locale
+        preferred = ""
+    for encoding in (preferred, "gb18030", "cp1252"):
+        if encoding and encoding.lower() not in ("utf-8", "utf8") \
+                and encoding not in candidates:
+            candidates.append(encoding)
+    for encoding in candidates:
+        try:
+            return data.decode(encoding)
+        except (UnicodeDecodeError, LookupError):
+            continue
+    return data.decode("utf-8", errors="replace")
+
+
 def _bytes_to_str(data) -> str:
     if data is None:
         return ""
     if isinstance(data, bytes):
-        return data.decode("utf-8", errors="replace")
+        return _decode_output(data)
     return str(data)

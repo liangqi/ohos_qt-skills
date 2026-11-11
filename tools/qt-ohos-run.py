@@ -98,10 +98,11 @@ def _print_risk_report(risk: dict) -> None:
         if count:
             print("%-8s : %d" % (sev.upper(), count))
     for finding in risk.get("findings", [])[:40]:
-        print("  %-5s %-7s %-22s %s:%s" % (
+        print("  %-5s %-7s %-22s %s:%s%s" % (
             finding["severity"][:4].upper(), finding["rule"],
             str(finding.get("name"))[:22], finding.get("file"),
-            finding.get("line")))
+            finding.get("line"),
+            ("  [%s]" % finding["scope"]) if finding.get("scope") else ""))
         if finding.get("snippet"):
             print("        %s" % finding["snippet"][:100])
     if len(risk.get("findings", [])) > 40:
@@ -346,8 +347,91 @@ def cmd_patch(args):
     return 0
 
 
+def _record_external_package(st, args):
+    """登记外部打包结果（HAP 已由别的流程产出）。"""
+    project = Path(st.project_root)
+    if not args.hap:
+        print("[qt-ohos-run] package --record-only 需要 --hap <路径>")
+        return 2
+    hap = Path(args.hap)
+    if not hap.is_absolute():
+        hap = project / hap
+    build_json = st.read_json("build.json", default={}) or {}
+    if not hap.is_file() or hap.stat().st_size == 0:
+        build_json["package"] = {
+            "command": "record-only (external package)", "status": "FAIL",
+            "exit_code": 1, "stdout": "", "start_time": _now_iso(),
+            "stderr": "HAP 不存在或为空：%s" % args.hap}
+        st.write_json("build.json", build_json)
+        st.fail_stage("package", error="record-only", next_action="package")
+        print("[qt-ohos-run] 已登记外部打包：FAIL（HAP 不存在或为空：%s）" % args.hap)
+        return 1
+    build_json["hap"] = hap.relative_to(project).as_posix() \
+        if hap.is_relative_to(project) else str(hap)
+    build_json["package"] = {
+        "command": "record-only (external package)", "label": "package-recorded",
+        "status": "PASS", "exit_code": 0, "stdout": "",
+        "stderr": "", "evidence": str(hap), "start_time": _now_iso()}
+    st.write_json("build.json", build_json)
+    st.complete_stage("package", next_action="install")
+    print("[qt-ohos-run] 已登记外部打包：PASS（%s）" % build_json["hap"])
+    return 0
+
+
+def _record_external_build(st, args):
+    """登记外部构建结果：不重跑构建，只把事实写进门禁读的地方。
+
+    为什么需要：交叉编译常常跑自己的脚本（build_ohos_k.py）或 CI，
+    工具再跑一遍既慢又可能和真实产物不一致。此前只能手写 build.json 才能让
+    G3/G4 反映真实状态——那等于绕过工具，且没有证据。
+    """
+    project = Path(st.project_root)
+    patterns = args.artifacts or []
+    found = []
+    for pattern in patterns:
+        for match in sorted(project.glob(pattern)):
+            if match.is_file():
+                found.append(match.relative_to(project).as_posix())
+    found = found[:50]
+    status = "PASS" if (args.status == "pass" and found) else "FAIL"
+    reason = ""
+    if args.status == "pass" and not found:
+        reason = "record-only 声称构建成功，但 --artifacts 没匹配到任何文件"
+    evidence = ""
+    if args.log:
+        log_path = Path(args.log)
+        if not log_path.is_absolute():
+            log_path = project / log_path
+        evidence = str(log_path) if log_path.exists() else ""
+        if args.log and not evidence:
+            reason = (reason + "; " if reason else "") + \
+                "--log 指向的日志不存在：%s" % args.log
+    build_json = st.read_json("build.json", default={}) or {}
+    build_json["mode"] = "recorded"
+    build_json["compile"] = {
+        "command": "record-only (external build)", "label": "build-recorded",
+        "status": status, "exit_code": 0 if status == "PASS" else 1,
+        "stdout": "", "stderr": reason,
+        "evidence": evidence, "start_time": _now_iso(),
+    }
+    build_json["artifacts"] = found
+    st.write_json("build.json", build_json)
+    if status == "PASS":
+        st.complete_stage("compile", next_action="package")
+        print("[qt-ohos-run] 已登记外部构建：PASS，%d 个产物%s" % (
+            len(found), "（证据：%s）" % evidence if evidence else ""))
+        for rel in found[:5]:
+            print("  %s" % rel)
+        return 0
+    st.fail_stage("compile", error="record-only", next_action="build")
+    print("[qt-ohos-run] 已登记外部构建：FAIL（%s）" % (reason or "status=fail"))
+    return 1
+
+
 def cmd_build(args):
     st = _state(args)
+    if getattr(args, "record_only", False):
+        return _record_external_build(st, args)
     st.check_budget()
     st.begin_stage("compile")
     result = builder.configure_and_build(st, timeout=args.timeout)
@@ -369,6 +453,8 @@ def cmd_build(args):
 
 def cmd_package(args):
     st = _state(args)
+    if getattr(args, "record_only", False):
+        return _record_external_package(st, args)
     st.check_budget()
     st.begin_stage("package")
     result = builder.package_hap(st, timeout=args.timeout)
@@ -913,8 +999,10 @@ def cmd_libcheck(args):
 
 def cmd_mark_risk(args):
     st = _state(args)
-    verifier.mark_critical_addressed(st, args.rule)
-    print("[qt-ohos-run] marked addressed: %s" % ", ".join(args.rule))
+    verifier.mark_critical_addressed(st, args.rule, evidence=args.evidence,
+                                     note=args.note)
+    print("[qt-ohos-run] marked addressed: %s（证据：%s）"
+          % (", ".join(args.rule), args.evidence))
     return 0
 
 
@@ -1004,7 +1092,54 @@ def cmd_mark_ui(args):
 
 # ------------------------------------------------------------------ main
 
+HOISTED_VALUE_FLAGS = ("--project", "--timeout")
+
+
+def _hoist_global_flags(argv):
+    """把全局参数从任意位置提到子命令之前。
+
+    argparse 只认 `--project X verify`；写成 `verify --project X` 会被子命令
+    当成未知参数（或更糟：被静默忽略），而两种写法在人看来完全一样。
+    返回 (剩余 argv, 默认值 dict, 是否发生过"写在子命令之后")。
+    """
+    rest, defaults, misplaced = [], {}, False
+    seen_command = False
+    i = 0
+    while i < len(argv):
+        token = argv[i]
+        name, sep, inline = token.partition("=")
+        if name in HOISTED_VALUE_FLAGS:
+            value = inline if sep else (argv[i + 1] if i + 1 < len(argv) else None)
+            if value is None:
+                rest.append(token)
+                i += 1
+                continue
+            defaults[name.lstrip("-").replace("-", "_")] = value
+            if seen_command:
+                misplaced = True
+            i += 2 if not sep else 1
+            continue
+        if token == "--json":
+            defaults["json"] = True
+            if seen_command:
+                misplaced = True
+            i += 1
+            continue
+        if not token.startswith("-"):
+            seen_command = True
+        rest.append(token)
+        i += 1
+    if "timeout" in defaults:
+        try:
+            defaults["timeout"] = float(defaults["timeout"])
+        except ValueError:
+            defaults.pop("timeout")
+    return rest, defaults, misplaced
+
+
 def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    argv, hoisted, misplaced = _hoist_global_flags(argv)
     parser = argparse.ArgumentParser(
         prog="qt-ohos-run",
         description="Qt -> HarmonyOS porting execution CLI (ohos_qt-skills)")
@@ -1014,6 +1149,13 @@ def main(argv=None):
                         help="target project directory (default: cwd)")
     parser.add_argument("--timeout", type=float, default=600.0,
                         help="per-command timeout seconds (default 600)")
+    if hoisted and misplaced:
+        # 两种写法等价；只在"写在子命令之后"时说一声，避免以为被忽略
+        label = ", ".join("--%s=%s" % (k.replace("_", "-"), v)
+                          for k, v in hoisted.items())
+        print("[qt-ohos-run] 全局参数 %s 写在子命令之后，已按此处理"
+              % label)
+    parser.set_defaults(**hoisted)
     sub = parser.add_subparsers(dest="command")
 
     p = sub.add_parser("init", help="create .qt-ohos state in a project")
@@ -1028,8 +1170,19 @@ def main(argv=None):
 
     sub.add_parser("plan", help="generate migration plan")
     sub.add_parser("patch", help="apply tracked automatic fixes")
-    sub.add_parser("build", help="compile (G3)")
-    sub.add_parser("package", help="build HAP (G5)")
+    p = sub.add_parser("build", help="compile (G3)")
+    p.add_argument("--record-only", action="store_true",
+                   help="只登记外部构建结果，不自己跑构建")
+    p.add_argument("--artifacts", action="append", default=None,
+                   metavar="GLOB",
+                   help="record-only：产物 glob（相对工程根，可重复）")
+    p.add_argument("--status", choices=["pass", "fail"], default="pass",
+                   help="record-only：外部构建结论")
+    p.add_argument("--log", default=None, help="record-only：日志文件（作为证据）")
+    p = sub.add_parser("package", help="build HAP (G5)")
+    p.add_argument("--record-only", action="store_true",
+                   help="只登记外部打包结果，不自己跑 hvigor")
+    p.add_argument("--hap", default=None, help="record-only：HAP 路径（相对工程根）")
     sub.add_parser("install", help="hdc install (G6)")
     sub.add_parser("launch", help="aa start (G7)")
     p = sub.add_parser("smoke", help="crash window check (G8) or manual record")
@@ -1084,6 +1237,9 @@ def main(argv=None):
     p.add_argument("value", nargs="?")
     p = sub.add_parser("mark-risk", help="mark critical risks as addressed (G2)")
     p.add_argument("--rule", action="append", required=True)
+    p.add_argument("--evidence", required=True,
+                   help="改在哪个文件/怎么验证的（G2 只认带证据的标记）")
+    p.add_argument("--note", default="", help="可选备注")
 
     p = sub.add_parser("libcheck",
                        help="record per-library porting milestones (built/probed)")

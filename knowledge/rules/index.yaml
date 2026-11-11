@@ -22,6 +22,8 @@
 #     guard:                    # 文件级断言：命中 glob 的文件必须同时满足 require
 #       files: ["platform_*.h"] # glob
 #       require: ["Q_OS_OHOS"]  # 任一缺失即报（用于双宏守卫等）
+#     exclude: ["gen/**", "ThirdParty/**"]   # 这些路径不参与匹配（可省略）
+#   scope: keep                 # 可选：关闭"第三方/平台专属目录降级"
 #   golden_rules: [B9]          # refs to qt-harmonyos-golden-rules.md
 #   kb: [semantic/xxx.md]       # knowledge pages to read when this hits
 #   solution: >                 # machine + human readable fix guidance
@@ -33,6 +35,10 @@
 #     critical = will not run on HarmonyOS without rework
 #     high     = very likely breaks build or runtime
 #     medium   = probably needs adaptation
+# - 作用域降级：命中文件在 ThirdParty/ third_party/ 3rdparty/ vendor/ 等目录，
+#   或非 OHOS 平台专属目录（platform/win、windows/、macos/ 等）时，severity 自动
+#   降一档并标注 scope（third-party / platform-excluded）——这些代码在鸿蒙目标上
+#   不参与编译，按 critical 计会让 G2 失去判别力。规则写 `scope: keep` 可关闭。
 #     low      = review / informational
 # - add new rules freely; ids must stay unique and sorted
 

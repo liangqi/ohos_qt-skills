@@ -123,6 +123,16 @@ if(ANDROID) ...
 
 > **Step 1 输出**：一份列出所有需要替换或适配的代码位置的完整清单。
 
+**扫描报告怎么读（作用域降级）**：命中会按文件作用域降一档——`ThirdParty/`、
+`third_party/`、`3rdparty/`、`vendor/` 这类第三方源码树，以及 `platform/win/`、
+`windows/`、`macos/` 这类非鸿蒙平台专属路径，在鸿蒙目标上不参与编译。这些命中带
+`scope: third-party` / `scope: platform-excluded`，severity 从 critical 降到 high：
+仍值得看一眼，但不该按 critical 阻塞 G2。
+
+判读顺序：先看 `scope` 是否为空。为空的 critical 才是"鸿蒙会编译到、且会炸"的真风险；
+带 scope 的先确认构建确实排除了该目录（`nice_target_sources` 这类桶规则），确认排除
+即可忽略。规则层面可用 `match.exclude` 排除路径，或用 `scope: keep` 关掉降级。
+
 ---
 
 ### 树外消费 app 层的前置清单（编译校验必看）

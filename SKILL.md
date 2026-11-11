@@ -148,6 +148,8 @@ python tools/qt-ohos-run.py plan              # 迁移计划（auto/assisted/man
 python tools/qt-ohos-run.py patch             # 白名单自动修复（受追踪）
 python tools/qt-ohos-run.py config set qt_sdk_prefix <Qt OHOS SDK 路径>
 python tools/qt-ohos-run.py build             # G3 编译
+python tools/qt-ohos-run.py build --record-only --artifacts "build-ohos/*.so" \
+                                              # 外部交叉编译已成功：只登记结果，不重跑
 python tools/qt-ohos-run.py package           # G5 打 HAP
 python tools/qt-ohos-run.py install           # G6 hdc 装机
 python tools/qt-ohos-run.py launch            # G7 启动
@@ -155,6 +157,10 @@ python tools/qt-ohos-run.py smoke             # G8 崩溃窗口检查（install/
 python tools/qt-ohos-run.py verify            # G0-G12 门禁（唯一成功判据）
 python tools/qt-ohos-run.py libcheck <lib> --level built|probed --evidence "..."
                                               # 库级进展：built=能编能链，probed=设备上调通
+python tools/qt-ohos-run.py mark-risk --rule R003 --evidence "改在 a.cpp:120"
+                                              # G2 只认带证据的"已处理"标记
+python tools/qt-ohos-run.py package --record-only --hap entry/build/.../app.hap
+                                              # 外部打包：只登记 HAP
 ```
 
 **平台层移植预检**（分层移植时先跑，比链接期报错早得多）：
