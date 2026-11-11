@@ -94,7 +94,7 @@ metadata:
    补丁必须可溯源（manifest 记录来源与适用版本），临时测试版本走 `release --temp`，
    不要手工改 SDK 目录。
 
-10. **收尾必须给机器结论**（§E）。交付时给 `verify` 的门禁结果（PASS/PARTIAL/FAIL +
+10. **收尾必须给机器结论**（§E）。`verify` 退出码：`0` PASS / `3` PARTIAL（编译链过、设备侧未完成）/ `1` FAIL——脚本里别只看非零就当崩溃。交付时给 `verify` 的门禁结果（PASS/PARTIAL/FAIL +
     失败项编号），而不是"应该可以了"；部分通过就明确列出未过的门禁与原因。
 
 11. **沉淀是流程的一部分，不是可选项**。新坑先进 `faults/_drafts/`（附复现 demo 或

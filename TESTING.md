@@ -29,9 +29,10 @@ Windows 上没有 bash 时，用 `python _scripts/verify.py` 等价执行第一�
 | 门禁 | 结果 | 说明 |
 |------|------|------|
 | `verify.py` | **PASS** | 0 error / 0 warning（模板目录里 178 个历史构建产物已清理） |
-| `unittest` | **OK（94 tests）** | 引擎 65 + 一致性 20 + cpp20 扫描 9 = 94（另有 portgraph 127 单测：图谱 123 + 预取 4，不在默认 discover 范围） |
+| `unittest` | **OK（95 tests）** | 引擎 66 + 一致性 20 + cpp20 扫描 9 = 95（另有 portgraph 127 单测：图谱 123 + 预取 4，不在默认 discover 范围） |
 | `faults-build check` | **PASS** | error=0 / warn=0 / info=7（7 条缺失跟踪单已排期到 T-0008…T-0013） |
 | CLI 契约 | **PASS** | `qt-ohos-run` 24 / `qt-sdk-run` 24 / `portgraph` 10 子命令，由测试锁定 |
+| `verify` 退出码 | **PASS** | `0` PASS / `3` PARTIAL（编译链过、设备侧未完成）/ `1` FAIL；`--json` 时 stdout 是纯 JSON |
 | 三档判定 | **PASS** | 编译+链接过、打包未做 → `PARTIAL`（阶段性成果）；打包失败 → `FAIL`；G0–G8 全过 → `PASS` |
 | G4 产物校验 | **PASS** | `build.json` 里列的产物必须在磁盘上存在且非空；全缺 → FAIL，部分缺 → PARTIAL |
 | G2 证据链 | **PASS** | `mark-risk` 必须带 `--evidence`；无证据的标记不算已处理（G2 仍 FAIL） |

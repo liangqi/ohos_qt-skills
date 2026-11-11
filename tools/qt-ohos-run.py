@@ -84,29 +84,35 @@ def _state(args) -> MigrationState:
     return state_mod.load_state(project)
 
 
+def _say(args, message=""):
+    """人类可读输出。`--json` 时改走 stderr——stdout 必须是可直接 parse 的 JSON。"""
+    print(message, file=sys.stderr if getattr(args, "json", False) else sys.stdout)
+
+
 def _emit(payload, args):
     if getattr(args, "json", False):
         print(json.dumps(payload, ensure_ascii=False, indent=2))
 
 
-def _print_risk_report(risk: dict) -> None:
+def _print_risk_report(risk: dict, args=None) -> None:
+    say = (lambda text: _say(args, text)) if args is not None else print
     summary = risk.get("summary") or {}
-    print("\nQt HarmonyOS Porting Risk Report")
-    print("================================")
+    say("\nQt HarmonyOS Porting Risk Report")
+    say("================================")
     for sev in ("critical", "high", "medium", "low"):
         count = summary.get(sev, 0)
         if count:
-            print("%-8s : %d" % (sev.upper(), count))
+            say("%-8s : %d" % (sev.upper(), count))
     for finding in risk.get("findings", [])[:40]:
-        print("  %-5s %-7s %-22s %s:%s%s" % (
+        say("  %-5s %-7s %-22s %s:%s%s" % (
             finding["severity"][:4].upper(), finding["rule"],
             str(finding.get("name"))[:22], finding.get("file"),
             finding.get("line"),
             ("  [%s]" % finding["scope"]) if finding.get("scope") else ""))
         if finding.get("snippet"):
-            print("        %s" % finding["snippet"][:100])
+            say("        %s" % finding["snippet"][:100])
     if len(risk.get("findings", [])) > 40:
-        print("  ... %d more findings in scan.json" %
+        say("  ... %d more findings in scan.json" %
               (len(risk["findings"]) - 40))
 
 
@@ -274,7 +280,7 @@ def cmd_scan(args):
                 risk = engine.scan(info, project)
                 info["risk"] = risk
                 st.write_json("scan.json", info)
-                _print_risk_report(risk)
+                _print_risk_report(risk, args)
                 st.complete_stage(stage, next_action="plan")
             elif stage == "dependency_scan":
                 info = st.read_json("scan.json", default={}) or {}
@@ -531,7 +537,7 @@ def cmd_verify(args):
     st.data["gates"] = gates
     st.data["overall"] = overall
     st.save()
-    print(verifier.render(gates, overall))
+    _say(args, verifier.render(gates, overall))
     _emit({"gates": gates, "overall": overall}, args)
     return {"PASS": 0, "PARTIAL": 3}.get(overall, 1)
 
@@ -674,7 +680,7 @@ def _run_pipeline(st: MigrationState, args) -> int:
             risk = rule_engine.RuleEngine(KB_ROOT).scan(info, project)
             info["risk"] = risk
             st.write_json("scan.json", info)
-            _print_risk_report(risk)
+            _print_risk_report(risk, args)
             st.complete_stage("risk_scan", next_action="plan")
 
         if not stage_done("dependency_scan"):
@@ -1153,11 +1159,10 @@ def main(argv=None):
     parser.add_argument("--timeout", type=float, default=600.0,
                         help="per-command timeout seconds (default 600)")
     if hoisted and misplaced:
-        # 两种写法等价；只在"写在子命令之后"时说一声，避免以为被忽略
-        label = ", ".join("--%s=%s" % (k.replace("_", "-"), v)
-                          for k, v in hoisted.items())
-        print("[qt-ohos-run] 全局参数 %s 写在子命令之后，已按此处理"
-              % label)
+        # 两种写法等价；只在"写在子命令之后"时说一声（stderr，别污染 --json）
+        label = ", ".join("--%s" % k.replace("_", "-") for k in hoisted)
+        print("[qt-ohos-run] 全局参数 %s 写在子命令之后，已按此处理" % label,
+              file=sys.stderr)
     parser.set_defaults(**hoisted)
     sub = parser.add_subparsers(dest="command")
 
@@ -1192,7 +1197,8 @@ def main(argv=None):
     p.add_argument("--result", choices=["pass", "fail", "partial"], default=None)
     p.add_argument("--note", default=None)
 
-    sub.add_parser("verify", help="run verification gates G0..G12")
+    sub.add_parser("verify", help="run verification gates G0..G12 "
+                                  "(exit 0=PASS / 3=PARTIAL / 1=FAIL)")
     p = sub.add_parser("analyze-log", help="match a log against known errors")
     p.add_argument("logfile")
     sub.add_parser("status", help="show migration state")

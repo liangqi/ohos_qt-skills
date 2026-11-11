@@ -862,7 +862,30 @@ class TestRecordOnlyAndFlagOrder(unittest.TestCase):
         # 未配环境时 verify 本来就返回 1；关键是不能是 2（用法错误）
         self.assertNotEqual(proc.returncode, 2, proc.stdout + proc.stderr)
         self.assertIn("G0", proc.stdout)
-        self.assertIn("写在子命令之后", proc.stdout)
+        # 说明行在 stderr（不能污染 --json 的 stdout）
+        self.assertIn("写在子命令之后", proc.stderr)
+
+
+class TestJsonContract(unittest.TestCase):
+    """`--json` 时 stdout 必须是可直接 parse 的 JSON（人类输出走 stderr）。"""
+
+    def test_verify_json_is_pure(self):
+        import json as _json
+        import subprocess
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            (project / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.16)\n"
+                "project(p LANGUAGES CXX)\n", encoding="utf-8")
+            tool = REPO_ROOT / "tools" / "qt-ohos-run.py"
+            subprocess.run([sys.executable, tool, "--project", project, "init"],
+                           capture_output=True)
+            proc = subprocess.run(
+                [sys.executable, tool, "verify", "--json", "--project", project],
+                capture_output=True, text=True)
+            payload = _json.loads(proc.stdout)          # 不抛即通过
+            self.assertIn("overall", payload)
+            self.assertIn("gates", payload)
 
 
 class TestKnowledge(unittest.TestCase):

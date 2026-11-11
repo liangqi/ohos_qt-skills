@@ -41,6 +41,10 @@
   等价，写在后面时打印一行说明
 - **MINOR** G0 的 `cmake not on PATH` 补上可执行的修法（`config set cmake <绝对路径>`
   或 `build_command`）
+- **FIX**（第二轮自查）`--json` 的 stdout 不是纯 JSON：人类可读的门禁表/风险报告/参数
+  说明都写 stdout，机器侧 `json.load` 直接失败。人类输出在有 `--json` 时改走 stderr
+- **MINOR** 退出码此前只有 0/1，PARTIAL 变成可达后需要独立语义：`0` PASS / `3` PARTIAL /
+  `1` FAIL，写进 `verify --help`、TESTING、SKILL
 - **FIX**（第二轮自查）状态文件损坏时整条命令崩在 `JSONDecodeError`：中断的运行会留下
   半截 `build.json`/`scan.json`，此前每个子命令都直接抛栈。现在按"没有这条证据"处理
   并告警（门禁只会更保守），`state.json` 损坏则给出重建步骤
