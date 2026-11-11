@@ -12,6 +12,24 @@
 
 ---
 
+## v3.0.0-rc9 — 2026-11-11
+
+对外可读层换成打磨过的叙事结构（以 `matrix-release` 的 README 为骨架），并把 trunk
+新增的能力与事实回填。对外一个入口（README）、对 agent 一个入口（AGENTS + `_index/`）。
+
+- **MINOR** README 重写：保留 matrix-release 的 19 节叙事（问题 → 架构 → 能力 → 上手 →
+  场景 → 目录 → 质量 → 规格 → 限制 → 理念 → 环境 → 发布 → 参与），补上 trunk 独有的
+  「常见问题」，去掉内部「分支模型」
+- **MINOR** 回填新能力：`tools/ohos-platform-audit.py`（平台层两种分发审计）、`libcheck`
+  （库级 built/probed）、`build/package --record-only`（登记外部构建）、`verify` 三档
+  判定与退出码 0/3/1、七个 CLI 契约、Skills 补 `qt-community-to-official`
+- **FIX** 骨架里的过时事实一次改齐：知识页 120→132、QOH 42→44、R 18→19、problems
+  47→56、铁律 35→38、子命令 24→25、故障图 5→11 张跟踪单、用例 119→99+127
+- **MINOR** 已知限制补上 portgraph 误报面的收敛（函数型符号要求调用括号、按文件名排除
+  平台专属文件）
+
+---
+
 ## v3.0.0-rc8 — 2026-11-11
 
 按"只补索引、收敛事实块"的最小方案做了一轮内容核查（先只读测绘，再改）。测绘结论：

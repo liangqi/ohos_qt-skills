@@ -10,9 +10,9 @@
 [![Qt](https://img.shields.io/badge/Qt-5.12%20%7C%205.15%20%7C%206.12-green.svg)](#能力规格)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg)](#30-秒上手)
 [![Platform](https://img.shields.io/badge/平台-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#质量保障)
-[![Pages](https://img.shields.io/badge/知识页-124-orange.svg)](_index/_map.md)
+[![Pages](https://img.shields.io/badge/知识页-132-orange.svg)](_index/_map.md)
 
-**版本 v2.3.0** ｜ [变更日志](CHANGELOG.md) ｜ [贡献指南](CONTRIBUTING.md) ｜ [任务路由](_index/_task-routing.md)
+**版本 v3.0.0** ｜ [变更日志](CHANGELOG.md) ｜ [贡献指南](CONTRIBUTING.md) ｜ [任务路由](_index/_task-routing.md)
 
 </div>
 
@@ -77,14 +77,15 @@ Qt/C++ 桌面应用要跑在 HarmonyOS 上，难点集中在这些地方：
 | 能力 | 入口 | 现状 |
 |------|------|------|
 | 🔍 可行性评估 | `portgraph/portgraph.py analyze / deps / fetch-deps` | 可 ingest 4741 个 Harmonybrew formula + 1248 个 cmd-pkg 索引（首次联网），出三态判定 |
-| 🚚 自动迁移流水线 | `tools/qt-ohos-run.py`（25 个子命令） | 扫描（19 条预扫描规则出风险报告）→计划→受追踪修改→构建→打包→装机→启动→冒烟→门禁，可 checkpoint/resume；库级进展用 `libcheck` 单独记 |
+| 🚚 自动迁移流水线 | `tools/qt-ohos-run.py`（25 个子命令） | 扫描（19 条预扫描规则出风险报告）→计划→受追踪修改→构建→打包→装机→启动→冒烟→门禁，可 checkpoint/resume；外部交叉编译可用 `build --record-only` 登记结果 |
 | 🚦 成功判定 | `qt-ohos-run.py verify`（G0–G12） | 门禁级 PASS / PARTIAL / FAIL，`TIMEOUT` 不计通过 |
 | 🧠 日志诊断 | `qt-ohos-run.py analyze-log` | 44 条 QOH 错误模式自动匹配，命中即给知识页引用 |
-| 🧰 Qt SDK 工程平面 | `tools/qt-sdk-run.py`（25 个子命令） | 编译 / 增量 install / 补丁溯源 / SV0–SV8 发版门禁 / 上游演进跟踪 |
+| 🧱 平台层审计 | `tools/ohos-platform-audit.py` | 区分头内 `#ifdef` 与构建按路径选 `.cpp` 两种分发；断言头分发同时命名两个 OHOS 宏；`--undefined` 从链接日志反推缺实现 |
+| 🧰 Qt SDK 工程平面 | `tools/qt-sdk-run.py`（24 个子命令） | 编译 / 增量 install / 补丁溯源 / SV0–SV8 发版门禁 / 上游演进跟踪 |
 | 🗺️ 故障跟踪 | `faults/` + `tools/faults-build.py` | S→C→W→T 故障图（17/18/15/11）：定性、责任领域、临时方案、在跟单、闭环缺口 |
 | 📚 知识底座 | `semantic/` `procedural/` `problems/` | 132 页（Qt 侧 105 + 内嵌平台 27），38 条铁律，13 类 API 映射，56 个实战踩坑 |
 | 🏗️ 工程模板 | `templates/qt-ohos-app/` | 71 个文件的干净鸿蒙壳工程（替代历史上带构建产物的脏模板） |
-| ✅ 自检用例 | `tests/` | 引擎 66 + 一致性 24 + 扫描 9 = 99 用例（另有图谱 127 单测） |
+| ✅ 自检用例 | `tests/` | 引擎自测 12 用例 + 一致性 22 用例 + C++20 扫描 9 用例 |
 
 ---
 
@@ -140,8 +141,8 @@ python tools/qt-ohos-run.py build             # G3 编译
 python tools/qt-ohos-run.py package           # G5 打 HAP
 python tools/qt-ohos-run.py install           # G6 hdc 装机
 python tools/qt-ohos-run.py launch            # G7 启动
-python tools/qt-ohos-run.py smoke             # G8 崩溃窗口检查
-python tools/qt-ohos-run.py verify            # G0-G12 门禁 —— 唯一的成功判据
+python tools/qt-ohos-run.py smoke             # G8 崩溃窗口检查（install/launch 未过则跳过，不判 PASS）
+python tools/qt-ohos-run.py verify            # G0-G12 门禁 —— 唯一的成功判据（exit 0/3/1）
 ```
 
 想一步到位就用一键模式 `python tools/qt-ohos-run.py migrate <项目>`（自动串联全流程，
@@ -150,6 +151,7 @@ python tools/qt-ohos-run.py verify            # G0-G12 门禁 —— 唯一的�
 快速自检与环境相关工具：
 
 ```bash
+python _scripts/ci.py                      # 四道门禁一次跑完（契约 + 故障库 + 用例 + CLI 冒烟）
 python tools/faults-build.py check         # 故障库真源 ↔ 派生物一致性
 python tools/cpp20-gap-scan.py scan <src>  # 大工程编译前先扫 C++20 缺口
 python tools/kb-verify-qt.py               # 知识页事实复核（需 ENV.local.md 指向本地 SDK）
@@ -174,6 +176,7 @@ python -m unittest discover -s tests -v    # 用例全量
 | [`qt-sdk-forge`](skills/qt-sdk-forge/SKILL.md) | Qt SDK 编译、补丁应用与溯源、本地多版本发布（SV0–SV8） | 只写本地 SDK 目录 |
 | [`task-dispatcher`](skills/task-dispatcher/SKILL.md) | 多 Agent 协作的任务台账 / 移交信封 / 流转日志 | 只写任务台账 |
 | [`kb-iterator`](skills/kb-iterator/SKILL.md) | **唯一真源写入门**：合草稿、promote、索引再生、事实复核、复盘蒸馏 | 唯一可写知识真源 |
+| [`qt-community-to-official`](skills/qt-community-to-official/SKILL.md) | 社区版（QtOhExtras）→ 官方版（QtOhosExtras）代码迁移、补丁生成、编译修复、签名 HAP | 只写目标项目 |
 
 外加一个不在 `skills/` 下的仓库工具 `portgraph`（可行性图谱），作为移植任务的第 0 步。
 
@@ -186,14 +189,16 @@ python -m unittest discover -s tests -v    # 用例全量
 | `tools/qt-ohos-run.py` | 25 | `scan` `plan` `patch` `build` `package` `install` `launch` `smoke` `verify` `analyze-log` `assess` `migrate` `finish` `status` `resume` `rollback` `mark-gate` `mark-ui` `mark-risk` `libcheck` `draft` `promote` `recipes` `config` `init` |
 | `tools/qt-sdk-run.py` | 24 | `init` `env` `config` `src-clone` `status` `patch-import` `patch-apply` `patch-list` `patch-revert` `patch-export` `patch-mark` `configure` `build` `install` `verify` `smoke-mark` `release` `release-list` `modules` `use` `diff` `upstream-check` `forge` `resume` |
 | `tools/faults-build.py` | 4 | `build` `check` `review` `all`：真源 → 派生物，闭环缺口检查 |
+| `tools/ohos-platform-audit.py` | — | 平台层审计：两种分发分类 + 双 OHOS 宏断言；`--undefined` 反推缺实现 |
 | `tools/kb-verify-qt.py` | — | 知识页事实复核（版本、符号、路径） |
 | `tools/cpp20-gap-scan.py` | — | C++20 在鸿蒙工具链上的缺口扫描 |
-| `tools/kb-cef-graft.py` | — | 把 CEF 嫁接到 Qt OHOS 模板工程（`--run` 含签名+装机+崩溃检查） |
-| `tools/ohos-platform-audit.py` | — | 平台层审计：头/源两种分发分类 + 断言双 OHOS 宏；`--undefined` 反推缺失实现 |
 | `portgraph/portgraph.py` | 10 | `ingest` `clone` `scan` `analyze` `deps` `stats` `fetch` `fetch-deps` `export` `serve` |
 
 `qt-sdk-run.py forge <proposal-dir>` 把一次修改方案打成可追溯的补丁提案（含 manifest），
 再由 `patch-import` / `patch-apply` 落到源码树——这样"谁为什么改了 Qt 哪一行"永远查得到。
+
+门禁结论只有三档：`PASS`（G0–G8 全过）、`PARTIAL`（编译/链接已过、打包与设备侧未完成）、
+`FAIL`；`verify` 退出码 `0` / `3` / `1`。`TIMEOUT` 与 `SKIP`/`NOT_RUN` 都不算通过。
 
 ---
 
@@ -239,8 +244,8 @@ ohos_qt-skills/
 ├── _index/                     # 索引：_map 地图 / _tags 标签 / _dashboard 仪表盘 / _task-routing 路由
 ├── semantic/                   # 语义知识（26 页）：模块状态、API 映射、平台限制、窗口/生命周期
 ├── procedural/                 # 程序知识（15 页）：迁移、排障、构建、发版、Demo 生成
-├── episodic/                   # 情景知识（7 页，postmortems/）：真实项目复盘
-├── problems/                   # 错误知识库（47 页）：编译/部署/运行时实报错与解法
+├── episodic/                   # 情景知识（8 页，postmortems/）：真实项目复盘
+├── problems/                   # 错误知识库（56 页）：编译/部署/运行时实报错与解法
 ├── ohos-common-kb-public/      # 内嵌 HarmonyOS 平台通用知识（27 页，ArkTS/ArkUI/NAPI/Stage）
 ├── knowledge/                  # 机器层：errors(QOH) / rules(R) / adaptation
 ├── faults/                     # 故障图：_data 真源 + C 页 + 派生物 _graph/_registry
@@ -248,35 +253,8 @@ ohos_qt-skills/
 ├── templates/qt-ohos-app/      # 干净鸿蒙壳工程模板（71 文件）
 ├── portgraph/                  # 可移植性图谱子项目（CLI + 包 + Web 图谱 + 自测）
 ├── tests/                      # 仓库一致性 / 引擎 / 扫描自测
-├── kb.yaml                     # 仓库契约：入口 / 地图 / 自检命令 / 必需路径
-├── _scripts/                   # 门禁与发版：verify.sh / verify.py / ci.sh / gen-manifest.py
-├── TESTING.md                  # 测试分层、与旧分支的能力对照、Windows 端到端步骤
-├── LINEAGE.md                  # 分支收敛记录：每条旧分支的并入状态与有意不并入的内容
-├── CLAUDE.md                   # AGENTS.md 的逐字副本（verify 强校验一致）
 └── skills/                     # 6 个 Agent Skill
 ```
-
----
-
-## 分支模型
-
-本仓用三段式分支，**旧分支一律冻结不动**，避免影响仍在用旧分支的人：
-
-| 分支 | 角色 | 规则 |
-|------|------|------|
-| `trunk` | 主干，稳定版本 | 只接受来自开发分支的合并；每次合并必须 `ci.sh` 全绿；打 `vX.Y.Z` tag 锚定 |
-| 开发分支 | 开发与合入 | 从 `trunk` 拉出，供外部 PR 合入；允许不稳定，合并前必须过门禁 |
-| `release/vX.Y.Z` | 归档 | 从 `trunk` 在发版点拉出，只修致命缺陷，不再进新功能 |
-
-```
-trunk ──●────────●────────●────────●──→  稳定、可发版
-         \      / \      / \      /
-  dev/*   ●────●   ●────●   ●────●        开发、可合入
-                   \
-  release/vX.Y.Z     ●────●               归档、只修致命
-```
-
-细节、提交流程与发版步骤见 [贡献指南](CONTRIBUTING.md)；各历史分支的内容并入情况见 [分支收敛记录](LINEAGE.md)。
 
 ---
 
@@ -287,20 +265,16 @@ README、`SKILL.md`、`AGENTS.md`、索引页里的声称与仓库实际状态�
 
 | 层次 | 手段 | 拦截什么 |
 |------|------|---------|
-| 契约 | `kb.yaml` + `_scripts/verify.py` | 入口/地图/必需路径缺失、`AGENTS.md` 与 `CLAUDE.md` 漂移 |
-| 结构 | verify 的 frontmatter / id 唯一 / wikilink 可解析检查 | 页面字段缺失、重复 id、断链 |
-| 卫生 | verify 的产物目录与本机路径检查 | 提交构建产物（`.cxx`/`.hvigor`/`.idea`）、泄露个人路径 |
-| 发版清单 | verify 的 M1 检查 + `_scripts/gen-manifest.py` | 清单里的页数/用例数/skills 与实际不符；发版提交上内容树摘要对不上 |
-| 数字 | `tests/test_kb_consistency.py`（20 个） | 页数、QOH、规则数、铁律、任务路由、API 映射、故障图规模、用例数与实际不符 |
+| 数字 | 一致性用例（24 个） | 页数、QOH、规则数、铁律、任务路由、API 映射、故障图规模、用例数与实际不符 |
 | 引用 | 同上（路径与锚点校验） | 文档里指的页面/小节不存在 |
 | 清单 | 同上（Skill 清单规范） | 根级/子级 `SKILL.md` frontmatter 非法、`AGENTS.md` 漏登记 skill |
-| 契约 | 同上（CLI 契约） | 三个 CLI 的子命令集合被悄悄改动 |
+| 契约 | 同上（CLI 契约） | 七个 CLI 的子命令集合被悄悄改动 |
 | 闭环 | `tools/faults-build.py check` | 故障库真源与派生物不一致、链路未闭环 |
 | 引擎 | `tests/test_qt_ohos.py` | 状态机、门禁、错误匹配的行为回归 |
 | 图谱 | `portgraph/tests/` | 可移植性判定、依赖分类、bottle 解析 |
 
-当前状态：用例全绿（引擎 66 + 一致性 24 + 扫描 9 = 99，另有图谱 127 单测），`faults-build check` 零 ERROR（info 7 为已排期的缺单）。
-一条命令跑完全部门禁：`python _scripts/ci.py`（Windows 无 bash 也可；退出码即结论，可直接接到流水线）。
+当前状态：用例全绿（引擎 66 + 一致性 24 + 扫描 9 = 99 用例，另有图谱 127 单测），`faults-build check` 零 ERROR。
+一条命令跑完四道门禁：`python _scripts/ci.py`（Windows 无 bash 也可用）。
 
 ---
 
@@ -328,34 +302,16 @@ README、`SKILL.md`、`AGENTS.md`、索引页里的声称与仓库实际状态�
 
 ---
 
-## 常见问题
-
-**凭什么说"迁移成功"？**
-只认 `python tools/qt-ohos-run.py verify` 的 G0–G12：全过才算通过；`PARTIAL` 只能说编译级可用；
-`TIMEOUT` 永远不是 PASS。编译通过 ≠ 迁移成功。
-
-**我的应用能不能移植？**
-先跑 portgraph 三连：`analyze`（portable / blocked / uncertain）、`deps`（依赖角色与版本）、
-`fetch-deps --dry-run`（哪些有鸿蒙预编译 bottle、哪些要源码交叉编译）。依赖 ≥3 个三方库时
-**不要人工逐个判断**，以闭包输出为准。
-
-**必须买 Qt 商业 license 吗？**
-看走哪条路线：Qt 6.12 用官方在线安装器的预构建鸿蒙组件、Qt 5.12 用开源镜像，都不需要商业许可；
-Qt 5.15 源码线（`tqtc-qt5`）需要商业 license。三条渠道见上一节。
-
-**Qt WebEngine 支持吗？**
-不支持。鸿蒙上用 CEF for OpenHarmony 平替，API 映射与迁移步骤见
-[qt-cef-ohos-dev-guide.md](procedural/qt-cef-ohos-dev-guide.md)；只是展示网页可以先用 Qt WebView 原生桥。
-
 ## 已知限制
 
 - **平台**：端到端实测以 Windows + DevEco Studio 为主；macOS/Linux 的工具链路径已覆盖但真机装机流程验证较少。
-- **CI**：仓库自带 `_scripts/ci.sh`（一条命令四条门禁、退出码即结论），托管 CI 尚未接入，合并前靠本地执行与维护者把关。
+- **CI**：没有托管 CI，门禁靠本地执行与维护者把关。
 - **portgraph**：数据来自外部索引（Harmonybrew / cmd-pkgs），首次 `ingest` 需要联网；离线只能读已入库的 `portgraph/data`。
 - **知识时效**：Qt/鸿蒙都在动，页面里的"已完成/已修复"以 `updated` 与 `last_confirmed` 字段为准，超过复核期的内容由 `faults-build review` 标出。
 - **内嵌平台知识**：`ohos-common-kb-public/` 由上游平台知识库裁剪而来，若与官方文档冲突，以官方文档为准。
 - **可行性判定的边界**：`portgraph` 的平台接口检测是正则匹配——注释里的 API 名（如 `// DestroyWindow(...)`）
-  或同名自定义函数可能误报、虚高风险等级，硬阻塞结论要人工复核守卫证据。
+  仍可能误报，硬阻塞结论要人工复核守卫证据。函数型符号已要求调用括号、`*_win.cpp`/`*.mm`
+  按文件名排除，误报面比早期版本小。
 - **三方库源码交叉编译不在本库内置**：可对接外部 `build_in_harmonyos` 工具链（设置 `OHC_RUN`
   环境变量），本库负责依赖检测、bottle 直下与集成指引。
 
@@ -373,20 +329,13 @@ Qt 5.15 源码线（`tqtc-qt5`）需要商业 license。三条渠道见上一节
 
 ## 环境变量与多工具兼容
 
-**本地要装什么**（只是查知识/跑门禁不需要）：
-
-- **DevEco Studio + HarmonyOS SDK**——提供 OHOS clang、sysroot、`hvigorw`、模拟器与 `hdc`
-- **一个编译好的 Qt OHOS SDK**——作为应用链接的 `CMAKE_PREFIX_PATH`（Qt 6.12 用官方在线安装器的
-  鸿蒙组件，Qt 5.12/5.15 见上一节的三条渠道）
-- 只有要自己重编 Qt 库时才需要：Qt 鸿蒙源码 + MinGW + Strawberry Perl（Windows）
-
 知识页不写死本机路径，统一用变量名引用：`QT5_15_OHOS_SDK`、`QT5_15_SRC`、`OHOS_SDK_NATIVE`、
 `DEVECO_CLI`、`HDC` 等。变量清单见 [ENV.md](ENV.md)，真实值写 `ENV.local.md`（已 gitignore、
 不入库），由 `kb-init` 交互式生成。
 
 | 工具 | 接入方式 |
 |------|---------|
-| Claude Code | 仓库自带 `CLAUDE.md`（`AGENTS.md` 的逐字副本，`verify` 强校验一致），开箱即用 |
+| Claude Code | 把 [AGENTS.md](AGENTS.md) 复制为本地 `CLAUDE.md` 后自动加载 |
 | Codex | 直接读 `AGENTS.md` |
 | Cursor / Windsurf | 在 `.cursorrules` / `.windsurfrules` 里引用 `_index/_map.md` |
 | Obsidian | 直接当 Vault 打开，看引用关系图 |
@@ -395,14 +344,35 @@ Qt 5.15 源码线（`tqtc-qt5`）需要商业 license。三条渠道见上一节
 
 - 版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)：**MAJOR** 破坏性（删页/移页/目录重排致链接断）、**MINOR** 新增（新页/新 CLI 子命令/新 skill）、**PATCH** 修正。
 - 每个版本的 [RELEASE-MANIFEST.yaml](RELEASE-MANIFEST.yaml) 记录源端 SHA、页面计数与
-  `content_tree_sha256`（内容树摘要），由 `_scripts/gen-manifest.py` 机算，`verify` 的 M1 检查对账。
-  发版步骤（刷新清单 → 置 released → 打 tag → 拉归档线）见 [CONTRIBUTING.md](CONTRIBUTING.md) §发版流程。
+  `content_tree_sha256`（内容树摘要），可复现、可对账。
 
 **Qt 源码获取渠道**（按许可与网络条件选一条）：
 
 - 商业 license：`git clone https://codereview.qt-project.org/qt/tqtc-qt5`（分支如 `tqtc/harmonyos-5.15.16`）
 - 开源镜像：`ohos-qt/qt-harmonyos-src`（部分快照丢执行位、带 CRLF，`src-clone` 会自动处理）
 - 预编译 SDK：上游 releases 直接取，或用 `qt-sdk-run.py` 本地编译（SV0–SV8 门禁）
+
+---
+
+## 常见问题
+
+**凭什么说"迁移成功"？**
+只认 `python tools/qt-ohos-run.py verify` 的 G0–G12：G0–G8 全过才算通过；`PARTIAL` 表示编译/链接
+已过、打包与设备侧还没完成（阶段性成果，不是可交付状态）；`TIMEOUT` 与 `SKIP`/`NOT_RUN` 都不算通过。
+编译通过 ≠ 迁移成功。
+
+**我的应用能不能移植？**
+先跑 portgraph 三连：`analyze`（portable / blocked / uncertain）、`deps`（依赖角色与版本）、
+`fetch-deps --dry-run`（哪些有鸿蒙预编译 bottle、哪些要源码交叉编译）。依赖 ≥3 个三方库时
+**不要人工逐个判断**，以闭包输出为准。
+
+**必须买 Qt 商业 license 吗？**
+看走哪条路线：Qt 6.12 用官方在线安装器的预构建鸿蒙组件、Qt 5.12 用开源镜像，都不需要商业许可；
+Qt 5.15 源码线（`tqtc-qt5`）需要商业 license。三条渠道见上一节。
+
+**Qt WebEngine 支持吗？**
+不支持。鸿蒙上用 CEF for OpenHarmony 平替，API 映射与迁移步骤见
+[qt-cef-ohos-dev-guide.md](procedural/qt-cef-ohos-dev-guide.md)；只是展示网页可以先用 Qt WebView 原生桥。
 
 ---
 
