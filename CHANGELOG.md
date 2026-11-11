@@ -41,8 +41,16 @@
   等价，写在后面时打印一行说明
 - **MINOR** G0 的 `cmake not on PATH` 补上可执行的修法（`config set cmake <绝对路径>`
   或 `build_command`）
-- **MINOR** 用例 75 → 91（三档判定、G4 产物、G2 证据、作用域降级、登记式构建、
-  参数位置），portgraph 123 → 127（后缀排除、win32 精度）
+- **FIX**（第二轮自查）状态文件损坏时整条命令崩在 `JSONDecodeError`：中断的运行会留下
+  半截 `build.json`/`scan.json`，此前每个子命令都直接抛栈。现在按"没有这条证据"处理
+  并告警（门禁只会更保守），`state.json` 损坏则给出重建步骤
+- **FIX**（第二轮自查）作用域降级把 `vendor/`、`external/`、`contrib/` 也算作第三方——
+  这些目录在别的工程里常被真实编译（AOSP 的 `external/` 就是），自动降级会漏掉会炸的
+  真风险。名单收紧到 `ThirdParty/`、`third_party/`、`3rdparty/`；其余目录要排除请用
+  `match.exclude` 显式声明
+- **MINOR** `files`/`guard` 类命中同样走作用域判定，语义一致
+- **MINOR** 用例 75 → 94（三档判定、G4 产物、G2 证据、作用域降级、登记式构建、
+  参数位置、损坏状态），portgraph 123 → 127（后缀排除、win32 精度）
 
 ---
 

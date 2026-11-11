@@ -364,6 +364,28 @@ class TestG2EvidenceChain(unittest.TestCase):
         self.assertTrue(rec["at"])
 
 
+class TestCorruptState(unittest.TestCase):
+    """半截 json（中断的运行会留下）不能让每个子命令崩在 traceback 上。"""
+
+    def test_corrupt_build_json_degrades_to_not_run(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        st = state_mod.init_state(tmp)
+        (tmp / ".qt-ohos" / "build.json").write_text("{bad json", encoding="utf-8")
+        gates, overall = verifier.evaluate(st)     # 不应抛 JSONDecodeError
+        self.assertEqual(gates["G3"]["status"], "NOT_RUN")
+        self.assertEqual(overall, "FAIL")
+
+    def test_corrupt_state_json_explains_recovery(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        state_mod.init_state(tmp)
+        (tmp / ".qt-ohos" / "state.json").write_text("{bad", encoding="utf-8")
+        with self.assertRaises(SystemExit) as ctx:
+            state_mod.load_state(tmp)
+        self.assertIn("恢复方式", str(ctx.exception))
+
+
 class TestRuleScopeDowngrade(unittest.TestCase):
     """第三方/平台专属目录里的命中降级：不参与 OHOS 编译的代码不该阻塞 G2。"""
 
@@ -387,6 +409,12 @@ class TestRuleScopeDowngrade(unittest.TestCase):
         self.assertEqual(by_file["ThirdParty/dbus/x.h"]["scope"], "third-party")
         self.assertEqual(by_file["app.cpp"]["severity"], "critical")
         self.assertEqual(by_file["app.cpp"]["scope"], "")
+
+    def test_vendor_is_not_downgraded(self):
+        # vendor/、external/ 常被真实编译：不能自动降级，否则漏掉真风险
+        self.assertEqual(rule_engine._path_scope("vendor/zlib/zlib.h"), "")
+        self.assertEqual(rule_engine._path_scope("external/ffmpeg/lib.c"), "")
+        self.assertEqual(rule_engine._path_scope("ThirdParty/x/y.h"), "third-party")
 
     def test_exclude_globs_skip_file(self):
         tmp = Path(tempfile.mkdtemp())

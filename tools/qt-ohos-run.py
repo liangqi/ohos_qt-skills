@@ -395,8 +395,11 @@ def _record_external_build(st, args):
     found = found[:50]
     status = "PASS" if (args.status == "pass" and found) else "FAIL"
     reason = ""
-    if args.status == "pass" and not found:
-        reason = "record-only 声称构建成功，但 --artifacts 没匹配到任何文件"
+    if args.status == "pass" and not patterns:
+        reason = "record-only 没给 --artifacts：不登记产物就无法校验，G4 会判缺产物"
+    elif args.status == "pass" and not found:
+        reason = ("record-only 声称构建成功，但 --artifacts 没匹配到任何文件：%s"
+                  % ", ".join(patterns))
     evidence = ""
     if args.log:
         log_path = Path(args.log)

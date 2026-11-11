@@ -76,8 +76,7 @@ def evaluate(state) -> Tuple[Dict[str, Dict], str]:
     if shutil.which(cmake) is None and not env.get("build_command"):
         # 交叉编译机常把 cmake 装在非 PATH 位置：这里给出可执行的修法，
         # 而不是只报一句 "not on PATH"
-        missing.append("cmake not on PATH (config set cmake <%s 绝对路径> 或 "
-                       "config set build_command <整条命令>)" % "cmake")
+        missing.append("cmake not on PATH (config set cmake <绝对路径>)")
     gate("G0", FAIL if missing else PASS,
          "missing: %s" % ", ".join(missing) if missing else "environment configured",
          "env.json")

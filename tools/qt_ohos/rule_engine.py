@@ -45,8 +45,10 @@ MAX_MATCHES_PER_RULE = 50
 # 这些路径里的代码在鸿蒙目标上根本不参与编译（第三方源码树按平台裁剪、
 # 或平台专属目录）。把它们算成 critical 会让风险面虚高（实测 tdesktop
 # ThirdParty/fcitx5-qt 的 DBus 头被算成 critical），G2 也就失去判别力。
-THIRD_PARTY_HINTS = ("/thirdparty/", "/third_party/", "/3rdparty/", "/3rd-party/",
-                     "/vendor/", "/external/", "/extern/", "/contrib/")
+# 只收"按平台裁剪的第三方源码树"这类约定名。`vendor/`、`external/`、`contrib/`
+# 在别的工程里常被真实编译进目标（AOSP 的 external/ 就是），自动降级会漏掉
+# 会炸的真风险，因此这些目录要靠规则自己写 `exclude`。
+THIRD_PARTY_HINTS = ("/thirdparty/", "/third_party/", "/3rdparty/", "/3rd-party/")
 PLATFORM_EXCLUDED_HINTS = ("/platform/win/", "/platform/windows/", "/windows/",
                            "/win32/", "/winrt/", "/platform/macos/", "/macos/",
                            "/osx/", "/platform/apple/", "/darwin/",
@@ -134,8 +136,10 @@ class RuleEngine:
 
             for pattern in _as_list(match.get("files")):
                 for rel in _all_rel_paths(root):
+                    if excludes and any(fnmatch.fnmatch(rel, g) for g in excludes):
+                        continue
                     if fnmatch.fnmatch(rel, str(pattern)):
-                        findings.append(_finding(rule, rel, 0, "file present"))
+                        findings.append(_scoped_finding(rule, rel, 0, "file present"))
 
             # guard：命中 glob 的文件必须**同时**包含 require 里全部片段。
             # 用于"双宏守卫"这类断言——单看 files 只能报"存在"，看不出写错在哪。
@@ -166,7 +170,7 @@ class RuleEngine:
                                     if re.search(r"Q_OS_[A-Z_]+", row):
                                         line = idx
                                         break
-                            findings.append(_finding(
+                            findings.append(_scoped_finding(
                                 rule, rel, line,
                                 "missing: %s" % ", ".join(str(m) for m in missing)))
 

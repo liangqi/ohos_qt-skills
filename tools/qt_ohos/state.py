@@ -297,14 +297,36 @@ class MigrationState:
         return path
 
     def read_json(self, name: str, default=None):
+        """读状态文件。损坏时告警并按缺省处理，不让整条命令崩在 traceback 上。
+
+        中断的运行会留下半截 json（build.json / scan.json）。此前这种情况
+        每个子命令都直接抛 JSONDecodeError；现在按"没有这条证据"处理（门禁
+        因此只会更保守），并把重建方法打出来。
+        """
         path = self.state_dir / name
         if not path.exists():
             return default
-        return json.loads(path.read_text(encoding="utf-8"))
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except ValueError as exc:
+            print("[qt-ohos-run] WARNING: %s 解析失败（%s），按缺失处理；"
+                  "需要重建就删除该文件后重跑对应步骤"
+                  % (path.name, str(exc)[:80]))
+            return default
 
 
 def load_state(project_root) -> MigrationState:
-    return MigrationState(Path(project_root))
+    root = Path(project_root)
+    state_file = root / STATE_DIR_NAME / "state.json"
+    if state_file.exists():
+        try:
+            json.loads(state_file.read_text(encoding="utf-8"))
+        except ValueError as exc:
+            raise SystemExit(
+                "[qt-ohos-run] %s 已损坏（%s）。\n"
+                "  恢复方式：备份并删除 %s 后重新 `init` + `scan`（.qt-ohos/logs 与 "
+                "patches 不会丢）" % (state_file, str(exc)[:80], state_file))
+    return MigrationState(root)
 
 
 def init_state(project_root) -> MigrationState:
