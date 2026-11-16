@@ -68,6 +68,12 @@ def _registry_counts() -> Dict[str, int]:
     return counts
 
 
+def _strip_date(text: str) -> str:
+    """把两处"生成日期"抹平后再比较，其余日期（各页 updated）保留。"""
+    text = re.sub(r"^updated: .*$", "", text, count=1, flags=re.M)
+    return re.sub(r"(\*\*最后更新\*\*：)\d{4}-\d{2}-\d{2}", r"\1<date>", text)
+
+
 def render(today: str | None = None) -> str:
     today = today or datetime.date.today().isoformat()
     domain_rows = {name: _pages(sub) for name, sub, _desc in DOMAINS}
@@ -133,7 +139,16 @@ def render(today: str | None = None) -> str:
             % (fault_total, counts["symptoms"], counts["causes"],
                counts["workarounds"], counts["tickets"]),
             "| **合计活跃** | **%d** | 不含 problems 与内嵌平台库（单独计数） |" % total, ""]
-    return "\n".join(out) + "\n"
+    text = "\n".join(out) + "\n"
+    # 干净树隔日不该变红：内容没变就沿用原 updated 日期。
+    if DASH.exists():
+        current = DASH.read_text(encoding="utf-8", errors="replace")
+        if _strip_date(text) == _strip_date(current):
+            match = re.search(r"^updated: (.*)$", current, re.M)
+            if match:
+                text = re.sub(r"^updated: .*$", "updated: " + match.group(1),
+                              text, count=1, flags=re.M)
+    return text
 
 
 def main(argv=None) -> int:
@@ -143,13 +158,14 @@ def main(argv=None) -> int:
     text = render()
     current = DASH.read_text(encoding="utf-8") if DASH.exists() else ""
     if args.check:
-        # updated 日期不同不算漂移：比对其余内容
-        strip = lambda t: re.sub(r"^updated: .*$", "", t, count=1, flags=re.M)  # noqa: E731
-        if strip(text) == strip(current):
+        if _strip_date(text) == _strip_date(current):
             print("gen-dashboard: 一致")
             return 0
         print("gen-dashboard: _dashboard.md 过期，运行 python _scripts/gen-dashboard.py")
         return 1
+    if text == current:
+        print("gen-dashboard: 内容未变")
+        return 0
     DASH.write_text(text, encoding="utf-8")
     print("gen-dashboard: 已重建（%d 活跃页 / %d problems / %d 故障记录）"
           % (sum(1 for _ in re.finditer(r"^\| `", text, re.M)),

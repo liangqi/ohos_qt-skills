@@ -7,6 +7,7 @@ Run from the repository root:
 
 from __future__ import annotations
 import json
+import pathlib
 import shutil
 import subprocess
 import sys
@@ -18,8 +19,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 TOOLS_DIR = REPO_ROOT / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
 
-from qt_ohos import (error_engine, knowledge, rule_engine, scanner, state,  # noqa: E402
-                     verifier, yaml_lite)
+from qt_ohos import (assessor, error_engine, knowledge, rule_engine,  # noqa: E402
+                     scanner, state, verifier, yaml_lite)
 from qt_ohos.patch import ChangeTracker  # noqa: E402
 from qt_ohos import state as state_mod  # noqa: E402
 from qt_ohos import builder as builder_mod  # noqa: E402
@@ -29,6 +30,40 @@ E Qt      : dlopen failed: library "libqohos.so" not found
 F Qt      : Cannot load Qt platform plugin "qohos"
 F Qt      : This application failed to start because it could not find or load the Qt platform plugin "qohos"
 """
+
+
+def write_elf(path: Path, needed=(), machine: int = 183,
+              e_type: int = 3) -> Path:
+    """Write a synthetic ELF64 image with DT_NEEDED.
+
+    Enough for `qt_ohos.elf` and the G4/G5 content checks (header identity +
+    dynamic segment); not a loadable library.
+    """
+    import struct
+    strtab = b""
+    offsets = []
+    for name in needed:
+        offsets.append(len(strtab))
+        strtab += name.encode() + b"\x00"
+    ehsize, phentsize, phnum = 64, 56, 2
+    phoff = ehsize
+    dyn_off = phoff + phentsize * phnum
+    dyn = b"".join(struct.pack("<qQ", 1, off) for off in offsets)
+    str_off = dyn_off + 16 * (len(offsets) + 3)
+    dyn += struct.pack("<qQ", 5, str_off)
+    dyn += struct.pack("<qQ", 10, len(strtab))
+    dyn += struct.pack("<qQ", 0, 0)
+    total = str_off + len(strtab)
+    ident = b"\x7fELF" + bytes([2, 1, 1, 0]) + bytes(8)
+    header = ident + struct.pack("<HHIQQQIHHHHHH", e_type, machine, 1, 0,
+                                 phoff, 0, 0, ehsize, phentsize, phnum,
+                                 64, 0, 0)
+    phdrs = struct.pack("<IIQQQQQQ", 1, 5, 0, 0, 0, total, total, 8)
+    phdrs += struct.pack("<IIQQQQQQ", 2, 6, dyn_off, dyn_off, dyn_off,
+                         16 * (len(offsets) + 2), 16 * (len(offsets) + 2), 8)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(header + phdrs + dyn + strtab)
+    return path
 
 
 def make_project(root: Path) -> Path:
@@ -127,6 +162,14 @@ class TestRuleGuard(unittest.TestCase):
         (tmp / "src" / "platform" / "platform_bad.h").write_text(
             "#elif defined Q_OS_OHOS\n#include \"platform/linux/x.h\"\n",
             encoding="utf-8")
+        # 只写 Qt6 的宏：在 Qt6 上是正确的，规则不该报（when 只盯写了
+        # Q_OS_OHOS 的文件，否则会误伤已经改对的工程）
+        (tmp / "src" / "platform" / "platform_harmony_only.h").write_text(
+            "#elif defined Q_OS_HARMONY\n#include \"ohos/x.h\"\n",
+            encoding="utf-8")
+        # 编译器宏两代都有，也算完备
+        (tmp / "src" / "platform" / "platform_compiler_macro.h").write_text(
+            "#if defined(Q_OS_OHOS) || defined(__OHOS__)\n", encoding="utf-8")
         info = {"sources": [], "pro_files": [], "cmake_files": []}
         risk = rule_engine.RuleEngine(REPO_ROOT).scan(info, tmp)
         return [f for f in risk["findings"] if f["rule"] == "R019"]
@@ -138,6 +181,18 @@ class TestRuleGuard(unittest.TestCase):
             self.assertEqual(len(files), 1, hits)
             self.assertTrue(next(iter(files)).endswith("platform_bad.h"))
             self.assertIn("missing", hits[0]["snippet"])
+
+    def test_harmony_only_header_is_left_alone(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            files = {f["file"] for f in self._scan(Path(tmp))}
+            self.assertFalse(any(f.endswith("platform_harmony_only.h")
+                                 for f in files), files)
+
+    def test_compiler_macro_counts_as_version_proof(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            files = {f["file"] for f in self._scan(Path(tmp))}
+            self.assertFalse(any(f.endswith("platform_compiler_macro.h")
+                                 for f in files), files)
 
 
 class TestCmakeArgs(unittest.TestCase):
@@ -297,26 +352,141 @@ class TestG4ArtifactExists(unittest.TestCase):
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp, True)
         root = Path(tmp)
-        (root / "build-ohos").mkdir()
-        (root / "build-ohos" / "libok.so").write_bytes(b"\x7fELF")
+        write_elf(root / "build-ohos" / "libok.so", ["libQt6Core.so.6", "libc.so"])
         st = state_mod.init_state(root)
         st.write_json("build.json", {"compile": {"status": "PASS"},
                                      "artifacts": ["build-ohos/libok.so"]})
         gates, _overall = verifier.evaluate(st)
         self.assertEqual(gates["G4"]["status"], "PASS")
         self.assertIn("on disk", gates["G4"]["detail"])
+        self.assertIn("ELF64/aarch64/DYN", gates["G4"]["detail"])
 
     def test_partial_when_some_listed_but_missing(self):
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp, True)
         root = Path(tmp)
-        (root / "build-ohos").mkdir()
-        (root / "build-ohos" / "libok.so").write_bytes(b"\x7fELF")
+        write_elf(root / "build-ohos" / "libok.so", ["libc.so"])
         st = state_mod.init_state(root)
         st.write_json("build.json", {"compile": {"status": "PASS"}, "artifacts": [
             "build-ohos/libok.so", "build-ohos/gone.so"]})
         gates, _overall = verifier.evaluate(st)
         self.assertEqual(gates["G4"]["status"], "PARTIAL")
+
+
+class TestG4ElfIdentity(unittest.TestCase):
+    """"文件在、非空"不是判据：架构/类型不对的 .so 在设备上照样 dlopen 不了。"""
+
+    def _gate(self, files):
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        root = Path(tmp)
+        st = state_mod.init_state(root)
+        artifacts = []
+        for name, writer in files:
+            writer(root / "build-ohos" / name)
+            artifacts.append("build-ohos/" + name)
+        st.write_json("build.json", {"compile": {"status": "PASS"},
+                                     "artifacts": artifacts})
+        gates, _overall = verifier.evaluate(st)
+        return gates["G4"]
+
+    def test_wrong_arch_fails(self):
+        gate = self._gate([("libx.so", lambda p: write_elf(p, ["libc.so"],
+                                                          machine=62))])
+        self.assertEqual(gate["status"], "FAIL")
+        self.assertIn("x86_64", gate["detail"])
+
+    def test_non_elf_fails(self):
+        def writer(path):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"not an elf")
+
+        gate = self._gate([("libx.so", writer)])
+        self.assertEqual(gate["status"], "FAIL")
+        self.assertIn("not an ELF", gate["detail"])
+
+    def test_static_archive_accepted(self):
+        def writer(p):
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_bytes(b"!<arch>\nsome object\n")
+        gate = self._gate([("libstatic.a", writer)])
+        self.assertEqual(gate["status"], "PASS")
+
+
+class TestHapDeps(unittest.TestCase):
+    """HAP 里少一个 DT_NEEDED 的库，装上去才炸——G5 必须在打包阶段看闭包。"""
+
+    def _gate(self, libs, env=None):
+        import zipfile
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        root = Path(tmp)
+        hap = root / "build" / "app.hap"
+        hap.parent.mkdir(parents=True)
+        with zipfile.ZipFile(hap, "w") as archive:
+            for abi, name, data in libs:
+                archive.writestr("libs/%s/%s" % (abi, name), data)
+            archive.writestr("module.json", "{}")
+        st = state_mod.init_state(root)
+        if env:
+            st.write_json("env.json", env)
+        st.write_json("build.json", {"compile": {"status": "PASS"},
+                                     "package": {"status": "PASS"},
+                                     "hap": "build/app.hap", "artifacts": []})
+        gates, _overall = verifier.evaluate(st)
+        return gates["G5"], root
+
+    def _elf_bytes(self, needed):
+        import tempfile as _tf
+        path = Path(_tf.mkdtemp()) / "x.so"
+        write_elf(path, needed)
+        data = path.read_bytes()
+        shutil.rmtree(path.parent, True)
+        return data
+
+    def test_closed_closure_passes(self):
+        gate, _root = self._gate([
+            ("arm64-v8a", "libapp.so", self._elf_bytes(["libQt6Core.so.6",
+                                                        "libc.so"])),
+            ("arm64-v8a", "libQt6Core.so.6", self._elf_bytes(["libc.so"])),
+        ])
+        self.assertEqual(gate["status"], "PASS")
+        self.assertIn("闭包完整", gate["detail"])
+
+    def test_missing_openssl_fails(self):
+        gate, _root = self._gate([
+            ("arm64-v8a", "libapp.so", self._elf_bytes(["libssl.so.3",
+                                                        "libc.so"])),
+        ])
+        self.assertEqual(gate["status"], "FAIL")
+        self.assertIn("libssl.so.3", gate["detail"])
+
+    def test_unknown_lib_fails_by_default(self):
+        gate, _root = self._gate([
+            ("arm64-v8a", "libapp.so", self._elf_bytes(["libfoo.so.1"])),
+        ])
+        self.assertEqual(gate["status"], "FAIL")
+        self.assertIn("libfoo.so.1", gate["detail"])
+
+    def test_allowed_libs_env_respected(self):
+        gate, _root = self._gate([
+            ("arm64-v8a", "libapp.so", self._elf_bytes(["libfoo.so.1"])),
+        ], env={"hap_allowed_libs": ["libfoo.so"]})
+        self.assertEqual(gate["status"], "PASS")
+
+    def test_wrong_abi_dir_fails(self):
+        gate, _root = self._gate([
+            ("armeabi-v7a", "libapp.so", self._elf_bytes(["libc.so"])),
+        ])
+        self.assertEqual(gate["status"], "FAIL")
+        self.assertIn("armeabi-v7a", gate["detail"])
+
+    def test_system_libs_are_not_reported(self):
+        gate, _root = self._gate([
+            ("arm64-v8a", "libapp.so", self._elf_bytes(["libc.so", "libm.so",
+                                                        "libhilog.so"])),
+        ])
+        self.assertEqual(gate["status"], "PASS")
 
 
 class TestG2EvidenceChain(unittest.TestCase):
@@ -461,6 +631,13 @@ class TestPlatformAuditClassify(unittest.TestCase):
         self.assertEqual(report["header_dispatch"][0]["ok"], True)
         self.assertEqual(report["missing_both_macros"], [])
 
+    def test_compiler_macro_is_ok(self):
+        report = self._audit({"platform_audio.h": (
+            "#pragma once\n#if defined(__OHOS__)\n"
+            "#include \"ohos/audio_ohos.h\"\n#else\n#endif\n")})
+        self.assertEqual(report["header_dispatch"][0]["ok"], True)
+        self.assertEqual(report["missing_both_macros"], [])
+
     def test_linux_include_without_ohos_branch_warns(self):
         report = self._audit({"platform_notify.h": (
             "#pragma once\n#if defined(Q_OS_WIN)\n#include \"win/n.h\"\n"
@@ -567,6 +744,79 @@ class TestPackagePreflight(unittest.TestCase):
             st.write_json("env.json", {})
             errors, _warns = builder_mod.preflight_package(st)
             self.assertEqual(errors, [])
+
+
+class TestQt6ProjectLayout(unittest.TestCase):
+    """Qt6 的产物落点与 ability 名字都与 Qt5 壳工程不同，默认值不能沿用。"""
+
+    def _state(self, root: Path):
+        st = state_mod.init_state(root)
+        st.write_json("env.json", {})
+        return st
+
+    def test_preflight_finds_qt6_layout(self):
+        # Qt6：`_make_hap` 把 HAP 工程生成在 <build_dir>/harmonyos-build/
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            build = root / "build-ohos" / "harmonyos-build"
+            libs = build / "entry" / "libs" / "arm64-v8a"
+            libs.mkdir(parents=True)
+            (libs / "libssl.so.3").write_text("x", encoding="utf-8")
+            (build / "build-profile.json5").write_text(
+                '{"app":{"products":[{"compatibleSdkVersion":"5.0.0(12)"}]}}',
+                encoding="utf-8")
+            st = self._state(root)
+            st.write_json("env.json", {"compatible_sdk": "6.0.2(22)"})
+            errors, _warns = builder_mod.preflight_package(st)
+            joined = "\n".join(errors)
+            self.assertIn("libssl.so.3", joined)
+            self.assertIn("compatibleSdkVersion", joined)
+
+    def test_align_sdk_rewrites_profile(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            # Qt6 部署目录里的 app 级 build-profile.json5
+            profile = root / "build-ohos" / "harmonyos-build" / "build-profile.json5"
+            profile.parent.mkdir(parents=True)
+            profile.write_text(
+                '{"app":{"products":[{"compatibleSdkVersion":"6.1.0(23)",'
+                '"runtimeOS":"HarmonyOS"}]}}', encoding="utf-8")
+            st = self._state(root)
+            env = {"compatible_sdk": "6.0.2(22)"}
+            changes = builder_mod.align_sdk_profile(st, env)
+            self.assertTrue(changes)
+            self.assertIn("6.0.2(22)", profile.read_text(encoding="utf-8"))
+
+    def test_detect_ability_reads_main_element(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            entry = root / "entry" / "src" / "main"
+            entry.mkdir(parents=True)
+            (entry / "module.json5").write_text(
+                """{
+                  // 注释与尾逗号都是 json5 合法写法
+                  "module": {
+                    "mainElement": "QAbility",
+                    "abilities": [{"name": "QAbility"}, {"name": "BackupAbility"}],
+                  }
+                }""", encoding="utf-8")
+            st = self._state(root)
+            self.assertEqual(builder_mod.detect_ability(st, {}), "QAbility")
+
+    def test_find_hap_prefers_signed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name in ("app-unsigned.hap", "app-signed.hap"):
+                target = root / "entry" / "build" / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("x", encoding="utf-8")
+            found = builder_mod.find_hap(root)
+            self.assertTrue(found and found.endswith("app-signed.hap"), found)
+
+    def test_native_path_is_absolute(self):
+        p = state_mod.native_path("build/app.hap")
+        self.assertTrue(Path(p).is_absolute(), p)
+        self.assertNotIn("\n", p)
 
 
 class TestG8Propagation(unittest.TestCase):
@@ -1010,3 +1260,68 @@ class TestCliSmoke(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestScannerRequired(unittest.TestCase):
+    """可选 Qt 模块不能被判成阻断（压测 F1 / Windows 实测 P1-1）。"""
+
+    def _scan(self, cmake_text):
+        tmp = pathlib.Path(tempfile.mkdtemp())
+        (tmp / "CMakeLists.txt").write_text(cmake_text, encoding="utf-8")
+        (tmp / "main.cpp").write_text("#include <QApplication>\n",
+                                      encoding="utf-8")
+        return scanner.scan_project(tmp)
+
+    def test_optional_components_not_required(self):
+        info = self._scan(
+            "cmake_minimum_required(VERSION 3.16)\n"
+            "project(demo)\n"
+            "find_package(Qt6 COMPONENTS Core Widgets "
+            "OPTIONAL_COMPONENTS WebEngineWidgets)\n")
+        required = info["qt_module_required"]
+        self.assertTrue(required["core"])
+        self.assertTrue(required["widgets"])
+        self.assertFalse(required["webenginewidgets"])
+
+    def test_component_guarded_by_target_check_is_not_required(self):
+        """QUIET + `if(TARGET ...)` 的模块是软依赖（压测 F1 的真实形态）。"""
+        info = self._scan(
+            "find_package(Qt6 QUIET COMPONENTS Core WebEngineWidgets)\n"
+            "if(TARGET Qt6::WebEngineWidgets)\n"
+            "  target_link_libraries(app PRIVATE Qt6::WebEngineWidgets)\n"
+            "endif()\n")
+        self.assertTrue(info["qt_module_required"]["core"])
+        self.assertFalse(info["qt_module_required"]["webenginewidgets"])
+
+    def test_required_is_required(self):
+        info = self._scan(
+            "find_package(Qt6 REQUIRED COMPONENTS Core Charts)\n")
+        self.assertTrue(info["qt_module_required"]["charts"])
+
+
+class TestAssessorOptional(unittest.TestCase):
+    def test_optional_out_of_scope_does_not_block(self):
+        assessment = assessor.evaluate(
+            REPO_ROOT,
+            {"qt_modules": ["core", "widgets", "webenginewidgets"],
+             "qt_module_required": {"core": True, "widgets": True,
+                                    "webenginewidgets": False},
+             "qt_version_hint": "6.8.3", "sources": [],
+             "third_party_hints": []})
+        codes = [b["code"] for b in assessment["blockers"]]
+        self.assertNotIn("MODULE-OUT-OF-SCOPE", codes)
+        self.assertEqual([m["module"] for m in assessment["optional_modules"]],
+                         ["webenginewidgets"])
+        self.assertNotEqual(assessment["verdict"], "blocked")
+        self.assertIn("optional", assessment["summary"])
+
+    def test_required_out_of_scope_still_blocks(self):
+        assessment = assessor.evaluate(
+            REPO_ROOT,
+            {"qt_modules": ["core", "webenginewidgets"],
+             "qt_module_required": {"core": True,
+                                    "webenginewidgets": True},
+             "qt_version_hint": "6.8.3", "sources": [],
+             "third_party_hints": []})
+        codes = [b["code"] for b in assessment["blockers"]]
+        self.assertIn("MODULE-OUT-OF-SCOPE", codes)

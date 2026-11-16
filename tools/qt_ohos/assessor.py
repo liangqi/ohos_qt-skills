@@ -127,10 +127,23 @@ def evaluate(kb_root, scan_info: Dict, risk: Optional[Dict] = None,
     unknown: List[str] = []
 
     # 1. Qt module matrix
+    # 只有"工程确实需要"的模块才可能阻断：`find_package(... QUIET)` 里被条件编译
+    # 包着的可选模块（典型是 webenginewidgets）缺了，工程照样能编。
+    required_map = scan_info.get("qt_module_required") or {}
+    optional_notes: List[Dict] = []
     for mod in scan_info.get("qt_modules", []):
         status, entry = module_status(matrix, mod, version_key)
         if status is None and entry is None:
             unknown.append(mod)
+            continue
+        is_required = bool(required_map.get(mod, True))
+        if status == "out-of-scope" and not is_required:
+            optional_notes.append({
+                "module": mod,
+                "note": ("工程未强制要求该模块（OPTIONAL_COMPONENTS / 条件编译），"
+                         "缺了不阻断；真用到时按条目说明换实现"),
+                "ref": (entry.get("ref") or "semantic/qt-harmonyos-modules.md"),
+            })
             continue
         if status == "out-of-scope":
             blockers.append({
@@ -222,6 +235,7 @@ def evaluate(kb_root, scan_info: Dict, risk: Optional[Dict] = None,
         "self_compile_modules": self_compile,
         "restricted_modules": restricted,
         "unknown_modules": unknown,
+        "optional_modules": optional_notes,
         "deps_to_verify": deps_to_verify,
         "kde_stack": kde_stack,
         "platform_grep": {k: v[:5] for k, v in greps.items()},
@@ -277,6 +291,9 @@ def _summary(a: Dict) -> str:
         parts.append("%d blocker(s): %s" % (
             len(a["blockers"]),
             "; ".join(b["code"] for b in a["blockers"])))
+    if a.get("optional_modules"):
+        parts.append("optional(out of scope, not blocking): %s" % ", ".join(
+            m["module"] for m in a["optional_modules"]))
     if a["self_compile_modules"]:
         parts.append("self-compile: %s" % ", ".join(
             m["module"] for m in a["self_compile_modules"]))
@@ -310,6 +327,13 @@ def render(assessment: Dict) -> str:
             if b.get("substitute"):
                 lines.append("        substitute: %s" % b["substitute"])
             lines.append("        read: %s" % b.get("ref"))
+    if assessment.get("optional_modules"):
+        lines.append("")
+        lines.append("Optional modules (out of scope, NOT blocking - "
+                     "project tolerates their absence):")
+        for m in assessment["optional_modules"]:
+            lines.append("  %-16s %s" % (m["module"], m["note"]))
+            lines.append("        read: %s" % m.get("ref"))
     if assessment.get("self_compile_modules"):
         lines.append("")
         lines.append("Self-compile modules (not in SDK, cross-compile them):")

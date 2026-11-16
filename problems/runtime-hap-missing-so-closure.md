@@ -2,9 +2,9 @@
 id: problem-runtime-hap-missing-so-closure
 type: problem
 domain: runtime
-tags: [so闭包, libqohos, jscrash, TypeError, libdav1d, libaom, libbz2, aom编译, 静态库转so, portgraph]
+tags: [so闭包, libqohos, jscrash, TypeError, libdav1d, libaom, libbz2, aom编译, 静态库转so, portgraph, QT_HARMONYOS_EXTRA_LIBS, OpenSSL, libssl.so.3, HAP依赖]
 created: 2026-09-11
-updated: 2026-09-11
+updated: 2026-11-16
 status: solved
 severity: high
 audience: public
@@ -25,7 +25,7 @@ error_message: >
   appspawn: com.example.xxx exit with code:254
   hiview: OnFault: xxx Unsupported faultlog abily (无 cppcrash)
 error_code: ""
-keywords: [so闭包, NEEDED, jscrash, handleAbilityStageOnCreate, libqohos, fontconfig, freetype, dav1d, aom, bz2, HAP, 启动崩溃]
+keywords: [so闭包, NEEDED, jscrash, handleAbilityStageOnCreate, libqohos, fontconfig, freetype, dav1d, aom, bz2, HAP, 启动崩溃, QT_HARMONYOS_EXTRA_LIBS, libssl.so.3, OpenSSL, imported SHARED, 依赖闭包断裂]
 symptoms: "签名 HAP 安装成功，aa start 后进程 <100ms 消失，无 cppcrash 只有 jscrash TypeError；同 kit 构建的简单 Qt 应用正常"
 
 environment: "Windows 构建 + Qt 6.12-beta3 kit + portgraph bottle 依赖 + HUAWEI MateBook Pro 设备"
@@ -92,6 +92,45 @@ clang --target=aarch64-linux-ohos --sysroot=$SYSROOT \
 ```
    前提：cmd-pkgs 的 .a 是 PIC（OHOS 全 PIC 策略，实测可行），产物用
    `llvm-nm -D` 验证关键符号（dav1d_open 等）。
+
+## 变体：导入的 SHARED 库不会自动进 HAP（Qt6 的 `QT_HARMONYOS_EXTRA_LIBS`）
+
+上面讲的是 Qt 自己那串传递依赖。另一类失效更隐蔽：**业务链接的 imported SHARED
+依赖**（典型是 OpenSSL）在链接期一切正常，链接器把 `libssl.so.3` 写进
+`libapp.so` 的 `DT_NEEDED`，但打包时没人把它拷进 HAP：
+
+```
+$ llvm-readelf -d libFinceptTerminal.so | grep NEEDED
+  (NEEDED)  Shared library: [libssl.so.3]
+  (NEEDED)  Shared library: [libcrypto.so.3]
+$ unzip -l app.hap | grep libs/arm64-v8a/ | grep -c ssl
+0
+```
+
+装机后 `dlopen` 失败、进程一启动就退；而只看"HAP 文件存在"的门禁会判 PASS。
+
+**根因**：Qt6 的 `_qt_internal_harmonyos_collect_extra_libs`
+（`Qt6HarmonyOSMacros.cmake`）只收 Qt target 与 `qt_add_executable` 追踪到的
+imported target，`find_package(OpenSSL)` 拿到的 imported SHARED 不在名单里。
+
+**修法**：显式把 soname 加进 `QT_HARMONYOS_EXTRA_LIBS`（版本号必须拼上——
+packaging 按 soname 找文件，`${OPENSSL_SSL_LIBRARY}` 是 `libssl.so`，实际
+soname 是 `libssl.so.3`）：
+
+```cmake
+set_target_properties(FinceptTerminal PROPERTIES
+  QT_HARMONYOS_EXTRA_LIBS
+  "${OPENSSL_SSL_LIBRARY}.3;${OPENSSL_CRYPTO_LIBRARY}.3")
+```
+
+`.3` 不要凭猜：先 `llvm-readelf -d` 看 `SONAME`，或直接看 `DT_NEEDED` 里的
+名字照抄。系统库（libc/libm/libdl/liblog/libz 等）不用加，但 libssl 不属系统库。
+
+**验法（两层）**：
+1. 打包后 `unzip -l app.hap | grep libs/`，HAP 里必须有；
+2. `python tools/qt-ohos-run.py verify` 的 G5 现在会解包做 `DT_NEEDED` 闭包校验：
+   缺失时报 `依赖闭包断裂: libssl.so.3 (needed by libFinceptTerminal.so)`，
+   不再只看"`.hap` 存在"。确实要放行的库写进 `hap_allowed_libs`（前缀匹配）。
 
 ## 关联坑：portgraph bottle 的 NTFS symlink 损坏
 

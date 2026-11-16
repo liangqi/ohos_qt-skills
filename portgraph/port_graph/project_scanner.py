@@ -600,7 +600,7 @@ def scan_project(conn, project_root, info: Dict = None) -> Dict:
     conn.execute("DELETE FROM node_interfaces WHERE node_id=?", (app_id,))
 
     # Qt 模块边
-    modules_linked, modules_missing = [], []
+    modules_linked, modules_without_kb_node = [], []
     resolve_cache: Dict = {}
     for mod in info["qt_modules"]:
         node = _resolve_qtmod(conn, mod, _cache=resolve_cache)
@@ -609,7 +609,7 @@ def scan_project(conn, project_root, info: Dict = None) -> Dict:
             modules_linked.append({"module": mod, "node": node["id"],
                                    "status": node["port_status"]})
         else:
-            modules_missing.append(mod)
+            modules_without_kb_node.append(mod)
 
     # 第三方库依赖边（find_package/pkg_check_modules/Conan/vcpkg/include/
     # require_dep；require_source_dep → vendored 边）
@@ -652,7 +652,10 @@ def scan_project(conn, project_root, info: Dict = None) -> Dict:
         "build_system": info["build_system"],
         "qt_version_hint": info.get("qt_version_hint"),
         "sources": len(info["sources"]),
-        "modules_linked": modules_linked, "modules_missing": modules_missing,
+        "modules_linked": modules_linked,
+        # 名字要说实话：这里列的是"知识库里没有这个模块的节点"，不是"工程缺模块"。
+        # 旧名 modules_missing 会让人读成"依赖缺失"，进而误判工程有问题。
+        "modules_without_kb_node": modules_without_kb_node,
         "deps_linked": deps_linked, "deps_unknown": deps_unknown,
         "deps_vendored": tp["vendored"],
         "deps_optional": deps_optional,

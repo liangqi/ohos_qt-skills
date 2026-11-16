@@ -143,6 +143,7 @@ python portgraph/portgraph.py fetch-deps <app> --dry-run  # 依赖闭包预览
 ## B. 迁移流水线全量命令
 
 ```bash
+python tools/qt-ohos-run.py doctor            # 环境体检（cmake / Qt kit / SDK / hvigor / JDK / hdc / 设备）
 python tools/qt-ohos-run.py scan <项目目录>   # 预扫描 + 19 条规则风险报告
 python tools/qt-ohos-run.py plan              # 迁移计划（auto/assisted/manual）
 python tools/qt-ohos-run.py patch             # 白名单自动修复（受追踪）
@@ -150,10 +151,12 @@ python tools/qt-ohos-run.py config set qt_sdk_prefix <Qt OHOS SDK 路径>
 python tools/qt-ohos-run.py build             # G3 编译
 python tools/qt-ohos-run.py build --record-only --artifacts "build-ohos/*.so" \
                                               # 外部交叉编译已成功：只登记结果，不重跑
-python tools/qt-ohos-run.py package           # G5 打 HAP
-python tools/qt-ohos-run.py install           # G6 hdc 装机
-python tools/qt-ohos-run.py launch            # G7 启动
+python tools/qt-ohos-run.py package           # G5 打 HAP（Qt6 自动 _make_hap / harmonydeployqt6 + DT_NEEDED 闭包校验）
+python tools/qt-ohos-run.py sign              # devecocli 生成签名材料；无 devecocli 时打六件套清单
+python tools/qt-ohos-run.py install           # G6 hdc 装机（POSIX 路径自动转本机原生写法）
+python tools/qt-ohos-run.py launch            # G7 启动（ability 取 module.json5 的 mainElement）
 python tools/qt-ohos-run.py smoke             # G8 崩溃窗口检查（install/launch 未过则 SKIP，不判 PASS）
+python tools/qt-ohos-run.py smoke-interact    # G10 机器取证：截图→点击→再截图，人工仍保留裁决权
 python tools/qt-ohos-run.py verify            # G0-G12 门禁（唯一成功判据）
 python tools/qt-ohos-run.py libcheck <lib> --level built|probed --evidence "..."
                                               # 库级进展：built=能编能链，probed=设备上调通
@@ -167,7 +170,8 @@ python tools/qt-ohos-run.py package --record-only --hap entry/build/.../app.hap
 
 ```bash
 python tools/ohos-platform-audit.py <app>/SourceFiles/platform
-#   头分发文件必须同时命名 Q_OS_OHOS 与 Q_OS_HARMONY；退出码非 0 即拦下
+#   头分发文件必须同时命名 Q_OS_OHOS 与 Q_OS_HARMONY（或用编译器宏 __OHOS__）；
+#   退出码非 0 即拦下
 python tools/ohos-platform-audit.py <platform-dir> --undefined link.log
 #   把链接日志里"没有任何 ohos/ 实现提到过"的符号列出来
 ```

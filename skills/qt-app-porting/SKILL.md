@@ -59,26 +59,42 @@ python tools/qt-ohos-run.py patch
 每次修改都被追踪：`.qt-ohos/changes.json` + `originals/`（可回滚）+
 `patches/000x-*.patch`（可固化、可评审）。
 
-⚠️ **禁止盲目扩写平台守卫**：Qt 鸿蒙分支中 `Q_OS_OHOS` 隐含 `Q_OS_LINUX`，
-`#ifdef Q_OS_LINUX` 分支在鸿蒙上本来就会被编译。此类位置只能人工评审，
-参考 `semantic/qt-harmonyos-api.md` 的宏顺序说明。
+⚠️ **禁止盲目扩写平台守卫**：鸿蒙分支上 `Q_OS_LINUX` **本来就是成立的**
+（Qt 6.12+ 定义 `Q_OS_HARMONY` 并由它推出 `Q_OS_LINUX`，Qt 5.15 kit 另外还有
+`Q_OS_OHOS`），`#ifdef Q_OS_LINUX` 分支在鸿蒙上会被编译。此类位置只能人工评审，
+参考 `semantic/qt-harmonyos-golden-rules.md` G3 与宏顺序说明。
 
 ### Step 4 配置构建环境并执行
 
+先体检，再配置——**不要**跳过 doctor 直接 `build`，Qt6 预构建 kit 缺任何一件
+都会失败得看不出原因：
+
 ```bash
-python tools/qt-ohos-run.py config set qt_sdk_prefix <Qt OHOS SDK 路径>
-# 交叉工具链 + 生成器（cmake_args 可写成一条命令行字符串）
-python tools/qt-ohos-run.py config set cmake_args \
-  "-G Ninja -DCMAKE_TOOLCHAIN_FILE=<OHOS native>/build/cmake/ohos.toolchain.cmake" 
-python tools/qt-ohos-run.py config set build_command "<可选：自定义构建命令>"
-python tools/qt-ohos-run.py config set bundle_name  com.example.app   # G8 日志过滤
-python tools/qt-ohos-run.py config set compatible_sdk "5.0.0(12)"     # 与 build-profile 对齐
-python tools/qt-ohos-run.py build      # G3：cmake -S . -B build-ohos [-DCMAKE_PREFIX_PATH] → cmake --build
-                                        #     不指定 -G 就是 CMake 默认生成器（Makefiles）；要 Ninja 见上面 cmake_args
-python tools/qt-ohos-run.py package    # G5 打 HAP
-python tools/qt-ohos-run.py install    # G6 hdc install
-python tools/qt-ohos-run.py launch     # G7 aa start
+python tools/qt-ohos-run.py doctor     # cmake/make/Qt kit/OHOS native SDK/hvigor/JDK/hdc/设备
+```
+
+Qt 6 预构建 kit 与 Qt 5.15 套件是两套完全不同的构建配方：Qt6 必须给
+`qt_host_sdk`（宿主 kit）+ `ohos_sdk_native`，`build` 会自动带
+`CMAKE_TOOLCHAIN_FILE=<kit>/lib/cmake/Qt6/qt.toolchain.cmake`、
+`QT_CHAINLOAD_TOOLCHAIN_FILE=<native>/build/cmake/ohos.toolchain.cmake`、
+`QT_HOST_PATH`；`package` 会自己走 `_make_hap` / `harmonydeployqt6`，
+不再要求你手写打包命令。完整配方与五个 hvigor 环境变量见
+`procedural/qt6-ohos-windows-cli-deploy.md`。
+
+```bash
+python tools/qt-ohos-run.py config set qt_sdk_prefix  <kit>/harmonyos_arm64_v8a
+python tools/qt-ohos-run.py config set qt_host_sdk    <kit>/mingw_64          # Qt6 必填
+python tools/qt-ohos-run.py config set ohos_sdk_native <sdk>/native          # Qt6 必填
+python tools/qt-ohos-run.py config set deveco_path    <DevEco Studio 安装目录> # hvigor/JDK/SDK 从这里推
+python tools/qt-ohos-run.py config set bundle_name    com.example.app         # G8 日志过滤
+python tools/qt-ohos-run.py config set compatible_sdk "5.0.0(12)"             # 与 build-profile 对齐
+python tools/qt-ohos-run.py build      # G3：交叉配置 + cmake --build
+python tools/qt-ohos-run.py package    # G5：自动 _make_hap / harmonydeployqt6 + HAP 依赖闭包校验
+python tools/qt-ohos-run.py sign       # 可选：devecocli 生成签名材料并写 build-profile
+python tools/qt-ohos-run.py install    # G6 hdc install（路径自动转本机原生写法）
+python tools/qt-ohos-run.py launch     # G7 aa start（ability 从 module.json5 的 mainElement 读）
 python tools/qt-ohos-run.py smoke      # G8 崩溃窗口检查
+python tools/qt-ohos-run.py smoke-interact   # G10 机器取证：截图 → 点击 → 再截图比对
 ```
 
 每一步都有 timeout、退出码和 `.qt-ohos/logs/` 证据；**TIMEOUT 永远不是 PASS**。
@@ -87,14 +103,23 @@ python tools/qt-ohos-run.py smoke      # G8 崩溃窗口检查
 
 | 键 | 作用 | 缺省 |
 |---|---|---|
-| `qt_sdk_prefix` | Qt for OHOS SDK 前缀，自动转 `-DCMAKE_PREFIX_PATH` | — |
-| `build_command` | 整条自定义构建命令（给了就不用 cmake 分支） | — |
-| `cmake` / `build_dir` / `cmake_args` | cmake 分支的可调项；`cmake_args` 给一条命令行字符串（`-G Ninja -DCMAKE_TOOLCHAIN_FILE=...`），G3 会按 shell 规则切分 | `cmake` / `build-ohos` / 空 |
-| `package_command` | 自定义打包命令 | hvigor 链路 |
-| `hap_glob` | HAP 产物匹配 | `entry/build/**/*.hap` |
+| `qt_sdk_prefix` | Qt for OHOS SDK 前缀（Qt5 走 `-DCMAKE_PREFIX_PATH`，Qt6 从中发现 toolchain） | — |
+| `qt_host_sdk` | Qt6 宿主 kit（`mingw_64`），转 `QT_HOST_PATH`；缺了 configure 直接 FAIL | — |
+| `ohos_sdk_native` | OHOS native SDK，转 `OHOS_SDK_NATIVE` + `-DOHOS_ARCH` | — |
+| `generator` / `make_program` | 生成器（Windows 默认 `MinGW Makefiles`，**Ninja 在沙箱里会空转**） | 按平台推 |
+| `build_cwd` | 构建目录的父目录（CMake 工程在子目录时给它） | 工程根 |
+| `build_command` | 整条自定义构建命令（给了就不用内置分支） | — |
+| `cmake` / `build_dir` / `cmake_args` | cmake 分支的可调项；`cmake_args` 给一条命令行字符串，G3 按 shell 规则切分 | `cmake` / `build-ohos` / 空 |
+| `package_target` | 打包目标名（缺省 `<target>_make_hap`） | 自动 |
+| `harmonyos_build` / `package_dir` | 打包落点（Qt6 缺省 `<build_dir>/harmonyos-build`） | 自动探测 |
+| `package_command` | 自定义打包命令（逃生舱，给了就不走内置两条路径） | 内置 |
+| `hvigor` / `java_home` / `deveco_sdk_home` / `hvigor_home` / `npm_cache` | hvigor 五件套；前三个缺省从 `deveco_path` 推，后两个缺省落 `.qt-ohos/` 下的可写目录 | 自动 |
+| `hap_glob` | HAP 产物匹配；`-signed` 优先 | `**/build/**/*.hap` |
+| `hap_allowed_libs` | 允许不打包的 soname 前缀（默认系统库白名单之外的一切都必须进 HAP） | 空 |
 | `bundle_name` | **G8 日志按它过滤**；不填则抓全设备缓冲，G8 最高只能 PARTIAL | 空 |
+| `ability_name` | 启动的 ability；缺省从 `module.json5` 的 `mainElement` 读（Qt6 是 `QAbility`） | 自动 |
 | `process_name` | G8 的第二个过滤词（鸿蒙进程名常是 bundle 最后一段，缺省就用那一段） | bundle 末段 |
-| `compatible_sdk` | 与 `build-profile.json5` 的 `compatibleSdkVersion` 比对，打包前拦下不一致 | 空 |
+| `compatible_sdk` | 与 `build-profile.json5` 的 `compatibleSdkVersion` 比对，打包前自动对齐并拦下不一致 | SDK 真值 |
 | `crash_wait_sec` | 启动后观察崩溃的秒数 | 8 |
 | `hdc` / `devecocli` | 工具路径（不在 PATH 时给绝对路径） | PATH 查找 |
 构建失败时立刻分析日志：

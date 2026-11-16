@@ -19,9 +19,11 @@ Rule schema (see knowledge/rules/index.yaml):
       cmake:  [...]             # regexes against CMakeLists.txt contents
       modules: [dbus]           # matched against detected Qt module list
       files:  ["*.so"]          # glob against project files
-      guard:                    # 文件级断言：命中 glob 的文件必须同时满足 require
+      guard:                    # 文件级断言：命中 glob 的文件必须满足 require
         files: ["platform_*.h"] # glob
-        require: ["Q_OS_OHOS", "Q_OS_HARMONY"]   # 任一缺失即报
+        when: ["Q_OS_OHOS"]     # 可选：文件里出现这些片段才检查
+        require: ["Q_OS_A"]     # 这些片段必须全部出现
+        require_any: ["Q_OS_B"] # 这些片段至少出现一个
     golden_rules: [B9]          # cross-ref semantic/qt-harmonyos-golden-rules.md
     kb: [semantic/qt-harmonyos-platform-limits.md]
     solution: >
@@ -141,14 +143,21 @@ class RuleEngine:
                     if fnmatch.fnmatch(rel, str(pattern)):
                         findings.append(_scoped_finding(rule, rel, 0, "file present"))
 
-            # guard：命中 glob 的文件必须**同时**包含 require 里全部片段。
-            # 用于"双宏守卫"这类断言——单看 files 只能报"存在"，看不出写错在哪。
+            # guard：命中 glob 的文件必须**同时**包含 require 里全部片段，
+            # 且（若给了 require_any）至少包含其中之一。`when` 用来把断言限定在
+            # "已经写了某个片段"的文件上——比如"写了 Q_OS_OHOS 就必须也写
+            # Q_OS_HARMONY"，没写任何 OHOS 宏的文件归审计工具管，不归这条规则。
+            # 单看 files 只能报"文件存在"，看不出守卫写错在哪。
             guard = match.get("guard")
             if isinstance(guard, dict):
                 globs = [str(g) for g in _as_list(guard.get("files"))]
+                when = [(_compile(r), r) for r in _as_list(guard.get("when"))]
+                when = [(rx, raw) for rx, raw in when if rx is not None]
                 required = [(_compile(r), r) for r in _as_list(guard.get("require"))]
                 required = [(rx, raw) for rx, raw in required if rx is not None]
-                if globs and required:
+                any_of = [(_compile(r), r) for r in _as_list(guard.get("require_any"))]
+                any_of = [(rx, raw) for rx, raw in any_of if rx is not None]
+                if globs and (required or any_of):
                     for rel in _all_rel_paths(root):
                         if not any(fnmatch.fnmatch(rel, g) for g in globs):
                             continue
@@ -157,8 +166,17 @@ class RuleEngine:
                                                           errors="replace")
                         except OSError:
                             continue
+                        if when and not any(rx.search(text) for rx, _ in when):
+                            continue
+                        problems = []
                         missing = [raw for rx, raw in required if not rx.search(text)]
                         if missing:
+                            problems.append("missing: %s" % ", ".join(
+                                str(m) for m in missing))
+                        if any_of and not any(rx.search(text) for rx, _ in any_of):
+                            problems.append("missing one of: %s" % ", ".join(
+                                str(raw) for _, raw in any_of))
+                        if problems:
                             # 行号取守卫所在行：`文件:0` 没法点进去看
                             line = 1
                             for idx, row in enumerate(text.splitlines(), 1):
@@ -171,8 +189,7 @@ class RuleEngine:
                                         line = idx
                                         break
                             findings.append(_scoped_finding(
-                                rule, rel, line,
-                                "missing: %s" % ", ".join(str(m) for m in missing)))
+                                rule, rel, line, "; ".join(problems)))
 
         return self.report(findings)
 

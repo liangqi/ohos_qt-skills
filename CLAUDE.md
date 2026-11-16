@@ -98,7 +98,12 @@ skills/          Agent Skills（6 个，按写权限切边界）
   `qt-sdk-run.py verify` 的 SV0–SV8 为准。编译通过 ≠ 迁移成功；`TIMEOUT` 永远不是 PASS，`SKIP` / `NOT_RUN` 也不是（没测 ≠ 通过）。
 - **日志先机器匹配**：`analyze-log` 命中 QOH 模式后再读知识页，不要跳过匹配直接猜。
 - **改动受追踪**：所有自动修改进 `.qt-ohos/changes.json` 与 patches；禁止盲目扩写
-  `Q_OS_LINUX` 守卫（鸿蒙下 `Q_OS_OHOS` 隐含 `Q_OS_LINUX`），禁止注释功能代码换编译通过。
+  `Q_OS_LINUX` 守卫（鸿蒙下 `Q_OS_LINUX` 本来就成立：Qt 6.12+ 定义 `Q_OS_HARMONY` 并由它
+  推出 `Q_OS_LINUX`，Qt 5.15 kit 另有 `Q_OS_OHOS`），禁止注释功能代码换编译通过。
+- **门禁看内容不看文件在不在**：G4 逐个读产物断言 `ELF64/AArch64/DYN`；G5 解包 HAP 做
+  `DT_NEEDED` 闭包校验（`libssl.so.3` 这类导入库不会自动进 HAP）；G2 只认带证据的
+  "已处理"标记；G8 未配 `bundle_name` 最高 PARTIAL；G10 的 `smoke-interact` 只是机器取证，
+  人工裁决权不下放。
 - **工具可用性预检**：构建/装机/签名/日志前先定位并验证 `devecocli`、`hdc`、Qt OHOS SDK
   （`devecocli` 顺序：`ENV.local.md` 的 `DEVECO_CLI` → PATH → npm 全局 → DevEco 捆绑；
   它不一定随 DevEco Studio 安装）。不可用即停下报告并给安装命令，禁止用猜测路径继续。
@@ -116,7 +121,8 @@ skills/          Agent Skills（6 个，按写权限切边界）
 - **链路闭环**（`faults/_index.md` §四）：defect 的"临时解决"必须同时有采用中方案（W adopted）
   与在跟单（T）；limitation 与应用问题必须有采用中方案；缺口向上传播，S 宣称 resolved 而链有缺 → ERROR。
 - **收工自检**：`python _scripts/ci.py` 必须通过（等价 `bash _scripts/ci.sh`；Windows 无 bash 用前者）；
-  改了文档数字却没改事实，门禁会红。
+  改了文档数字却没改事实，门禁会红。README/TESTING 里的派生数字由
+  `python _scripts/sync-counts.py` 从真源同步（`--check` 只检查），不要手改。
 
 ## 分支与交付
 

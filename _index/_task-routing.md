@@ -4,7 +4,7 @@ type: meta
 domain: workflow
 tags: [agent, routing, task-types, workflow, decision-tree]
 created: 2026-06-27
-updated: 2026-09-23
+updated: 2026-11-16
 status: active
 refs: [agent-mesh, semantic-qt-harmonyos-golden-rules, procedural-demo-generation]
 summary: >
@@ -37,6 +37,7 @@ summary: >
     ├─ "生命周期/closeEvent/接续/分享" ────→ [G] 生命周期
     ├─ "QtOhosExtras 怎么用/某个函数" ────→ [H] QtOhosExtras API
     ├─ "Qt6 相关" ─────────────────────────→ [L] Qt6 状态
+    ├─ "Qt6 怎么编译/打包/hvigor 报错/装不上" → [O] Qt6 端到端构建与部署
     ├─ "三方库/依赖/交叉编译" ────────────→ [M] 三方库
     ├─ "DevEco/MCP/工具链" ──────────────→ [N] 工具链
     ├─ "Qt+CEF demo / WebEngine 迁移 demo" ─→ [Q] Demo 生成（+ qt-cef-ohos-dev-guide）
@@ -108,7 +109,7 @@ summary: >
 |------|------|
 | **工作流** | `build-run-workflow.md` §构建失败排查四步法 |
 | **必读页** | ① `golden-rules.md` §一（B1-B12） ② `project-structure.md` |
-| **按需加载** | `build.md`（Qt 编译）、`third-party-libs.md`（三方库编译）、`problems/_lookup.md`（已知错误） |
+| **按需加载** | `build.md`（Qt 编译）、`third-party-libs.md`（三方库编译）、`problems/_lookup.md`（已知错误）；Qt6 交叉编译/打包/hvigor 见 [O] 的必读页 |
 | **预期输出** | 错误分类 → 根因 → 修复步骤 |
 
 ### [F] 窗口问题
@@ -158,7 +159,7 @@ summary: >
 | 项目 | 内容 |
 |------|------|
 | **必读页** | ① `third-party-libs.md` |
-| **按需加载** | `project-structure.md`（部署目录）、`platform-limits.md`（影响三方库的限制） |
+| **按需加载** | `project-structure.md`（部署目录）、`platform-limits.md`（影响三方库的限制）；Qt6 打包时导入库不会自动进 HAP，见 `problems/runtime-hap-missing-so-closure.md` |
 | **预期输出** | 交叉编译方法 / 部署步骤 / 兼容性评估 |
 
 ### [N] 工具链
@@ -170,6 +171,22 @@ summary: >
 | **必读页** | ① [[ohos-common-kb/procedural/deveco-cli-usage-rules|common：DevEco CLI 使用规则]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/procedural/deveco-cli-usage-rules.md)） ② [[ohos-common-kb/semantic/deveco-mcp-capabilities|common：DevEco MCP 能力边界]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/deveco-mcp-capabilities.md)） |
 | **按需加载** | [[ohos-common-kb/semantic/harmonyos-development-fundamentals|common：HarmonyOS 开发基础]]（[standalone](https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills/blob/main/ohos-common-kb-public/semantic/harmonyos-development-fundamentals.md)）、[[qt-harmonyos-build-run-workflow]] |
 | **预期输出** | 安装/配置步骤 |
+
+### [O] Qt6 端到端构建与部署
+
+**触发词**：Qt6 编译、qt-cmake、harmonydeployqt6、_make_hap、hvigor、hvigorw、
+签名、signingConfigs、compatibleSdkVersion、00303082、EPERM symlink、
+No hvigor path specified、装不上、aa start 失败
+
+| 项目 | 内容 |
+|------|------|
+| **必读页** | ① `procedural/qt6-ohos-windows-cli-deploy.md`（Qt6.12 预构建 kit 在 Windows 命令行端到端：toolchain、`_make_hap`、hvigor 五件套、签名六件套） ② `procedural/qt6-ohos-manual-deploy.md`（绕过 harmonydeployqt6 的手动部署） |
+| **按需加载** | `skills/qt-app-porting/SKILL.md`（`doctor` / `sign` / `smoke-interact` 三个子命令）；`problems/runtime-hap-missing-so-closure.md`（HAP 依赖闭包）、`problems/build-fail-hvigor-spawn-java-enoent.md`、`problems/build-hvigor-native-skip.md`、`problems/build-local-openharmony-signing-chain.md` |
+| **预期输出** | 可复现的构建/打包/签名/装机命令 + 每步的失败判据；**不要**回答"用 DevEco 点一下" |
+
+> 这一组知识在 `trunk` 之前只存在于 procedural 页，SKILL 与路由都不指向它，移植者
+> 只能重新推导一遍（`QT_HARMONYOS_HVIGOR` 必须绝对路径、缺了还返回 0；非管理员
+> 的 junction 权限；`compatibleSdkVersion` 硬编码）。路由把它前移，先读页再动手。
 
 ### [P] 自动迁移（Execution Plane）
 

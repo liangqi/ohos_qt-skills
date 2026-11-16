@@ -23,10 +23,12 @@ Design rules (borrowed from build_in_harmonyos):
 
 from __future__ import annotations
 
+import base64
 import json
 import locale
 import os
 import shlex
+import shutil
 import subprocess
 import time
 from dataclasses import dataclass, field, asdict
@@ -218,7 +220,8 @@ class MigrationState:
 
     # ------------------------------------------------------------ commands
     def run_cmd(self, args, label: str, timeout: float = 600.0,
-                cwd=None, expect_rc: int = 0) -> CommandResult:
+                cwd=None, expect_rc: int = 0,
+                extra_env: Optional[Dict[str, str]] = None) -> CommandResult:
         """Run a command, record it as evidence. TIMEOUT is never PASS."""
         if isinstance(args, str):
             # Windows: shell=True expects a single command string; splitting it
@@ -240,9 +243,14 @@ class MigrationState:
 
         start = time.time()
         try:
+            child_env = None
+            if extra_env:
+                child_env = dict(os.environ)
+                child_env.update({k: str(v) for k, v in extra_env.items()
+                                  if v is not None})
             proc = subprocess.run(
                 argv, cwd=str(cwd or self.project_root),
-                capture_output=True, timeout=timeout,
+                capture_output=True, timeout=timeout, env=child_env,
                 shell=isinstance(args, str) and os.name == "nt")
             result.exit_code = proc.returncode
             # 不要 text=True：它按 locale（中文 Windows = cp936）解码 UTF-8 的
@@ -270,6 +278,37 @@ class MigrationState:
         self.data.setdefault("commands", []).append(result.to_dict())
         self.save()
         return result
+
+    def hdc_pull(self, remote: str, local, timeout: float = 120.0,
+                 hdc: str = "hdc"):
+        """Pull a device file, and verify it actually landed.
+
+        `hdc file recv` returns 0 while creating nothing (sandboxed paths,
+        permission errors on the device side) — a pure return-code check then
+        reports "取了截图" with an empty file. So: recv, stat, and fall back to
+        `shell base64`, which returns the bytes on stdout.
+
+        Returns (ok, channel, detail).
+        """
+        target = Path(local)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        name = Path(remote).name
+        first = self.run_cmd([hdc, "file", "recv", remote, str(target)],
+                             "hdc-pull:%s" % name, timeout=timeout)
+        if first.status == "PASS" and target.is_file() and target.stat().st_size:
+            return True, "file-recv", str(target)
+        second = self.run_cmd([hdc, "shell", "base64 %s" % remote],
+                              "hdc-pull-b64:%s" % name, timeout=timeout)
+        if second.status == "PASS" and second.stdout.strip():
+            try:
+                payload = base64.b64decode("".join(second.stdout.split()))
+            except Exception as exc:                 # noqa: BLE001
+                return False, "", "base64 解码失败：%s" % exc
+            if payload:
+                target.write_bytes(payload)
+                return True, "shell-base64", str(target)
+        return False, "", ("hdc file recv 未落文件（rc=%s），base64 兜底也失败"
+                           % first.exit_code)
 
     def skip_cmd(self, label: str, reason: str) -> CommandResult:
         result = CommandResult(command="", label=label, status="SKIP",
@@ -334,6 +373,26 @@ def init_state(project_root) -> MigrationState:
 
 
 # ----------------------------------------------------------------- utils
+
+def native_path(value, base=None) -> str:
+    """Absolute, host-native path string.
+
+    Windows `hdc` / `hvigor` 不认 POSIX 风格的相对路径：`hdc install -r
+    build/x.hap` 拼出来的却是 `<当前目录>/C:/<用户>/.../build/x.hap`，
+    设备侧报 `no such file or directory`。统一在这里转成宿主的绝对路径
+    （Windows 上 os.path.abspath 会给出反斜杠形式）。
+    """
+    path = Path(str(value))
+    if not path.is_absolute():
+        path = Path(base or os.getcwd()) / path
+    return os.path.abspath(os.path.expanduser(str(path)))
+
+
+def find_hdc() -> str:
+    """hdc 在 DevEco/CLI 的 toolchains 里，不一定在 PATH 上。"""
+    found = shutil.which("hdc") or shutil.which("hdc.exe")
+    return found or "hdc"
+
 
 def _now() -> str:
     return time.strftime("%Y-%m-%d %H:%M:%S")

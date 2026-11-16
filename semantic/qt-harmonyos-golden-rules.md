@@ -41,12 +41,12 @@ summary: >
 | B4 | 🔴 | **禁止**设置 `compileSdkVersion` 和 `targetSdkVersion` | 设置后 Schema validate failed | [[qt-harmonyos-project-structure]] §9 |
 | B5 | 🟡 | `runtimeOS` **必须**设置为 `"HarmonyOS"`（不是 `"OpenHarmony"`） | 影响应用打包和签名 | [[qt-harmonyos-project-structure]] §4.3 |
 | B6 | 🟡 | QtOhosExtras 模块**仅支持 qmake**（`CONFIG -= create_cmake`），CMake 无 find_package 支持。**Qt6**：模块不再独立存在，功能已内联到 QPA 插件 | 源码中禁用了 CMake config 生成 | [[qt-ohos-extras]] §使用方式, [[qt-harmonyos-qt6-status]] |
-| B7 | 🟡 | `libqohosstyle.so` **必须**手动复制到 `libs/${ABI_DIR}/styles/` 子目录 | 无法通过 target_link_libraries 部署到子目录 | [[qt-harmonyos-project-structure]] §6.2 |
+| B7 | 🟡 | **Qt 5.15 kit**：`libqohosstyle.so` 必须手动复制到 `libs/${ABI_DIR}/styles/`。**Qt 6.12+**：`qt_add_executable` + `harmonydeployqt6` 会自动按插件目录分类部署，不需要手拷——手拷反而可能盖掉打包产物 | 无法通过 `target_link_libraries` 把插件部署到子目录；Qt5 与 Qt6 的部署链路不同（Qt6 由宏收集 + harmonydeployqt6 落盘） | [[qt-harmonyos-project-structure]] §6.2 |
 | B8 | 🟡 | 场景二（已有工程鸿蒙化）`build-profile.json5` 的 `path` **必须**用绝对路径 | 相对路径找不到源文件 | [[qt-harmonyos-project-structure]] §9 |
 | B9 | 🔴 | qmake 的 `unix` 分支**必须**追加 `:!ohos`（`unix:!android:!macx:!ohos`） | 否则 ohos 同时命中 unix 分支，编译出错误的 Linux 代码 | [[qt-harmonyos-code-patterns]] §模式7 |
 | B10 | 🔴 | QML 应用**必须**启用 `CMAKE_AUTORCC ON` | 不启用则 qml.qrc 不编译，QML 文件不打包，运行时黑屏 | [[qt-harmonyos-project-structure]] §4.2 |
 | B11 | 🔴 | `bundleName` 必须使用目标 SDK schema 接受的稳定点分标识，并与最终生成工程、签名 profile、安装/启动命令一致 | 身份不一致会导致校验、签名、安装或启动失败；精确字符范围由目标 SDK 判定 | [[qt-harmonyos-project-structure]] §8 |
-| B12 | 🟠 | SQL 驱动插件 `libqsqlite.so`**必须**手动复制到 `libs/${ABI_DIR}/sqldrivers/`（与 B7 `libqohosstyle.so`→`styles/`、`libqsvg.so`→`imageformats/` 同类） | 动态分类插件无法靠 `target_link_libraries` 部署，`QFactoryLoader` 按子目录 dlopen 加载；漏部署则 `addDatabase("QSQLITE")` driver 为 null，`open()` 在碰文件系统前即返回 false（`lastError="Driver not loaded"`）。注意 OHOS SDK 文件名是 `libqsqlite.so`（非桌面 `libqsqlsqlite.so`） | [[qt-harmonyos-project-structure]] §6.2, [runtime-fail-sqlite-open-database](../problems/runtime-fail-sqlite-open-database.md) |
+| B12 | 🟠 | **Qt 5.15 kit**：SQL 驱动插件 `libqsqlite.so` 必须手动复制到 `libs/${ABI_DIR}/sqldrivers/`（与 B7、`libqsvg.so`→`imageformats/` 同类）；**Qt 6.12+ 由打包链自动部署**，装完用 `unzip -l app.hap \| grep sqldrivers` 复核即可 | 动态分类插件无法靠 `target_link_libraries` 部署，`QFactoryLoader` 按子目录 dlopen 加载；漏部署则 `addDatabase("QSQLITE")` driver 为 null，`open()` 在碰文件系统前即返回 false（`lastError="Driver not loaded"`）。注意 OHOS SDK 文件名是 `libqsqlite.so`（非桌面 `libqsqlsqlite.so`） | [[qt-harmonyos-project-structure]] §6.2, [runtime-fail-sqlite-open-database](../problems/runtime-fail-sqlite-open-database.md) |
 
 ---
 

@@ -200,6 +200,30 @@ class TestLinkAndReachabilityChecks(unittest.TestCase):
             self.assertIn("b.md", joined)
             self.assertNotIn("ok.md", joined)
 
+    def test_gitignored_markdown_does_not_break_wikilinks(self):
+        # 构建缓存里的第三方文档（minimatch 的 `[[Prototype]]`）不是本仓内容：
+        # 旧实现 rglob 全树，逼着用户删缓存才能让门禁变绿。
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "cache" / "hvigor").mkdir(parents=True)
+            (root / "cache" / "hvigor" / "vendor.md").write_text(
+                "见 [[Prototype]] 与 [[toString]]\n", encoding="utf-8")
+            (root / "a.md").write_text("# a\n", encoding="utf-8")
+            mod = self._verify()
+            mod.ROOT = root
+            mod.INCLUDE_IGNORED = False
+            mod._GIT_PROBED = True
+            mod._GIT_VISIBLE = {"a.md"}
+            mod.ERRORS.clear()
+            mod.check_wikilinks({})
+            self.assertEqual(mod.ERRORS, [])
+            # 反向对照：强制包含被忽略文件时必须报出来（否则测试本身没在验东西）
+            mod.INCLUDE_IGNORED = True
+            mod.ERRORS.clear()
+            mod.check_wikilinks({})
+            self.assertIn("[C7]", "\n".join(mod.ERRORS))
+
     def test_inline_code_link_is_not_flagged(self):
         import tempfile
         with tempfile.TemporaryDirectory() as tmp:
@@ -286,8 +310,8 @@ class TestDocumentedCounts(unittest.TestCase):
 
     def test_routing_codes(self):
         codes = re.findall(r"^### \[([A-Z])\]", self.routing, re.M)
-        self.assertEqual(len(codes), 15, f"任务路由数变化：{codes}")
-        self.assertEqual(set(codes), set("ABCDEFGHLMNPQRS"))
+        self.assertEqual(len(codes), 16, f"任务路由数变化：{codes}")
+        self.assertEqual(set(codes), set("ABCDEFGHLMNOPQRS"))
         self.assertEqual(claim(self.readme, r"(\d+) 类任务", "README"), len(codes))
 
     def test_api_mapping_categories(self):
@@ -381,6 +405,27 @@ class TestDocumentedCounts(unittest.TestCase):
                 self.assertEqual(got, graph, f"{origin} 声称图谱 {got} 单测，实际 {graph}")
             for got in (int(x) for x in re.findall(r"portgraph (\d+) 单测", text)):
                 self.assertEqual(got, graph, f"{origin} 声称 portgraph {got} 单测，实际 {graph}")
+
+    def test_docs_counts_synced(self):
+        """README / TESTING 里的派生数字必须与 `_scripts/sync-counts.py` 一致。
+
+        这些数字由脚本从真源重投影（页数、QOH、规则、铁律、problems、用例数）。
+        加/删用例不需要再手改三处文档，但**必须**跑一次 sync-counts，否则这里红。
+        """
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "sync_counts", REPO_ROOT / "_scripts" / "sync-counts.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        counts = module.compute()
+        problems = []
+        for path in sorted({rel for rel, _p, _b in module.RULES}):
+            original = (REPO_ROOT / path).read_text(encoding="utf-8")
+            updated = module.apply(original, path, counts, problems)
+            self.assertEqual(updated, original,
+                             f"{path} 的派生数字过期：跑 python _scripts/sync-counts.py")
+        self.assertEqual(problems, [], "派生数字的锚点丢了：" + "; ".join(problems))
 
 
 # --------------------------------------------------------------------------
@@ -483,7 +528,8 @@ QT_OHOS_RUN_CMDS = {
     "init", "scan", "plan", "patch", "build", "package", "install", "launch",
     "smoke", "verify", "analyze-log", "status", "resume", "migrate", "finish",
     "assess", "rollback", "mark-gate", "mark-ui", "mark-risk", "draft",
-    "promote", "recipes", "config", "libcheck",
+    "promote", "recipes", "config", "libcheck", "doctor", "sign",
+    "smoke-interact",
 }
 QT_SDK_RUN_CMDS = {
     "init", "env", "config", "src-clone", "status", "patch-import",

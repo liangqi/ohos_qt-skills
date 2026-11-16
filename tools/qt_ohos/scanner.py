@@ -224,8 +224,23 @@ def detect_qt_major(texts: List[str]) -> tuple:
     return None, ""
 
 
+def _optional_component_names(rest: str) -> set:
+    """`OPTIONAL_COMPONENTS a b c` 段里的组件名（这些缺了不算阻断）。
+
+    语义边界：`OPTIONAL_COMPONENTS` 之后到下一个大写关键字之前都是可选；
+    `QUIET` 只影响报错措辞，不改变必需性。
+    """
+    match = re.search(r"\bOPTIONAL_COMPONENTS\b(.*?)(?:\b(?:%s)\b|$)"
+                      % "|".join(sorted(_CMAKE_KW - {"OPTIONAL_COMPONENTS"})),
+                      rest, re.I | re.S)
+    if not match:
+        return set()
+    return {c.lower() for c in re.split(r"\s+", match.group(1)) if c.isalpha()}
+
+
 def _detect_qt(root: Path, info: Dict):
     modules = set()
+    required: Dict[str, bool] = {}
     qt_version = None
 
     for rel in info["pro_files"]:
@@ -241,6 +256,7 @@ def _detect_qt(root: Path, info: Dict):
                     modules.discard(name.lower())
                 else:
                     modules.add(name.lower())
+                    required[name.lower()] = True
 
     frameworks = set()
     kf_components = set()
@@ -253,10 +269,17 @@ def _detect_qt(root: Path, info: Dict):
             rest = match.group(2) or ""
             cm = _COMPONENTS_RE.search(rest)
             comps = cm.group(1) if cm else ""
+            optional = _optional_component_names(rest)
             for comp in re.split(r"\s+", comps):
                 comp = comp.strip()
                 if comp and comp.isalpha() and comp.upper() not in _CMAKE_KW:
-                    modules.add(comp.lower())
+                    name = comp.lower()
+                    modules.add(name)
+                    # COMPONENTS 里列出的就是硬依赖（缺了配置阶段就过不去），
+                    # OPTIONAL_COMPONENTS 里的是软依赖。REQUIRED / QUIET 只改变
+                    # 报错措辞，不改变"缺了能不能继续"这个事实。
+                    required[name] = bool(required.get(name)) or (
+                        name not in optional)
         for match in _CMAKE_FINDPKG_KF_RE.finditer(text):
             frameworks.add("KF%s" % match.group(1))
             rest = match.group(2) or ""
@@ -283,6 +306,17 @@ def _detect_qt(root: Path, info: Dict):
                 modules.add("core")
 
     modules.discard("")
+    # 被 `if(TARGET Qt6::X)` / `if(Qt6X_FOUND)` 包着的组件：工程自己已经容忍它缺失
+    for text in cmake_texts:
+        for name in list(required):
+            if not required[name]:
+                continue
+            guarded = re.search(
+                r"if\s*\(\s*(?:TARGET\s+)?Qt\d?::?%s\b|if\s*\([^)]*%s_FOUND"
+                % (re.escape(name), re.escape(name)), text, re.I)
+            if guarded:
+                required[name] = False
+    info["qt_module_required"] = {k: bool(required.get(k)) for k in sorted(modules)}
     if qt_version and not qt_version.isdigit():
         qt_version = None   # find_package(Qt${...}) 取不到字面量版本
 

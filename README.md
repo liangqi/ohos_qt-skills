@@ -77,7 +77,7 @@ Qt/C++ 桌面应用要跑在 HarmonyOS 上，难点集中在这些地方：
 | 能力 | 入口 | 现状 |
 |------|------|------|
 | 🔍 可行性评估 | `portgraph/portgraph.py analyze / deps / fetch-deps` | 可 ingest 4741 个 Harmonybrew formula + 1248 个 cmd-pkg 索引（首次联网），出三态判定 |
-| 🚚 自动迁移流水线 | `tools/qt-ohos-run.py`（25 个子命令） | 扫描（19 条预扫描规则出风险报告）→计划→受追踪修改→构建→打包→装机→启动→冒烟→门禁，可 checkpoint/resume；外部交叉编译可用 `build --record-only` 登记结果 |
+| 🚚 自动迁移流水线 | `tools/qt-ohos-run.py`（28 个子命令） | 扫描（19 条预扫描规则出风险报告）→计划→受追踪修改→构建→打包→装机→启动→冒烟→门禁，可 checkpoint/resume；外部交叉编译可用 `build --record-only` 登记结果 |
 | 🚦 成功判定 | `qt-ohos-run.py verify`（G0–G12） | 门禁级 PASS / PARTIAL / FAIL，`TIMEOUT` 不计通过 |
 | 🧠 日志诊断 | `qt-ohos-run.py analyze-log` | 44 条 QOH 错误模式自动匹配，命中即给知识页引用 |
 | 🧱 平台层审计 | `tools/ohos-platform-audit.py` | 区分头内 `#ifdef` 与构建按路径选 `.cpp` 两种分发；断言头分发同时命名两个 OHOS 宏；`--undefined` 从链接日志反推缺实现 |
@@ -85,7 +85,7 @@ Qt/C++ 桌面应用要跑在 HarmonyOS 上，难点集中在这些地方：
 | 🗺️ 故障跟踪 | `faults/` + `tools/faults-build.py` | S→C→W→T 故障图（17/18/15/11）：定性、责任领域、临时方案、在跟单、闭环缺口 |
 | 📚 知识底座 | `semantic/` `procedural/` `problems/` | 132 页（Qt 侧 105 + 内嵌平台 27），38 条铁律，13 类 API 映射，56 个实战踩坑 |
 | 🏗️ 工程模板 | `templates/qt-ohos-app/` | 71 个文件的干净鸿蒙壳工程（替代历史上带构建产物的脏模板） |
-| ✅ 自检用例 | `tests/` | 引擎自测 12 用例 + 一致性 22 用例 + C++20 扫描 9 用例 |
+| ✅ 自检用例 | `tests/` | 引擎自测 88 用例 + 一致性 27 用例 + C++20 扫描 9 用例 |
 
 ---
 
@@ -134,14 +134,17 @@ Agent 的加载顺序、执行纪律、禁止事项写在 [AGENTS.md](AGENTS.md)
 驱动一次完整迁移（每一步都会在目标项目 `.qt-ohos/` 下留状态，中断可 `resume`）：
 
 ```bash
+python tools/qt-ohos-run.py doctor            # 环境体检：cmake / Qt kit / SDK / hvigor / hdc / 设备
 python tools/qt-ohos-run.py scan <项目目录>   # 预扫描 + 19 条规则风险报告
 python tools/qt-ohos-run.py plan              # 迁移计划（auto / assisted / manual）
 python tools/qt-ohos-run.py patch             # 白名单自动修复（受追踪）
 python tools/qt-ohos-run.py build             # G3 编译
-python tools/qt-ohos-run.py package           # G5 打 HAP
-python tools/qt-ohos-run.py install           # G6 hdc 装机
-python tools/qt-ohos-run.py launch            # G7 启动
+python tools/qt-ohos-run.py package           # G5 打 HAP（Qt6 自动 _make_hap / harmonydeployqt6 + 依赖闭包校验）
+python tools/qt-ohos-run.py sign              # 可选：devecocli 生成签名材料并写 build-profile
+python tools/qt-ohos-run.py install           # G6 hdc 装机（路径自动转本机原生写法）
+python tools/qt-ohos-run.py launch            # G7 启动（ability 从 module.json5 的 mainElement 读）
 python tools/qt-ohos-run.py smoke             # G8 崩溃窗口检查（install/launch 未过则跳过，不判 PASS）
+python tools/qt-ohos-run.py smoke-interact    # G10 机器取证：截图 → 点击 → 再截图比对，人工保留裁决权
 python tools/qt-ohos-run.py verify            # G0-G12 门禁 —— 唯一的成功判据（exit 0/3/1）
 ```
 
@@ -186,7 +189,7 @@ python -m unittest discover -s tests -v    # 用例全量
 
 | 工具 | 子命令 | 干什么 |
 |------|-------|--------|
-| `tools/qt-ohos-run.py` | 25 | `scan` `plan` `patch` `build` `package` `install` `launch` `smoke` `verify` `analyze-log` `assess` `migrate` `finish` `status` `resume` `rollback` `mark-gate` `mark-ui` `mark-risk` `libcheck` `draft` `promote` `recipes` `config` `init` |
+| `tools/qt-ohos-run.py` | 28 | `scan` `plan` `patch` `build` `package` `install` `launch` `smoke` `smoke-interact` `verify` `analyze-log` `assess` `migrate` `finish` `status` `resume` `rollback` `mark-gate` `mark-ui` `mark-risk` `libcheck` `doctor` `sign` `draft` `promote` `recipes` `config` `init` |
 | `tools/qt-sdk-run.py` | 24 | `init` `env` `config` `src-clone` `status` `patch-import` `patch-apply` `patch-list` `patch-revert` `patch-export` `patch-mark` `configure` `build` `install` `verify` `smoke-mark` `release` `release-list` `modules` `use` `diff` `upstream-check` `forge` `resume` |
 | `tools/faults-build.py` | 4 | `build` `check` `review` `all`：真源 → 派生物，闭环缺口检查 |
 | `tools/ohos-platform-audit.py` | — | 平台层审计：两种分发分类 + 双 OHOS 宏断言；`--undefined` 反推缺实现 |
@@ -199,6 +202,11 @@ python -m unittest discover -s tests -v    # 用例全量
 
 门禁结论只有三档：`PASS`（G0–G8 全过）、`PARTIAL`（编译/链接已过、打包与设备侧未完成）、
 `FAIL`；`verify` 退出码 `0` / `3` / `1`。`TIMEOUT` 与 `SKIP`/`NOT_RUN` 都不算通过。
+
+门禁看的是内容而不是文件存不存在：G4 逐个读产物断言 `ELF64 / AArch64 / DYN`（架构错了
+不叫"编出来了"），G5 解包 HAP 对 `libs/<abi>/*.so` 做 `DT_NEEDED` 闭包校验（少一个
+`libssl.so.3` 就报"依赖闭包断裂"），G2 要求每条 critical 风险带证据，G8 没配 `bundle_name`
+最高只能 PARTIAL。
 
 ---
 
@@ -265,7 +273,7 @@ README、`SKILL.md`、`AGENTS.md`、索引页里的声称与仓库实际状态�
 
 | 层次 | 手段 | 拦截什么 |
 |------|------|---------|
-| 数字 | 一致性用例（25 个） | 页数、QOH、规则数、铁律、任务路由、API 映射、故障图规模、用例数与实际不符 |
+| 数字 | 一致性用例（27 个） | 页数、QOH、规则数、铁律、任务路由、API 映射、故障图规模、用例数与实际不符 |
 | 引用 | 同上（路径与锚点校验） | 文档里指的页面/小节不存在 |
 | 清单 | 同上（Skill 清单规范） | 根级/子级 `SKILL.md` frontmatter 非法、`AGENTS.md` 漏登记 skill |
 | 契约 | 同上（CLI 契约） | 七个 CLI 的子命令集合被悄悄改动 |
@@ -277,14 +285,14 @@ README、`SKILL.md`、`AGENTS.md`、索引页里的声称与仓库实际状态�
 `python _scripts/gen-dashboard.py`，`faults/_graph.yaml` 与 `_registry.md` 跑
 `python tools/faults-build.py build`——手改数字会被 `verify` 拦下。
 
-当前状态：用例全绿（引擎 66 + 一致性 25 + 扫描 9 = 100 用例，另有图谱 127 单测），`faults-build check` 零 ERROR。
+当前状态：用例全绿（引擎 88 + 一致性 27 + 扫描 9 = 124 用例，另有图谱 127 单测），`faults-build check` 零 ERROR。
 一条命令跑完四道门禁：`python _scripts/ci.py`（Windows 无 bash 也可用）。
 
 ---
 
 ## 能力规格
 
-按"你要做什么"查，共 15 类任务：
+按"你要做什么"查，共 16 类任务：
 
 | 码 | 任务类型 | 起点 |
 |----|---------|------|

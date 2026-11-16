@@ -32,6 +32,7 @@ from __future__ import annotations
 import argparse
 import datetime
 import json
+import os
 import re
 import shutil
 import sys
@@ -43,7 +44,7 @@ from qt_ohos import (assessor, builder, dependency, error_engine, knowledge,
                      migration, report, rule_engine, scanner,
                      state as state_mod, verifier)
 from qt_ohos.patch import ChangeTracker
-from qt_ohos.state import BudgetExhausted, MigrationState
+from qt_ohos.state import BudgetExhausted, MigrationState, find_hdc
 
 KB_ROOT = Path(__file__).resolve().parent.parent
 
@@ -314,7 +315,8 @@ def cmd_plan(args):
         print("[qt-ohos-run] run `scan` first")
         return 1
     plan = migration.build_plan(info, info.get("risk") or {},
-                                info.get("dependencies") or [], kb_root=KB_ROOT)
+                                info.get("dependencies") or [], kb_root=KB_ROOT,
+                                env=builder.env_of(st))
     st.write_json("migration-plan.json", plan)
     st.complete_stage("plan", next_action="patch")
     info = st.read_json("scan.json", default={}) or {}
@@ -715,7 +717,7 @@ def _run_pipeline(st: MigrationState, args) -> int:
             info = st.read_json("scan.json", default={}) or {}
             plan = migration.build_plan(info, info.get("risk") or {},
                                         info.get("dependencies") or [],
-                                        kb_root=KB_ROOT)
+                                        kb_root=KB_ROOT, env=builder.env_of(st))
             st.write_json("migration-plan.json", plan)
             st.complete_stage("plan", next_action="patch")
             print("[qt-ohos-run] plan: %d steps" % plan["counts"]["total"])
@@ -927,6 +929,18 @@ def cmd_recipes(args):
     return 0
 
 
+# ---- 只影响运行期行为的键：改动它们不需要重扫工程 -------------------------
+# 旧实现一改就让扫描失效，于是"只想把 hdc 路径改一下"也要等 12 秒重扫，
+# 用户自然学会绕开 config。运行期键与工程事实键必须分开。
+RUNTIME_KEYS = {
+    "hdc", "bundle_name", "ability_name", "package_dir", "build_dir",
+    "harmonyos_build", "hvigor", "java_home", "deveco_sdk_home", "hvigor_home",
+    "npm_cache", "device_sdk", "compatible_sdk", "hap_glob", "crash_wait_sec",
+    "process_name", "hdc_serial", "devecocli", "timeout_sec", "package_target",
+    "package_command", "build_command", "auto_package", "hap_allowed_libs",
+}
+
+
 def cmd_config(args):
     st = _state(args)
     env = builder.env_of(st)
@@ -934,20 +948,250 @@ def cmd_config(args):
         print(json.dumps(env, ensure_ascii=False, indent=2))
         return 0
     if args.config_action == "set":
+        if not args.key or args.value is None:
+            print("[qt-ohos-run] 用法：config set <key> <value>", file=sys.stderr)
+            return 2
         if args.value.lower() in ("true", "false"):
             env[args.key] = args.value.lower() == "true"
         else:
             env[args.key] = args.value
         st.write_json("env.json", env)
-        # 配置变了，之前的扫描结论就过期了：扫过的东西要在下次 scan 时重算，
-        # 否则改了 qt_version / bundle_name 还得记得加 --force（旧行为）。
-        invalidated = st.invalidate_scan_stages()
         print("[qt-ohos-run] env.json: %s = %s" % (args.key, args.value))
+        if args.key in RUNTIME_KEYS or args.no_invalidate:
+            print("[qt-ohos-run] 运行期键，扫描结论仍然有效")
+            return 0
+        # 工程事实变了（qt_version / 源码路径等），之前的扫描结论过期。
+        invalidated = st.invalidate_scan_stages()
         if invalidated:
-            print("[qt-ohos-run] scan 状态已失效（%s），下次 scan 会重扫"
-                  % ", ".join(invalidated))
+            print("[qt-ohos-run] scan 状态已失效（%s）" % ", ".join(invalidated))
+        if getattr(args, "rescan", False):
+            scan_args = argparse.Namespace(**vars(args))
+            code = cmd_scan(scan_args)
+            return code
+        print("[qt-ohos-run] 下次 scan 会重扫；想免掉这一步用 "
+              "`config set <key> <value> --no-invalidate`（仅限运行期键）")
         return 0
     return 1
+
+
+def _probe(name: str, ok: bool, detail: str, fix: str = "",
+           partial: bool = False) -> dict:
+    status = "PASS" if ok else ("PARTIAL" if partial else "FAIL")
+    return {"name": name, "status": status, "detail": detail, "fix": fix}
+
+
+def _which_or(value) -> str:
+    return value if value else ""
+
+
+def cmd_doctor(args):
+    """环境自检：把"跑起来才炸"的前置条件一次问完，每条带可执行的修法。
+
+    这些检查都来自实测踩坑（Qt6 预构建 kit / hvigor 五件套 / SDK 版本 / 设备链），
+    以前散落在各页知识里，移植者要在失败日志里逐个反推。
+    """
+    import shutil as _shutil
+    import subprocess as _subprocess
+    import types
+
+    # doctor 要在"什么都还没 init"的工程上也能跑：没有状态目录时按只读方式探测，
+    # 绝不为了体检而在别人的工程里建 .qt-ohos/。
+    root = Path(getattr(args, "project", None) or ".").resolve()
+    st = None
+    if (root / state_mod.STATE_DIR_NAME).is_dir():
+        try:
+            st = _state(args)
+        except SystemExit:
+            st = None
+    env_file = root / state_mod.STATE_DIR_NAME / "env.json"
+    if st is not None:
+        env = builder.env_of(st)
+    elif env_file.is_file():
+        try:
+            env = json.loads(env_file.read_text(encoding="utf-8"))
+        except ValueError:
+            env = {}
+    else:
+        env = {}
+    probe = st if st is not None else types.SimpleNamespace(project_root=root)
+    checks = []
+
+    cmake = env.get("cmake") or _shutil.which("cmake") or ""
+    checks.append(_probe("cmake", bool(cmake), cmake or "未找到",
+                         "config set cmake <cmake 绝对路径>"))
+
+    make = env.get("make_program") or _shutil.which("mingw32-make") or \
+        _shutil.which("ninja") or _shutil.which("make") or ""
+    checks.append(_probe("构建工具", bool(make), make or "未找到",
+                         "Windows 装 mingw32-make 或 ninja；"
+                         "config set make_program <路径>"))
+
+    qt = env.get("qt_sdk_prefix") or ""
+    toolchain = Path(qt) / "lib" / "cmake" / "Qt6" / "qt.toolchain.cmake" \
+        if qt else None
+    checks.append(_probe(
+        "Qt kit", bool(toolchain and toolchain.is_file()),
+        str(toolchain) if toolchain else "未配置 qt_sdk_prefix",
+        "config set qt_sdk_prefix <kit 根目录>（Qt6 kit 需含 "
+        "lib/cmake/Qt6/qt.toolchain.cmake）"))
+
+    if toolchain and toolchain.is_file():
+        platform = Path(qt) / "plugins" / "platforms" / "libqohos.so"
+        checks.append(_probe("Qt OHOS 平台插件", platform.is_file(),
+                             str(platform),
+                             "该 kit 不是 OHOS 版（缺 plugins/platforms/libqohos.so）"))
+        host = env.get("qt_host_sdk") or ""
+        moc = Path(host) / "bin" / ("moc.exe" if os.name == "nt" else "moc") \
+            if host else None
+        checks.append(_probe(
+            "宿主 kit", bool(moc and moc.is_file()),
+            str(moc) if moc else "未配置 qt_host_sdk",
+            "config set qt_host_sdk <宿主 kit 根目录>（Qt6 交叉编译的 QT_HOST_PATH）"))
+
+    native = env.get("ohos_sdk_native") or ""
+    chainload = Path(native) / "build" / "cmake" / "ohos.toolchain.cmake" \
+        if native else None
+    checks.append(_probe(
+        "OHOS native SDK", bool(chainload and chainload.is_file()),
+        str(chainload) if (chainload and chainload.is_file()) else "未配置/不完整",
+        "config set ohos_sdk_native <SDK>/native"))
+
+    sdk_version = builder._sdk_from_sdk_home(env)
+    checks.append(_probe(
+        "SDK 版本", bool(sdk_version), sdk_version or "读不到 oh-uni-package.json",
+        "config set deveco_sdk_home <command-line-tools>/sdk"))
+
+    hvigor = builder.find_hvigor(env)
+    checks.append(_probe(
+        "hvigorw", bool(hvigor), hvigor or "未找到",
+        "config set hvigor <DevEco>/tools/hvigor/bin/hvigorw.bat（绝对路径）"))
+
+    extra = builder.hvigor_env(probe, env, create=False)
+    checks.append(_probe("JAVA_HOME", "JAVA_HOME" in extra,
+                         extra.get("JAVA_HOME", "未找到（DevEco 自带 jbr）"),
+                         "config set java_home <DevEco>/jbr"))
+    checks.append(_probe("HVIGOR_USER_HOME", "HVIGOR_USER_HOME" in extra,
+                         extra.get("HVIGOR_USER_HOME", ""),
+                         "config set hvigor_home <绝对可写路径>"))
+    def _writable(path) -> bool:
+        """目录还不存在时看最近的存在祖先：体检不该边查边建目录。"""
+        if not str(path):
+            return False
+        current = Path(path)
+        while not current.exists() and current != current.parent:
+            current = current.parent
+        return current.is_dir() and os.access(current, os.W_OK)
+
+    writable = _writable(extra.get("npm_config_cache"))
+    checks.append(_probe("npm 缓存可写", writable,
+                         extra.get("npm_config_cache", ""),
+                         "config set npm_cache <绝对可写路径>"))
+
+    hdc = env.get("hdc") or find_hdc()
+    checks.append(_probe("hdc", bool(hdc), hdc or "未找到",
+                         "config set hdc <command-line-tools>/sdk/default/openharmony/toolchains/hdc"))
+    if hdc:
+        if st is not None:
+            targets = st.run_cmd([hdc, "list", "targets"],
+                                 label="hdc-list-targets", timeout=60)
+            target_out = targets.stdout or ""
+        else:
+            try:
+                target_out = _subprocess.run(
+                    [hdc, "list", "targets"], capture_output=True,
+                    timeout=60).stdout.decode("utf-8", "replace")
+            except (OSError, _subprocess.SubprocessError):
+                target_out = ""
+        lines = [ln for ln in target_out.splitlines()
+                 if ln.strip() and not ln.lower().startswith("[empty]")]
+        checks.append(_probe("设备", bool(lines), ", ".join(lines) or "无设备",
+                             "hdc list targets 为空：检查 USB 调试/授权"))
+
+    checks.append(_probe("bundle_name", bool(env.get("bundle_name")),
+                         env.get("bundle_name", "未配置"),
+                         "config set bundle_name <bundle>"))
+    ability = env.get("ability_name") or builder.detect_ability(probe, env)
+    checks.append(_probe("ability", bool(ability), ability or "未找到",
+                         "package 后自动解析；也可 config set ability_name <name>"))
+
+    cli = builder.find_devecocli(env)
+    checks.append(_probe("devecocli", bool(cli), cli or "未找到（可选，用于签名/截图）",
+                         "npm i -g @deveco/deveco-cli", partial=True))
+
+    failures = [c for c in checks if c["status"] == "FAIL"]
+    partials = [c for c in checks if c["status"] == "PARTIAL"]
+    lines = ["%s %s: %s" % ("[PASS]" if c["status"] == "PASS"
+                            else ("[WARN]" if c["status"] == "PARTIAL"
+                                  else "[FAIL]"),
+                            c["name"], c["detail"])
+             for c in checks]
+    for c in checks:
+        if c["status"] != "PASS" and c["fix"]:
+            lines.append("       fix: %s" % c["fix"])
+    lines.append("doctor: %d PASS / %d WARN / %d FAIL"
+                 % (len(checks) - len(failures) - len(partials),
+                    len(partials), len(failures)))
+    _say(args, "\n".join(lines))
+    _emit({"checks": checks, "failures": len(failures)}, args)
+    return 1 if failures else 0
+
+
+def cmd_sign(args):
+    """签名：优先让 devecocli 生成，材料缺失时给六件套手工清单。"""
+    st = _state(args)
+    env = builder.env_of(st)
+    cli = builder.find_devecocli(env)
+    if not cli:
+        print("[qt-ohos-run] 未找到 devecocli，签名需手工配置六件套：\n"
+              "  --signing-cert-path / --signing-profile / --signing-store-file\n"
+              "  --signing-key-alias / --signing-key-password / --signing-store-password\n"
+              "参考 procedural/qt6-ohos-windows-cli-deploy.md §签名",
+              file=sys.stderr)
+        return 2
+    argv = [cli, "signature", "generate",
+            "--product", args.product or "default",
+            "--type", args.type]
+    if args.force:
+        argv.append("--force")
+    result = st.run_cmd(argv, label="devecocli-signature", timeout=args.timeout,
+                        cwd=st.project_root)
+    print("[qt-ohos-run] signature: %s" % result.status)
+    if result.stdout.strip():
+        print(result.stdout.strip())
+    if result.status != "PASS":
+        print(result.stderr.strip(), file=sys.stderr)
+        return 1
+    # 光生成材料不算完：只有 products[].signingConfig 引用到 signingConfigs 才生效
+    profile = None
+    for directory in builder._package_dirs(st, env) or [Path(st.project_root)]:
+        candidate = directory / "build-profile.json5"
+        if candidate.is_file():
+            profile = candidate
+            break
+    if profile is None:
+        print("[qt-ohos-run] 没找到 build-profile.json5：签名材料生成了但没写进工程",
+              file=sys.stderr)
+        return 1
+    data = builder.read_json5(profile)
+    text = profile.read_text(encoding="utf-8", errors="replace")
+    referenced = bool(re.search(r'"signingConfig"\s*:\s*"', text))
+    print("[qt-ohos-run] %s: signingConfigs=%s, products 引用=%s"
+          % (profile.as_posix(),
+             bool(data and data.get("app", {}).get("signingConfigs")),
+             referenced))
+    return 0 if referenced else 1
+
+
+def cmd_smoke_interact(args):
+    st = _state(args)
+    result = builder.smoke_interact(st, timeout=args.timeout)
+    _say(args, "[qt-ohos-run] smoke-interact: %s\n%s\n%s"
+         % (result.status, result.stdout, result.stderr))
+    _emit({"status": result.status, "stdout": result.stdout}, args)
+    code = {"PASS": 0, "PARTIAL": 3}.get(result.status, 1)
+    if result.status in ("SKIP", "NOT_RUN"):
+        code = 2
+    return code
 
 
 def _now_iso() -> str:
@@ -1146,7 +1390,21 @@ def _hoist_global_flags(argv):
     return rest, defaults, misplaced
 
 
+def _force_utf8_stdio():
+    """Windows 中文控制台默认 GBK，输出 `•`/`—` 这类字符会 UnicodeEncodeError；
+    文件写入也统一 UTF-8，免得 report.md 里出现 `鈥?`。"""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(encoding="utf-8", errors="replace")
+        except (OSError, ValueError):
+            pass
+
+
 def main(argv=None):
+    _force_utf8_stdio()
     argv = list(sys.argv[1:] if argv is None else argv)
     argv, hoisted, misplaced = _hoist_global_flags(argv)
     parser = argparse.ArgumentParser(
@@ -1244,6 +1502,20 @@ def main(argv=None):
     p.add_argument("config_action", choices=["show", "set"])
     p.add_argument("key", nargs="?")
     p.add_argument("value", nargs="?")
+    p.add_argument("--no-invalidate", action="store_true",
+                   help="不使扫描结论失效（运行期键默认就不失效）")
+    p.add_argument("--rescan", action="store_true",
+                   help="失效后立即重扫")
+
+    p = sub.add_parser("doctor",
+                       help="check environment prerequisites with fixes")
+    p = sub.add_parser("sign",
+                       help="generate signing materials (devecocli) and verify wiring")
+    p.add_argument("--product", default=None)
+    p.add_argument("--type", choices=["debug", "release"], default="debug")
+    p.add_argument("--force", action="store_true")
+    p = sub.add_parser("smoke-interact",
+                       help="G10 machine evidence: screenshot -> tap -> screenshot")
     p = sub.add_parser("mark-risk", help="mark critical risks as addressed (G2)")
     p.add_argument("--rule", action="append", required=True)
     p.add_argument("--evidence", required=True,
@@ -1274,6 +1546,8 @@ def main(argv=None):
         "mark-gate": cmd_mark_gate, "mark-ui": cmd_mark_ui,
         "draft": cmd_draft, "promote": cmd_promote, "recipes": cmd_recipes,
         "config": cmd_config, "mark-risk": cmd_mark_risk,
+        "doctor": cmd_doctor, "sign": cmd_sign,
+        "smoke-interact": cmd_smoke_interact,
         "libcheck": cmd_libcheck,
     }
     return handlers[args.command](args)

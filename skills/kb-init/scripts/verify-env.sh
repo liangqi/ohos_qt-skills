@@ -68,6 +68,42 @@ path_exists() {
   return 1
 }
 
+# path_variants — 同一路径在当前 bash 下的两种写法（原样 / /mnt/<drive>/...）。
+# 文件级判定要用它：path_exists 只认目录，而这里要查的是 kit 里的具体文件。
+path_variants() {
+  printf '%s\n' "$1"
+  case "$1" in
+    [A-Za-z]:\\*|[A-Za-z]:/*)
+      local drive rest
+      drive=$(printf '%s' "${1:0:1}" | tr 'A-Z' 'a-z')
+      rest=$(printf '%s' "${1:2}" | tr '\\' '/')
+      printf '%s\n' "/mnt/$drive$rest"
+      ;;
+  esac
+}
+
+first_existing() {
+  local p
+  while IFS= read -r p; do
+    [ -e "$p" ] && { printf '%s\n' "$p"; return 0; }
+  done < <(path_variants "$1")
+  return 1
+}
+
+# qt_kit_probe <显示名> <kit 根> <相对路径> <缺失后果>
+# Qt6 kit 的"装好了"不等于"能用"：缺 toolchain / QPA 插件时 build 与运行两侧
+# 都失败得很晚（configure 直接退出、或装机后 QPA plugin not found），这里前移。
+qt_kit_probe() {
+  local label="$1" base="$2" rel="$3" consequence="$4" required="${5:-fail}"
+  if [ -z "$base" ]; then
+    check "$label" "skip" "未配置"
+  elif first_existing "$base/$rel" >/dev/null; then
+    check "$label" "pass" "$rel"
+  else
+    check "$label" "$required" "缺 $rel -- $consequence"
+  fi
+}
+
 DEVECO_PATH=$(read_env "DEVECO_PATH")
 QT5_12_SRC=$(read_env "QT5_12_SRC")
 QT5_15_SRC=$(read_env "QT5_15_SRC")
@@ -130,11 +166,15 @@ fi
 if [ -n "$QT6_OHOS_SDK" ] && path_exists "$QT6_OHOS_SDK"; then
   check "Qt 6 OHOS SDK" "pass" "$QT6_OHOS_SDK"
   QT_SDK_COUNT=$((QT_SDK_COUNT + 1))
-  if [ -d "$QT6_OHOS_SDK/lib" ] || [ -d "/mnt/$(printf '%s' "${QT6_OHOS_SDK:0:1}" | tr 'A-Z' 'a-z')$(printf '%s' "${QT6_OHOS_SDK:2}" | tr '\\' '/')/lib" ]; then
-    check "Qt 6 kit lib 目录" "pass"
-  else
-    check "Qt 6 kit lib 目录" "fail" "lib/ 不存在（疑似非完整 kit）"
-  fi
+  qt_kit_probe "Qt 6 kit lib 目录" "$QT6_OHOS_SDK" "lib" "疑似非完整 kit"
+  qt_kit_probe "Qt 6 kit toolchain" "$QT6_OHOS_SDK" \
+    "lib/cmake/Qt6/qt.toolchain.cmake" "交叉配置无法启动（CMAKE_TOOLCHAIN_FILE 指不到）"
+  qt_kit_probe "Qt 6 kit QPA 插件" "$QT6_OHOS_SDK" \
+    "plugins/platforms/libqohos.so" "装机后 QPA plugin not found"
+  qt_kit_probe "Qt 6 kit Qt6Config" "$QT6_OHOS_SDK" \
+    "lib/cmake/Qt6/Qt6Config.cmake" "find_package(Qt6) 解析不到"
+  qt_kit_probe "Qt 6 kit mkspec" "$QT6_OHOS_SDK" \
+    "mkspecs/ohos-clang/qmake.conf" "qmake 路径不可用（qt-cmake 仍可用）" "skip"
 elif [ -n "$QT6_OHOS_SDK" ]; then
   check "Qt 6 OHOS SDK" "fail" "路径不存在: $QT6_OHOS_SDK"
 else
@@ -143,6 +183,15 @@ fi
 
 if [ -n "$QT6_HOST_SDK" ] && path_exists "$QT6_HOST_SDK"; then
   check "Qt 6 host 工具链" "pass" "$QT6_HOST_SDK"
+  # QT_HOST_PATH 指对了目录还不够：moc/rcc/uic/harmonydeployqt6 缺一个就编不了/打不了包
+  for tool in moc rcc uic harmonydeployqt6; do
+    if first_existing "$QT6_HOST_SDK/bin/$tool.exe" >/dev/null || \
+       first_existing "$QT6_HOST_SDK/bin/$tool" >/dev/null; then
+      check "Qt 6 host $tool" "pass"
+    else
+      check "Qt 6 host $tool" "fail" "宿主 kit 缺 bin/$tool -- QT_HOST_PATH 指对了也没用"
+    fi
+  done
 elif [ -n "$QT6_HOST_SDK" ]; then
   check "Qt 6 host 工具链" "fail" "路径不存在: $QT6_HOST_SDK"
 else

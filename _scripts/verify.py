@@ -476,11 +476,13 @@ def check_dashboard_generated() -> None:
 
 
 def check_wikilinks(ids: dict[str, str]) -> None:
-    names = {p.stem for p in ROOT.rglob("*.md") if ".git" not in p.parts}
+    # 只看受跟踪的文件：`workspace/`、`.hvigor-home/`、`node_modules/` 里的第三方
+    # 文档（minimatch 的 `[[Prototype]]` 这类）不是本仓内容，扫进来只会制造噪音，
+    # 逼着用户去删构建缓存才能让门禁变绿。
+    files = [p for p in walk_files(ROOT) if p.suffix == ".md"]
+    names = {p.stem for p in files}
     broken: dict[str, int] = {}
-    for path in ROOT.rglob("*.md"):
-        if ".git" in path.parts:
-            continue
+    for path in files:
         in_fence = False
         for line in read_text(path).splitlines():
             if line.lstrip().startswith("```"):

@@ -12,6 +12,56 @@
 
 ---
 
+## v3.0.0-rc11 — 2026-11-16
+
+按 Windows 实测（FinceptTerminal + Qt 6.12 预构建 kit + SDK 6.0.2 CLI）缺陷单修执行层：
+判据本来就对，错在"对 Qt6 预构建 kit 零知识"——build 只跑裸 cmake、package 只是壳、
+install/launch 的默认值还是 Qt5 的。
+
+- **P0** `build` 认识 Qt6 kit：命中 `lib/cmake/Qt6/qt.toolchain.cmake` 时自动拼
+  `CMAKE_TOOLCHAIN_FILE` / `QT_HOST_PATH` / `QT_CHAINLOAD_TOOLCHAIN_FILE` /
+  `OHOS_SDK_NATIVE` / `OHOS_ARCH`，Windows 默认生成器改 `MinGW Makefiles`；缺
+  `qt_host_sdk` / `ohos_sdk_native` 直接 FAIL 并给 env 键修法（不再产一堆找不到 Qt 的 CMake 报错）
+- **P0** `package` 内置 Qt6 两条路径：`cmake --build --target <app>_make_hap`，或
+  `harmonydeployqt6 --input <deployment-settings> --output <harmonyos-build> --hvigor <abs>`；
+  输出里出现 `No hvigor path specified`（该警告返回码是 0）或 hvigor/npm/EPERM 诊断即判 FAIL
+- **P0** SDK 版本对齐：打包前把 `<harmonyos-build>/build-profile.json5` 的
+  `compatibleSdkVersion` 改成 `DEVECO_SDK_HOME` 里的真值（Qt6 模板硬编码 `6.1.0(23)`，
+  低版本 SDK 直接 `00303082`），并校验 `runtimeOS`；preflight 从前只扫 Qt5 布局的
+  `root/entry/libs`，改为按 `package_dir` → `<build_dir>/harmonyos-build` → 根目录依次探测
+- **P0** `install` 把路径转本机原生写法（Windows hdc 收到 `C:/…` 相对串会
+  `Error opening file`）；hap 缓存路径失效时重新查找，`-signed.hap` 优先
+- **P0** `launch` 的 ability 从 `module.json5` 的 `module.mainElement` 读（Qt6 模板是
+  `QAbility`，旧默认 `EntryAbility` 必然起不来），读不到就 FAIL 并打印检测到的 abilities
+- **P0** G5 不再只看 HAP 在不在：解包 `libs/<abi>/*.so` 做 `DT_NEEDED` 闭包校验，
+  少一个 `libssl.so.3` 就报"依赖闭包断裂"（imported SHARED 库不会自动进 HAP，
+  要写 `QT_HARMONYOS_EXTRA_LIBS`）；放行清单走 `hap_allowed_libs`
+- **P0** 新增 `tools/qt_ohos/elf.py`（纯 Python ELF 读取）：G4 从"数文件个数"变成逐个断言
+  `ELF64 / AArch64 / DYN`，`.a` 认 `!<arch>` 魔数，架构错了判 FAIL
+- **MINOR** 新增子命令 `doctor`（环境体检，无 `.qt-ohos/` 也能跑）、`sign`
+  （devecocli 生成签名材料并检查 `build-profile.json5` 的引用）、`smoke-interact`
+  （截图→点击→再截图比对 + 进程存活，产出 `runtime["smoke_interact"]` 证据；
+  G10 仍是 PARTIAL，人工裁决权不下放）
+- **MINOR** `assess` 区分必需/可选模块：`OPTIONAL_COMPONENTS`、`if(TARGET Qt6::X)` 守卫降级，
+  可选模块只进 `optional_modules` 不算 blocker；`plan` 重排为"环境自检 → SDK/hvigor/签名 →
+  壳工程"，跳过 kit 已自带与可选的模块
+- **MINOR** portgraph 的 `modules_missing` 改名 `modules_without_kb_node`（它说的是"KB 没节点"，
+  不是"工程缺依赖"）
+- **MINOR** 新增 `_scripts/sync-counts.py`：README / TESTING 的派生数字从真源同步，
+  `--check` 进 CI，手改或漏改都会红；`gen-dashboard.py` 内容未变时不再刷新日期戳
+  （干净树隔日不再必红）
+- **FIX** 中文 Windows 控制台遇 `•` 崩 `UnicodeEncodeError` → `main()` 统一 UTF-8 stdio
+- **FIX** C7 不再扫进 gitignore 的第三方文档（hvigor 缓存里 minimatch 文档里形似
+  双链的方括号即被当成断链）
+- **MINOR** 知识层同步实测：Qt 6.12+/6.13.0-dev 只定义 `Q_OS_HARMONY`（不定义 `Q_OS_OHOS`），
+  `qt6-status` / 全流程页改口径，`R019` 与 `ohos-platform-audit` 认 `__OHOS__`；
+  `problems/runtime-hap-missing-so-closure` 补 `QT_HARMONYOS_EXTRA_LIBS` 变体；
+  `_task-routing` 新增 [O] Qt6 端到端构建与部署这条路由；`verify-env.sh` 的 Qt6 断言从
+  "目录存在"细化到 `libqohos.so` / `qt.toolchain.cmake` / `harmonydeployqt6`
+- **MINOR** 用例 100 → 124（Qt6 布局 5 例、HAP 闭包 6 例、G4 ELF 3 例、可选模块 5 例、guard 2 例）
+
+---
+
 ## v3.0.0-rc10 — 2026-11-11
 
 收尾：把最后一处手写的派生数字（`_index/_dashboard.md`）改成脚本生成，并纳入门禁。

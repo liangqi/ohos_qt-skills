@@ -456,7 +456,7 @@ void MainWindow::closeEvent(QCloseEvent *event) {
 
 Qt API 的已知表现、替代写法和 QTBUG 追踪见 [[qt-harmonyos-platform-limits]]，不要在本流程复制维护平台结论。
 
-**Qt6 特有**：`Q_OS_LINUX` 守卫不可信——Qt6 OHOS 同时定义 `Q_OS_OHOS` 和 `Q_OS_LINUX`，裸 `#ifdef Q_OS_LINUX` 守护 desktop-only 功能会在 OHOS 误触发，正确写法 `#if defined(Q_OS_LINUX) && !defined(Q_OS_OHOS)`。
+**Qt6 特有**：`Q_OS_LINUX` 守卫不可信——Qt6 OHOS 同时定义 `Q_OS_HARMONY` 和 `Q_OS_LINUX`（**不定义** `Q_OS_OHOS`，那是 Qt5 kit 的宏），裸 `#ifdef Q_OS_LINUX` 守护 desktop-only 功能会在 OHOS 误触发。正确写法 `#if defined(Q_OS_LINUX) && !defined(__OHOS__)`；写成 `&& !defined(Q_OS_OHOS)` 在 Qt6 上恒真，等于没守护。
 
 #### 3.9 构建系统适配（Step 6）
 来源：`qt-harmonyos-porting-workflow` / `qt-harmonyos-project-structure` / `qt-ohos-concrete-build-recipe`

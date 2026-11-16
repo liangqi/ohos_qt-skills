@@ -1,5 +1,5 @@
 ---
-updated: 2026-11-11
+updated: 2026-11-16
 total_pages: 48
 description: >
   知识库健康仪表盘（派生计数，从 frontmatter 自动生成）。
@@ -8,7 +8,7 @@ description: >
 
 # 知识库健康仪表盘
 
-> **最后更新**：2026-11-11 ｜ **总活跃页面**：48（semantic/procedural/episodic/preference） ｜ **归档**：1
+> **最后更新**：2026-11-16 ｜ **总活跃页面**：48（semantic/procedural/episodic/preference） ｜ **归档**：1
 
 > 本页是派生视图：页面清单与计数来自各页 frontmatter、`problems/` 目录与
 > `faults/_registry.md`。要改数字请改真源，然后跑 `python _scripts/gen-dashboard.py`。

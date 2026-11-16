@@ -28,11 +28,16 @@ import sys
 from pathlib import Path
 
 HEADER_PREFIX = "platform_"
-OHOS_MACROS = ("Q_OS_OHOS", "Q_OS_HARMONY")
+OHOS_MACROS = ("Q_OS_OHOS", "Q_OS_HARMONY", "__OHOS__")
+# 一个头分发守卫要同时在两种 kit 上成立：Qt 5.15 给 Q_OS_OHOS +
+# Q_OS_HARMONY，Qt 6.12+ 只给 Q_OS_HARMONY。`__OHOS__` 是编译器预定义宏，
+# 两代都有，所以"写了它"也算完备。
 # 头分发判定：任一 #if/#ifdef/#elif 行提到 Q_OS_* 宏，或 include 了按平台分目录的
 # 实现路径。旧判据要求"至少两个不同 Q_OS_ 宏"，于是只写了 `#ifdef Q_OS_OHOS` 的
 # 文件（正是要抓的那类）被判成源分发，审计直接 PASS —— 判据不能比被检对象更严格。
-OS_BRANCH_RE = re.compile(r"^\s*#\s*(?:el)?if(?:def)?\s+.*\bQ_OS_[A-Z_]+", re.M)
+# `__OHOS__` 是编译器宏：Qt 5/6 都定义，用它写的守卫同样属于头分发。
+OS_BRANCH_RE = re.compile(
+    r"^\s*#\s*(?:el)?if(?:def)?\s+.*\b(?:Q_OS_[A-Z_]+|__OHOS__)", re.M)
 ALT_DIR_RE = re.compile(r'#\s*include\s*[<"][^">]*\b(?:linux|windows|macos|darwin|win32)/')
 UNDEF_RE = re.compile(r"undefined (?:symbol|reference)[: ]+[`'\"]?([A-Za-z_][\w:~<>]*)")
 
@@ -64,7 +69,10 @@ def audit(root: Path, strict: bool = False) -> dict:
         text = read_text(path)
         kind = classify(text)
         present = [m for m in OHOS_MACROS if m in text]
-        has_all = len(present) == len(OHOS_MACROS)
+        # 完备 = 同时接受两代 kit 的宏名。只写 Q_OS_OHOS 在 Qt 6 上是死代码，
+        # 只写 Q_OS_HARMONY 在 Qt 5.15 kit 上是死代码，两种都要报。
+        has_all = "__OHOS__" in present or (
+            "Q_OS_OHOS" in present and "Q_OS_HARMONY" in present)
         if kind == "header":
             header_dispatch.append({"file": path.name, "ok": has_all,
                                     "macros": present})
@@ -132,8 +140,8 @@ def symcheck(root: Path, undefined_file: Path) -> dict:
 def render(report: dict) -> str:
     lines = []
     hd = report["header_dispatch"]
-    lines.append("header dispatch (%d), all must name %s:" %
-                 (len(hd), " and ".join(OHOS_MACROS)))
+    lines.append("header dispatch (%d), all must name Q_OS_OHOS + Q_OS_HARMONY "
+                 "(or __OHOS__):" % len(hd))
     for item in hd:
         lines.append("  %-42s %s" % (item["file"],
                                      "OK" if item["ok"] else "MISSING"))

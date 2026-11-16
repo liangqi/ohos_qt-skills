@@ -48,10 +48,41 @@ def _module_status(kb_root, module: str, version_key: str):
     return None, _QT_MODULES_KB, ""
 
 
+KIT_MODULE_RE = re.compile(r"^Qt6([A-Za-z][A-Za-z0-9]*)$")
+
+
+def kit_modules(env: Dict) -> set:
+    """kit 里实际装了哪些 Qt 模块（`<kit>/lib/cmake/Qt6<Module>/`）。
+
+    计划里"补齐某模块"的空转步骤，都是因为没问过 kit 到底提供了什么。
+    """
+    prefix = (env or {}).get("qt_sdk_prefix")
+    if not prefix:
+        return set()
+    base = Path(prefix).expanduser() / "lib" / "cmake"
+    if not base.is_dir():
+        return set()
+    names = set()
+    for entry in base.iterdir():
+        match = KIT_MODULE_RE.match(entry.name)
+        if match:
+            names.add(match.group(1).lower())
+    return names
+
+
 def build_plan(scan_info: Dict, risk_report: Dict, deps: List[Dict],
-               kb_root=None) -> Dict:
+               kb_root=None, env: Optional[Dict] = None) -> Dict:
+    """把扫描结果排成可执行的步骤表。
+
+    顺序按实测瓶颈排：环境（kit / SDK / hvigor / 签名）在前，模块替换在中间，
+    打包装机在后。早期版本把"复核 Charts""CEF 换 webengine"排在最前面，而真正
+    卡住的是 toolchain 与 hvigor——那两步是空转。
+    """
     steps: List[Dict] = []
     sid = 0
+    env = env or {}
+    available = kit_modules(env)
+    required_map = scan_info.get("qt_module_required") or {}
 
     def add(title, action, refs=None, detail="", severity="medium", targets=None):
         nonlocal sid
@@ -60,7 +91,27 @@ def build_plan(scan_info: Dict, risk_report: Dict, deps: List[Dict],
                       "severity": severity, "detail": detail,
                       "refs": refs or [], "targets": targets or []})
 
-    # 1. HarmonyOS project creation
+    # 1. environment first: 没有 toolchain / hvigor / 签名，后面每一步都跑不动
+    add("Run environment doctor (kit / SDK / hvigor / device)", "auto",
+        ["procedural/qt6-ohos-windows-cli-deploy.md",
+         "semantic/qt-harmonyos-build-run-workflow.md"],
+        "`qt-ohos-run doctor`：每条失败都带 config set 修法；Qt6 需要宿主 kit"
+        "（qt_host_sdk）+ OHOS native SDK（ohos_sdk_native）",
+        severity="critical")
+    add("Align SDK/toolchain and hvigor five-piece set", "auto",
+        ["procedural/qt6-ohos-windows-cli-deploy.md",
+         "procedural/qt6-ohos-manual-deploy.md"],
+        "QT_HARMONYOS_HVIGOR 绝对路径、JAVA_HOME、DEVECO_SDK_HOME、"
+        "HVIGOR_USER_HOME、npm_config_cache；compatibleSdkVersion 与 SDK 对齐",
+        severity="critical")
+    add("Prepare signing materials and device chain", "assisted",
+        ["procedural/qt6-ohos-windows-cli-deploy.md",
+         "semantic/qt-harmonyos-third-party-libs.md"],
+        "`qt-ohos-run sign`（devecocli）或六件套手工配置；"
+        "`hdc list targets` 必须能列到设备",
+        severity="high")
+
+    # 2. HarmonyOS project creation
     add("Create HarmonyOS shell project (entry module + CMake glue)",
         "assisted", ["semantic/qt-harmonyos-project-structure.md",
                      "procedural/qt-app-harmonyos-migration.md"],
@@ -73,8 +124,13 @@ def build_plan(scan_info: Dict, risk_report: Dict, deps: List[Dict],
     version_key = "qt6_12" if str(scan_info.get("qt_version_hint") or "") \
         .startswith("6") else "qt5_15"
     for mod in scan_info.get("qt_modules", []):
+        if not required_map.get(mod, True):
+            continue          # 软依赖不排步骤，否则计划里全是空转项
         status, ref, substitute = _module_status(kb_root, mod, version_key)
         if status == "out-of-scope":
+            if mod in available and mod not in ("webengine", "webenginecore",
+                                                "webenginewidgets", "webkit"):
+                continue      # kit 里就有这个模块，别排"补齐"步骤
             refs = [ref]
             if substitute or mod.startswith("webengine") or mod == "webkit":
                 refs.append("procedural/qt-cef-ohos-dev-guide.md")
@@ -112,6 +168,8 @@ def build_plan(scan_info: Dict, risk_report: Dict, deps: List[Dict],
 
     # 4. third-party dependencies
     for dep in deps:
+        if dep.get("name", "").lower() in available:
+            continue          # kit 自带的第三方库不需要另行提供
         add("Provide OHOS build of third-party dependency '%s'" % dep["name"],
             "manual", ["semantic/qt-harmonyos-third-party-libs.md"],
             "status: %s" % dep.get("status", "unknown"), severity="high")
@@ -131,6 +189,10 @@ def build_plan(scan_info: Dict, risk_report: Dict, deps: List[Dict],
              "semantic/qt-harmonyos-code-patterns.md"], severity="high")
 
     # 6. packaging / runtime
+    add("Package HAP via Qt6 _make_hap / harmonydeployqt6 (not a bare command)",
+        "auto", ["procedural/qt6-ohos-windows-cli-deploy.md"],
+        "`package` 内置两条路径；`package_command` 仅作逃生舱",
+        severity="high")
     add("Package HAP + sign + install + launch", "assisted",
         ["semantic/qt-harmonyos-build-run-workflow.md"], severity="high")
     add("Runtime smoke test + hilog crash check", "assisted",
@@ -138,6 +200,7 @@ def build_plan(scan_info: Dict, risk_report: Dict, deps: List[Dict],
 
     return {
         "project": scan_info.get("name"),
+        "qt_kit_modules": sorted(available),
         "steps": steps,
         "counts": {
             "total": len(steps),

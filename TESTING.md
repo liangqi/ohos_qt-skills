@@ -9,7 +9,7 @@
 
 ```bash
 python _scripts/verify.py                   # 契约 / 结构 / 引用 / 索引 / 发版清单 / 卫生（10 类检查）
-python -m unittest discover -s tests -v     # 一致性 + 引擎 + 扫描（48 用例）
+python -m unittest discover -s tests -v     # 一致性 + 引擎 + 扫描（124 用例）
 python tools/faults-build.py check          # 故障库真源 ↔ 派生物（error 必须为 0）
 ```
 
@@ -29,7 +29,7 @@ Windows 上没有 bash 时，用 `python _scripts/verify.py` 等价执行第一�
 | 门禁 | 结果 | 说明 |
 |------|------|------|
 | `verify.py` | **PASS** | 0 error / 0 warning（模板目录里 178 个历史构建产物已清理） |
-| `unittest` | **OK（100 tests）** | 引擎 66 + 一致性 25 + cpp20 扫描 9 = 100（另有 portgraph 127 单测：图谱 123 + 预取 4，不在默认 discover 范围） |
+| `unittest` | **OK（124 tests）** | 引擎 88 + 一致性 27 + cpp20 扫描 9 = 124（另有 portgraph 127 单测：图谱 123 + 预取 4，不在默认 discover 范围） |
 | `faults-build check` | **PASS** | error=0 / warn=0 / info=7（7 条缺失跟踪单已排期到 T-0008…T-0013） |
 | CLI 契约 | **PASS** | `qt-ohos-run` 24 / `qt-sdk-run` 24 / `portgraph` 10 子命令，由测试锁定 |
 | 相对链接门禁 | **PASS** | `verify` C10：`](path.md)` 指向不存在的文件即 ERROR（C7 只查 wikilink） |
@@ -96,7 +96,7 @@ Windows 真机端到端——见下节。
 | 4. 自动修 | `qt-ohos-run.py --project <工程> patch` | `no automatic fixes applicable`（无命中）或 `applied N fixes`，`已改动全部记入 .qt-ohos/changes.json` |
 | 5. 门禁 | `qt-ohos-run.py --project <工程> verify` | `G0 Environment FAIL missing: qt_sdk_prefix or build_command`，G1 FAIL（未 scan 时没有 build files/plan），G2 NOT_RUN（没跑 risk_scan 就不能说"无 critical 风险"），G3–G12 NOT_RUN，`Result: FAIL`——未配 SDK 且未扫描时的正确结论 |
 | 6. 日志诊断 | `qt-ohos-run.py analyze-log <日志>` | `Hits:` 列出命中模式与置信度，`Top hit: QOH001 (qpa_plugin_not_found)`，随后给出 cause / diagnose / fix / read |
-| 7. 清单对账 | `python _scripts/gen-manifest.py --check` | `gen-manifest: 计数一致（121 页 / 164 用例）…`；普通提交上摘要会显示为"旧快照"，发版前用同脚本刷新后再 `--check --strict` |
+| 7. 清单对账 | `python _scripts/gen-manifest.py --check` | `gen-manifest: 计数一致（132 页 / 124 用例）…`；普通提交上摘要会显示为"旧快照"，发版前用同脚本刷新后再 `--check --strict` |
 
 第 6 步最容易验证：往日志里塞一行 `dlopen failed: library "libqohos.so" not found`，
 应当命中 QOH001，且顺着 `read:` 能打开对应的 `problems/` 页。
@@ -149,7 +149,7 @@ git clone --recursive <url> <dir>
 ```powershell
 git clone -b trunk https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills.git
 cd ohos_qt-skills
-python _scripts/ci.py                       # 期望「CI: 全部通过」（47 用例）
+python _scripts/ci.py                       # 期望「CI: 全部通过」（124 用例）
 python _scripts/verify.py                   # 期望 PASS（0 error / 0 warning）
 python tools/faults-build.py check          # 期望 error=0
 ```
