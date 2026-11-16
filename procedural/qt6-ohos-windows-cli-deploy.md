@@ -84,6 +84,15 @@ mklink /J C:\DevecoStudio "C:\Program Files\Huawei\DevEco Studio"
 
 ## 2. 环境变量
 
+> **主机侧先定两件事**（2026-11-16 在 Windows 10.0.26300 + Qt 6.12.0 预构建 kit 上实测）：
+> 一是**生成器**——`-G Ninja` 在受限会话（CI 沙箱、无交互的服务账户）里会 0 CPU 空转不返回，
+> 换成 `-G "MinGW Makefiles"`（kit 自带 `mingw_64/bin/mingw32-make.exe`）即正常；
+> 二是**随包脚本的真实性**——kit 里的 `qmake.bat` 常是构建机产物（内容指向
+> `/home/qt/work/install/bin\qmake6.exe`），在 Windows 上不可用，判断 kit 可用性看
+> `qt-cmake.bat`、`bin/moc.exe`、`harmonydeployqt6.exe` 三者。
+> 另外 PowerShell 的 `>` 重定向默认出 UTF-16LE 带 BOM，日志丢给 `analyze-log` 前先
+> `| Out-File -Encoding utf8`，否则匹配不到任何 QOH 模式。
+
 ### 2.1 构建期（qt-cmake + cmake --build 用）
 
 ```cmd
@@ -271,6 +280,9 @@ harmonydeployqt6 --input ... --output ... --hvigor ... ^
 | `Could not find toolchain file`（文件实存） | （QtC 场景）Initial 配置值带首尾 `"` + `:UNINITIALIZED` → cmake 收到带字面引号的路径 | CLI 命令行带引号 cmake 能正确解析；此坑仅 Qt Creator Kit 配置表有 |
 | 找不到 `harmonydeployqt6.exe`（在 `harmonyos_arm64_v8a/bin` 找） | 它是 host 工具，不在交叉目标里 | 用 `mingw_64/bin/harmonydeployqt6.exe` |
 | `Failed to start hvigorw` | `--hvigor` 传了相对路径 | `--hvigor` 必传绝对路径，或设 `QT_HARMONYOS_HVIGOR` env |
+| `Warning: No hvigor path specified, skipping build`（**返回码 0**） | 缺 `QT_HARMONYOS_HVIGOR`，打包被静默跳过 | 设绝对路径；拿返回码判成功的脚本要额外匹配这句话 |
+| `EPERM ... symlink ... node_modules\@ohos\hvigor` | 非管理员建不了符号链接，hvigor 每次先删再建，预 copy 无效 | `mklink /J` 预建两个 junction，或用管理员会话 |
+| `Invalid custom userhome hvigor data dir` | `HVIGOR_USER_HOME` 用了相对路径，被静默回退 | 传绝对且可写路径 |
 | harmonydeployqt6 spawn `java` ENOENT | hvigorw 的 node workers spawn `java`（跑 app_packing_tool.jar）丢 env | 确认 `JAVA_HOME` + `jbr/bin` 在 PATH；§2.2 已含 |
 | 部署报找不到 `libgallery.so` | 只 configure 没 build | 先 `cmake --build build` |
 | DevEco 路径含空格 → 各种莫名失败 | wiki 已警告空格致 hvigor spawn 失败 | 用 §1.1 junction 无空格别名 `${DEVECO_STUDIO}` |
