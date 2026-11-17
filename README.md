@@ -22,6 +22,8 @@
 >
 > 设计原则：**LLM 负责推理，tool 负责事实**。编译通过不等于迁移成功，
 > `TIMEOUT` 永远不是 `PASS`。
+> 
+> 加入项目： 邀请您成为 AtomGit ohos_qt-skills 项目开发者 邀请链接: https://gitcode.com/invite/link/7a8aa925435647dbbf55
 
 ---
 
