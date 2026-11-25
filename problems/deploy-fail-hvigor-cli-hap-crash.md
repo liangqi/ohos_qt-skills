@@ -8,7 +8,7 @@ updated: 2026-08-06
 status: workaround
 severity: medium
 audience: public
-refs: [semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-build-run-workflow]
+refs: [fault-C-0015, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-build-run-workflow]
 summary: >
   A HAP packaged from the hvigor command line (--mode module) crashes at startup: Cannot read property handleAbilityStageOnCreate of undefined.
   Reverting to an unpatched libqohos.so crashes the same way -> this is not a Qt code problem, but a difference between CLI packaging and DevEco Studio IDE packaging.

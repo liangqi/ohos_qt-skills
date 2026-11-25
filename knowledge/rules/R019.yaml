@@ -1,0 +1,29 @@
+id: R019
+name: platform_guard_single_macro
+category: build
+severity: high
+platform:
+  harmonyos: blocked
+match:
+  guard:
+    files:
+      - "platform_*.h"
+      - "**/platform/*.h"
+    when:
+      - "Q_OS_OHOS"
+    require_any:
+      - "Q_OS_HARMONY"
+      - "__OHOS__"
+golden_rules: [G3, G4]
+kb:
+  - semantic/qt-harmonyos-golden-rules.md
+  - problems/platform-guard-needs-both-ohos-macros.md
+solution: >
+  Golden rule G3: a dispatch guard that names Q_OS_OHOS without Q_OS_HARMONY is
+  dead code on Qt 6.x kits (qtbase's qsystemdetection.h defines Q_OS_HARMONY,
+  not Q_OS_OHOS), so the branch falls through to the Linux implementation with
+  no diagnostic. Write "#if defined Q_OS_OHOS || defined Q_OS_HARMONY", or test
+  the compiler macro "__OHOS__", which both kits define. Do not try to rescue a
+  single-macro guard with -DQ_OS_OHOS: Q_OS_WIN sits first in the chain, so the
+  flag loses on a host triple. Audit a whole tree with:
+  python tools/ohos-platform-audit.py.

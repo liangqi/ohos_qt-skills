@@ -177,10 +177,8 @@ brew install git cmake node
 
 ## deveco-cli (all platforms)
 
-`deveco-cli` is a standalone open-source tool, distinct from the `devecocli` bundled with DevEco Studio.
+The `devecocli` command is provided by the open-source tool deveco-cli (repository: https://gitcode.com/openharmony-sig/deveco-cli, npm package name `@deveco/deveco-cli`). It wraps the DevEco toolchain (ohpm/hvigor/hdc/emulator/hilog + the bundled node/JBR/SDK) and covers building, installing, logs, signing, the emulator, and UI automation. Some DevEco Studio versions also bundle a copy at `tools/devecocli{.bat}` with the same functionality; use whichever one you locate (for the lookup order, see `ohos-common-kb-public/procedural/deveco-cli-usage-rules.md` §Tool availability pre-check).
 
-- **Repository**: https://gitcode.com/openharmony-sig/deveco-cli
-- **Features**: an integrated HarmonyOS application development toolset, knowledge docs, and AI skills
 - **Requires**: Node.js >= 18
 
 ### Automatic installation (recommended)
@@ -191,33 +189,22 @@ bash skills/kb-init/scripts/install-deveco-cli.sh --method=npm
 
 ### Manual installation
 
-**Method 1: npm**
-
 ```bash
-npm install -g deveco-cli
-deveco-cli --version
-```
-
-**Method 2: git clone**
-
-```bash
-git clone https://gitcode.com/openharmony-sig/deveco-cli.git ~/dev/deveco-cli
-cd ~/dev/deveco-cli
-npm install
-npm link  # create the global command
+npm i -g @deveco/deveco-cli
+devecocli --version   # note: the binary is named devecocli
 ```
 
 ### Verify
 
 ```bash
-deveco-cli --version
+devecocli --version
 ```
 
-### How it differs from devecocli
+### Common mix-ups
 
-| Tool | Origin | Purpose |
-|------|--------|---------|
-| `devecocli` | Bundled with DevEco Studio / the CLT | IDE operations: building, installing, logs, and so on |
-| `deveco-cli` | Open-source repository (npm) | AI-assisted development, knowledge docs, skills |
-
-Both can be installed side by side without conflict.
+| Name | What it actually is |
+|------|---------------------|
+| `devecocli` | This tool (npm `@deveco/deveco-cli`, the stable channel; bundled with some DevEco versions) |
+| `deveco-cli` (bare package name/command) | **Doesn't exist** — the npm scoped package is `@deveco/deveco-cli`, and the only binary is `devecocli` |
+| `@deveco-test/deveco-cli` | The test-channel package; don't use it in install commands |
+| `devecostudio` | The DevEco Studio GUI launcher, not a build CLI |

@@ -8,7 +8,7 @@ updated: 2026-07-14
 status: solved
 severity: high
 audience: public
-refs: [semantic-qt-harmonyos-platform-limits]
+refs: [fault-C-0018, semantic-qt-harmonyos-platform-limits]
 summary: >
   Under OHOS ZINK (Qt5's OpenGL-over-Vulkan), when a Qt3D Texture2D uses an RGBA8 alpha PNG with generateMipMaps:true,
   glGenerateMipmap fails for RGBA8 / produces a broken mip chain → the texture's mipmaps are incomplete → the sampler returns black (0,0,0,1) → the entity renders pure black;

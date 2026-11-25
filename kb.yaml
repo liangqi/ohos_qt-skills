@@ -1,0 +1,46 @@
+# kb.yaml — repository contract (read and checked by _scripts/verify.sh)
+#
+# This file defines the repository's "identity and tooling contract": where the entry point is, where the map is, how to self-check,
+# and which top-level paths must exist. When restructuring or reorganizing directories, change this first, then verify.
+#
+# Maintenance conventions:
+#   - All values are scalars (easy to parse without dependencies); lists use the indented `  - item` form.
+#   - A contract change = a MINOR or higher version change, and must be synced to CHANGELOG.
+schema_version: 1
+id: ohos-qt-kb
+kind: framework
+entrypoint: AGENTS.md
+map: _index/_map.md
+verify: bash _scripts/verify.sh
+tooling_contract_version: 3
+default_audience: public
+canonical_repo: https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills
+
+# Top-level structure contract: these paths must exist (any missing one is a FAIL).
+# Meaning of the layers:
+#   entry      entry layer (the first hop for agents and humans)
+#   knowledge  knowledge layer (for humans: semantic/procedural/episodic/error library/embedded platform knowledge)
+#   machine    machine layer (for tools: rules, error patterns, feasibility matrix)
+#   tracking   tracking layer (symptom × root cause × workaround × tracking ticket)
+#   execution  execution layer (runnable CLIs and engine packages)
+#   templates  template layer (HarmonyOS project skeletons)
+required_paths:
+  - SKILL.md
+  - AGENTS.md
+  - CLAUDE.md
+  - README.md
+  - _index/_map.md
+  - semantic
+  - procedural
+  - episodic
+  - problems
+  - ohos-common-kb-public
+  - knowledge
+  - faults
+  - tools
+  - templates
+
+# Optional layers: checked if present, no failure if missing (independent subprojects / candidates for later splitting)
+optional_paths:
+  - portgraph
+  - tests

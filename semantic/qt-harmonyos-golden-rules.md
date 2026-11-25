@@ -9,7 +9,7 @@ status: active
 audience: public
 refs: [semantic-qt-harmonyos-porting-workflow, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-lifecycle, semantic-qt-harmonyos-api-mapping, semantic-qt-harmonyos-code-patterns, semantic-qt-harmonyos-window-model, semantic-qt-ohos-extras, semantic-qt-harmonyos-build, semantic-qt-harmonyos-third-party-libs]
 summary: >
-  A quick reference of the iron rules for porting Qt to HarmonyOS: 35 golden rules covering build and deployment, window management, API/enum paths,
+  A quick reference of the iron rules for porting Qt to HarmonyOS: 38 golden rules covering build and deployment, window management, API/enum paths,
   how platform limitations affect Qt, lifecycle adapters, and cross-platform guards. Each rule has a severity (🔴🟠🟡🟢), a "why", and a source.
   Agents should scan this page before performing any Qt for HarmonyOS task.
 ---
@@ -41,12 +41,12 @@ summary: >
 | B4 | 🔴 | **Never** set `compileSdkVersion` or `targetSdkVersion` | Setting them causes "Schema validate failed" | [[qt-harmonyos-project-structure]] §9 |
 | B5 | 🟡 | `runtimeOS` **must** be set to `"HarmonyOS"` (not `"OpenHarmony"`) | It affects application packaging and signing | [[qt-harmonyos-project-structure]] §4.3 |
 | B6 | 🟡 | The QtOhosExtras module **only supports qmake** (`CONFIG -= create_cmake`); there's no find_package support in CMake. **In Qt6**: the module no longer exists standalone, its functionality having been inlined into the QPA plugin | CMake config generation is disabled in the source | [[qt-ohos-extras]] §Usage, [[qt-harmonyos-qt6-status]] |
-| B7 | 🟡 | `libqohosstyle.so` **must** be copied manually into the `libs/${ABI_DIR}/styles/` subdirectory | target_link_libraries can't deploy into a subdirectory | [[qt-harmonyos-project-structure]] §6.2 |
+| B7 | 🟡 | **Qt 5.15 kit**: `libqohosstyle.so` must be copied manually into `libs/${ABI_DIR}/styles/`. **Qt 6.12+**: `qt_add_executable` + `harmonydeployqt6` automatically deploy plugins sorted by plugin directory, so no manual copying is needed — copying by hand may actually overwrite the packaged output | `target_link_libraries` can't deploy plugins into a subdirectory; the Qt5 and Qt6 deployment pipelines differ (in Qt6 the macros collect and harmonydeployqt6 writes to disk) | [[qt-harmonyos-project-structure]] §6.2 |
 | B8 | 🟡 | In scenario two (porting an existing project), the `path` in `build-profile.json5` **must** be absolute | A relative path won't find the source files | [[qt-harmonyos-project-structure]] §9 |
 | B9 | 🔴 | qmake's `unix` branch **must** append `:!ohos` (`unix:!android:!macx:!ohos`) | Otherwise ohos also matches the unix branch and you compile the wrong (Linux) code | [[qt-harmonyos-code-patterns]] §Pattern 7 |
 | B10 | 🔴 | QML applications **must** enable `CMAKE_AUTORCC ON` | Without it, qml.qrc isn't compiled, the QML files aren't packaged, and you get a black screen at runtime | [[qt-harmonyos-project-structure]] §4.2 |
 | B11 | 🔴 | `bundleName` must be a stable dotted identifier the target SDK schema accepts, and must match the final generated project, the signing profile, and the install/launch commands | An inconsistent identity causes validation, signing, installation, or launch failures; the exact character range is determined by the target SDK | [[qt-harmonyos-project-structure]] §8 |
-| B12 | 🟠 | The SQL driver plugin `libqsqlite.so` **must** be copied manually into `libs/${ABI_DIR}/sqldrivers/` (the same class as B7's `libqohosstyle.so` → `styles/` and `libqsvg.so` → `imageformats/`) | Dynamically categorized plugins can't be deployed via `target_link_libraries`; `QFactoryLoader` dlopens them from the subdirectory. If it's missing, `addDatabase("QSQLITE")` gives a null driver and `open()` returns false before ever touching the filesystem (`lastError="Driver not loaded"`). Note that in the OHOS SDK the filename is `libqsqlite.so` (not desktop's `libqsqlsqlite.so`) | [[qt-harmonyos-project-structure]] §6.2, [runtime-fail-sqlite-open-database](../problems/runtime-fail-sqlite-open-database.md) |
+| B12 | 🟠 | **Qt 5.15 kit**: the SQL driver plugin `libqsqlite.so` must be copied manually into `libs/${ABI_DIR}/sqldrivers/` (the same class as B7 and `libqsvg.so` → `imageformats/`); **on Qt 6.12+ the packaging pipeline deploys it automatically** — after installing, just double-check with `unzip -l app.hap \| grep sqldrivers` | Dynamically categorized plugins can't be deployed via `target_link_libraries`; `QFactoryLoader` dlopens them from the subdirectory. If it's missing, `addDatabase("QSQLITE")` gives a null driver and `open()` returns false before ever touching the filesystem (`lastError="Driver not loaded"`). Note that in the OHOS SDK the filename is `libqsqlite.so` (not desktop's `libqsqlsqlite.so`) | [[qt-harmonyos-project-structure]] §6.2, [runtime-fail-sqlite-open-database](../problems/runtime-fail-sqlite-open-database.md) |
 
 ---
 
@@ -99,12 +99,30 @@ summary: >
 
 ---
 
-## 6. Cross-platform guards (2 rules)
+## 6. Cross-platform guards (5 rules)
 
 | # | Severity | Rule | Why | Source |
 |---|:--------:|------|-----|--------|
 | G1 | 🟢 | `Q_OS_OHOS` **implies** `Q_OS_LINUX` — `#ifdef Q_OS_LINUX` is also taken on HarmonyOS | You must check every Q_OS_LINUX branch for HarmonyOS compatibility | [[qt-harmonyos-porting-workflow]] §Principle 1 |
 | G2 | 🟢 | Drag-and-drop event data can **only** be read in `dropEvent`; `dragEnterEvent`/`dragMoveEvent` only have the MIME types | HarmonyOS's drag-and-drop protocol transfers data asynchronously | [[qt-harmonyos-code-patterns]] §Pattern 9 |
+| G3 | 🔴 | Platform guards **must accept both** `Q_OS_OHOS` and `Q_OS_HARMONY`: `#if defined Q_OS_OHOS \|\| defined Q_OS_HARMONY` | The Qt 5.15 kit defines `Q_OS_OHOS`, while Qt 6.12+ (including 6.13.0-dev) defines only `Q_OS_HARMONY`; a guard that names only one is **dead code** on the other kit and silently falls through to the Linux implementation | [[build-qt612-qos-harmony-macro]], [[platform-guard-needs-both-ohos-macros]] |
+| G4 | 🔴 | Before changing platform dispatch, first distinguish **header dispatch** from **source file dispatch**: the former changes an `#ifdef` chain, the latter relies on the build selecting `ohos/xxx_ohos.cpp` by path | Changing only the `#ifdef`s permanently misses the source-dispatch half (typically 9 headers + 5 sources); what's missed shows up as undefined symbols at link time or silent degradation at runtime | [[platform-layer-two-dispatch-modes]] |
+| G5 | 🟠 | **A manual `-DQ_OS_OHOS` is a fake fix**: `Q_OS_WIN` comes first in the dispatch chain, and `-D` can't rescue the case of the host triple | It turns a "kit fact" into a "build script convention", so it recurs when you switch kits; determine the branch taken with the full compile command + `-H`, not by looking at `flags.make` | [[platform-guard-needs-both-ohos-macros]] §4 |
+
+### The "else means Linux" assumption in platform models (a new platform hits the full set)
+
+The platform model of desktop applications (`desktop-app`-family projects like tdesktop) is "Win / Mac / **the rest**",
+and "the rest" in practice means Linux. Any new platform hits four places at once, each with a different symptom:
+
+| Location | Symptom | Existing criterion |
+|------|------|---------|
+| `cmake/nice_target_sources.cmake` | The platform filter doesn't recognize the `ohos/` directory → implementation files are marked `HEADER_FILE_ONLY` → zero errors at compile time, then a burst of undefined symbols at link time | [[build-qt612-qos-harmony-macro]] |
+| `platform/platform_specific.h` | The dispatch chain lands on the Linux header → pulls in D-Bus / X11 / glib dependencies | [[platform-guard-needs-both-ohos-macros]] |
+| `platform/platform_{tray,notification,main_window,overlay_widget,file_utilities,...}.h` | Each dispatches independently; fixing one doesn't fix the others | [[platform-layer-two-dispatch-modes]] |
+| `base/screen_reader_state.cpp` | Lands on the Linux implementation → atspi/dbus dependencies | Same as above |
+
+Audit method: `python tools/ohos-platform-audit.py <app>/SourceFiles/platform`
+(header dispatch files must name both OHOS macros; a non-zero exit code blocks it).
 
 ---
 
@@ -146,3 +164,5 @@ This page is distilled from the knowledge pages below; follow the links for the 
 - [[qt-harmonyos-build]] — The build guide
 - [[qt-harmonyos-third-party-libs]] — The guide to porting third-party libraries
 - [[qt-harmonyos-qt6-status]] — Qt 6 HarmonyOS porting status
+- [[platform-guard-needs-both-ohos-macros]] — Dual macros for platform guards and how to determine the branch taken
+- [[platform-layer-two-dispatch-modes]] — The two dispatch mechanisms of the platform layer and how to audit them

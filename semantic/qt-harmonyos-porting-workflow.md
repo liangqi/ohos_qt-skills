@@ -66,6 +66,25 @@ Q_OS_MAC / Q_OS_MACOS / Q_OS_DARWIN
 
 > Note: `Q_OS_LINUX` is also matched on HarmonyOS (because `Q_OS_OHOS` implies `Q_OS_LINUX`), so you need to check whether the code in every `Q_OS_LINUX` branch is HarmonyOS-compatible.
 
+**Guards must use both macros**: the Qt 5.15 kit defines `Q_OS_OHOS`, while Qt 6.12+ (including 6.13.0-dev) defines only
+`Q_OS_HARMONY`. A branch that names only one macro is dead code on the other kit, and **silently** falls through to the Linux implementation:
+
+```cpp
+#elif defined Q_OS_OHOS || defined Q_OS_HARMONY   // the only correct form
+```
+
+**The platform layer has two dispatch mechanisms**, so an audit can't look at `#ifdef`s alone:
+
+| Mechanism | Form | What to change |
+|------|------|--------|
+| Header dispatch | An `#ifdef` chain inside the header, with `#else` landing on Linux | Change the chain (both macros) |
+| Source file dispatch | No `#ifdef` in the header; the build picks the `.cpp` by path | Add `ohos/xxx_ohos.cpp` |
+
+One-command audit: `python tools/ohos-platform-audit.py <app>/SourceFiles/platform`
+(header dispatch files must name both macros; `--undefined link.log` works backward to the platform symbols still lacking an implementation).
+
+For details see [[platform-guard-needs-both-ohos-macros]] and [[platform-layer-two-dispatch-modes]].
+
 ### Platform-specific APIs
 
 The APIs below behave differently or are unavailable on HarmonyOS, so check each one:
@@ -104,7 +123,40 @@ if(ANDROID) ...
 
 > **Step 1 output**: a complete list of every code location that needs replacing or adapting.
 
+**How to read the scan report (scope downgrade)**: hits are downgraded one level by file scope — third-party source trees such as `ThirdParty/`,
+`third_party/`, `3rdparty/`, and `vendor/`, and non-HarmonyOS platform-specific paths such as `platform/win/`,
+`windows/`, and `macos/`, don't take part in the build on the HarmonyOS target. These hits carry
+`scope: third-party` / `scope: platform-excluded`, and their severity drops from critical to high:
+still worth a look, but they shouldn't block G2 as critical.
+
+Reading order: first check whether `scope` is empty. Only a critical hit with an empty scope is a real risk of "HarmonyOS will compile this and it will blow up";
+for hits with a scope, first confirm the build really excludes that directory (bucket rules like `nice_target_sources`); once exclusion is confirmed
+you can ignore them. At the rule level, use `match.exclude` to exclude paths, or `scope: keep` to turn off the downgrade.
+
 ---
+
+### Prerequisite checklist for consuming the app layer out of tree (must read for compile checks)
+
+The app layer of a large Qt desktop application doesn't "just compile once you add it to the project"; there are 5 implicit prerequisites + 2 traps.
+Prepare them in order — missing any one gets you a batch of misleading errors:
+
+- [ ] `cxx_std_20` (otherwise `friend auto operator<=>` reports `auto not allowed`)
+- [ ] The **single-token** form of `-include SourceFiles/stdafx.h` (`"-include<path>"`, see below)
+- [ ] The `API_ID` / `API_HASH` macros (`config.h` has a hard `#error`)
+- [ ] The two **host-executable** code generation tools: styles (`codegen_style`) + the MTP scheme (Python)
+- [ ] Third-party includes (GSL / range-v3 / expected) + the Qt modules needed
+- [ ] Submodules initialized: `git submodule update --init --recursive`
+
+The two traps:
+
+1. **CMake deduplicates `-include`**: the toolchain already injects one `-include`, and passing another merges them into
+   `-include A B`, so clang treats `B` as an input file → `cannot specify -o when generating multiple
+   output files`. Write it as the single token `"-include${SRC}/SourceFiles/stdafx.h"`. See
+   [[build-cmake-dedup-include-option]].
+2. **A same-named header includes itself when submodules aren't initialized**: `#include <translate_provider.h>` resolves to itself,
+   gets swallowed by `#pragma once` → the type "doesn't exist". See [[build-uninitialized-submodule-same-name-header]].
+
+For the full picture and how to write a minimal cross-compile project, see [[build-app-layer-out-of-tree-prerequisites]].
 
 ## Step 2: replace APIs using the mapping
 

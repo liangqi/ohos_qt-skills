@@ -16,7 +16,7 @@ leader_summary: >
   Captured a compatibility fix for the FFmpeg 9.x API.
 impact: [Migration efficiency, Build troubleshooting]
 deliverables: [problem record]
-evidence: [QCTools builds successfully]
+evidence: [A video inspection tool builds successfully]
 error_message: >
   error: use of undeclared identifier 'av_stream_get_codec_timebase'
 error_code: ""
@@ -35,7 +35,7 @@ error: use of undeclared identifier 'av_stream_get_codec_timebase'
 
 ## Scenario
 
-QCTools uses `av_stream_get_codec_timebase(stream->stream())` to get the codec time base, but that function was removed in FFmpeg 9.0.1.
+A video inspection tool uses `av_stream_get_codec_timebase(stream->stream())` to get the codec time base, but that function was removed in FFmpeg 9.0.1.
 
 ## Cause
 
@@ -67,7 +67,7 @@ The two return the same value in most cases.
 | Leadership summary | FFmpeg 9.x API compatibility fix |
 | Scope of impact | Qt OHOS applications using the old FFmpeg API |
 | Deliverable | problem record |
-| Evidence | QCTools builds successfully |
+| Evidence | A video inspection tool builds successfully |
 | How to reuse | When you hit "av_stream_get_codec_timebase undeclared", substitute directly |
 
 ## Related

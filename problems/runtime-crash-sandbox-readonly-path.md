@@ -8,7 +8,7 @@ updated: 2026-08-14
 status: solved
 severity: critical
 audience: public
-refs: [procedural-qt-ohos-run-test, semantic-qt-harmonyos-platform-limits]
+refs: [fault-C-0013, procedural-qt-ohos-run-test, semantic-qt-harmonyos-platform-limits]
 summary: >
   In the OHOS sandbox, QDir::currentPath()/applicationDirPath() return read-only paths,
   so writing a configuration file or log fails, the application calls exit(1), and it crashes with SIGABRT.

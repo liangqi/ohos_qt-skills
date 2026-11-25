@@ -78,7 +78,7 @@ The modules the tray evaluates through libqohos (which must be registered as "kn
 - `@ohos.notificationManager` (showMessage's `publish` + `ContentType`)
 
 > **The key 5.12 vs. 5.15 difference**:
-> - **The 5.12 libqohos uses the factories API** (reading the `modulesFactories` field, `makeJsModulesFactoriesMap`). The source tree template's `OhosExportModules.ts` (5 `@kit.*` lazy imports + the `getOhosExportModulesFactories` arrow factory) **is exactly the 5.12 generation**, and **already includes `@kit.StatusBarExtensionKit`** → the core tray works out of the box. **Don't** swap in the qView-ohos objects version (that's 5.15, which reads the `modules` field).
+> - **The 5.12 libqohos uses the factories API** (reading the `modulesFactories` field, `makeJsModulesFactoriesMap`). The source tree template's `OhosExportModules.ts` (5 `@kit.*` lazy imports + the `getOhosExportModulesFactories` arrow factory) **is exactly the 5.12 generation**, and **already includes `@kit.StatusBarExtensionKit`** → the core tray works out of the box. **Don't** swap in the objects version from the canonical complete reference template (that's 5.15, which reads the `modules` field).
 > - The tray additionally needs `@ohos.display` + `@ohos.notificationManager`, which the source tree template **doesn't register**. The tray demo adds these two itself (an eager default-import + factories map entries, matching the existing 5-line pattern).
 > - The bare-eval crash trap for `@ohos.deviceInfo` ([[problem-runtime-crash-ohos-deviceinfo-global-expression]]) is a **5.15-generation** mechanism; a single-instance 5.12 demo doesn't trigger it (see the diagnostic on that problem page: `strings libqohos.so | grep "global expression"` distinguishes the generations).
 

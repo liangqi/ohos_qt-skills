@@ -90,6 +90,15 @@ target_link_libraries(QtHarmonyApp PRIVATE
 **Advantages**: avoids .so deployment problems and reduces runtime dependencies.
 **Disadvantages**: increases the application's .so size, and can cause symbol conflicts when several modules use the same static library.
 
+### 3.4 Two source-build techniques when a bottle is missing
+
+When dependency closure analysis (portgraph fetch-deps) reports a "needs a source build" gap, two practical techniques:
+
+- **The official source has no bottle / no release package**: build from a reliable source mirror instead (such as a community-maintained mirror on GitHub), using the build parameters from the official formula;
+- **Only a static library (`.a`) exists but the application needs dynamic loading**: convert the static library into a shared library —
+  `clang -shared -Wl,--whole-archive lib<name>.a -o lib<name>.so.<ver> ...`
+  (`--whole-archive` ensures every symbol is exported; after conversion, deploy it like an ordinary .so into `entry/libs/arm64-v8a/`).
+
 ---
 
 ## 4. Checkpoints for platform limitations in a Qt project
@@ -144,6 +153,23 @@ When porting a Qt application, build on [[qt-ohos-project-analyzer-workflow]] §
 - [ ] **System libraries**: can you just use the system version instead of bundling your own?
 - [ ] **Static linking**: can static linking avoid the .so deployment problem?
 - [ ] **Verification**: does it build + does the .so load at runtime + does the feature work?
+
+---
+
+## 7. Signing: a local closed loop without a developer certificate
+
+With the third-party libraries in place and the HAP built, installation can still get stuck on signing. With no Huawei developer account at all,
+self-signing with the OpenHarmony local root certificate is enough for **debug devices**:
+
+```
+① key pair → ② CSR → ③ the local root certificate issues the application certificate (.cer)
+→ ④ generate the profile (.p7b, binding the bundleName + device identifier)
+→ ⑤ sign the HAP with hap-sign-tool
+```
+
+Three frequent failure points: the `bundleName` is inconsistent across three places, the profile isn't bound to the current device, and **the self-signed certificate has expired**
+(the symptom is "it installed yesterday and everything fails today" — don't go investigating the build then).
+For the full chain see [[build-local-openharmony-signing-chain]].
 
 ---
 

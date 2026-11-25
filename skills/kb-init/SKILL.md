@@ -7,6 +7,7 @@ description: |
   This skill must be triggered when the user says "initialize", "configure the environment", "first time using this", "setup", or "install",
   or when ENV.local.md doesn't exist.
   Even if the user doesn't explicitly say "initialize", you should proactively suggest running it on their first interaction with the knowledge base.
+  Triggers (incl. Chinese): 初始化, 配置环境, 第一次使用.
 ---
 
 # kb-init: one-shot setup of the Qt for HarmonyOS development environment
@@ -64,15 +65,24 @@ Ask the following questions **one at a time**, in order. Wait for an answer befo
 ### Q1: which Qt version does your application need?
 
 > Which version does your Qt application need?
-> 1. **Qt 5.15** — recommended, for new projects
-> 2. **Qt 5.12** — for maintaining older projects
-> 3. **Not sure** — Qt 5.15 is recommended
+> 1. **Qt 6.12** — official prebuilt installer (recommended for new projects; a complete kit including the libqohos QPA, missing only WebEngine/DBus/Pdf/Script)
+> 2. **Qt 5.15** — built from source under a commercial license
+> 3. **Qt 5.12** — for maintaining older projects (has an open-source release)
+> 4. **Not sure** — Qt 6.12 is recommended (the prebuilt kit is the fastest way to get started)
 
-Record this as `QT_VERSION` (`5.15` / `5.12`).
+Record this as `QT_VERSION` (`6.12` / `5.15` / `5.12`).
 
 ### Q2: how to obtain Qt
 
 Branch based on the version from Q1:
+
+**If Q1 = 6.12**:
+
+> Qt 6.12 for HarmonyOS has an official prebuilt installer. Is Qt 6.12 (with the `harmonyos_arm64_v8a` component) already installed on your machine?
+> 1. **Installed** — tell me the kit path (e.g. `C:\Qt\Qt6.12-beta3\6.12.0\harmonyos_arm64_v8a`) and the host toolchain path (e.g. `C:\Qt\Qt6.12-beta3\6.12.0\mingw_64`)
+> 2. **Not installed** — install it with the official Qt online installer (choose a custom installation and tick the **HarmonyOS** target), then come back and tell me the paths
+
+Record these as `QT6_OHOS_SDK` / `QT6_HOST_SDK` (skip the Q3 build options and go straight to Q4).
 
 **If Q1 = 5.15**:
 
@@ -176,16 +186,25 @@ If the answer to Q4 was "not installed", read `references/deveco-install.md` and
 
 Once installed, re-run `detect-env.sh` to confirm `DEVECO_FOUND=true`.
 
-**DevEco CLI (devecocli)**:
-- macOS/Windows: DevEco Studio ships `devecocli` at `<DEVECO_PATH>/tools/devecocli`
-- Linux: the Command Line Tools must be downloaded separately — see the Linux section of `references/deveco-install.md`
+**DevEco CLI (devecocli)** — locate and verify it before starting work:
 
-Have the agent check whether `devecocli` is available:
+`devecocli` is provided by the npm package `@deveco/deveco-cli` (source: openharmony-sig/deveco-cli; it wraps build/run/signature/log/emulator and more). **Don't assume it comes with the DevEco Studio installation** — some versions bundle a copy at `<DEVECO_PATH>/tools/devecocli{.bat}`, but most environments install it via npm. Lookup order: **PATH → npm global directory → DevEco bundle**.
+
 ```bash
-command -v devecocli || ls <DEVECO_PATH>/tools/devecocli 2>/dev/null
+# bash
+command -v devecocli && devecocli --version
+ls "$(npm prefix -g)"/devecocli* 2>/dev/null          # npm global
+ls <DEVECO_PATH>/tools/devecocli* 2>/dev/null         # DevEco bundle (some versions)
 ```
 
-If it isn't, guide the user to add it to PATH or get it from the DevEco download page.
+```powershell
+# PowerShell
+Get-Command devecocli; devecocli --version
+```
+
+It only counts as available if `--version` prints a version number. If it isn't available, guide the user to install it: `npm i -g @deveco/deveco-cli` (requires Node.js >= 18) — **note**: the bare package name `deveco-cli` doesn't exist, and `@deveco-test/deveco-cli` is the test channel; don't use it.
+
+In Step 5, the resolved absolute path is written into `ENV.local.md` with `--deveco-cli` (the `DEVECO_CLI` variable); all later work references that variable directly.
 
 ### Step 3: platform dependency check
 
@@ -278,17 +297,34 @@ bash skills/kb-init/scripts/download-qt-sdk.sh \
   --dest=<KB_ROOT>/workspace/qt-sdk
 ```
 
+**Scenario C addendum (shell-project template when there's no Qt source)**: sdk-only users don't have
+`qtbase/src/harmonyos/templates`, so they need to download the standalone template archive, which
+`qt-ohos-run.py migrate` uses to generate the shell project automatically:
+
+```bash
+bash skills/kb-init/scripts/download-template.sh \
+  --dest=<KB_ROOT>/workspace/templates
+```
+
+> Note: the knowledge base ships `templates/qt-ohos-app/` (a checked-in copy of the same template), and the Qt 6.12
+> prebuilt kit also includes `src/harmonyos/templates` — skip this step if either one is available.
+
 ### Step 5: generate ENV.local.md
 
 ```bash
 bash skills/kb-init/scripts/generate-env-local.sh \
   --deveco-path="<DEVECO_PATH>" \
+  --deveco-cli="<DEVECO_CLI_PATH>" \
   --qt5-12-src="<KB_ROOT>/workspace/qt-src/qt5.12" \
   --qt5-15-src="<KB_ROOT>/workspace/qt-src/qt5.15" \
   --qt-build-root="<KB_ROOT>/workspace/qt-build" \
   --qt5-12-ohos-sdk="<SDK_PATH>" \
   --qt5-15-ohos-sdk="<SDK_PATH>" \
-  --ohos-sdk-native="<OHOS_SDK_NATIVE_PATH>"
+  --qt6-ohos-sdk="<QT6_OHOS_SDK>" \
+  --qt6-host-sdk="<QT6_HOST_SDK>" \
+  --ohos-sdk-native="<OHOS_SDK_NATIVE_PATH>" \
+  --ohos-template-src="<template directory, e.g. src/harmonyos/templates in the Qt6 kit>" \
+  --my-name="<contributor name, used to credit knowledge contributions>"
 ```
 
 Only pass the paths the user actually has; omit the rest.
@@ -321,7 +357,7 @@ bash skills/kb-init/scripts/verify-env.sh
 | Cloning the knowledge base fails | Check the network; clone manually with `git clone https://gitcode.com/OpenHarmonyPCDeveloper/ohos_qt-skills.git` |
 | `detect-env.sh` fails to run | `chmod +x skills/kb-init/scripts/*.sh` |
 | DevEco isn't detected after installing | Read `references/deveco-install.md` and check the path for your platform |
-| The DevEco CLI isn't available | Check whether `<DEVECO_PATH>/tools/devecocli` exists; add it to PATH |
+| The DevEco CLI isn't available | Check in lookup order: PATH → npm global (`npm prefix -g`) → `<DEVECO_PATH>/tools/devecocli{.bat}` (some versions); install with `npm i -g @deveco/deveco-cli` |
 | git clone fails (commercial) | Check the HTTP credentials; check the network |
 | git clone fails (opensource) | Check the network; try `git config --global http.sslVerify false` |
 | The SDK download fails | Go to https://gitcode.com/ohos-qt/qt-harmonyos-src/releases manually |

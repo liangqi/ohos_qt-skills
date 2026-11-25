@@ -1,0 +1,21 @@
+{
+ "reclassify": [
+  {
+   "dep": "pkg-unknown:openmp",
+   "from": "resolution-gap",
+   "to": "unknown-ok",
+   "reason": "CMakeLists.txt:259 find_package(OpenMP) (no REQUIRED; on a hit it only appends OpenMP_C(_XX)_FLAGS) is a CMake built-in compiler feature probe, not a third-party package; the OHOS clang toolchain ships its own OpenMP runtime, and hb-core/cmd-pkgs have no openmp/libgomp package either (hb's libomp is keg_only for host use) -> pkg-unknown is acceptable, not an ALIASES gap; fetch-deps already marks it provided under the CMake built-in category"
+  },
+  {
+   "oracle": "botan",
+   "from": "matched",
+   "to": "matched",
+   "reason": "Review ⚠ note: neither the hb-core Formula nor cmd-pkgs has a botan package (find_package(Botan REQUIRED), CMakeLists.txt:511); the pkg-unknown/need_port verdict is correct -- both detection and status are accurate, not a resolution gap; it really must be cross-compiled by yourself"
+  }
+ ],
+ "notes": [
+  "Oracle review: removed the leftover prose link set-up-build-environment; asciidoctor reclassified as build per the original text (documentation build tool); this version of INSTALL.md declares only three runtime libraries, qt/botan/zlib, with no libgcrypt/argon2/libsodium/ykpers; vcpkg/xvfb-run are tools/test helpers mentioned in prose and are not in the oracle",
+  "Final verdict on the 4 resolution-gaps: the three alias gaps xkbcommon/x11/pcsc were added to kb_seed.PKG_ALIASES (xkbcommon->libxkbcommon, x11->libx11, pcsc->pcsc-lite, libpcsclite->pcsc-lite), so the scan now resolves straight to the real package nodes and no longer creates ghosts; openmp is a CMake built-in compiler feature, reclassified as unknown-ok (fetch-deps also marks it provided under the built-in category); the ghost node matched by botan was checked and indeed has no HarmonyOS package, so the need_port verdict is correct",
+  "Recall going from 60% to 100% comes entirely from correcting the oracle denominator (build tools/leftover links had been wrongly counted as runtime); portgraph's detections did not change; precision staying at 27% reflects how minimal INSTALL.md's dependency declarations are (all 8 items missing from the README were confirmed by grep evidence to be real build references; portgraph is correct)"
+ ]
+}

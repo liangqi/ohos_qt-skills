@@ -5,7 +5,7 @@
 # HarmonyOS platform limitations:
 #   - DevEco Studio has no HarmonyOS build and isn't listed in the app store
 #   - The Command Line Tools telemetry build must be requested via the unified ticket platform
-#   - The deveco-cli repository doesn't declare HarmonyOS support, but npm installation is worth trying
+#   - devecocli (npm package @deveco/deveco-cli) can be tried via npm installation
 #
 # Status levels:
 #   PASS    — ready
@@ -81,7 +81,7 @@ if command -v node &>/dev/null; then
   ok "Node.js ($(node --version 2>/dev/null))"
 else
   if command -v brew &>/dev/null; then
-    fail "Node.js is not installed" "Run: brew install node (deveco-cli and hvigor depend on Node.js)"
+    fail "Node.js is not installed" "Run: brew install node (devecocli and hvigor depend on Node.js)"
   else
     fail "Node.js is not installed" "Install HarmonyBrew first, then run: brew install node"
   fi
@@ -162,26 +162,26 @@ else
   pending "devecocli not found" "It comes with the Command Line Tools"
 fi
 
-# 10. deveco-cli (the open-source tool)
+# 10. devecocli (the open-source tool @deveco/deveco-cli)
 DEVECO_CLI_OSS_FOUND="false"
-if command -v deveco-cli &>/dev/null; then
+if command -v devecocli &>/dev/null; then
   DEVECO_CLI_OSS_FOUND="true"
-  ok "deveco-cli ($(deveco-cli --version 2>/dev/null || echo 'installed'))"
+  ok "devecocli ($(devecocli --version 2>/dev/null || echo 'installed'))"
 else
   if command -v npm &>/dev/null; then
-    echo "  INFO: attempting to install deveco-cli automatically..."
-    if npm install -g deveco-cli &>/dev/null 2>&1; then
-      if command -v deveco-cli &>/dev/null; then
+    echo "  INFO: attempting to install devecocli automatically..."
+    if npm install -g @deveco/deveco-cli &>/dev/null 2>&1; then
+      if command -v devecocli &>/dev/null; then
         DEVECO_CLI_OSS_FOUND="true"
-        ok "deveco-cli (installed automatically)"
+        ok "devecocli (installed automatically)"
       else
-        warn "deveco-cli npm install completed but the command wasn't found" "You may need to open a new terminal"
+        warn "devecocli npm install completed but the command wasn't found" "You may need to open a new terminal"
       fi
     else
-      warn "Automatic deveco-cli installation failed" "The repository doesn't declare HarmonyOS support. Install manually: npm install -g deveco-cli, or git clone https://gitcode.com/openharmony-sig/deveco-cli.git"
+      warn "Automatic devecocli installation failed" "Install manually: npm install -g @deveco/deveco-cli, or git clone https://gitcode.com/openharmony-sig/deveco-cli.git"
     fi
   else
-    warn "deveco-cli is not installed (npm unavailable)" "Install Node.js first, then run: npm install -g deveco-cli"
+    warn "devecocli is not installed (npm unavailable)" "Install Node.js first, then run: npm install -g @deveco/deveco-cli"
   fi
 fi
 

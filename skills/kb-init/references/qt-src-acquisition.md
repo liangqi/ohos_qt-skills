@@ -50,21 +50,38 @@ git submodule update --init --recursive
 
 ### Steps
 
+**macOS / Linux (POSIX builds) must use the build branch** — the `main`/`5.12.12` snapshots have
+Windows CRLF line endings and have lost their executable bits, so `sh configure` fails outright (QOH037):
+
 ```bash
-git clone https://gitcode.com/ohos-qt/qt-harmonyos-src <target-path>
+# POSIX build branch (recommended: LF + build-enabling patches; the branch the official prebuilts use)
+git clone --branch build/macos-arm64-qt5.12.12 --single-branch \
+  https://gitcode.com/ohos-qt/qt-harmonyos-src <target-path>
 cd <target-path>
+
+# After cloning, restore the executable bits and commit them (about 620 shebang scripts lost +x in the initial import)
+grep -rIl "^#!" --exclude-dir=.git . > /tmp/exec-files.txt
+xargs -a /tmp/exec-files.txt chmod +x
+xargs -a /tmp/exec-files.txt git update-index --chmod=+x
+git commit -m "fix: restore executable bits lost in initial import"
 ```
 
-### Available versions
+> With qt-sdk-forge's `src-clone --method opensource`, all of the fixes above are applied automatically.
 
-| Version | Notes |
-|---------|-------|
-| qt-harmonyos-src-5.12.12-20260625 | Currently the only open-source version |
+**Windows** can use the `main` / `5.12.12` snapshot branches directly.
+
+### Available branches
+
+| Branch | Line endings | Use for |
+|--------|--------------|---------|
+| `build/macos-arm64-qt5.12.12` | LF + build patches | **macOS/Linux source builds (recommended)** |
+| `main` / `5.12.12` (snapshot 20260625) | CRLF + lost executable bits | Windows |
 
 ### Notes
 
 - The open-source release only has Qt 5.12.12 — there is no 5.15
 - If you need Qt 5.15, you must have a commercial license (scenario A)
+- The mirror does **not** have the `tqtc/harmonyos-*` commercial branch names (those belong to the scenario A repository)
 
 ---
 

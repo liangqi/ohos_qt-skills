@@ -42,7 +42,7 @@ The OHOS Qt SDKs (`<LOCAL_PATH>` and `<LOCAL_PATH>`) don't contain a `Qt5UiTools
 
 Qt5UiTools provides `QUiLoader` (loading .ui files at runtime); in most projects only the examples use it, and the core libraries generally don't depend on it.
 
-> **⚠️ Root cause correction (confirmed 2026-07-08 by lzh)**: the wiki marks QtHelp/QtUiTools/QtDesigner as **Completed** (ported to HarmonyOS), but **the qttools module's dependencies can only be built as a host build on a HarmonyOS PC — cross-compiling from Windows doesn't work**. So an OHOS Qt5 SDK cross-compiled from Windows (such as `<QT5_15_OHOS_SDK>` or `<QT5_15_OHOS_SDK_FULL>`) inherently lacks Qt5UiTools/Qt5Help. This isn't an SDK packaging oversight — it's a **build-method limitation**. Filling the gap requires a host build of qttools on a HarmonyOS PC, then deploying the result.
+> **⚠️ Root cause correction (confirmed 2026-07-08 by the maintainers)**: the wiki marks QtHelp/QtUiTools/QtDesigner as **Completed** (ported to HarmonyOS), but **the qttools module's dependencies can only be built as a host build on a HarmonyOS PC — cross-compiling from Windows doesn't work**. So an OHOS Qt5 SDK cross-compiled from Windows (such as `<QT5_15_OHOS_SDK>` or `<QT5_15_OHOS_SDK_FULL>`) inherently lacks Qt5UiTools/Qt5Help. This isn't an SDK packaging oversight — it's a **build-method limitation**. Filling the gap requires a host build of qttools on a HarmonyOS PC, then deploying the result.
 
 ## Qt5 modules available in the OHOS SDK
 
@@ -89,7 +89,7 @@ Confirmed via `ls lib/cmake/`:
    set(QUARTER_QT_TARGETS Qt5::Widgets Qt5::OpenGL)
    ```
 
-3. **If you really need UiTools**: you **can only do a host build of qttools on a HarmonyOS PC** and deploy the output into the SDK. **Cross-compiling from Windows doesn't work** (dictated by qttools' dependencies; confirmed 2026-07-08 by lzh) — don't try to cross-compile `qttools/src/assistant` or `src/designer/src/uitools` by targeting them with qmake from Windows.
+3. **If you really need UiTools**: you **can only do a host build of qttools on a HarmonyOS PC** and deploy the output into the SDK. **Cross-compiling from Windows doesn't work** (dictated by qttools' dependencies; confirmed 2026-07-08 by the maintainers) — don't try to cross-compile `qttools/src/assistant` or `src/designer/src/uitools` by targeting them with qmake from Windows.
 
 ## Lessons learned
 

@@ -1,0 +1,2 @@
+# This directory holds the build-fix documents (.md)
+# After a build error, Step 3 reads every document in this directory, matches the errors, and applies the fixes

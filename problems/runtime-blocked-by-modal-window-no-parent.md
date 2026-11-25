@@ -8,7 +8,7 @@ updated: 2026-08-06
 status: solved
 severity: high
 audience: public
-refs: [episodic-ohostemplate-blockedbymodal-patch, semantic-qt-harmonyos-window-model]
+refs: [fault-C-0009, episodic-ohostemplate-blockedbymodal-patch, semantic-qt-harmonyos-window-model]
 summary: >
   A parentless QDialog() on OHOS has its close() and wheel events blocked by blockedByModalWindow=1.
   Root cause: the OHOS QPA's syntheticParent fallback classifies the window as a SubWindow but never calls setTransientParent() to write that back to the Qt layer,

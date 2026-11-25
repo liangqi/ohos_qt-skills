@@ -1,0 +1,50 @@
+{
+ "app": "corpus-c",
+ "source": "INSTALL.md",
+ "source_note": "Finalized after agent review: removed the leftover prose link set-up-build-environment; asciidoctor reclassified as build per the original text (build tools must exist within your PATH + KPXC_FEATURE_DOCS); this version of INSTALL.md declares only three libraries, qt/botan/zlib, with no libgcrypt/argon2/libsodium/ykpers; vcpkg/xvfb-run are tools/test helpers mentioned in prose and are not in the oracle",
+ "reviewed": true,
+ "deps": [
+  {
+   "name": "cmake",
+   "display": "cmake (>= 3.16.0)",
+   "type": "build",
+   "raw": "cmake (>= 3.16.0)"
+  },
+  {
+   "name": "make",
+   "display": "make (>= 4.2) or ninja (>= 1.10)",
+   "type": "build",
+   "raw": "make (>= 4.2) or ninja (>= 1.10)"
+  },
+  {
+   "name": "g++",
+   "display": "g++ (>= 9.3.0) or clang++ (>= 10.0)",
+   "type": "build",
+   "raw": "g++ (>= 9.3.0) or clang++ (>= 10.0)"
+  },
+  {
+   "name": "asciidoctor",
+   "display": "asciidoctor (>= 2.0)",
+   "type": "build",
+   "raw": "asciidoctor (>= 2.0)"
+  },
+  {
+   "name": "qt",
+   "display": "qt (>= 5.12.0)",
+   "type": "runtime",
+   "raw": "qt (>= 5.12.0)"
+  },
+  {
+   "name": "botan",
+   "display": "botan (>= 2.12.0 or >= 3.0.0)",
+   "type": "runtime",
+   "raw": "botan (>= 2.12.0 or >= 3.0.0)"
+  },
+  {
+   "name": "zlib",
+   "display": "zlib (>= 1.2.0)",
+   "type": "runtime",
+   "raw": "zlib (>= 1.2.0)"
+  }
+ ]
+}

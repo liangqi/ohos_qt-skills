@@ -1,0 +1,2539 @@
+{
+ "schema": "portgraph-e2e-report/1",
+ "app": {
+  "key": "corpus-a",
+  "app_id": "app:corpus-a",
+  "name": "corpus-a",
+  "url": "https://github.com/corpus-a/corpus-a",
+  "tier": "C",
+  "build_system": "cmake+qmake",
+  "sources": 6358,
+  "repo_path": "workspace/corpus-a"
+ },
+ "generated_at": "2026-09-19T15:12:59Z",
+ "verdict": "blocked",
+ "blockers": [
+  {
+   "kind": "unsupported-interface",
+   "node": "app:corpus-a",
+   "reason": "uses platform interface macOS Cocoa/AppKit unsupported on HarmonyOS (os-api) macOS-only UI/system framework; HarmonyOS alternative interfaces in the same category: dlopen dynamic loading, glib event loop, macOS system library binding, POSIX/musl C library, pthread multithreading [evidence: [HarmonyOS/generic guard (compiled)] guard=ohos-active (7 unconditional / 0 OHOS-compilable / 0 macro-guard excluded / 621 file-level excluded) | corpus-a/lib_webview/webview/platform/mac/webview_mac.mm:26[platform-file-excluded] #import <Foundation/Foundation.h>; corpus-a/lib_webview/webview/platform/mac/webview_mac.mm:31[platform-file-excluded] @protocol WebviewWKFeature <NSObject>; corpus-a/lib_webview/webview/platform/mac/webview_mac.mm:35[platform-file-excluded] @interface WKPreferences (WebviewPrivate)]"
+  },
+  {
+   "kind": "unsupported-interface",
+   "node": "app:corpus-a",
+   "reason": "uses platform interface D-Bus IPC unsupported on HarmonyOS (ipc) HarmonyOS has no D-Bus (the Qt D-Bus module is out of scope); switch to system services/IPC; HarmonyOS alternative interfaces in the same category: HarmonyOS IPC/system service capabilities [evidence: [HarmonyOS/generic guard (compiled)] guard=ohos-active (54 unconditional / 7 OHOS-compilable / 53 macro-guard excluded / 0 file-level excluded) | corpus-a/ThirdParty/kcoreaddons/src/lib/io/kurlmimedata.cpp:102[ohos-active] static bool available = QDBusConnection::sessionBus().interface(); corpus-a/ThirdParty/kcoreaddons/src/lib/io/kurlmimedata.cpp:103[ohos-active] && QDBusConnection::sessionBus().interface()->activatableServiceNames().value().; corpus-a/ThirdParty/kcoreaddons/src/lib/io/kurlmimedata.cpp:110[ohos-active] QDBusConnection::sessionBus().interface() && QDBusConnection::sessionBus().inter]"
+  },
+  {
+   "kind": "unsupported-interface",
+   "node": "app:corpus-a",
+   "reason": "uses platform interface systemd unsupported on HarmonyOS (os-api) HarmonyOS has no systemd service management; HarmonyOS alternative interfaces in the same category: dlopen dynamic loading, glib event loop, macOS system library binding, POSIX/musl C library, pthread multithreading [evidence: [HarmonyOS/generic guard (compiled)] guard=ohos-active (0 unconditional / 2 OHOS-compilable / 0 macro-guard excluded / 0 file-level excluded) | corpus-a/ThirdParty/xdg-desktop-portal/src/xdp-app-info-host.c:23[ohos-active] #include <systemd/sd-login.h>; corpus-a/ThirdParty/xdg-desktop-portal/src/xdp-app-info.c:38[ohos-active] #include <systemd/sd-login.h>]"
+  },
+  {
+   "kind": "unsupported-interface",
+   "node": "app:corpus-a",
+   "reason": "uses platform interface Win32 API unsupported on HarmonyOS (os-api) Windows-only system interface; HarmonyOS alternative interfaces in the same category: dlopen dynamic loading, glib event loop, macOS system library binding, POSIX/musl C library, pthread multithreading [evidence: [HarmonyOS/generic guard (compiled)] guard=ohos-active (107 unconditional / 9 OHOS-compilable / 59 macro-guard excluded / 187 file-level excluded) | cmake/win_directx_helper/win_directx_helper.cpp:25[unconditional] using Handle = HINSTANCE;; cmake/win_directx_helper/win_directx_helper.cpp:84[unconditional] ? reinterpret_cast<Function>(GetProcAddress(handle, name)); cmake/win_directx_helper/win_directx_helper.cpp:96[unconditional] const auto file = CreateFile(]"
+  },
+  {
+   "kind": "unsupported-interface",
+   "node": "app:corpus-a",
+   "reason": "uses platform interface Direct X11/Xlib unsupported on HarmonyOS (display) HarmonyOS has no X11 display server; Qt apps should go through QPA, code using X11 directly is not portable; HarmonyOS alternative interfaces in the same category: HarmonyOS WindowStage/XComponent [evidence: [HarmonyOS/generic guard (compiled)] guard=ohos-active (34 unconditional / 3 OHOS-compilable / 26 macro-guard excluded / 0 file-level excluded) | corpus-a/ThirdParty/nimf/modules/services/xim/nimf-xim-ic.c:23[unconditional] #include <X11/Xutil.h>; corpus-a/ThirdParty/nimf/modules/services/xim/nimf-xim.h:28[platform-excluded] #include <X11/XKBlib.h>; corpus-a/ThirdParty/nimf/modules/services/xim/IMdkit/FrameMgr.c:29[unconditional] #include <X11/Xlibint.h>]"
+  },
+  {
+   "kind": "unsupported-module",
+   "node": "qtmod:dbus",
+   "reason": "Qt for HarmonyOS module support table: unsupported - HarmonyOS has no D-Bus"
+  },
+  {
+   "kind": "unsupported-module",
+   "node": "qtmod:waylandcompositor",
+   "reason": "Qt for HarmonyOS module support table: unsupported - Linux/Wayland compositor framework; the HarmonyOS window model is not Wayland"
+  }
+ ],
+ "unknowns": [
+  {
+   "kind": "unknown-interface",
+   "node": "app:corpus-a",
+   "reason": "HarmonyOS support for platform interface fork()/exec() process model is unconfirmed (guard=ohos-active)"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:ada",
+   "reason": "no HarmonyOS prebuilt artifact, must be cross-compiled and ported yourself; not in the Harmonybrew/cmd-pkgs known list"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:microsoft",
+   "reason": "no HarmonyOS prebuilt artifact, must be cross-compiled and ported yourself; not in the Harmonybrew/cmd-pkgs known list"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:range",
+   "reason": "no HarmonyOS prebuilt artifact, must be cross-compiled and ported yourself; not in the Harmonybrew/cmd-pkgs known list"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:tde2e",
+   "reason": "no HarmonyOS prebuilt artifact, must be cross-compiled and ported yourself; not in the Harmonybrew/cmd-pkgs known list"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:tg-owt",
+   "reason": "no HarmonyOS prebuilt artifact, must be cross-compiled and ported yourself; not in the Harmonybrew/cmd-pkgs known list"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:tl",
+   "reason": "no HarmonyOS prebuilt artifact, must be cross-compiled and ported yourself; not in the Harmonybrew/cmd-pkgs known list"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:breakpad-client",
+   "reason": "no HarmonyOS prebuilt artifact, must be cross-compiled and ported yourself; not in the Harmonybrew/cmd-pkgs known list"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:giomm-2-68",
+   "reason": "no HarmonyOS prebuilt artifact, must be cross-compiled and ported yourself; not in the Harmonybrew/cmd-pkgs known list"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:libudev",
+   "reason": "no HarmonyOS prebuilt artifact, must be cross-compiled and ported yourself; not in the Harmonybrew/cmd-pkgs known list"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:pangocairo",
+   "reason": "no HarmonyOS prebuilt artifact, must be cross-compiled and ported yourself; not in the Harmonybrew/cmd-pkgs known list"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:pangoft2",
+   "reason": "no HarmonyOS prebuilt artifact, must be cross-compiled and ported yourself; not in the Harmonybrew/cmd-pkgs known list"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:rnnoise",
+   "reason": "no HarmonyOS prebuilt artifact, must be cross-compiled and ported yourself; not in the Harmonybrew/cmd-pkgs known list"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:auto-updates",
+   "reason": "no HarmonyOS prebuilt artifact, must be cross-compiled and ported yourself; not in the Harmonybrew/cmd-pkgs known list"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:crash-reports",
+   "reason": "no HarmonyOS prebuilt artifact, must be cross-compiled and ported yourself; not in the Harmonybrew/cmd-pkgs known list"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:ranges",
+   "reason": "no HarmonyOS prebuilt artifact, must be cross-compiled and ported yourself; not in the Harmonybrew/cmd-pkgs known list"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:tlottie",
+   "reason": "no HarmonyOS prebuilt artifact, must be cross-compiled and ported yourself; not in the Harmonybrew/cmd-pkgs known list"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:tmc",
+   "reason": "no HarmonyOS prebuilt artifact, must be cross-compiled and ported yourself; not in the Harmonybrew/cmd-pkgs known list"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:webrtc",
+   "reason": "no HarmonyOS prebuilt artifact, must be cross-compiled and ported yourself; not in the Harmonybrew/cmd-pkgs known list"
+  }
+ ],
+ "platform_excluded": [
+  {
+   "node": "app:corpus-a",
+   "name": "corpus-a",
+   "iface": "macOS CoreAudio",
+   "category": "audio",
+   "guard": "platform-excluded",
+   "reason": "interface macOS CoreAudio is wrapped in a non-HarmonyOS platform conditional-compilation guard (not compiled on HarmonyOS), functional category=audio",
+   "alternatives": [
+    {
+     "id": "iface:ohos-audio",
+     "name": "HarmonyOS AudioRenderer/AudioCapturer",
+     "category": "audio",
+     "ohos_status": "supported",
+     "note": "HarmonyOS native audio API, replacing ALSA/PulseAudio/CoreAudio"
+    }
+   ],
+   "evidence": "[wrapped in a non-HarmonyOS platform guard (not compiled)] guard=platform-excluded (0 unconditional / 0 OHOS-compilable / 0 macro-guard excluded / 5 file-level excluded) | corpus-a/ThirdParty/tgcalls/tgcalls/platform/darwin/iOS/tgcalls_audio_device_ios.h:252[platform-file-excluded] // The AudioUnit used to play and record audio.; corpus-a/ThirdParty/tgcalls/tgcalls/platform/darwin/iOS/tgcalls_voice_processing_audio_unit.h:14[platform-file-excluded] #include <AudioUnit/AudioUnit.h>; corpus-a/ThirdParty/tgcalls/tgcalls/platform/darwin/iOS/tgcalls_voice_processing_audio_unit.h:14[platform-file-excluded] #include <AudioUnit/AudioUnit.h>",
+   "path": [
+    "app:corpus-a"
+   ]
+  },
+  {
+   "node": "app:corpus-a",
+   "name": "corpus-a",
+   "iface": "Direct Wayland",
+   "category": "display",
+   "guard": "platform-excluded",
+   "reason": "interface Direct Wayland is wrapped in a non-HarmonyOS platform conditional-compilation guard (not compiled on HarmonyOS), functional category=display",
+   "alternatives": [
+    {
+     "id": "iface:ohos-window",
+     "name": "HarmonyOS WindowStage/XComponent",
+     "category": "display",
+     "ohos_status": "supported",
+     "note": "HarmonyOS window model, replacing direct X11/Wayland"
+    }
+   ],
+   "evidence": "[wrapped in a non-HarmonyOS platform guard (not compiled)] guard=platform-excluded (0 unconditional / 0 OHOS-compilable / 1 macro-guard excluded / 0 file-level excluded) | corpus-a/ThirdParty/nimf/modules/services/wayland/nimf-wayland.h:36[platform-excluded] #include <wayland-client.h>",
+   "path": [
+    "app:corpus-a"
+   ]
+  }
+ ],
+ "closure": {
+  "size": 112,
+  "summary": {
+   "target": 1,
+   "provided": 9,
+   "need_port": 21,
+   "would_download": 78,
+   "covered": 1,
+   "cmd_only": 2
+  },
+  "need_port": [
+   {
+    "id": "pkg-unknown:ada",
+    "name": "ada",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:microsoft",
+    "name": "microsoft",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:range",
+    "name": "range",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:tde2e",
+    "name": "tde2e",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:tg-owt",
+    "name": "tg_owt",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:tl",
+    "name": "tl",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:breakpad-client",
+    "name": "breakpad-client",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:giomm-2-68",
+    "name": "giomm-2.68",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:libudev",
+    "name": "libudev",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:pangocairo",
+    "name": "pangocairo",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:pangoft2",
+    "name": "pangoft2",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:rnnoise",
+    "name": "rnnoise",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:auto-updates",
+    "name": "auto_updates",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:crash-reports",
+    "name": "crash_reports",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:ranges",
+    "name": "ranges",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:tlottie",
+    "name": "tlottie",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:tmc",
+    "name": "tmc",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:webrtc",
+    "name": "webrtc",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "kf:archive",
+    "name": "KF archive",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "kf:coreaddons",
+    "name": "KF coreaddons",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "kf:desktoptojson",
+    "name": "KF desktoptojson",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   }
+  ],
+  "cmd_only": [
+   {
+    "id": "hb:aom",
+    "name": "aom",
+    "artifact_cmd": "brew install aom"
+   },
+   {
+    "id": "hb:ca-certificates",
+    "name": "ca-certificates",
+    "artifact_cmd": "brew install ca-certificates"
+   }
+  ],
+  "would_download": [
+   "boost",
+   "jpeg-turbo",
+   "libavif",
+   "libheif",
+   "xz",
+   "lz4",
+   "minizip",
+   "openal-soft",
+   "openssl@3",
+   "opus",
+   "protobuf",
+   "xxhash",
+   "zlib",
+   "glib",
+   "glibmm",
+   "hunspell",
+   "ffmpeg",
+   "libjxl",
+   "openh264",
+   "libvpx",
+   "libxcb",
+   "libxkbcommon",
+   "cmark-gfm",
+   "pango",
+   "libqrcodegen",
+   "icu4c@78",
+   "zstd",
+   "zlib-ng-compat",
+   "dav1d",
+   "libpng",
+   "libde265",
+   "libtiff",
+   "webp",
+   "x265",
+   "abseil",
+   "bison",
+   "python-setuptools",
+   "pcre2",
+   "dbus",
+   "util-linux",
+   "libsigc++",
+   "lame",
+   "svt-av1",
+   "x264",
+   "alsa-lib",
+   "python@3.14",
+   "libxau",
+   "libxdmcp",
+   "xkeyboard-config",
+   "cairo",
+   "fontconfig",
+   "freetype",
+   "fribidi",
+   "harfbuzz",
+   "libthai",
+   "libvmaf",
+   "giflib",
+   "googletest",
+   "python@3.12",
+   "gettext",
+   "readline",
+   "mpg123",
+   "mpdecimal",
+   "sqlite",
+   "musl-compat",
+   "xorgproto",
+   "libx11",
+   "libxext",
+   "libxrender",
+   "lzo",
+   "pixman",
+   "graphite2",
+   "libdatrie",
+   "berkeley-db@5",
+   "libnsl",
+   "libtirpc",
+   "libunistring",
+   "krb5"
+  ]
+ },
+ "direct_deps": [
+  {
+   "id": "kf:archive",
+   "name": "KF archive",
+   "kind": "framework",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "kf:coreaddons",
+   "name": "KF coreaddons",
+   "kind": "framework",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "kf:desktoptojson",
+   "name": "KF desktoptojson",
+   "kind": "framework",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:ada",
+   "name": "ada",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:auto-updates",
+   "name": "auto_updates",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "hb:boost",
+   "name": "boost",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:breakpad-client",
+   "name": "breakpad-client",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "hb:cmark-gfm",
+   "name": "cmark-gfm",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:crash-reports",
+   "name": "crash_reports",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "hb:ffmpeg",
+   "name": "ffmpeg",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:giomm-2-68",
+   "name": "giomm-2.68",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "hb:glib",
+   "name": "glib",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:glibmm",
+   "name": "glibmm",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "cmdpkgs:hunspell",
+   "name": "hunspell",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:jpeg-turbo",
+   "name": "jpeg-turbo",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:libavif",
+   "name": "libavif",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:libheif",
+   "name": "libheif",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "cmdpkgs:libjxl",
+   "name": "libjxl",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "cmdpkgs:libqrcodegen",
+   "name": "libqrcodegen",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:libudev",
+   "name": "libudev",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "hb:libvpx",
+   "name": "libvpx",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:libxcb",
+   "name": "libxcb",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:libxkbcommon",
+   "name": "libxkbcommon",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "cmdpkgs:libxxhash",
+   "name": "libxxhash",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:lz4",
+   "name": "lz4",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:microsoft",
+   "name": "microsoft",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "hb:minizip",
+   "name": "minizip",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "cmdpkgs:openal-soft",
+   "name": "openal-soft",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:openh264",
+   "name": "openh264",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:openssl@3",
+   "name": "openssl@3",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:opus",
+   "name": "opus",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:pango",
+   "name": "pango",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:pangocairo",
+   "name": "pangocairo",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:pangoft2",
+   "name": "pangoft2",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "hb:protobuf",
+   "name": "protobuf",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:range",
+   "name": "range",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:ranges",
+   "name": "ranges",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:rnnoise",
+   "name": "rnnoise",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:tde2e",
+   "name": "tde2e",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:tg-owt",
+   "name": "tg_owt",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:tl",
+   "name": "tl",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:tlottie",
+   "name": "tlottie",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:tmc",
+   "name": "tmc",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:webrtc",
+   "name": "webrtc",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "hb:xxhash",
+   "name": "xxhash",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:xz",
+   "name": "xz",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:zlib",
+   "name": "zlib",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:core",
+   "name": "Qt Core",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:dbus",
+   "name": "Qt D-Bus",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "blocked",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:gui",
+   "name": "Qt GUI",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:network",
+   "name": "Qt Network",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:quick",
+   "name": "Qt Quick",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:quickwidgets",
+   "name": "Qt Quick Widgets",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:svg",
+   "name": "Qt SVG",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:waylandcompositor",
+   "name": "Qt Wayland Compositor",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "blocked",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:widgets",
+   "name": "Qt Widgets",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  }
+ ],
+ "oracle": {
+  "app": "corpus-a",
+  "source": "README.md",
+  "source_note": "README §Third-party manually reviewed entry by entry: stripped license-suffix noise; GYP/Ninja/CMake changed to build type; Open Sans/Vazirmatn fonts and Emoji alpha codes are data assets (not link dependencies) and were removed",
+  "reviewed": true,
+  "deps": [
+   {
+    "name": "qt",
+    "display": "Qt 6 and Qt 5.15",
+    "type": "runtime",
+    "raw": "Qt 6 ([LGPL](http://doc.qt.io/qt-6/lgpl.html)) and Qt 5.15 ([LGPL](http://doc.qt.io/qt-5/lgpl.html)) slightly patched"
+   },
+   {
+    "name": "openssl",
+    "display": "OpenSSL 3.2.1",
+    "type": "runtime",
+    "raw": "OpenSSL 3.2.1 ([Apache License 2.0](https://openssl-library.org/source/license/apache-license-2.0.txt))"
+   },
+   {
+    "name": "webrtc",
+    "display": "WebRTC",
+    "type": "runtime",
+    "raw": "WebRTC ([New BSD License](https://github.com/desktop-app/tg_owt/blob/master/LICENSE))"
+   },
+   {
+    "name": "zlib",
+    "display": "zlib",
+    "type": "runtime",
+    "raw": "zlib ([zlib License](http://www.zlib.net/zlib_license.html))"
+   },
+   {
+    "name": "lzma-sdk",
+    "display": "LZMA SDK 9.20",
+    "type": "runtime",
+    "raw": "LZMA SDK 9.20 ([public domain](http://www.7-zip.org/sdk.html))"
+   },
+   {
+    "name": "liblzma",
+    "display": "liblzma",
+    "type": "runtime",
+    "raw": "liblzma ([public domain](http://tukaani.org/xz/))"
+   },
+   {
+    "name": "breakpad",
+    "display": "Google Breakpad",
+    "type": "runtime",
+    "raw": "Google Breakpad ([License](https://chromium.googlesource.com/breakpad/breakpad/+/master/LICENSE))"
+   },
+   {
+    "name": "crashpad",
+    "display": "Google Crashpad",
+    "type": "runtime",
+    "raw": "Google Crashpad ([Apache License 2.0](https://chromium.googlesource.com/crashpad/crashpad/+/master/LICENSE))"
+   },
+   {
+    "name": "gyp",
+    "display": "GYP",
+    "type": "build",
+    "raw": "GYP ([BSD License](https://github.com/bnoordhuis/gyp/blob/master/LICENSE))"
+   },
+   {
+    "name": "ninja",
+    "display": "Ninja",
+    "type": "build",
+    "raw": "Ninja ([Apache License 2.0](https://github.com/ninja-build/ninja/blob/master/COPYING))"
+   },
+   {
+    "name": "openal",
+    "display": "OpenAL Soft",
+    "type": "runtime",
+    "raw": "OpenAL Soft ([LGPL](https://github.com/kcat/openal-soft/blob/master/COPYING))"
+   },
+   {
+    "name": "opus",
+    "display": "Opus codec",
+    "type": "runtime",
+    "raw": "Opus codec ([BSD License](http://www.opus-codec.org/license/))"
+   },
+   {
+    "name": "ffmpeg",
+    "display": "FFmpeg",
+    "type": "runtime",
+    "raw": "FFmpeg ([LGPL](https://www.ffmpeg.org/legal.html))"
+   },
+   {
+    "name": "gsl",
+    "display": "Guideline Support Library",
+    "type": "runtime",
+    "raw": "Guideline Support Library ([MIT License](https://github.com/Microsoft/GSL/blob/master/LICENSE))"
+   },
+   {
+    "name": "range-v3",
+    "display": "Range-v3",
+    "type": "runtime",
+    "raw": "Range-v3 ([Boost License](https://github.com/ericniebler/range-v3/blob/master/LICENSE.txt))"
+   },
+   {
+    "name": "xxhash",
+    "display": "xxHash",
+    "type": "runtime",
+    "raw": "xxHash ([BSD License](https://github.com/Cyan4973/xxHash/blob/dev/LICENSE))"
+   },
+   {
+    "name": "qr-code-generator",
+    "display": "QR Code generator",
+    "type": "runtime",
+    "raw": "QR Code generator ([MIT License](https://github.com/nayuki/QR-Code-generator#license))"
+   },
+   {
+    "name": "cmake",
+    "display": "CMake",
+    "type": "build",
+    "raw": "CMake ([New BSD License](https://github.com/Kitware/CMake/blob/master/Copyright.txt))"
+   },
+   {
+    "name": "hunspell",
+    "display": "Hunspell",
+    "type": "runtime",
+    "raw": "Hunspell ([LGPL](https://github.com/hunspell/hunspell/blob/master/COPYING.LESSER))"
+   },
+   {
+    "name": "ada",
+    "display": "Ada",
+    "type": "runtime",
+    "raw": "Ada ([Apache License 2.0](https://github.com/ada-url/ada/blob/main/LICENSE-APACHE))"
+   }
+  ]
+ },
+ "diffs": [
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "qt",
+   "oracle_type": "runtime",
+   "pg_id": "qtmod:core",
+   "pg_name": "Qt Core",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "openssl",
+   "oracle_type": "runtime",
+   "pg_id": "hb:openssl@3",
+   "pg_name": "openssl@3",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "webrtc",
+   "oracle_type": "runtime",
+   "pg_id": "pkg-unknown:webrtc",
+   "pg_name": "webrtc",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "matched a ghost node: real external dependency with no known HarmonyOS package (fetch-deps reports need_port/needs a source port; detection correct)"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "zlib",
+   "oracle_type": "runtime",
+   "pg_id": "hb:zlib",
+   "pg_name": "zlib",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "readme-stale",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "lzma-sdk",
+   "oracle_type": "runtime",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "declared in README but no build-file reference -> README likely out of date/typo",
+    "grep": []
+   },
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "liblzma",
+   "oracle_type": "runtime",
+   "pg_id": "hb:xz",
+   "pg_name": "xz",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "missed-dep",
+   "side": "oracle",
+   "by_design": false,
+   "oracle_name": "breakpad",
+   "oracle_type": "runtime",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "declared in README but no build-file reference -> README likely out of date/typo",
+    "grep": []
+   },
+   "agent_note": "The main integration lives in the cmake/ (cmake_helpers) submodule: on Linux it is wrapped by external_crash_reports (CMakeLists.txt:97); the main repo has only target_link_frameworks(corpus-a PRIVATE Breakpad) in the macstore section (:2381, inside a platform guard). The submodule is now initialized, but breakpad/crashpad are vendored sources added via add_subdirectory inside cmake/external/crash_reports (built with the project), so portgraph correctly does not detect them as external packages; the README listing them as external runtime dependencies is inaccurate"
+  },
+  {
+   "class": "missed-dep",
+   "side": "oracle",
+   "by_design": false,
+   "oracle_name": "crashpad",
+   "oracle_type": "runtime",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "declared in README but no build-file reference -> README likely out of date/typo",
+    "grep": []
+   },
+   "agent_note": "The main integration lives in the cmake/ (cmake_helpers) submodule: on Linux it is wrapped by external_crash_reports (CMakeLists.txt:97); the main repo has only target_link_frameworks(corpus-a PRIVATE Breakpad) in the macstore section (:2381, inside a platform guard). The submodule is now initialized, but breakpad/crashpad are vendored sources added via add_subdirectory inside cmake/external/crash_reports (built with the project), so portgraph correctly does not detect them as external packages; the README listing them as external runtime dependencies is inaccurate"
+  },
+  {
+   "class": "build-only",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "gyp",
+   "oracle_type": "build",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "build tool; fetch-deps does not collect build edges"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "build-only",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "ninja",
+   "oracle_type": "build",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "build tool; fetch-deps does not collect build edges"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "openal",
+   "oracle_type": "runtime",
+   "pg_id": "cmdpkgs:openal-soft",
+   "pg_name": "openal-soft",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "readme-stale",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "opus",
+   "oracle_type": "runtime",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "declared in README but no build-file reference -> README likely out of date/typo",
+    "grep": []
+   },
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "ffmpeg",
+   "oracle_type": "runtime",
+   "pg_id": "hb:ffmpeg",
+   "pg_name": "ffmpeg",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "vendored",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "gsl",
+   "oracle_type": "runtime",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": " .gitmodules bundled submodule (corpus-a/ThirdParty/GSL -> https://github.com/Microsoft/GSL.git): compiled together with the project source, not fetched/detected as an external package"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "range-v3",
+   "oracle_type": "runtime",
+   "pg_id": "pkg-unknown:range",
+   "pg_name": "range",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "⚠ matched a ghost node: the DB has a similarly named known package range-v3 (hb:range-v3) -> name resolution gap, needs review"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "xxhash",
+   "oracle_type": "runtime",
+   "pg_id": "cmdpkgs:libxxhash",
+   "pg_name": "libxxhash",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "qr-code-generator",
+   "oracle_type": "runtime",
+   "pg_id": "cmdpkgs:libqrcodegen",
+   "pg_name": "libqrcodegen",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "build-only",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "cmake",
+   "oracle_type": "build",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "build tool; fetch-deps does not collect build edges"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "hunspell",
+   "oracle_type": "runtime",
+   "pg_id": "cmdpkgs:hunspell",
+   "pg_name": "hunspell",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "ada",
+   "oracle_type": "runtime",
+   "pg_id": "pkg-unknown:ada",
+   "pg_name": "ada",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "matched a ghost node: real external dependency with no known HarmonyOS package (fetch-deps reports need_port/needs a source port; detection correct)"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "kf:archive",
+   "pg_name": "KF archive",
+   "pg_kind": "framework",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "KDE Frameworks component granularity: README usually just says 'KDE Frameworks'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "kf:coreaddons",
+   "pg_name": "KF coreaddons",
+   "pg_kind": "framework",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "KDE Frameworks component granularity: README usually just says 'KDE Frameworks'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "kf:desktoptojson",
+   "pg_name": "KF desktoptojson",
+   "pg_kind": "framework",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "KDE Frameworks component granularity: README usually just says 'KDE Frameworks'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:auto-updates",
+   "pg_name": "auto_updates",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "no known HarmonyOS package matched: real external dependency; the ghost node is a correct detection (fetch-deps reports need_port/needs a source port)"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:boost",
+   "pg_name": "boost",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "referenced by build files but not listed in README -> README incomplete (portgraph correct)",
+    "grep": [
+     {
+      "file": "cmake/external/glib/cppgir/conanfile.py",
+      "line": 30,
+      "strong": false,
+      "text": "self.requires(\"boost/[>=1.58]\", options={'header_only': True})"
+     },
+     {
+      "file": "cmake/external/glib/cppgir/CMakeLists.txt",
+      "line": 56,
+      "strong": true,
+      "text": "find_package(Boost"
+     },
+     {
+      "file": "cmake/external/glib/cppgir/CMakeLists.txt",
+      "line": 299,
+      "strong": true,
+      "text": "find_package(Boost"
+     },
+     {
+      "file": "cmake/external/glib/cppgir/CMakeLists.txt",
+      "line": 125,
+      "strong": true,
+      "text": "target_link_libraries(cppgir Boost"
+     },
+     {
+      "file": "cmake/external/glib/cppgir/CMakeLists.txt",
+      "line": 305,
+      "strong": true,
+      "text": "target_link_libraries(example-gio-async PRIVATE ${GIO_LDFLAGS} ${Boost"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:breakpad-client",
+   "pg_name": "breakpad-client",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "no known HarmonyOS package matched: real external dependency; the ghost node is a correct detection (fetch-deps reports need_port/needs a source port)"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:cmark-gfm",
+   "pg_name": "cmark-gfm",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "referenced by build files but not listed in README -> README incomplete (portgraph correct)",
+    "grep": [
+     {
+      "file": "cmake/external/cmark_gfm/CMakeLists.txt",
+      "line": 100,
+      "strong": true,
+      "text": "target_link_libraries(external_cmark_gfm"
+     },
+     {
+      "file": "corpus-a/cmake/td_iv.cmake",
+      "line": 157,
+      "strong": true,
+      "text": "    desktop-app::external_cmark_gfm"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:crash-reports",
+   "pg_name": "crash_reports",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "no known HarmonyOS package matched: real external dependency; the ghost node is a correct detection (fetch-deps reports need_port/needs a source port)"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:giomm-2-68",
+   "pg_name": "giomm-2.68",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "no known HarmonyOS package matched: real external dependency; the ghost node is a correct detection (fetch-deps reports need_port/needs a source port)"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:glib",
+   "pg_name": "glib",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "referenced by build files but not listed in README -> README incomplete (portgraph correct)",
+    "grep": [
+     {
+      "file": "cmake/external/qt/CMakeLists.txt",
+      "line": 432,
+      "strong": true,
+      "text": "        glib"
+     },
+     {
+      "file": "cmake/external/qt/CMakeLists.txt",
+      "line": 430,
+      "strong": true,
+      "text": "        gio-2.0"
+     },
+     {
+      "file": "cmake/external/qt/CMakeLists.txt",
+      "line": 431,
+      "strong": true,
+      "text": "        gobject-2.0"
+     },
+     {
+      "file": "cmake/external/qt/qt_static_plugins/nimf/CMakeLists.txt",
+      "line": 23,
+      "strong": true,
+      "text": "pkg_check_modules(DESKTOP_APP_GIO REQUIRED gio-2.0"
+     },
+     {
+      "file": "cmake/external/glib/generate_dbus.cmake",
+      "line": 48,
+      "strong": true,
+      "text": "target_link_libraries(${target_name}_${namespace}_dbus PUBLIC desktop-app::external_glib"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:glibmm",
+   "pg_name": "glibmm",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "referenced by build files but not listed in README -> README incomplete (portgraph correct)",
+    "grep": [
+     {
+      "file": "cmake/external/glibmm/CMakeLists.txt",
+      "line": 11,
+      "strong": true,
+      "text": "pkg_check_modules(DESKTOP_APP_GLIBMM REQUIRED IMPORTED_TARGET glibmm"
+     },
+     {
+      "file": "cmake/external/glibmm/CMakeLists.txt",
+      "line": 13,
+      "strong": true,
+      "text": "target_link_libraries(external_glibmm"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:jpeg-turbo",
+   "pg_name": "jpeg-turbo",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "referenced by build files but not listed in README -> README incomplete (portgraph correct)",
+    "grep": [
+     {
+      "file": "cmake/external/webrtc/CMakeLists.txt",
+      "line": 87,
+      "strong": true,
+      "text": "    $<LINK_ONLY:desktop-app::external_jpeg"
+     },
+     {
+      "file": "cmake/external/qt/CMakeLists.txt",
+      "line": 355,
+      "strong": true,
+      "text": "    $<LINK_ONLY:desktop-app::external_jpeg"
+     },
+     {
+      "file": "cmake/external/jpeg/CMakeLists.txt",
+      "line": 11,
+      "strong": true,
+      "text": "find_package(JPEG"
+     },
+     {
+      "file": "cmake/external/jpeg/CMakeLists.txt",
+      "line": 31,
+      "strong": true,
+      "text": "find_library(DESKTOP_APP_JPEG"
+     },
+     {
+      "file": "cmake/external/jpeg/CMakeLists.txt",
+      "line": 12,
+      "strong": true,
+      "text": "target_link_libraries(external_jpeg"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:libavif",
+   "pg_name": "libavif",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "referenced by build files but not listed in README -> README incomplete (portgraph correct)",
+    "grep": [
+     {
+      "file": "cmake/external/qt/qt_static_plugins/kimageformats/CMakeLists.txt",
+      "line": 36,
+      "strong": true,
+      "text": "find_package(libavif"
+     },
+     {
+      "file": "cmake/external/qt/qt_static_plugins/kimageformats/CMakeLists.txt",
+      "line": 41,
+      "strong": true,
+      "text": "pkg_check_modules(DESKTOP_APP_AVIF IMPORTED_TARGET libavif"
+     },
+     {
+      "file": "cmake/external/qt/qt_static_plugins/kimageformats/CMakeLists.txt",
+      "line": 81,
+      "strong": true,
+      "text": "        ${libs_loc}/libavif"
+     },
+     {
+      "file": "cmake/external/qt/qt_static_plugins/kimageformats/CMakeLists.txt",
+      "line": 108,
+      "strong": true,
+      "text": "        ${libs_loc}/local/lib/libavif"
+     },
+     {
+      "file": "corpus-a/ThirdParty/kimageformats/CMakeLists.txt",
+      "line": 54,
+      "strong": true,
+      "text": "find_package(libavif"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:libheif",
+   "pg_name": "libheif",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "referenced by build files but not listed in README -> README incomplete (portgraph correct)",
+    "grep": [
+     {
+      "file": "cmake/external/qt/qt_static_plugins/kimageformats/CMakeLists.txt",
+      "line": 37,
+      "strong": true,
+      "text": "find_package(libheif"
+     },
+     {
+      "file": "cmake/external/qt/qt_static_plugins/kimageformats/CMakeLists.txt",
+      "line": 82,
+      "strong": true,
+      "text": "        ${libs_loc}/libheif"
+     },
+     {
+      "file": "cmake/external/qt/qt_static_plugins/kimageformats/CMakeLists.txt",
+      "line": 109,
+      "strong": true,
+      "text": "        ${libs_loc}/local/lib/libheif"
+     },
+     {
+      "file": "corpus-a/ThirdParty/kimageformats/CMakeLists.txt",
+      "line": 65,
+      "strong": true,
+      "text": "pkg_check_modules(LibHeif IMPORTED_TARGET libheif"
+     },
+     {
+      "file": "corpus-a/ThirdParty/kimageformats/src/imageformats/CMakeLists.txt",
+      "line": 95,
+      "strong": true,
+      "text": "target_link_libraries(kimg_heif PkgConfig::LibHeif"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "cmdpkgs:libjxl",
+   "pg_name": "libjxl",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "referenced by build files but not listed in README -> README incomplete (portgraph correct)",
+    "grep": [
+     {
+      "file": "cmake/external/qt/qt_static_plugins/kimageformats/CMakeLists.txt",
+      "line": 43,
+      "strong": true,
+      "text": "pkg_check_modules(DESKTOP_APP_JXL IMPORTED_TARGET libjxl libjxl"
+     },
+     {
+      "file": "cmake/external/qt/qt_static_plugins/kimageformats/CMakeLists.txt",
+      "line": 85,
+      "strong": true,
+      "text": "        ${libs_loc}/libjxl"
+     },
+     {
+      "file": "cmake/external/qt/qt_static_plugins/kimageformats/CMakeLists.txt",
+      "line": 112,
+      "strong": true,
+      "text": "        ${libs_loc}/local/lib/libjxl"
+     },
+     {
+      "file": "cmake/external/qt/qt_static_plugins/kimageformats/CMakeLists.txt",
+      "line": 43,
+      "strong": true,
+      "text": "pkg_check_modules(DESKTOP_APP_JXL IMPORTED_TARGET libjxl libjxl_threads"
+     },
+     {
+      "file": "cmake/external/qt/qt_static_plugins/kimageformats/CMakeLists.txt",
+      "line": 114,
+      "strong": true,
+      "text": "        ${libs_loc}/local/lib/libjxl_threads"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:libudev",
+   "pg_name": "libudev",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "no known HarmonyOS package matched: real external dependency; the ghost node is a correct detection (fetch-deps reports need_port/needs a source port)"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:libvpx",
+   "pg_name": "libvpx",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "referenced by build files but not listed in README -> README incomplete (portgraph correct)",
+    "grep": [
+     {
+      "file": "cmake/external/vpx/CMakeLists.txt",
+      "line": 49,
+      "strong": true,
+      "text": "find_library(DESKTOP_APP_VPX_LIBRARIES libvpx"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "false-positive",
+   "side": "pg",
+   "by_design": false,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:libxcb",
+   "pg_name": "libxcb",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "detected by portgraph but no build-file reference -> scanner false-positive candidate (include heuristic/name coincidence)",
+    "grep": []
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:libxkbcommon",
+   "pg_name": "libxkbcommon",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "referenced by build files but not listed in README -> README incomplete (portgraph correct)",
+    "grep": [
+     {
+      "file": "cmake/external/qt/CMakeLists.txt",
+      "line": 413,
+      "strong": true,
+      "text": "        xkbcommon"
+     },
+     {
+      "file": "cmake/external/qt/qt_static_plugins/fcitx5/CMakeLists.txt",
+      "line": 47,
+      "strong": true,
+      "text": "pkg_check_modules(DESKTOP_APP_XKBCOMMON REQUIRED IMPORTED_TARGET xkbcommon"
+     },
+     {
+      "file": "cmake/external/qt/qt_static_plugins/fcitx5/CMakeLists.txt",
+      "line": 55,
+      "strong": true,
+      "text": "    PkgConfig::DESKTOP_APP_XKBCOMMON"
+     },
+     {
+      "file": "corpus-a/ThirdParty/nimf/configure.ac",
+      "line": 75,
+      "strong": true,
+      "text": "                                       [xkbcommon"
+     },
+     {
+      "file": "corpus-a/ThirdParty/nimf/configure.ac",
+      "line": 278,
+      "strong": true,
+      "text": "                                     wayland-protocols xkbcommon"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:lz4",
+   "pg_name": "lz4",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "referenced by build files but not listed in README -> README incomplete (portgraph correct)",
+    "grep": [
+     {
+      "file": "cmake/external/lz4/CMakeLists.txt",
+      "line": 11,
+      "strong": true,
+      "text": "find_package(lz4"
+     },
+     {
+      "file": "cmake/external/lz4/CMakeLists.txt",
+      "line": 19,
+      "strong": true,
+      "text": "pkg_check_modules(DESKTOP_APP_LZ4"
+     },
+     {
+      "file": "cmake/external/lz4/CMakeLists.txt",
+      "line": 13,
+      "strong": true,
+      "text": "target_link_libraries(external_lz4"
+     },
+     {
+      "file": "cmake/external/lz4/CMakeLists.txt",
+      "line": 23,
+      "strong": true,
+      "text": "target_link_libraries(external_lz4"
+     },
+     {
+      "file": "cmake/external/lz4/CMakeLists.txt",
+      "line": 51,
+      "strong": true,
+      "text": "target_link_libraries(external_lz4"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:microsoft",
+   "pg_name": "microsoft",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "no known HarmonyOS package matched: real external dependency; the ghost node is a correct detection (fetch-deps reports need_port/needs a source port)"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:minizip",
+   "pg_name": "minizip",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "referenced by build files but not listed in README -> README incomplete (portgraph correct)",
+    "grep": [
+     {
+      "file": "cmake/external/minizip/CMakeLists.txt",
+      "line": 11,
+      "strong": true,
+      "text": "find_package(minizip"
+     },
+     {
+      "file": "cmake/external/minizip/CMakeLists.txt",
+      "line": 17,
+      "strong": true,
+      "text": "find_package(minizip"
+     },
+     {
+      "file": "cmake/external/minizip/CMakeLists.txt",
+      "line": 24,
+      "strong": true,
+      "text": "pkg_check_modules(DESKTOP_APP_MINIZIP REQUIRED IMPORTED_TARGET minizip"
+     },
+     {
+      "file": "cmake/external/minizip/CMakeLists.txt",
+      "line": 47,
+      "strong": true,
+      "text": "find_library(DESKTOP_APP_MINIZIP"
+     },
+     {
+      "file": "cmake/external/minizip/CMakeLists.txt",
+      "line": 13,
+      "strong": true,
+      "text": "target_link_libraries(external_minizip"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:openh264",
+   "pg_name": "openh264",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "referenced by build files but not listed in README -> README incomplete (portgraph correct)",
+    "grep": [
+     {
+      "file": "cmake/external/openh264/CMakeLists.txt",
+      "line": 13,
+      "strong": true,
+      "text": "pkg_check_modules(DESKTOP_APP_OPENH264 IMPORTED_TARGET openh264"
+     },
+     {
+      "file": "cmake/external/openh264/CMakeLists.txt",
+      "line": 41,
+      "strong": true,
+      "text": "find_library(DESKTOP_APP_OPENH264"
+     },
+     {
+      "file": "cmake/external/openh264/CMakeLists.txt",
+      "line": 16,
+      "strong": true,
+      "text": "target_link_libraries(external_openh264"
+     },
+     {
+      "file": "cmake/external/webrtc/CMakeLists.txt",
+      "line": 89,
+      "strong": true,
+      "text": "    $<LINK_ONLY:desktop-app::external_openh264"
+     },
+     {
+      "file": "cmake/external/ffmpeg/CMakeLists.txt",
+      "line": 39,
+      "strong": true,
+      "text": "    $<LINK_ONLY:desktop-app::external_openh264"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:opus",
+   "pg_name": "opus",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "referenced by build files but not listed in README -> README incomplete (portgraph correct)",
+    "grep": [
+     {
+      "file": "cmake/external/webrtc/CMakeLists.txt",
+      "line": 91,
+      "strong": true,
+      "text": "    $<LINK_ONLY:desktop-app::external_opus"
+     },
+     {
+      "file": "cmake/external/ffmpeg/CMakeLists.txt",
+      "line": 41,
+      "strong": true,
+      "text": "    $<LINK_ONLY:desktop-app::external_opus"
+     },
+     {
+      "file": "cmake/external/opus/CMakeLists.txt",
+      "line": 11,
+      "strong": true,
+      "text": "find_package(Opus"
+     },
+     {
+      "file": "cmake/external/opus/CMakeLists.txt",
+      "line": 18,
+      "strong": true,
+      "text": "pkg_check_modules(DESKTOP_APP_OPUS IMPORTED_TARGET opus"
+     },
+     {
+      "file": "cmake/external/opus/CMakeLists.txt",
+      "line": 50,
+      "strong": true,
+      "text": "find_library(DESKTOP_APP_OPUS"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:pango",
+   "pg_name": "pango",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "referenced by build files but not listed in README -> README incomplete (portgraph correct)",
+    "grep": [
+     {
+      "file": "cmake/external/pango/CMakeLists.txt",
+      "line": 14,
+      "strong": true,
+      "text": "target_link_libraries(external_pango"
+     },
+     {
+      "file": "cmake/external/qt/CMakeLists.txt",
+      "line": 402,
+      "strong": true,
+      "text": "        pango"
+     },
+     {
+      "file": "corpus-a/lib_ui/CMakeLists.txt",
+      "line": 368,
+      "strong": true,
+      "text": "target_link_libraries(lib_ui PRIVATE desktop-app::external_pango"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:pangocairo",
+   "pg_name": "pangocairo",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "no known HarmonyOS package matched: real external dependency; the ghost node is a correct detection (fetch-deps reports need_port/needs a source port)"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:pangoft2",
+   "pg_name": "pangoft2",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "no known HarmonyOS package matched: real external dependency; the ghost node is a correct detection (fetch-deps reports need_port/needs a source port)"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:protobuf",
+   "pg_name": "protobuf",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "referenced by build files but not listed in README -> README incomplete (portgraph correct)",
+    "grep": [
+     {
+      "file": "cmake/external/cld3/CMakeLists.txt",
+      "line": 11,
+      "strong": true,
+      "text": "find_package(protobuf"
+     },
+     {
+      "file": "corpus-a/ThirdParty/cld3/CMakeLists.txt",
+      "line": 8,
+      "strong": true,
+      "text": "find_package(Protobuf"
+     },
+     {
+      "file": "corpus-a/ThirdParty/cld3/CMakeLists.txt",
+      "line": 63,
+      "strong": true,
+      "text": "target_link_libraries(language_identifier_main cld3 ${Protobuf"
+     },
+     {
+      "file": "corpus-a/ThirdParty/cld3/CMakeLists.txt",
+      "line": 66,
+      "strong": true,
+      "text": "target_link_libraries(getonescriptspan_test cld3 ${Protobuf"
+     },
+     {
+      "file": "corpus-a/ThirdParty/cld3/CMakeLists.txt",
+      "line": 69,
+      "strong": true,
+      "text": "target_link_libraries(language_identifier_features_test cld3 ${Protobuf"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:ranges",
+   "pg_name": "ranges",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "no known HarmonyOS package matched: real external dependency; the ghost node is a correct detection (fetch-deps reports need_port/needs a source port)"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:rnnoise",
+   "pg_name": "rnnoise",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "no known HarmonyOS package matched: real external dependency; the ghost node is a correct detection (fetch-deps reports need_port/needs a source port)"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:tde2e",
+   "pg_name": "tde2e",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "no known HarmonyOS package matched: real external dependency; the ghost node is a correct detection (fetch-deps reports need_port/needs a source port)"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:tg-owt",
+   "pg_name": "tg_owt",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "no known HarmonyOS package matched: real external dependency; the ghost node is a correct detection (fetch-deps reports need_port/needs a source port)"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:tl",
+   "pg_name": "tl",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "no known HarmonyOS package matched: real external dependency; the ghost node is a correct detection (fetch-deps reports need_port/needs a source port)"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:tlottie",
+   "pg_name": "tlottie",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "no known HarmonyOS package matched: real external dependency; the ghost node is a correct detection (fetch-deps reports need_port/needs a source port)"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "unknown-ok",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "pkg-unknown:tmc",
+   "pg_name": "tmc",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "no known HarmonyOS package matched: real external dependency; the ghost node is a correct detection (fetch-deps reports need_port/needs a source port)"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:xxhash",
+   "pg_name": "xxhash",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "referenced by build files but not listed in README -> README incomplete (portgraph correct)",
+    "grep": [
+     {
+      "file": "cmake/external/xxhash/CMakeLists.txt",
+      "line": 11,
+      "strong": true,
+      "text": "find_package(xxHash"
+     },
+     {
+      "file": "cmake/external/xxhash/CMakeLists.txt",
+      "line": 19,
+      "strong": true,
+      "text": "pkg_check_modules(DESKTOP_APP_XXHASH"
+     },
+     {
+      "file": "cmake/external/xxhash/CMakeLists.txt",
+      "line": 13,
+      "strong": true,
+      "text": "target_link_libraries(external_xxhash"
+     },
+     {
+      "file": "cmake/external/xxhash/CMakeLists.txt",
+      "line": 23,
+      "strong": true,
+      "text": "target_link_libraries(external_xxhash"
+     },
+     {
+      "file": "corpus-a/CMakeLists.txt",
+      "line": 100,
+      "strong": true,
+      "text": "    desktop-app::external_xxhash"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:dbus",
+   "pg_name": "Qt D-Bus",
+   "pg_kind": "qt-module",
+   "pg_status": "blocked",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:gui",
+   "pg_name": "Qt GUI",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:network",
+   "pg_name": "Qt Network",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:quick",
+   "pg_name": "Qt Quick",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:quickwidgets",
+   "pg_name": "Qt Quick Widgets",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:svg",
+   "pg_name": "Qt SVG",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:waylandcompositor",
+   "pg_name": "Qt Wayland Compositor",
+   "pg_kind": "qt-module",
+   "pg_status": "blocked",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:widgets",
+   "pg_name": "Qt Widgets",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  }
+ ],
+ "metrics": {
+  "oracle_runtime": 17,
+  "oracle_optional": 0,
+  "matched": 12,
+  "matched_optional": 0,
+  "recall": "71%",
+  "precision": "40%",
+  "bug_candidates": 3,
+  "bug_by_class": {
+   "false-positive": 1,
+   "missed-dep": 2,
+   "resolution-gap": 0
+  },
+  "class_counts": {
+   "build-only": 3,
+   "false-positive": 1,
+   "matched": 12,
+   "missed-dep": 2,
+   "qt-granularity": 11,
+   "readme-omitted": 17,
+   "readme-stale": 2,
+   "unknown-ok": 15,
+   "vendored": 1
+  }
+ },
+ "agent_notes": [
+  "Fixed in this round (corpus-a deps-test): the scanner now parses ns::external_<name> imported target names in target_link_libraries (prefix stripped -> raw_libs ext_target) and adds edges/creates ghosts, so openal/xxhash/webrtc/ada/qr-code-generator and similar no longer need manual reclassification",
+  "gsl/range-v3/hunspell and similar are bundled .gitmodules submodules (vendored, built with the project); the harness now classifies them as vendored automatically based on .gitmodules evidence",
+  "Root cause of the remaining breakpad/crashpad gap: the shallow clone did not initialize submodules (cmake/ is cmake_helpers), so the find_package/breakpad-cp selection logic inside it is invisible; a complete fix needs 'clone --recurse-submodules' or degraded handling of the missing paths hinted by .gitmodules, see the residual items in TEST-REPORT",
+  "lzma-sdk/liblzma/opus: the main repo's build files indeed have no reference (liblzma/opus come in via cmake_helpers' external prebuilt Libraries directory or the tg_owt stack); the readme-stale classification matches the facts within the current scan scope"
+ ]
+}

@@ -8,7 +8,7 @@ updated: 2026-08-03
 status: solved
 severity: low
 audience: public
-refs: [semantic-qt-harmonyos-api-mapping]
+refs: [fault-C-0016, semantic-qt-harmonyos-api-mapping]
 summary: "Anti-pattern: QFileDialog works natively on OHOS; wrapping it in #ifdef is a common anti-pattern"
 error_message: >
   Developers mistakenly assume QFileDialog needs a \#ifdef Q_OS_OHOS workaround on OHOS (QInputDialog/hard-coded paths)

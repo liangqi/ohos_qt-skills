@@ -80,7 +80,7 @@ Work through the key technical decisions:
 ### 3.1 Decide the project directory
 
 ```
-lzh-skill/<INTERNAL_DEMO><demo-name>/
+<INTERNAL_KB_ROOT>/<INTERNAL_DEMO><demo-name>/
 ```
 
 Naming convention for `<demo-name>`: a short descriptive name with words separated by `-` (such as `render-layers` or `mediaplayer-duration-test`).
@@ -118,7 +118,7 @@ Choose based on the target platform:
 >
 > **Mandatory checkpoints** (immediately after creating the project):
 > 1. `strings <SDK>/plugins/platforms/libqohos.so | grep -E "^modules$|^modulesFactories$"` → determine the API (modules = objects / modulesFactories = factories)
-> 2. Replace `entry/src/main/ets/qability/OhosExportModules.ts` + `QtUtils.ets` with the **canonical full versions from qView-ohos** (26 `@ohos.*` + 13 `@kit.*` **eager default-imports**, the objects API, `getModulesMapForQt`), and correspondingly change `getModulesFactoriesMapForQt()` → `getModulesMapForQt()` in `QAbilityStage.ets`/`QChildProcess.ets`
+> 2. Replace `entry/src/main/ets/qability/OhosExportModules.ts` + `QtUtils.ets` with the **canonical full reference template** (26 `@ohos.*` + 13 `@kit.*` **eager default-imports**, the objects API, `getModulesMapForQt`), and correspondingly change `getModulesFactoriesMapForQt()` → `getModulesMapForQt()` in `QAbilityStage.ets`/`QChildProcess.ets`
 > 3. See [[problem-runtime-crash-ohos-deviceinfo-global-expression]] for details (including the diagnostics for both generations of the @ohos.deviceInfo crash family)
 
 ### 3.3 Qt+CEF / WebEngine migration demos (special: use the grafting script, not the usual 6 steps)
@@ -126,11 +126,11 @@ Choose based on the target platform:
 If the demo needs **web embedding** (QtWebEngine is out of scope on HarmonyOS — see [[qt-harmonyos-modules]]), take the Qt+CEF route — **don't hand-create the project per §3.1/3.2**; generate it in one shot with the grafting script:
 
 - **The guide**: `procedural/qt-cef-ohos-dev-guide.md` (the WebEngine→CEF API mapping + migration plan + the de-versioned component package + adapting to version upgrades).
-- **The script**: `tools/kb-cef-graft.py` + the configuration `tools/kb-cef-graft.config.example.json` (all environment configuration lives in the config file: deveco/device/SDK version/the Qt .so list, so switching environments means changing the config, not the script).
+- **The script**: `kb-cef-graft.py` + the configuration `kb-cef-graft.config.example.json` (all environment configuration lives in the config file: deveco/device/SDK version/the Qt .so list, so switching environments means changing the config, not the script) — **shipped with the CEF component package, not part of this knowledge base** (see dev-guide §2.3; maintainers get it from the internal maintenance repo).
 - **One command** (graft + sign + install + launch + crash check):
   ```bash
-  cp tools/kb-cef-graft.config.example.json .config.json  # edit deveco/device/qt_libs etc.
-  python tools/kb-cef-graft.py --config .config.json \
+  cp kb-cef-graft.config.example.json .config.json  # edit deveco/device/qt_libs etc.
+  python kb-cef-graft.py --config .config.json \
     --template <Qt OHOS template> --qt-sdk <Qt OHOS SDK> \
     --ohqtcef-glue <the OpenQtCef glue> --output <output project> --run
   ```
@@ -276,7 +276,7 @@ If the build fails, follow the build troubleshooting process:
 | **Upstream input** | A description of the demo's goal, the functional requirements, and the target platform/version |
 | **Downstream recipients** | Internal use (testing and verification) / promotional demos / customer demonstrations |
 | **Deliverables** | `<INTERNAL_DEMO><demo-name>/`: the complete project + a README (optional) |
-| **Deliverable path** | `lzh-skill/<INTERNAL_DEMO>` |
+| **Deliverable path** | `<INTERNAL_KB_ROOT>/<INTERNAL_DEMO>` |
 | **Routing rules** | None (standalone delivery); if you find a framework bug → move to framework issue analysis; if it needs porting to HarmonyOS → move to application porting |
 
 ---

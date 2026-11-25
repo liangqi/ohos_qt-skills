@@ -113,7 +113,7 @@ Call it from bash with: `cmd.exe //c "C:\\path\\to\\build.bat"` (`//c` is MSYS's
 
 ## Related
 
-- See procedural/qt-ohos-concrete-build-recipe.md (internal page) — the 5.12 cmake+hvigor commands (this problem adds the Windows PATH details)
+- See semantic/qt-harmonyos-build-run-workflow.md (devecocli/hvigor invocation) — the 5.12 cmake+hvigor commands (this problem adds the Windows PATH details)
 - [[procedural-qt-ohos-run-test]] — The build → install → run CLI flow
 - [[build-hvigor-native-skip]] — The distinction: a missing DEVECO_SDK_HOME makes the native build **skip** (here the native build fully succeeds and only PackageHap's java lookup fails)
 - signhap-bundlename-mismatch — The signing requirement for installing an unsigned HAP

@@ -1,0 +1,1358 @@
+{
+ "schema": "portgraph-e2e-report/1",
+ "app": {
+  "key": "corpus-b",
+  "app_id": "app:corpus-b",
+  "name": "corpus-b",
+  "url": "https://github.com/corpus-b/corpus-b",
+  "tier": "C",
+  "build_system": "cmake+qmake",
+  "sources": 5729,
+  "repo_path": "workspace/corpus-b"
+ },
+ "generated_at": "2026-09-19T15:12:53Z",
+ "verdict": "blocked",
+ "blockers": [
+  {
+   "kind": "unsupported-interface",
+   "node": "app:corpus-b",
+   "reason": "uses platform interface Direct ALSA unsupported on HarmonyOS (audio) HarmonyOS audio goes through AudioRenderer/AudioCapturer; ALSA is unavailable; HarmonyOS alternative interfaces in the same category: HarmonyOS AudioRenderer/AudioCapturer [evidence: [HarmonyOS/generic guard (compiled)] guard=ohos-active (89 unconditional / 113 OHOS-compilable / 1 macro-guard excluded / 0 file-level excluded) | corpus-b-core/framework/midi/internal/platform/lin/alsamidiinport.cpp:24[unconditional] #include <alsa/asoundlib.h>; corpus-b-core/framework/midi/internal/platform/lin/alsamidiinport.cpp:25[unconditional] #include <alsa/seq.h>; corpus-b-core/framework/midi/internal/platform/lin/alsamidiinport.cpp:26[unconditional] #include <alsa/seq_midi_event.h>]"
+  },
+  {
+   "kind": "unsupported-interface",
+   "node": "app:corpus-b",
+   "reason": "uses platform interface macOS CoreAudio unsupported on HarmonyOS (audio) macOS-only audio framework; HarmonyOS alternative interfaces in the same category: HarmonyOS AudioRenderer/AudioCapturer [evidence: [HarmonyOS/generic guard (compiled)] guard=ohos-active (2 unconditional / 11 OHOS-compilable / 0 macro-guard excluded / 11 file-level excluded) | corpus-b-core/framework/midi/internal/platform/osx/coremidiinport.cpp:24[platform-file-excluded] #include <CoreAudio/HostTime.h>; corpus-b-core/framework/midi/internal/platform/osx/coremidiinport.cpp:26[platform-file-excluded] #include <CoreMIDI/CoreMIDI.h>; corpus-b-core/framework/midi/internal/platform/osx/coremidiinport.cpp:47[platform-file-excluded] MIDIPortRef inputPort = 0;]"
+  },
+  {
+   "kind": "unsupported-interface",
+   "node": "app:corpus-b",
+   "reason": "uses platform interface D-Bus IPC unsupported on HarmonyOS (ipc) HarmonyOS has no D-Bus (the Qt D-Bus module is out of scope); switch to system services/IPC; HarmonyOS alternative interfaces in the same category: HarmonyOS IPC/system service capabilities [evidence: [HarmonyOS/generic guard (compiled)] guard=ohos-active (10 unconditional / 0 OHOS-compilable / 2 macro-guard excluded / 0 file-level excluded) | corpus-b-core/framework/ui/internal/platform/linux/linuxplatformtheme.cpp:23[unconditional] #include <QtDBus/QDBusConnection>; corpus-b-core/framework/ui/internal/platform/linux/linuxplatformtheme.cpp:23[unconditional] #include <QtDBus/QDBusConnection>; corpus-b-core/framework/ui/internal/platform/linux/linuxplatformtheme.cpp:24[unconditional] #include <QtDBus/QDBusConnectionInterface>]"
+  },
+  {
+   "kind": "unsupported-interface",
+   "node": "app:corpus-b",
+   "reason": "uses platform interface Direct PulseAudio unsupported on HarmonyOS (audio) HarmonyOS has no PulseAudio service; HarmonyOS alternative interfaces in the same category: HarmonyOS AudioRenderer/AudioCapturer [evidence: [HarmonyOS/generic guard (compiled)] guard=ohos-active (0 unconditional / 8 OHOS-compilable / 2 macro-guard excluded / 0 file-level excluded) | corpus-b-core/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/drivers/fluid_pulse.c:33[ohos-active] #include <pulse/simple.h>; corpus-b-core/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/drivers/fluid_pulse.c:34[ohos-active] #include <pulse/error.h>; corpus-b-core/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/drivers/fluid_pulse.c:44[ohos-active] pa_simple *pa_handle;]"
+  },
+  {
+   "kind": "unsupported-interface",
+   "node": "app:corpus-b",
+   "reason": "uses platform interface systemd unsupported on HarmonyOS (os-api) HarmonyOS has no systemd service management; HarmonyOS alternative interfaces in the same category: dlopen dynamic loading, glib event loop, macOS system library binding, POSIX/musl C library, pthread multithreading [evidence: [HarmonyOS/generic guard (compiled)] guard=ohos-active (0 unconditional / 3 OHOS-compilable / 0 macro-guard excluded / 0 file-level excluded) | corpus-b-core/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/fluidsynth.c:41[ohos-active] #include <systemd/sd-daemon.h>; corpus-b-core/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/fluidsynth.c:1098[ohos-active] sd_notify(0, \"READY=1\");; corpus-b-core/framework/audio/thirdparty/fluidsynth/fluidsynth-2.3.3/src/fluidsynth.c:1180[ohos-active] sd_notify(0, \"STOPPING=1\");]"
+  },
+  {
+   "kind": "unsupported-interface",
+   "node": "app:corpus-b",
+   "reason": "uses platform interface Win32 API unsupported on HarmonyOS (os-api) Windows-only system interface; HarmonyOS alternative interfaces in the same category: dlopen dynamic loading, glib event loop, macOS system library binding, POSIX/musl C library, pthread multithreading [evidence: [HarmonyOS/generic guard (compiled)] guard=ohos-active (30 unconditional / 8 OHOS-compilable / 39 macro-guard excluded / 45 file-level excluded) | src/project/internal/platform/windows/windowsrecentfilescontroller.cpp:25[platform-file-excluded] #include <shlobj.h>; corpus-b-core/framework/vst/qml/corpus-b-core/Vst/vstview.cpp:29[platform-excluded] #include <windows.h>; corpus-b-core/framework/vst/qml/corpus-b-core/Vst/vstview.cpp:46[platform-excluded] static void removeMinMaxButtons(HWND window)]"
+  },
+  {
+   "kind": "unsupported-module",
+   "node": "qtmod:dbus",
+   "reason": "Qt for HarmonyOS module support table: unsupported - HarmonyOS has no D-Bus"
+  },
+  {
+   "kind": "unsupported-module",
+   "node": "qtmod:x11extras",
+   "reason": "Qt for HarmonyOS module support table: unsupported - X11-only"
+  }
+ ],
+ "unknowns": [
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:msdfgen",
+   "reason": "no HarmonyOS prebuilt artifact, must be cross-compiled and ported yourself; not in the Harmonybrew/cmd-pkgs known list"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:opusenc",
+   "reason": "no HarmonyOS prebuilt artifact, must be cross-compiled and ported yourself; not in the Harmonybrew/cmd-pkgs known list"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:pipewire",
+   "reason": "no HarmonyOS prebuilt artifact, must be cross-compiled and ported yourself; not in the Harmonybrew/cmd-pkgs known list"
+  },
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:json-schema-validator",
+   "reason": "no HarmonyOS prebuilt artifact, must be cross-compiled and ported yourself; not in the Harmonybrew/cmd-pkgs known list"
+  }
+ ],
+ "platform_excluded": [
+  {
+   "node": "app:corpus-b",
+   "name": "corpus-b",
+   "iface": "macOS Cocoa/AppKit",
+   "category": "os-api",
+   "guard": "platform-excluded",
+   "reason": "interface macOS Cocoa/AppKit is wrapped in a non-HarmonyOS platform conditional-compilation guard (not compiled on HarmonyOS), functional category=os-api",
+   "alternatives": [
+    {
+     "id": "iface:dylib",
+     "name": "dlopen dynamic loading",
+     "category": "os-api",
+     "ohos_status": "convertible",
+     "note": "HarmonyOS supports dlopen, but library paths/packaging are restricted; adapt to the native directory inside the HAP"
+    },
+    {
+     "id": "iface:glib-event",
+     "name": "glib event loop",
+     "category": "os-api",
+     "ohos_status": "convertible",
+     "note": "Replace with the Qt event loop, or port the glib main loop"
+    },
+    {
+     "id": "iface:macos-system",
+     "name": "macOS system library binding",
+     "category": "os-api",
+     "ohos_status": "convertible",
+     "note": "The formula depends on libraries bundled with macOS; on HarmonyOS they must become explicitly packaged dependencies (mostly convertible open-source libraries)"
+    },
+    {
+     "id": "iface:posix",
+     "name": "POSIX/musl C library",
+     "category": "os-api",
+     "ohos_status": "supported",
+     "note": "The OpenHarmony NDK uses musl libc; broad coverage of basic POSIX interfaces"
+    },
+    {
+     "id": "iface:pthread",
+     "name": "pthread multithreading",
+     "category": "os-api",
+     "ohos_status": "supported",
+     "note": "musl provides pthread"
+    }
+   ],
+   "evidence": "[wrapped in a non-HarmonyOS platform guard (not compiled)] guard=platform-excluded (0 unconditional / 0 OHOS-compilable / 0 macro-guard excluded / 25 file-level excluded) | src/project/internal/platform/macos/macosrecentfilescontroller.mm:22[platform-file-excluded] #include <Cocoa/Cocoa.h>; src/appshell/internal/platform/macos/macosappmenumodelhook.mm:25[platform-file-excluded] #include <Cocoa/Cocoa.h>; corpus-b-core/framework/uicomponents/qml/corpus-b-core/UiComponents/internal/platform/macos/macospopupviewclosecontroller.mm:25[platform-file-excluded] #include <AppKit/NSEvent.h>",
+   "path": [
+    "app:corpus-b"
+   ]
+  }
+ ],
+ "closure": {
+  "size": 89,
+  "summary": {
+   "target": 1,
+   "vendored": 10,
+   "provided": 16,
+   "would_download": 57,
+   "need_port": 4,
+   "cmd_only": 1
+  },
+  "need_port": [
+   {
+    "id": "pkg-unknown:msdfgen",
+    "name": "msdfgen",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:opusenc",
+    "name": "opusenc",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:pipewire",
+    "name": "pipewire",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   },
+   {
+    "id": "pkg-unknown:json-schema-validator",
+    "name": "json_schema_validator",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   }
+  ],
+  "cmd_only": [
+   {
+    "id": "hb:ca-certificates",
+    "name": "ca-certificates",
+    "artifact_cmd": "brew install ca-certificates"
+   }
+  ],
+  "would_download": [
+   "alsa-lib",
+   "freetype",
+   "zlib",
+   "harfbuzz",
+   "libpng",
+   "libogg",
+   "fdk-aac",
+   "flac",
+   "lame",
+   "opus",
+   "libvorbis",
+   "libsndfile",
+   "nlohmann-json",
+   "global",
+   "zlib-ng-compat",
+   "cairo",
+   "glib",
+   "graphite2",
+   "icu4c@78",
+   "mpg123",
+   "libtool",
+   "ncurses",
+   "python@3.14",
+   "sqlite",
+   "universal-ctags",
+   "fontconfig",
+   "libx11",
+   "libxcb",
+   "libxext",
+   "libxrender",
+   "lzo",
+   "pixman",
+   "bison",
+   "python-setuptools",
+   "pcre2",
+   "dbus",
+   "util-linux",
+   "m4",
+   "mpdecimal",
+   "openssl@3",
+   "xz",
+   "zstd",
+   "gettext",
+   "musl-compat",
+   "readline",
+   "jansson",
+   "libyaml",
+   "xorgproto",
+   "libxau",
+   "libxdmcp",
+   "python@3.12",
+   "lz4",
+   "libunistring",
+   "berkeley-db@5",
+   "libnsl",
+   "libtirpc",
+   "krb5"
+  ]
+ },
+ "direct_deps": [
+  {
+   "id": "hb:alsa-lib",
+   "name": "alsa-lib",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:fdk-aac",
+   "name": "fdk-aac",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:flac",
+   "name": "flac",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:freetype",
+   "name": "freetype",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:global",
+   "name": "global",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:harfbuzz",
+   "name": "harfbuzz",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:json-schema-validator",
+   "name": "json_schema_validator",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "hb:lame",
+   "name": "lame",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:libogg",
+   "name": "libogg",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:libpng",
+   "name": "libpng",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:libsndfile",
+   "name": "libsndfile",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:libvorbis",
+   "name": "libvorbis",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:msdfgen",
+   "name": "msdfgen",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "hb:nlohmann-json",
+   "name": "nlohmann-json",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:opus",
+   "name": "opus",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:opusenc",
+   "name": "opusenc",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:pipewire",
+   "name": "pipewire",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "hb:zlib",
+   "name": "zlib",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:concurrent",
+   "name": "Qt Concurrent",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:core",
+   "name": "Qt Core",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:dbus",
+   "name": "Qt D-Bus",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "blocked",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:gui",
+   "name": "Qt GUI",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:network",
+   "name": "Qt Network",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:networkauthorization",
+   "name": "Qt Network Authorization",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:printsupport",
+   "name": "Qt Print Support",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:qml",
+   "name": "Qt QML",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:quick",
+   "name": "Qt Quick",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:quickwidgets",
+   "name": "Qt Quick Widgets",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:svg",
+   "name": "Qt SVG",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:test",
+   "name": "Qt Test",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:websockets",
+   "name": "Qt WebSockets",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:widgets",
+   "name": "Qt Widgets",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:x11extras",
+   "name": "Qt X11 Extras",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "blocked",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:xml",
+   "name": "Qt XML",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  }
+ ],
+ "oracle": {
+  "app": "corpus-b",
+  "source": "buildscripts/cmake/DependencyManifest.cmake + corpus-b-core/buildscripts/cmake/ExtDepsManifest.cmake + corpus-b-core/framework/{midi,audio/driver}/CMakeLists.txt + corpus-b-core/framework/cmake/CorpusBOptions.cmake (compiled by hand)",
+  "source_note": "Rewritten for master 2b540fe (the corpus-b-deps dependency-engine era): the README has no dependency section (it points to an external project wiki), so the oracle was compiled by hand from the in-repo dependency manifests. Scope = dependencies that need external artifacts in the default build: require_dep(...) (prebuilt/system mode) and the project's own find_package are runtime/optional; require_source_dep (liblouis/kddockwidgets/picojson/pugixml/utfcpp/googletest/crashpad_client/vst3sdk/lodepng/asiosdk) and mnxdom's FetchContent source mode are vendored, built with the project source and needing no external artifacts, so they are not in the oracle; require_tool/find_package(Git) are host build tools, listed as build. Optionality follows the CorpusBOptions.cmake defaults: CB_MODULE_AUDIO_JACK OFF, CB_MODULE_AUDIO_PIPEWIRE OFF, CB_MODULE_DRAW_USE_QTTEXTDRAW ON (-> msdfgen not enabled), CB_USE_SYSTEM_MNXDOM OFF (-> mnxdom is bundled as source by default; pkg_check only in system mode); CB_MODULE_AUDIO_EXPORT ON, CB_BUILD_IMPEXP_MNX_MODULE ON. The old oracle's (CI setup.sh + CB_COMPILE_USE_SYSTEM_* era) pulseaudio/openssl/tinyxml/ffmpeg no longer exist on master: direct PulseAudio use survives only in the embedded fluidsynth optional driver, and openssl is not referenced by any manifest.",
+  "reviewed": true,
+  "deps": [
+   {
+    "name": "qt",
+    "display": "qt",
+    "type": "runtime",
+    "raw": "Qt 6.8 (corpus-b-core/buildscripts/cmake/SetupQt6.cmake:90 find_package(Qt6 6.8 REQUIRED COMPONENTS ${qt_components}), components Core/Gui/Widgets/Network/Qml/Quick/QuickControls2/QuickWidgets/Xml/Svg/ShaderTools/Core5Compat + conditionally NetworkAuth/PrintSupport/DBus/Concurrent/LinguistTools/WebSockets)"
+   },
+   {
+    "name": "alsa",
+    "display": "alsa",
+    "type": "runtime",
+    "raw": "find_package(ALSA REQUIRED) (corpus-b-core/framework/midi/CMakeLists.txt:80, corpus-b-core/framework/audio/driver/CMakeLists.txt:55, unconditional in the Linux branch)"
+   },
+   {
+    "name": "ogg",
+    "display": "ogg",
+    "type": "runtime",
+    "raw": "require_dep(ogg) (buildscripts/cmake/DependencyManifest.cmake:1 unconditional + corpus-b-core/buildscripts/cmake/ExtDepsManifest.cmake:41, CB_MODULE_AUDIO_EXPORT defaults to ON)"
+   },
+   {
+    "name": "vorbis",
+    "display": "vorbis",
+    "type": "runtime",
+    "raw": "require_dep(vorbis) (DependencyManifest.cmake:2 unconditional)"
+   },
+   {
+    "name": "flac",
+    "display": "flac",
+    "type": "runtime",
+    "raw": "require_dep(flac)（DependencyManifest.cmake:3 + ExtDepsManifest.cmake:43）"
+   },
+   {
+    "name": "opus",
+    "display": "opus",
+    "type": "runtime",
+    "raw": "require_dep(opus)（DependencyManifest.cmake:4 + ExtDepsManifest.cmake:45）"
+   },
+   {
+    "name": "libsndfile",
+    "display": "libsndfile",
+    "type": "runtime",
+    "raw": "require_dep(libsndfile) (DependencyManifest.cmake:5 unconditional)"
+   },
+   {
+    "name": "zlib",
+    "display": "zlib",
+    "type": "runtime",
+    "raw": "require_dep(zlib) (ExtDepsManifest.cmake:1 unconditional)"
+   },
+   {
+    "name": "freetype",
+    "display": "freetype",
+    "type": "runtime",
+    "raw": "require_dep(freetype) (ExtDepsManifest.cmake:14/18, CB_MODULE_DRAW_USE_FONTFACE_FT defaults to ON, STATIC_DEPS defaults to OFF)"
+   },
+   {
+    "name": "harfbuzz",
+    "display": "harfbuzz",
+    "type": "runtime",
+    "raw": "require_dep(harfbuzz) (ExtDepsManifest.cmake:15/19, same as above)"
+   },
+   {
+    "name": "libpng",
+    "display": "libpng",
+    "type": "runtime",
+    "raw": "require_dep(libpng) (ExtDepsManifest.cmake:17, pulled in by freetype dynamic mode)"
+   },
+   {
+    "name": "fdk-aac",
+    "display": "fdk-aac",
+    "type": "runtime",
+    "raw": "require_dep(fdk-aac) (ExtDepsManifest.cmake:42, CB_MODULE_AUDIO_EXPORT defaults to ON)"
+   },
+   {
+    "name": "lame",
+    "display": "lame",
+    "type": "runtime",
+    "raw": "require_dep(lame)（ExtDepsManifest.cmake:44）"
+   },
+   {
+    "name": "opusenc",
+    "display": "opusenc",
+    "type": "runtime",
+    "raw": "require_dep(opusenc)（ExtDepsManifest.cmake:46）"
+   },
+   {
+    "name": "nlohmann_json",
+    "display": "nlohmann_json",
+    "type": "runtime",
+    "raw": "require_dep(nlohmann_json) (DependencyManifest.cmake:12, CB_BUILD_IMPEXP_MNX_MODULE defaults to ON and CB_USE_SYSTEM_MNXDOM defaults to OFF)"
+   },
+   {
+    "name": "json_schema_validator",
+    "display": "json_schema_validator",
+    "type": "runtime",
+    "raw": "require_dep(json_schema_validator) (DependencyManifest.cmake:13, same as above)"
+   },
+   {
+    "name": "jack",
+    "display": "jack",
+    "type": "optional",
+    "raw": "find_package(Jack REQUIRED) (corpus-b-core/framework/audio/driver/CMakeLists.txt:72, CB_MODULE_AUDIO_JACK defaults to OFF, CorpusBOptions.cmake:42)"
+   },
+   {
+    "name": "msdfgen",
+    "display": "msdfgen",
+    "type": "optional",
+    "raw": "require_dep(msdfgen) (ExtDepsManifest.cmake:24, only when NOT CB_MODULE_DRAW_USE_QTTEXTDRAW -- defaults to ON -> not enabled)"
+   },
+   {
+    "name": "pipewire",
+    "display": "pipewire",
+    "type": "optional",
+    "raw": "require_dep(pipewire) (ExtDepsManifest.cmake:50, CB_MODULE_AUDIO_PIPEWIRE defaults to OFF, enabled only in CI)"
+   },
+   {
+    "name": "mnxdom",
+    "display": "mnxdom",
+    "type": "optional",
+    "raw": "pkg_check_modules(mnxdom REQUIRED) (src/importexport/mnx/CMakeLists.txt:14, only when CB_USE_SYSTEM_MNXDOM=ON; defaults to OFF -> bundled as source via FetchContent)"
+   },
+   {
+    "name": "git",
+    "display": "git",
+    "type": "build",
+    "raw": "find_package(Git REQUIRED) (corpus-b-core/buildscripts/cmake/SetupDependencies.cmake:29, used to get the revision number)"
+   },
+   {
+    "name": "crashpad_handler",
+    "display": "crashpad_handler",
+    "type": "build",
+    "raw": "require_tool(crashpad_handler) (ExtDepsManifest.cmake:62, CB_MODULE_DIAGNOSTICS_CRASHPAD_CLIENT defaults to OFF, on in CI)"
+   },
+   {
+    "name": "sentry-cli",
+    "display": "sentry-cli",
+    "type": "build",
+    "raw": "require_tool(sentry-cli)（corpus-b-core/buildscripts/ci/crashdumps/ci_sentry_dumpsyms_upload.cmake:35）"
+   },
+   {
+    "name": "dump_syms",
+    "display": "dump_syms",
+    "type": "build",
+    "raw": "require_tool(dump_syms)（corpus-b-core/buildscripts/ci/crashdumps/ci_generate_dumpsyms.cmake:19）"
+   },
+   {
+    "name": "uncrustify",
+    "display": "uncrustify",
+    "type": "build",
+    "raw": "require_tool(uncrustify)（corpus-b-core/tools/codestyle/uncrustify.cmake:30）"
+   }
+  ]
+ },
+ "diffs": [
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "qt",
+   "oracle_type": "runtime",
+   "pg_id": "qtmod:concurrent",
+   "pg_name": "Qt Concurrent",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "alsa",
+   "oracle_type": "runtime",
+   "pg_id": "hb:alsa-lib",
+   "pg_name": "alsa-lib",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "ogg",
+   "oracle_type": "runtime",
+   "pg_id": "hb:libogg",
+   "pg_name": "libogg",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "vorbis",
+   "oracle_type": "runtime",
+   "pg_id": "hb:libvorbis",
+   "pg_name": "libvorbis",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "flac",
+   "oracle_type": "runtime",
+   "pg_id": "hb:flac",
+   "pg_name": "flac",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "opus",
+   "oracle_type": "runtime",
+   "pg_id": "hb:opus",
+   "pg_name": "opus",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "libsndfile",
+   "oracle_type": "runtime",
+   "pg_id": "hb:libsndfile",
+   "pg_name": "libsndfile",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "zlib",
+   "oracle_type": "runtime",
+   "pg_id": "hb:zlib",
+   "pg_name": "zlib",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "freetype",
+   "oracle_type": "runtime",
+   "pg_id": "hb:freetype",
+   "pg_name": "freetype",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "harfbuzz",
+   "oracle_type": "runtime",
+   "pg_id": "hb:harfbuzz",
+   "pg_name": "harfbuzz",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "libpng",
+   "oracle_type": "runtime",
+   "pg_id": "hb:libpng",
+   "pg_name": "libpng",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "fdk-aac",
+   "oracle_type": "runtime",
+   "pg_id": "hb:fdk-aac",
+   "pg_name": "fdk-aac",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "lame",
+   "oracle_type": "runtime",
+   "pg_id": "hb:lame",
+   "pg_name": "lame",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "opusenc",
+   "oracle_type": "runtime",
+   "pg_id": "pkg-unknown:opusenc",
+   "pg_name": "opusenc",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "matched a ghost node: real external dependency with no known HarmonyOS package (fetch-deps reports need_port/needs a source port; detection correct)"
+   },
+   "agent_note": "No bottle confirmed: neither hb-core nor cmd-pkgs has an opusenc/libopusenc formula (source pinned in corpus-b-deps/recipes/opusenc/spec.cmake), so portgraph marking it need_port is correct; require_dep(opusenc) detected at ExtDepsManifest.cmake:46"
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "nlohmann_json",
+   "oracle_type": "runtime",
+   "pg_id": "hb:nlohmann-json",
+   "pg_name": "nlohmann-json",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "json_schema_validator",
+   "oracle_type": "runtime",
+   "pg_id": "pkg-unknown:json-schema-validator",
+   "pg_name": "json_schema_validator",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "matched a ghost node: real external dependency with no known HarmonyOS package (fetch-deps reports need_port/needs a source port; detection correct)"
+   },
+   "agent_note": "No bottle confirmed: neither hb-core nor cmd-pkgs has json-schema-validator (source pinned in corpus-b-deps/recipes/json_schema_validator); need_port is correct"
+  },
+  {
+   "class": "optional-not-built",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "jack",
+   "oracle_type": "optional",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "optional dependency, not enabled in the default build"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "matched-optional",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "msdfgen",
+   "oracle_type": "optional",
+   "pg_id": "pkg-unknown:msdfgen",
+   "pg_name": "msdfgen",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "matched a ghost node: real external dependency with no known HarmonyOS package (fetch-deps reports need_port/needs a source port; detection correct)"
+   },
+   "agent_note": "No bottle confirmed: neither hb nor cmd-pkgs has msdfgen; and the default build does not enable it (CB_MODULE_DRAW_USE_QTTEXTDRAW defaults to ON)"
+  },
+  {
+   "class": "matched-optional",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "pipewire",
+   "oracle_type": "optional",
+   "pg_id": "pkg-unknown:pipewire",
+   "pg_name": "pipewire",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "matched a ghost node: real external dependency with no known HarmonyOS package (fetch-deps reports need_port/needs a source port; detection correct)"
+   },
+   "agent_note": "No bottle confirmed: hb/cmd-pkgs indeed have no pipewire library package (CB_MODULE_AUDIO_PIPEWIRE defaults to OFF); if needed, it falls under the direct-PipeWire unsupported-interface blocker"
+  },
+  {
+   "class": "optional-not-built",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "mnxdom",
+   "oracle_type": "optional",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "optional dependency, not enabled in the default build"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "build-only",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "git",
+   "oracle_type": "build",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "build tool; fetch-deps does not collect build edges"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "build-only",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "crashpad_handler",
+   "oracle_type": "build",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "build tool; fetch-deps does not collect build edges"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "build-only",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "sentry-cli",
+   "oracle_type": "build",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "build tool; fetch-deps does not collect build edges"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "build-only",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "dump_syms",
+   "oracle_type": "build",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "build tool; fetch-deps does not collect build edges"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "build-only",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "uncrustify",
+   "oracle_type": "build",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "build tool; fetch-deps does not collect build edges"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "readme-omitted",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "hb:global",
+   "pg_name": "global",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "referenced by build files but not listed in README -> README incomplete (portgraph correct)",
+    "grep": [
+     {
+      "file": "corpus-b-core/buildscripts/cmake/DeclareModuleSetup.cmake",
+      "line": 119,
+      "strong": true,
+      "text": "target_link_libraries(${target_name} PRIVATE cb_global"
+     },
+     {
+      "file": "corpus-b-core/framework/cmake/CorpusBCreateModule.cmake",
+      "line": 127,
+      "strong": true,
+      "text": "target_link_libraries(${target_name} PRIVATE cb_global"
+     },
+     {
+      "file": "corpus-b-core/framework/testing/qtest.cmake",
+      "line": 73,
+      "strong": true,
+      "text": "    cb_global"
+     },
+     {
+      "file": "corpus-b-core/framework/testing/gtest.cmake",
+      "line": 82,
+      "strong": true,
+      "text": "    cb_global"
+     },
+     {
+      "file": "corpus-b-core/framework/global/CMakeLists.txt",
+      "line": 164,
+      "strong": true,
+      "text": "target_link_libraries(cb_global"
+     }
+    ]
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:core",
+   "pg_name": "Qt Core",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:dbus",
+   "pg_name": "Qt D-Bus",
+   "pg_kind": "qt-module",
+   "pg_status": "blocked",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:gui",
+   "pg_name": "Qt GUI",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:network",
+   "pg_name": "Qt Network",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:networkauthorization",
+   "pg_name": "Qt Network Authorization",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:printsupport",
+   "pg_name": "Qt Print Support",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:qml",
+   "pg_name": "Qt QML",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:quick",
+   "pg_name": "Qt Quick",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:quickwidgets",
+   "pg_name": "Qt Quick Widgets",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:svg",
+   "pg_name": "Qt SVG",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:test",
+   "pg_name": "Qt Test",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:websockets",
+   "pg_name": "Qt WebSockets",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:widgets",
+   "pg_name": "Qt Widgets",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:x11extras",
+   "pg_name": "Qt X11 Extras",
+   "pg_kind": "qt-module",
+   "pg_status": "blocked",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:xml",
+   "pg_name": "Qt XML",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  }
+ ],
+ "metrics": {
+  "oracle_runtime": 16,
+  "oracle_optional": 4,
+  "matched": 16,
+  "matched_optional": 2,
+  "recall": "100%",
+  "precision": "95%",
+  "bug_candidates": 0,
+  "bug_by_class": {
+   "false-positive": 0,
+   "missed-dep": 0,
+   "resolution-gap": 0
+  },
+  "class_counts": {
+   "build-only": 5,
+   "matched": 16,
+   "matched-optional": 2,
+   "optional-not-built": 2,
+   "qt-granularity": 15,
+   "readme-omitted": 1
+  }
+ },
+ "agent_notes": [
+  "Oracle rewritten for master 2b540fe (corpus-b-deps dependency engine): require_dep manifests (DependencyManifest/ExtDepsManifest) + project find_package (ALSA/Jack/mnxdom) + SetupQt6.cmake; optionality follows CorpusBOptions.cmake defaults. The 10 source-bundled require_source_dep dependencies (liblouis/kddockwidgets/picojson/pugixml/utfcpp/googletest/crashpad_client/vst3sdk/lodepng/asiosdk) are out of oracle scope (built with the project source, no external artifacts needed); portgraph expresses them as vendored edges + fetch-deps status=vendored.",
+  "The 10 ALIASES gaps from the previous round (old repo, CI setup.sh era) were fixed and committed in this round (alsa->alsa-lib, sndfile->libsndfile, tinyxml->tinyxml2, glib2->glib, dbus1->dbus, ogg->libogg, vorbis->libvorbis, png->libpng, brotlidec->brotli, utfcpp->utf8cpp, nlohmann_json->nlohmann-json, intl->gettext); false positives from fluidsynth/KDDockWidgets embedded third-party code and corpus-b-deps recipes were fixed by skipping vendored paths; find_package false matches on comment lines were fixed by comment stripping; the wrongful exclusion of the buildscripts/ directory (build* prefix) was fixed.",
+  "Residual (not fixed in this round): require_dep conditional blocks are not evaluated (declarations off by default such as msdfgen/pipewire/asiosdk still enter the closure, so the fetch-deps overview is conservative); project-internal target names in the deps report's raw_libs (engraving/global/cb_* etc., created by functions like declare_module and invisible to the add_library scan) resolve to hb:global by coincidence, which is noise."
+ ]
+}

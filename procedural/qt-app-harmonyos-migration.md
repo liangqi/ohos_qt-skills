@@ -4,7 +4,7 @@ type: procedural
 domain: workflow
 tags: [workflow, qt, harmonyos, porting, migration, ohos]
 created: 2026-06-02
-updated: 2026-07-21
+updated: 2026-09-12
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-api-mapping,semantic-qt-harmonyos-build-run-workflow,semantic-qt-harmonyos-code-patterns,semantic-qt-harmonyos-lifecycle,semantic-qt-harmonyos-porting-workflow,semantic-qt-harmonyos-project-structure,semantic-qt-harmonyos-window-model]
@@ -30,7 +30,7 @@ summary: >
 ## Phase zero: pre-flight
 
 > Before entering phase one, run 7 pre-flight checks with grep/source scanning. The point of the pre-flight is to weed out projects that are **bound to fail**, pick the right Qt5/Qt6 path, and settle on the application/library playbook — all **before you write any CMake**.
-> Three real batches (10apps / rows 300-399 / rows 400-499, 207 applications in total) proved that skipping the pre-flight makes the agent waste 3-4 build attempts on Qt6 code (canonic, B23Downloader).
+> Three real batches (10apps / rows 300-399 / rows 400-499, 207 applications in total) proved that skipping the pre-flight makes the agent waste 3-4 build attempts on Qt6 code (two real cases).
 
 | Check | Method (grep/scan) | Decision |
 |-------|--------------------|----------|
@@ -40,17 +40,57 @@ summary: >
 | **Project type** | grep `int main(` → application/example (playbook A); none → library/plugin/header-only (B); for **source-only projects with no build files**, look for the existence of `.cpp`/`.h` (the QtCustomControls lesson) | Determines the playbook (see §1.0a) |
 | **Platform coupling** | grep for `X11`/`xcb`/`windows.h`/`HWND`/`WM_`/`QDBus`/`Cocoa` and check whether it's a **core feature** (not an optional branch) | Core coupling → infeasible (e.g. QHotkey, Qt-Nice-Frameless-Window) |
 | **foreach usage** | grep `foreach(`/`Q_FOREACH` | If used → **OMIT** `QT_NO_FOREACH` (defining it breaks the build) |
-| **Third-party dependencies** | bundled (in-repo) vs. system; cross-compilation feasibility: header-only = ok, small pure-C libraries = maybe, FFmpeg/Skia/Boost/OpenCV/PCL = no | Heavyweight system libraries → blocked, or cross-compile them separately |
+| **Third-party dependencies** | **Preferred: portgraph dependency closure analysis** (`python portgraph/portgraph.py fetch-deps <app> --dry-run`, which outputs the number of bottles available for direct download + the list of gaps needing a source build; see the step 0 gate below); only when the repo tooling is unavailable, grep by hand: bundled (in-repo) vs. system; header-only = ok, small pure-C libraries = maybe, FFmpeg/Skia/Boost/OpenCV/PCL = no | Heavyweight system libraries with no bottle → blocked, or cross-compile them separately (size the work by the closure gap list) |
+| **C++20 gaps (clang15/libc++15)** | `python tools/cpp20-gap-scan.py scan <src_dir>` (8 rules: structured binding captures / make_unique_for_overwrite / stop_token / atomic_ref / ranges / `<=>` / init-capture / setaffinity; see [[build-clang15-libcpp15-cpp20-gaps]]) | On a hit → pre-fix the mechanical items with `fix --apply` and the rest per the problems pages — **avoiding hitting errors one build round at a time** (one build round of a large project takes tens of minutes) |
 
 **Output**: a pre-flight report (Qt version + SDK choice + playbook + module gaps + platform coupling + foreach + third-party dependencies), which decides whether to enter phase one.
+
+### 🚧 Step 0 gate: portgraph dependency closure assessment (mandatory for applications with many dependencies)
+
+> **Trigger condition**: the application has ≥3 third-party dependencies, or its dependencies come from external repositories (not bundled).
+> In that case the "third-party dependencies" pre-flight item must be concluded with the portgraph tool — **judging each one by hand is forbidden**.
+> The proven cost of skipping it (2026-09, a large application with 68 dependencies): the first round didn't run the closure analysis, and the agent went straight down the wrong path of
+> cross-compiling each library from source; after the correction, portgraph `fetch-deps` produced the solution in one go:
+> **59 bottles downloaded directly + 9 source builds** — bottles covered 87%, a two-orders-of-magnitude difference in effort.
+
+```bash
+# ① Portability verdict (portable / blocked / uncertain + blocking reasons)
+python portgraph/portgraph.py analyze <app>
+
+# ② Comprehensive dependency analysis: who needs build artifacts (link) / who is a build tool (build-tool) /
+#    who is used only at runtime (runtime) / who ships its own source (vendored) + version ranges and requirement checks
+python portgraph/portgraph.py deps <app>
+
+# ③ Dependency closure preview: which have ready-made bottles (.so downloaded directly), which need source cross-compilation (writes nothing to disk)
+python portgraph/portgraph.py fetch-deps <app> --dry-run
+
+# ④ Once feasibility is confirmed, run the download (artifacts land in portgraph/workspace/ohos-libs/, a cache shared across applications)
+python portgraph/portgraph.py fetch-deps <app> --json   # integration parameters (CMAKE_PREFIX_PATH, etc.)
+```
+
+**Interpreting and routing**:
+
+| Closure result | Action |
+|----------|------|
+| `analyze` = blocked | **Not an automatic stop** — look at the guard evidence for the blockers: it's a hard block only if it's `ohos-active`, **matched unconditionally** (e.g. `#include <X11/Xlib.h>` with no guard at all), and on a core path; those excluded by a macro guard or at file level are mostly optional branches (proven case: for a large application, analyze reported 6 blockers, all in optional branches/vendored code; after review it was let through and the port succeeded). If it's genuinely core and irreplaceable → stop at the assessment and write the report |
+| `deps` version conflict | The HarmonyOS artifact's version is lower than the project requires (e.g. it requires >=9.9 but only 1.3.2 exists): confirm whether the existing version can be used (min_version is often a conservative declaration) or build the new version from source |
+| Bottles cover most dependencies | Prefer downloading bottles directly (skipping source cross-compilation); the gaps go down the source route |
+| The unknowns list (pkg-unknown dependencies) | This is the "source build gap list": check each item against [[fetch-ohos-third-party-lib]] (single-library bottles) and [[qt-harmonyos-third-party-libs]] (source cross-compilation); **gaps that can't be resolved must be reported to the user explicitly** — never trimmed silently |
+| NTFS symlinks broken after extracting a bottle (0 bytes/EACCES) | Delete the broken links and copy the real versioned files (measured on a large application: 202 fixed) |
+
+Tool docs: `portgraph/docs/deps-report.md` (dependency roles/version ranges), `portgraph/docs/fetch-deps.md` (artifact retrieval).
 
 ### ⚠️ Pitfall: declared Qt5, actually Qt6 code
 
 Two real batches went off the rails:
-- **canonic** (rows 400-499, row 405): the `.pro` uses Qt5 syntax and the spreadsheet says Qt5, but the C++ is all Qt6-only API (`beginFrame/endFrame`, `QEvent::isInputEvent`, the Qt6 `QHoverEvent`/`QQmlListProperty` ctors) → it took 3 build attempts peeling back the layers to confirm, and it was also missing three modules: Quick3D/QuickControls2/WebSockets.
-- **B23Downloader** (rows 300-399, row 394): the `.pro` says Qt5 but the code uses `QList::emplace_back` (a Qt6 API) → 4 retries.
+- **A spreadsheet tool** (rows 400-499, row 405): the `.pro` uses Qt5 syntax and the spreadsheet says Qt5, but the C++ is all Qt6-only API (`beginFrame/endFrame`, `QEvent::isInputEvent`, the Qt6 `QHoverEvent`/`QQmlListProperty` ctors) → it took 3 build attempts peeling back the layers to confirm, and it was also missing three modules: Quick3D/QuickControls2/WebSockets.
+- **A downloader** (rows 300-399, row 394): the `.pro` says Qt5 but the code uses `QList::emplace_back` (a Qt6 API) → 4 retries.
 
 **The rule**: determine the Qt version from **the APIs the code actually uses**, not from `.pro`/`QT +=`/the spreadsheet. The grep list is in row 1 of the table above. A `.pro` saying Qt5 only tells you the author **intended** Qt5; it's no guarantee no Qt6 API has crept in (common when a project "migrated from Qt5 to Qt6 and then reverted the declaration" or "uses Qt6 headers but the .pro still says Qt5").
+
+### ⚠️ Pitfall: multiple edits to the same file must be serialized
+
+When adapting the source of a large project, **multiple edit points in the same file must be done serially** — parallel edits to one file overwrite each other (in practice, race-condition overwrites happened repeatedly, silently losing changes). Different files can be edited in parallel, but edits within one file must queue; after each edit, confirm the change is on disk before making the next one.
 
 ---
 
@@ -71,7 +111,10 @@ Two real batches went off the rails:
 
 **Output**: a feasibility report (portable / has risk items / not portable)
 
-> **💡 A shortcut for prebuilt third-party libraries**: if a C/C++ third-party dependency already has an arm64_ohos prebuilt bottle in Harmonybrew, you can download the .so in one command and skip cross-compiling — see [[fetch-ohos-third-party-lib]]. Only fall back to the source cross-compilation route below when there's no bottle.
+> **💡 A shortcut for prebuilt third-party libraries**: use portgraph for the application-level dependency closure (the phase zero step 0 gate;
+> `fetch-deps <app>` handles the bottle downloads and the gap list for all dependencies in one go). Only for a **single** third-party library
+> already known to have an `arm64_ohos` bottle in Harmonybrew can you use the single-library script `fetch-ohos-bottle.sh` from [[fetch-ohos-third-party-lib]].
+> Only when neither route yields a bottle do you take the source cross-compilation route below.
 
 > **🎮 Choosing a playbook** (phase zero determined the project type; here you act on it)
 >
@@ -408,7 +451,7 @@ When the glm-5.2 safety classifier is intermittently unavailable, the main loop'
 ### 5.6 Agent prompt conventions
 
 - **No shared TaskList subtasks**: agents track progress in their own context and must not call `TaskCreate` to make per-application subtasks (it pollutes the main task list — two batches were polluted with 60+ entries).
-- **Assess the code, not the build files**: triage must grep for Qt6-only APIs per the phase zero pre-flight table, not just read `.pro`/`QT +=` (the canonic/B23Downloader failures).
+- **Assess the code, not the build files**: triage must grep for Qt6-only APIs per the phase zero pre-flight table, not just read `.pro`/`QT +=` (real failure cases).
 - **At most 3 build attempts per project**: read the error tail → fix the most likely cause → rebuild. If it doesn't pass in 3 attempts, mark it failed with the error attached; don't force it into a success.
 
 ### 5.7 Batch deliverables
@@ -423,6 +466,7 @@ When the glm-5.2 safety classifier is intermittently unavailable, the main loop'
 ## Checklist
 
 - [ ] **Phase zero pre-flight done** (Qt version from the code not the declaration, Qt5/Qt6 SDK choice, module availability, project type → playbook A/B, platform coupling, foreach, third-party dependencies)
+- [ ] **Step 0 gate**: with ≥3 third-party library dependencies, `portgraph analyze` + `fetch-deps --dry-run` have been run and the bottle/source-build routing conclusion is out (gaps reported to the user explicitly)
 - [ ] Feasibility assessment done (module dependencies, platform APIs, UI complexity)
 - [ ] Project directory created under `${PROJECTS_ROOT}/<app-name>-ohos/`
 - [ ] The glue code template has been copied from the bundled source path (`<QT_SRC>/qtbase/src/harmonyos/templates`) into the project directory

@@ -1,0 +1,48 @@
+# knowledge/rules - machine-executable pre-scan rules
+#
+# These rules upgrade semantic/qt-harmonyos-golden-rules.md from
+# "rules an LLM reads" into "rules a tool executes":
+#
+#     python tools/qt-ohos-run.py scan <project>
+#
+# Schema of each R*.yaml:
+#
+#   id: R001                    # stable rule id (referenced by reports)
+#   name: short_name
+#   category: process|window|api|module|build|path|graphics|deploy
+#   severity: critical|high|medium|low
+#   platform:
+#     harmonyos: unsupported|restricted|workaround|review
+#   match:
+#     source:  ["regex", ...]   # matched line-by-line against C/C++/ObjC/QML
+#     pro:     ["regex", ...]   # matched against .pro/.pri contents
+#     cmake:   ["regex", ...]   # matched against CMakeLists.txt contents
+#     modules: [dbus]           # matched against detected Qt module list
+#     files:   ["*.so"]         # glob against project files
+#     guard:                    # file-level assertion: files matching the glob must also satisfy require
+#       files: ["platform_*.h"] # glob
+#       require: ["Q_OS_OHOS"]  # reported if any is missing (for dual-macro guards, etc.)
+#     exclude: ["gen/**", "ThirdParty/**"]   # these paths are excluded from matching (optional)
+#   scope: keep                 # optional: turns off "third-party/platform-specific directory downgrading"
+#   golden_rules: [B9]          # refs to qt-harmonyos-golden-rules.md
+#   kb: [semantic/xxx.md]       # knowledge pages to read when this hits
+#   solution: >                 # machine + human readable fix guidance
+#
+# Notes:
+# - patterns are Python regexes, written exactly as they should compile
+#   (the YAML parser performs no escape translation - keep them quoted)
+# - severity ladder:
+#     critical = will not run on HarmonyOS without rework
+#     high     = very likely breaks build or runtime
+#     medium   = probably needs adaptation
+# - scope downgrading: when the matched file is under ThirdParty/ third_party/ 3rdparty/ vendor/ or similar,
+#   or in a non-OHOS platform-specific directory (platform/win, windows/, macos/, etc.), severity is automatically
+#   lowered one level and annotated with scope (third-party / platform-excluded) — that code isn't compiled
+#   for the HarmonyOS target, and counting it as critical would rob G2 of its discriminating power. Write `scope: keep` in a rule to turn this off.
+#     low      = review / informational
+# - add new rules freely; ids must stay unique and sorted
+
+version: 1
+rule_count: 19
+severity_levels: [critical, high, medium, low]
+entry: qt-ohos-run scan <project>

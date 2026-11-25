@@ -1,0 +1,803 @@
+# faults/_graph.yaml — the fault graph (machine-readable full graph) [GENERATED, DO NOT EDIT BY HAND]
+#
+# Rebuild: python tools/faults-build.py build
+# Source of truth: _data/symptoms.yaml (S + causes edges) / _data/workarounds.yaml (W + targets edges) /
+#       _data/tickets.yaml (T + tracks edges) / C-*.md frontmatter (C + depends_on edges)
+# Model spec: faults/_index.md | human view: faults/_registry.md (also derived)
+#
+# Nodes: S symptom (application-layer behavior, the lookup entry) | C cause (defect gets fixed / limitation = platform limitation -> alternative)
+#       W workaround (proposed->tested->adopted->retired) | T upstream tracking ticket (Qt ticket / Huawei ticket / deliverable)
+# Edges: causes S->C (with multiple causes, cause_relation: any_of|all_of) | targets W->C | tracks T->C
+#      depends_on C->C (evidenced blocking only) | manifests is the derived reverse index of causes
+
+schema: 2
+updated: 2026-11-02
+
+counts:
+  symptoms: 17
+  causes: 18
+  workarounds: 15
+  tickets: 11
+  nature: ["defect 11", "limitation 4", "undetermined 3"]
+  cause_status: ["closed 1", "diagnosed 4", "open 1", "reported 1", "watching 1", "wontfix 3", "workaround 7"]
+  disposition: ["must-adapt 4", "qt-defect 6", "system-defect 2", "app-usage 2", "third-party 1", "undetermined 3"]
+  chain_state: ["root-resolved 1", "temp-resolved 6", "missing-ticket 7", "missing-workaround 2", "both-missing 2"]
+
+symptoms:
+  - id: S-0001
+    title: "QML platform guard silently fails (Qt.platform.os returns \\\"linux\\\" instead of \\\"ohos\\\")"
+    domain: api
+    severity: high
+    status: mitigated
+    causes: [C-0001]
+    first_seen: 2026-08-06
+    refs: [semantic-qt-harmonyos-api, semantic-qt-harmonyos-platform-limits]
+    chain_state: missing-ticket
+    gaps: [ticket]
+  - id: S-0002
+    title: "Pinyin composition input breaks: the keyboard closes mid-input + pinyin letters pollute the committed text"
+    domain: input
+    severity: high
+    status: mitigated
+    causes: [C-0002]
+    first_seen: 2026-09-12
+    refs: [problem-runtime-ohos-ime-reset-detach]
+    chain_state: missing-ticket
+    gaps: [ticket]
+  - id: S-0003
+    title: "First character occasionally lost after switching focus between input fields"
+    domain: input
+    severity: medium
+    status: active
+    causes: [C-0003]
+    first_seen: 2026-09-12
+    refs: [problem-runtime-ohos-ime-reset-detach]
+    chain_state: both-missing
+    gaps: [workaround, ticket]
+  - id: S-0004
+    title: "App hangs for about 2 minutes after qApp->quit() (the Ability destroy Promise never resolves)"
+    domain: lifecycle
+    severity: critical
+    status: mitigated
+    causes: [C-0004]
+    first_seen: 2026-06-05
+    refs: [episodic-quit-deadlock-tsfn]
+    chain_state: temp-resolved
+    gaps: []
+  - id: S-0005
+    title: "Qt6 OHOS target build fails in a cascade (nullptr_t / __promote / hypot ambiguous)"
+    domain: build
+    severity: blocker
+    status: mitigated
+    causes: [C-0005, C-0006]
+    cause_relation: all_of
+    first_seen: 2026-06-25
+    refs: [problem-build-fail-qt6-libcpp-musl-isystem]
+    chain_state: missing-ticket
+    gaps: [ticket]
+  - id: S-0006
+    title: "SURFACE-type XComponent native render surface is on the deprecation track (deprecated since API 20)"
+    domain: api
+    severity: medium
+    status: active
+    causes: [C-0007]
+    first_seen: 2026-06-02
+    refs: [semantic-qt-harmonyos-platform-limits]
+    chain_state: missing-workaround
+    gaps: [workaround]
+  - id: S-0007
+    title: "chmod / symlink fails at runtime (QFile::setPermissions / QFile::link return failure)"
+    domain: filesystem
+    severity: medium
+    status: mitigated
+    causes: [C-0008]
+    first_seen: 2026-06-02
+    refs: [semantic-qt-harmonyos-platform-limits]
+    chain_state: temp-resolved
+    gaps: []
+  - id: S-0008
+    title: "A QDialog without a parent cannot be closed and ignores the mouse wheel (blockedByModalWindow=1 intercepts close/wheel)"
+    domain: runtime
+    severity: high
+    status: mitigated
+    causes: [C-0009]
+    first_seen: 2026-08-04
+    refs: [problem-runtime-blocked-by-modal-window-no-parent, episodic-ohostemplate-blockedbymodal-patch]
+    chain_state: missing-ticket
+    gaps: [ticket]
+  - id: S-0009
+    title: "Qt5 HarmonyOS app crashes when onAcceptWant fires: Napi::Error global expression doesn't start with known module path: '@ohos.deviceInfo'"
+    domain: runtime
+    severity: critical
+    status: mitigated
+    causes: [C-0010]
+    first_seen: 2026-07-23
+    refs: [problem-runtime-crash-ohos-deviceinfo-global-expression, procedural-qt-bug-report-sample]
+    chain_state: missing-ticket
+    gaps: [ticket]
+  - id: S-0010
+    title: "QWidget app Debug build crashes on mouse click: sendThroughApplicationEventFilters Q_ASSERT (theMainThread mismatch)"
+    domain: runtime
+    severity: high
+    status: active
+    causes: [C-0011]
+    first_seen: 2026-06-13
+    refs: [problem-ohos-mainthread-mismatch]
+    chain_state: missing-workaround
+    gaps: [workaround]
+  - id: S-0011
+    title: "Runtime dlopen of a .so from a writable path fails (errno=22 EINVAL / QPluginLoader fails to load the plugin)"
+    domain: runtime
+    severity: high
+    status: mitigated
+    causes: [C-0012]
+    first_seen: 2026-06-03
+    refs: [problem-runtime-fail-dlopen-writable-path, semantic-qt-harmonyos-platform-limits]
+    chain_state: temp-resolved
+    gaps: []
+  - id: S-0012
+    title: "App crashes with SIGABRT a few seconds after startup (exit(1); the stack points at a failed config/log file write)"
+    domain: runtime
+    severity: critical
+    status: mitigated
+    causes: [C-0013]
+    first_seen: 2026-07-09
+    refs: [problem-runtime-crash-sandbox-readonly-path]
+    chain_state: temp-resolved
+    gaps: []
+  - id: S-0013
+    title: "Qt::Tool child windows flicker when dragging the MainWindow across screens in a multi-screen setup"
+    domain: render
+    severity: medium
+    status: active
+    causes: [C-0014]
+    first_seen: 2026-06-05
+    refs: [episodic-toolwindow-crossscreen-flicker]
+    chain_state: both-missing
+    gaps: [workaround, ticket]
+  - id: S-0014
+    title: "HAP packaged by the hvigor CLI (--mode module) crashes at startup (handleAbilityStageOnCreate of undefined); DevEco IDE Run works"
+    domain: deploy
+    severity: medium
+    status: mitigated
+    causes: [C-0015]
+    first_seen: 2026-08-06
+    refs: [problem-deploy-fail-hvigor-cli-hap-crash]
+    chain_state: temp-resolved
+    gaps: []
+  - id: S-0015
+    title: "Mistakenly adding a Q_OS_OHOS alternative branch for QFileDialog (the guard conflicts with the platform plugin's built-in native support)"
+    domain: api
+    severity: low
+    status: resolved
+    causes: [C-0016]
+    first_seen: 2026-07-29
+    refs: [problem-ohos-qfiledialog-native-support]
+    chain_state: root-resolved
+    gaps: []
+  - id: S-0016
+    title: "curl request body Chinese text garbled under Windows Git Bash (API returns 200/201 but Chinese fields turn into Cyrillic/Latin-1)"
+    domain: toolchain
+    severity: medium
+    status: mitigated
+    causes: [C-0017]
+    first_seen: 2026-06-10
+    refs: [runtime-curl-chinese-garbled]
+    chain_state: temp-resolved
+    gaps: []
+  - id: S-0017
+    title: "Qt3D entities textured with alpha PNGs (RGBA8) render solid black (lighting OK, RGB8 JPG OK, no GL errors)"
+    domain: render
+    severity: high
+    status: mitigated
+    causes: [C-0018]
+    first_seen: 2026-07-14
+    refs: [problem-render-black-rgba8-zink-mipmap, semantic-qt-harmonyos-platform-limits]
+    chain_state: missing-ticket
+    gaps: [ticket]
+
+causes:
+  - id: C-0001
+    page: C-0001-qqmlplatform-os-ohos-branch.md
+    title: "The #ifdef chain in qqmlplatform os() lacks a Q_OS_OHOS branch"
+    nature: defect
+    responsible: qt-port
+    disposition: qt-defect
+    domain: api
+    severity: high
+    evidence_type: source
+    status: workaround
+    manifests: [S-0001]
+    workarounds: [W-0001]
+    workaround_state: adopted
+    tickets: [T-0008]
+    fixed_in: ""
+    depends_on: []
+    affects_qt: ["Qt 5.12.12 (613336de)", "Qt 5.15.16 (962aa625)", "Qt 6.12 (same os() implementation)"]
+    affects_ohos: ["all versions (independent of system/API version)"]
+    review_due: 2026-12-14
+    chain_state: missing-ticket
+    gaps: [ticket]
+  - id: C-0002
+    page: C-0002-ime-reset-detach.md
+    title: "QOhosInputContext::reset() Detach/Attach closes the IMF panel and commits polluted text"
+    nature: defect
+    responsible: qt-port
+    disposition: qt-defect
+    domain: input
+    severity: high
+    evidence_type: logs
+    status: workaround
+    manifests: [S-0002]
+    workarounds: [W-0002]
+    workaround_state: adopted
+    tickets: [T-0009]
+    fixed_in: ""
+    depends_on: []
+    affects_qt: ["Qt 6.12-beta3 (libqohos)"]
+    affects_ohos: ["HarmonyOS PC (MateBook Pro, physical keyboard + Huawei IME)"]
+    review_due: 2026-12-14
+    chain_state: missing-ticket
+    gaps: [ticket]
+  - id: C-0003
+    page: C-0003-ime-focus-switch-race.md
+    title: "Detach→Attach race at the moment of an IME focus switch commits the first character to the old focus object"
+    nature: defect
+    responsible: qt-port
+    disposition: qt-defect
+    domain: input
+    severity: medium
+    evidence_type: logs
+    status: open
+    manifests: [S-0003]
+    workarounds: []
+    workaround_state: none
+    tickets: []
+    fixed_in: ""
+    depends_on: []
+    affects_qt: ["Qt 6.12-beta3 (libqohos)"]
+    affects_ohos: ["HarmonyOS PC (Huawei IME)"]
+    review_due: 2026-12-14
+    chain_state: both-missing
+    gaps: [workaround, ticket]
+  - id: C-0004
+    page: C-0004-ability-destroy-tsfn.md
+    title: "The Ability destroy window doesn't process N-API TSFN callbacks (the Promise resolve channel is blocked)"
+    nature: undetermined
+    responsible: ohos-runtime
+    disposition: undetermined
+    domain: lifecycle
+    severity: critical
+    evidence_type: both
+    status: reported
+    manifests: [S-0004]
+    workarounds: [W-0003]
+    workaround_state: adopted
+    tickets: [T-0001]
+    fixed_in: ""
+    depends_on: []
+    affects_qt: ["Qt 5.12.12 (613336de)"]
+    affects_ohos: ["real device (system version not recorded)"]
+    review_due: 2026-12-14
+    chain_state: temp-resolved
+    gaps: []
+  - id: C-0005
+    page: C-0005-qt-cmake-isystem-injection.md
+    title: "Qt cmake injects -isystem sysroot/usr/include into every CXX command (musl shadows the clang builtins)"
+    nature: defect
+    responsible: qt-port
+    disposition: qt-defect
+    domain: build
+    severity: blocker
+    evidence_type: logs
+    status: workaround
+    manifests: [S-0005]
+    workarounds: [W-0004]
+    workaround_state: adopted
+    tickets: [T-0010]
+    fixed_in: ""
+    depends_on: []
+    affects_qt: ["Qt 6.12.0 (c7581743)"]
+    affects_ohos: ["API 22 (Release 6.0.2.130)", "API 24 Beta1 (DevEco 6.1.1.268)"]
+    review_due: 2026-10-15
+    chain_state: missing-ticket
+    gaps: [ticket]
+  - id: C-0006
+    page: C-0006-libcxx-ohos-cmath-promote.md
+    title: "libcxx-ohos <cmath> uses __promote but lacks #include <__math/promote.h>"
+    nature: defect
+    responsible: ohos-ndk
+    disposition: system-defect
+    domain: build
+    severity: medium
+    evidence_type: source
+    status: diagnosed
+    manifests: [S-0005]
+    workarounds: [W-0004]
+    workaround_state: adopted
+    tickets: []
+    fixed_in: ""
+    depends_on: []
+    affects_qt: []
+    affects_ohos: ["API 22", "API 24 Beta1 (libcxx-ohos)"]
+    review_due: 2026-10-15
+    chain_state: missing-ticket
+    gaps: [ticket]
+  - id: C-0007
+    page: C-0007-xcomponent-surface-deprecated.md
+    title: "ARKUI_XCOMPONENT_TYPE_SURFACE is deprecated in API 20; the migration direction is ContentSlot"
+    nature: limitation
+    responsible: ohos-runtime
+    disposition: must-adapt
+    domain: api
+    severity: medium
+    evidence_type: docs
+    status: watching
+    manifests: [S-0006]
+    workarounds: []
+    workaround_state: none
+    tickets: [T-0002]
+    fixed_in: ""
+    depends_on: []
+    affects_qt: []
+    affects_ohos: ["API 20+"]
+    review_due: 2026-12-14
+    chain_state: missing-workaround
+    gaps: [workaround]
+  - id: C-0008
+    page: C-0008-sandbox-chmod-symlink.md
+    title: "The application sandbox forbids runtime chmod/symlink (file permissions and links are part of the packaging contract, not a runtime capability)"
+    nature: limitation
+    responsible: ohos-runtime
+    disposition: must-adapt
+    domain: filesystem
+    severity: medium
+    evidence_type: docs
+    status: wontfix
+    manifests: [S-0007]
+    workarounds: [W-0005, W-0006]
+    workaround_state: adopted
+    tickets: [T-0003, T-0004]
+    fixed_in: ""
+    depends_on: []
+    affects_qt: []
+    affects_ohos: ["all versions (sandbox specification)"]
+    review_due: 2026-12-14
+    chain_state: temp-resolved
+    gaps: []
+  - id: C-0009
+    page: C-0009-qpa-syntheticparent-no-transientparent.md
+    title: "The OHOS QPA syntheticParent fallback doesn't write back transientParent, so a QDialog without a parent is wrongly blocked by blockedByModalWindow"
+    nature: defect
+    responsible: qt-port
+    disposition: qt-defect
+    domain: runtime
+    severity: high
+    evidence_type: logs
+    status: workaround
+    manifests: [S-0008]
+    workarounds: [W-0007]
+    workaround_state: adopted
+    tickets: [T-0011]
+    fixed_in: ""
+    depends_on: []
+    affects_qt: ["Qt 5.15.16 (tqtc/harmonyos-5.15.16, patch baseline commit not recorded)"]
+    affects_ohos: ["real device (system version not recorded)"]
+    review_due: 2026-12-15
+    chain_state: missing-ticket
+    gaps: [ticket]
+  - id: C-0010
+    page: C-0010-stale-template-ohos-bare-eval.md
+    title: "The stale glue template lacks @ohos.* eager import registration, so libqohos's bare eval is rejected by the ArkTS runtime (onAcceptWant crash)"
+    nature: defect
+    responsible: qt-port
+    disposition: qt-defect
+    domain: runtime
+    severity: critical
+    evidence_type: both
+    status: workaround
+    manifests: [S-0009]
+    workarounds: [W-0008]
+    workaround_state: adopted
+    tickets: [T-0012]
+    fixed_in: ""
+    depends_on: []
+    affects_qt: ["Qt 5.15.16 (libqohos 515 generation built 2026-07-17; source-tree template version 2026-04-21)"]
+    affects_ohos: ["HarmonyOS 6.0.0.29 (HUAWEI MateBook Fold HPR-W72 real device)"]
+    review_due: 2026-12-15
+    chain_state: missing-ticket
+    gaps: [ticket]
+  - id: C-0011
+    page: C-0011-the-mainthread-mismatch.md
+    title: "theMainThread and QCoreApplication::instance()->thread() point to different QThreads (the QtMainThread thread-local is cleared and rebuilt)"
+    nature: undetermined
+    responsible: undetermined
+    disposition: undetermined
+    domain: runtime
+    severity: high
+    evidence_type: source
+    status: diagnosed
+    manifests: [S-0010]
+    workarounds: [W-0009]
+    workaround_state: proposed
+    tickets: []
+    fixed_in: ""
+    depends_on: []
+    affects_qt: ["Qt 5.15.16 (tqtc/harmonyos-5.15.16)"]
+    affects_ohos: ["not recorded (partner-reported case; device/system version not kept)"]
+    review_due: 2026-12-15
+    chain_state: missing-workaround
+    gaps: [workaround]
+  - id: C-0012
+    page: C-0012-loader-rejects-writable-path.md
+    title: "The application loader refuses to load dynamic libraries from writable paths (code loading is limited to the HAP lib directory; dlopen from the el2 writable area returns EINVAL)"
+    nature: limitation
+    responsible: ohos-runtime
+    disposition: must-adapt
+    domain: runtime
+    severity: high
+    evidence_type: logs
+    status: wontfix
+    manifests: [S-0011]
+    workarounds: [W-0010]
+    workaround_state: adopted
+    tickets: [T-0007]
+    fixed_in: ""
+    depends_on: []
+    affects_qt: []
+    affects_ohos: ["all versions (loader specification; the source page records evidence on real devices with Qt 5.12/5.15)"]
+    review_due: 2026-12-15
+    chain_state: temp-resolved
+    gaps: []
+  - id: C-0013
+    page: C-0013-sandbox-readonly-bundle-path.md
+    title: "The OHOS sandbox bundle install path is read-only, so desktop-style currentPath/applicationDirPath file writes fail (the app calls exit(1) → SIGABRT)"
+    nature: limitation
+    responsible: ohos-runtime
+    disposition: must-adapt
+    domain: filesystem
+    severity: critical
+    evidence_type: logs
+    status: wontfix
+    manifests: [S-0012]
+    workarounds: [W-0011]
+    workaround_state: adopted
+    tickets: []
+    fixed_in: ""
+    depends_on: []
+    affects_qt: ["Qt 5.15.16 (evidenced in the source page; the specification itself is independent of the Qt version)"]
+    affects_ohos: ["HarmonyOS 6.0 (evidenced in the source page; a read-only bundle is an all-version sandbox specification)"]
+    review_due: 2026-12-15
+    chain_state: temp-resolved
+    gaps: []
+  - id: C-0014
+    page: C-0014-crossscreen-move-resize-conflict.md
+    title: "The ohos window APIs moveWindowToGlobalDisplay × resizeAsync have no rendering atomicity during cross-screen migration (a redundant resize becomes the flicker trigger)"
+    nature: defect
+    responsible: ohos-runtime
+    disposition: system-defect
+    domain: render
+    severity: medium
+    evidence_type: both
+    status: diagnosed
+    manifests: [S-0013]
+    workarounds: [W-0012]
+    workaround_state: proposed
+    tickets: []
+    fixed_in: ""
+    depends_on: []
+    affects_qt: ["not recorded (the source page only records collecting logs from an instrumented libqohos.so rebuild; kit version not recorded)"]
+    affects_ohos: ["not recorded (evidenced on a HUAWEI MateBook Fold dual-screen real device; system version not recorded)"]
+    review_due: 2026-12-15
+    chain_state: both-missing
+    gaps: [workaround, ticket]
+  - id: C-0015
+    page: C-0015-hvigor-cli-ide-packaging-divergence.md
+    title: "hvigor CLI (--mode module) packaging is not equivalent to DevEco IDE packaging (incomplete NAPI module registration makes the HAP crash at startup)"
+    nature: undetermined
+    responsible: ohos-toolchain
+    disposition: undetermined
+    domain: deploy
+    severity: medium
+    evidence_type: logs
+    status: diagnosed
+    manifests: [S-0014]
+    workarounds: [W-0013]
+    workaround_state: adopted
+    tickets: []
+    fixed_in: ""
+    depends_on: []
+    affects_qt: ["Qt 5.15.16 (source page environment; still crashes after reverting to an unpatched libqohos.so, ruling out Qt code)"]
+    affects_ohos: ["not recorded (hvigor CLI / DevEco Studio versions not recorded in the source page)"]
+    review_due: 2026-12-15
+    chain_state: temp-resolved
+    gaps: []
+  - id: C-0016
+    page: C-0016-qfiledialog-unnecessary-ohos-ifdef.md
+    title: "The app wrongly assumes QFileDialog has no native OHOS support and adds an #ifdef alternative branch (QOhosPlatformIntegrationPlugin actually has it built in)"
+    nature: defect
+    responsible: app
+    disposition: app-usage
+    domain: api
+    severity: low
+    evidence_type: source
+    status: closed
+    manifests: [S-0015]
+    workarounds: []
+    workaround_state: none
+    tickets: []
+    fixed_in: ""
+    depends_on: []
+    affects_qt: []
+    affects_ohos: []
+    review_due: 2026-12-15
+    chain_state: root-resolved
+    gaps: []
+  - id: C-0017
+    page: C-0017-curl-gbk-terminal-mojibake.md
+    title: "Inlining Chinese into curl -d in a non-UTF-8 terminal (Windows Git Bash/GBK): the shell passes bytes in the terminal encoding, curl by design passes them through unchanged, and the API decodes them as UTF-8 into mojibake"
+    nature: defect
+    responsible: app
+    disposition: app-usage
+    domain: toolchain
+    severity: medium
+    evidence_type: logs
+    status: workaround
+    manifests: [S-0016]
+    workarounds: [W-0014]
+    workaround_state: adopted
+    tickets: []
+    fixed_in: ""
+    depends_on: []
+    affects_qt: []
+    affects_ohos: []
+    review_due: 2026-12-15
+    chain_state: temp-resolved
+    gaps: []
+  - id: C-0018
+    page: C-0018-zink-rgba8-mipmap-black.md
+    title: "Mesa ZINK implements glGenerateMipmap via vkCmdBlitImage, which fails / produces a bad mipchain for GL_RGBA8: the texture is incomplete and sampling silently returns black"
+    nature: defect
+    responsible: third-party
+    disposition: third-party
+    domain: render
+    severity: high
+    evidence_type: both
+    status: workaround
+    manifests: [S-0017]
+    workarounds: [W-0015]
+    workaround_state: adopted
+    tickets: [T-0013]
+    fixed_in: ""
+    depends_on: []
+    affects_qt: ["Qt 5.12.12 (OHOS SDK, Mesa ZINK)"]
+    affects_ohos: ["real device HUAWEI MateBook Fold (NEED_OPENGL=1; API version not recorded)"]
+    review_due: 2026-12-15
+    chain_state: missing-ticket
+    gaps: [ticket]
+
+workarounds:
+  - id: W-0001
+    title: "In QML, detect the platform with Qt.platform.pluginName (in C++, productType()/#ifdef Q_OS_OHOS)"
+    targets: [C-0001]
+    status: adopted
+    verified:
+      date: 2026-08-06
+      env: "Qt 5.15.16 (962aa625) source verification"
+    retire_when: "Once the upstream fix (a Q_OS_OHOS branch in os()) lands in the Qt OHOS SDK in use, switch back to the Qt.platform.os check"
+    detail: "C-0001-qqmlplatform-os-ohos-branch.md §Workarounds"
+  - id: W-0002
+    title: "Rebuild libqohos.so (reset only finalizes the preedit, no detach) and replace it in the kit"
+    targets: [C-0002]
+    status: adopted
+    verified:
+      date: 2026-09-12
+      env: "Qt 6.12-beta3 / HarmonyOS PC (MateBook Pro) real device"
+    retire_when: "Once an upstream release contains this fix, go back to the official kit and drop the local rebuild"
+    detail: "C-0002-ime-reset-detach.md §Workarounds"
+  - id: W-0003
+    title: "Exit patch: atomic s_qtAppThreadIdle + polling from a separate thread in parallel, bypassing the TSFN"
+    targets: [C-0004]
+    status: adopted
+    verified:
+      date: 2026-06-09
+      env: "Qt 5.12.12 / real device"
+    retire_when: "Once the HarmonyOS version in use is confirmed to handle the TSFN during the destroy window, remove the patch and rerun the exit regression tests"
+    detail: "C-0004-ability-destroy-tsfn.md §Workarounds"
+  - id: W-0004
+    title: "Switch the build combination: MinGW g++ 13.1.0 host + API 23 SDK + superbuild path"
+    targets: [C-0005, C-0006]
+    status: adopted
+    verified:
+      date: 2026-07-13
+      env: "Qt 6.12.0 full build + gallery demo on a real device"
+    retire_when: "Once Qt drops the -isystem injection or the SDK fixes C-0006, return to the standard build combination and rerun the isolation tests"
+    detail: "C-0005-qt-cmake-isystem-injection.md §Workarounds"
+  - id: W-0005
+    title: "Expand real files at build/packaging time (instead of runtime symlinks)"
+    targets: [C-0008]
+    status: adopted
+    retire_when: "Not expected to retire (wontfix: the sandbox specification is stable)"
+    detail: "C-0008-sandbox-chmod-symlink.md §Alternatives"
+  - id: W-0006
+    title: "Hand permission requirements to the platform packaging contract; don't make them a runtime success condition for business logic"
+    targets: [C-0008]
+    status: adopted
+    retire_when: "Not expected to retire (wontfix: the sandbox specification is stable)"
+    detail: "C-0008-sandbox-chmod-symlink.md §Alternatives"
+  - id: W-0007
+    title: "Rebuild libqohos.so with the transientParent write-back patch (about 8 lines in showImmediate) and replace it in the kit"
+    targets: [C-0009]
+    status: adopted
+    verified:
+      date: 2026-08-06
+      env: "Qt 5.15.16 / OHOS real device (ohostemplate, hilog 17:39 verification chain)"
+    retire_when: "Once the upstream harmonyos branch merges the transientParent write-back, go back to the official kit, drop the local rebuild and rerun the three-level window close tests"
+    detail: "C-0009-qpa-syntheticparent-no-transientparent.md §Workarounds"
+  - id: W-0008
+    title: "Replace the 4 glue files with the designated complete reference template (26+13 eager default-imports + objects API)"
+    targets: [C-0010]
+    status: adopted
+    verified:
+      date: 2026-07-23
+      env: "Qt 5.15.16 (515-generation libqohos 7/17) / HarmonyOS 6.0.0.29 MateBook Fold real device (qapp-recreate-test)"
+    retire_when: "Once the Qt source-tree template is updated in the same batch as libqohos (eager import list aligned), go back to the official template and drop the 4-file replacement"
+    detail: "C-0010-stale-template-ohos-bare-eval.md §Workarounds"
+  - id: W-0009
+    title: "main() constraint: QApplication must be the first Qt API call (don't touch QThreadData before it is constructed)"
+    targets: [C-0011]
+    status: proposed
+    retire_when: "Once the root cause is confirmed and permanently fixed (or classified as a usage constraint and formally documented), drop the temporary constraint and rerun the Debug build click test"
+    detail: "C-0011-the-mainthread-mismatch.md §Workarounds"
+  - id: W-0010
+    title: "Ship plugin .so files in the HAP lib directory (or statically link a fixed set); no runtime download-and-load"
+    targets: [C-0012]
+    status: adopted
+    retire_when: "Not expected to retire (wontfix: the loader specification is stable); if the platform opens up code loading from writable areas, switch back to runtime download"
+    detail: "C-0012-loader-rejects-writable-path.md §Workarounds"
+  - id: W-0011
+    title: "Add a Q_OS_OHOS branch for path lookup: QStandardPaths::writableLocation(AppDataLocation) instead of currentPath/applicationDirPath"
+    targets: [C-0013]
+    status: adopted
+    verified:
+      date: 2026-07-09
+      env: "Qt 5.15.16 / HarmonyOS 6.0 / HUAWEI MateBook 14 (FRequest commit 8a8ba95, verified on a real device)"
+    retire_when: "Not expected to retire (wontfix: the read-only bundle specification is stable); if the platform allows write semantics for the application directory, go back to the native QDir paths"
+    detail: "C-0013-sandbox-readonly-bundle-path.md §Workarounds"
+  - id: W-0012
+    title: "Remove the redundant resize: don't trigger resizeAsync when the size hasn't changed, avoiding cross-screen flicker"
+    targets: [C-0014]
+    status: proposed
+    verified:
+      date: 2026-06-05
+      env: "HUAWEI MateBook Fold dual-screen real device (controlled experiment: flicker disappears with resizeAsync blocked; a pure ArkTS repro reaches the same conclusion)"
+    retire_when: "Once the system guarantees atomic rendering of cross-screen move+resize (or offers an atomic geometry update API), remove the patch and rerun the cross-screen drag test"
+    detail: "C-0014-crossscreen-move-resize-conflict.md §Workarounds"
+  - id: W-0013
+    title: "Drop hvigor CLI packaging and deploy with DevEco Studio IDE Run instead"
+    targets: [C-0015]
+    status: adopted
+    verified:
+      date: 2026-08-06
+      env: "OHOS + Qt 5.15.16 + DevEco Studio IDE Run (per the source page: the IDE packaging flow works)"
+    retire_when: "Once the hvigor CLI packaging difference is identified and fixed (or the CLI offers configuration equivalent to IDE packaging), return to command-line packaging and rerun the startup test"
+    detail: "C-0015-hvigor-cli-ide-packaging-divergence.md §Workarounds"
+  - id: W-0014
+    title: "Write Chinese JSON to a UTF-8 temporary file and reference it with curl -d @file"
+    targets: [C-0017]
+    status: adopted
+    verified:
+      date: 2026-06-10
+      env: "Windows 10/11 + Git Bash (MSYS2) + curl 7.x/8.x (creating/editing PRs via the GitCode API in practice)"
+    retire_when: "Once the terminal environment reliably guarantees UTF-8 (chcp 65001 is stable in the Git Bash version in use, or a UTF-8-by-default terminal is used), inline Chinese with -d can be used again"
+    detail: "C-0017-curl-gbk-terminal-mojibake.md §Workarounds"
+  - id: W-0015
+    title: "On OHOS, disable mipmaps for alpha-PNG (RGBA8) entities (generateMipMaps:false + minificationFilter:Texture.Linear)"
+    targets: [C-0018]
+    status: adopted
+    verified:
+      date: 2026-07-14
+      env: "Qt 5.12.12 OHOS SDK / HUAWEI MateBook Fold real device / Mesa ZINK (planets-qml-ohos)"
+    retire_when: "Once Mesa ZINK fixes RGBA8 glGenerateMipmap (the vkCmdBlitImage path) and the fix arrives in the OHOS SDK in use, remove the diffuseGenerateMipMaps switch, restore the upstream mipmap behavior and rerun the verification"
+    detail: "C-0018-zink-rgba8-mipmap-black.md §Workarounds"
+
+tickets:
+  - id: T-0001
+    tracker: partner
+    number: ""
+    url: ""
+    tracks: [C-0004]
+    status: submitted
+    filed: 2026-06-09
+    fix_version: ""
+    notes: "Deliverable: ISSUE.md (root cause in Chinese and English) + patch + reproducible demo; awaiting classification by the system side (defect/limitation)"
+  - id: T-0002
+    tracker: qt-bug
+    number: QTBUG-146622
+    url: "https://bugreports.qt.io/browse/QTBUG-146622"
+    tracks: [C-0007]
+    status: submitted
+    filed: ""
+    fix_version: ""
+    notes: "Qt-side tracking of the XComponent SURFACE → ContentSlot migration (ticket number from the official platform limitations page)"
+  - id: T-0003
+    tracker: qt-bug
+    number: QTBUG-146619
+    url: "https://bugreports.qt.io/browse/QTBUG-146619"
+    tracks: [C-0008]
+    status: submitted
+    filed: ""
+    fix_version: ""
+    notes: "Records the QFile::setPermissions platform behavior (registered on the Qt side; not a fix request)"
+  - id: T-0004
+    tracker: qt-bug
+    number: QTBUG-146621
+    url: "https://bugreports.qt.io/browse/QTBUG-146621"
+    tracks: [C-0008]
+    status: submitted
+    filed: ""
+    fix_version: ""
+    notes: "Records the QFile::link platform behavior (registered on the Qt side; not a fix request)"
+  - id: T-0007
+    tracker: qt-bug
+    number: QTBUG-146624
+    url: "https://bugreports.qt.io/browse/QTBUG-146624"
+    tracks: [C-0012]
+    status: submitted
+    filed: ""
+    fix_version: ""
+    notes: "Qt-side record of platform behavior: the QPluginLoader/runtime .so dynamic plugin loading limitation (not a fix request); ticket number from the official platform limitations page"
+  - id: T-0008
+    tracker: qt-bug
+    number: ""
+    url: ""
+    tracks: [C-0001]
+    status: draft
+    filed: ""
+    fix_version: ""
+    notes: "qqmlplatform os() #ifdef chain lacks a Q_OS_OHOS branch; current evidence is source only, so first add a minimal repro demo, then file per procedural/qt-bug-report-generation.md"
+  - id: T-0009
+    tracker: qt-bug
+    number: ""
+    url: ""
+    tracks: [C-0002]
+    status: draft
+    filed: ""
+    fix_version: ""
+    notes: "QOhosInputContext::reset() Detach/Attach closes the IMF panel and commits polluted text; logs evidence is in hand, the ticket can be written directly"
+  - id: T-0010
+    tracker: qt-bug
+    number: ""
+    url: ""
+    tracks: [C-0005]
+    status: draft
+    filed: ""
+    fix_version: ""
+    notes: "Qt cmake injects -isystem sysroot/usr/include into every CXX command, so the musl headers shadow the clang builtins; logs evidence is in hand; blocker level"
+  - id: T-0011
+    tracker: qt-bug
+    number: ""
+    url: ""
+    tracks: [C-0009]
+    status: draft
+    filed: ""
+    fix_version: ""
+    notes: "OHOS QPA syntheticParent doesn't write back transientParent, so a QDialog without a parent is wrongly blocked by blockedByModalWindow; logs evidence is in hand"
+  - id: T-0012
+    tracker: qt-bug
+    number: ""
+    url: ""
+    tracks: [C-0010]
+    status: draft
+    filed: ""
+    fix_version: ""
+    notes: "The stale glue template lacks the @ohos.* eager imports, so libqohos's bare eval is rejected by ArkTS and onAcceptWant crashes; demo+logs evidence complete; critical"
+  - id: T-0013
+    tracker: upstream
+    number: ""
+    url: ""
+    tracks: [C-0018]
+    status: draft
+    filed: ""
+    fix_version: ""
+    notes: "Mesa ZINK implements glGenerateMipmap via vkCmdBlitImage, which fails for GL_RGBA8 and produces black textures; third-party graphics stack, to be filed on freedesktop GitLab; demo+logs evidence complete"

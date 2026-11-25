@@ -1,6 +1,6 @@
 ---
-updated: 2026-08-29
-total_problems: 36
+updated: 2026-11-18
+total_problems: 59
 description: >
   The error quick-reference index (rebuilt from the problem pages' frontmatter).
 ---
@@ -20,6 +20,20 @@ description: >
 | N/A | [build-fail-qtohosextras-camelcase-headers](build-fail-qtohosextras-camelcase-headers.md) | fatal error: 'QtOhosExtras/QOhosAppContext' file not found |
 | N/A | [runtime-curl-chinese-garbled](runtime-curl-chinese-garbled.md) | Chinese characters in a curl POST/PATCH request body show up garbled on the API side (e.g. Cyrillic characters like ֪ʶ⽻) |
 | errno=22 (EINVAL) | [runtime-fail-dlopen-writable-path](runtime-fail-dlopen-writable-path.md) | Loading a .so plugin at runtime fails, dlopen returns EINVAL, and the path is under /data/storage/el2/ |
+| N/A | [build-qt612-qos-harmony-macro](build-qt612-qos-harmony-macro.md) | The Qt 6.12 kit's platform macro is Q_OS_HARMONY, not Q_OS_OHOS; nice_target_sources marking files not_linux silently excludes every ohos implementation file, and the link blows up with a flood of undefined symbols |
+| N/A | [build-clang15-libcpp15-cpp20-gaps](build-clang15-libcpp15-cpp20-gaps.md) | 8 kinds of C++20 gaps in clang15/libc++15: lambda capture of structured bindings / P0960 parenthesized aggregate init / P0634 optional typename / stop_token / atomic_ref / ranges / shared_ptr <=> / variant QString |
+| N/A | [runtime-hap-missing-so-closure](runtime-hap-missing-so-closure.md) | The HAP dies 64 ms after launch with no cppcrash, jscrash TypeError handleAbilityStageOnCreate of undefined: libqohos's .so dependency closure is incomplete (libbz2/libz/libdav1d/libaom) + building aom from source / turning static dav1d into a .so |
+| N/A | [build-qt6-app-must-be-shared](build-qt6-app-must-be-shared.md) | The application must be SHARED (QAbility dlopens it, then dlsyms main); a static library/executable → exits right at startup or undefined reference to main; backends that reference application-layer classes can only stay OBJECT |
+| N/A | [build-qt6-no-undefined-symbols](build-qt6-no-undefined-symbols.md) | The toolchain forces -Wl,--no-undefined and --allow-shlib-undefined has no effect; unresolved symbols + GNU-hash-only objects → musl find_sym2 SIGSEGV |
+| N/A | [build-qt6-host-codegen-and-pango](build-qt6-host-codegen-and-pango.md) | configure reports Qt6CoreTools_DIR NOTFOUND / Qt6::moc not found; the host rcc returns 0 but writes no file; the whole pango stack fails to build on HarmonyOS |
+| N/A | [build-qt612-ohos-plugin-rebuild](build-qt612-ohos-plugin-rebuild.md) | Five pitfalls rebuilding the Qt 6.12 ohos platform plugin: qt-cmake refuses to build qtbase itself → cmake BUILD_SUBMODULES; missing NODE_ADDON_API_ROOT; FIND_ROOT_PATH_MODE_INCLUDE=ONLY re-rooting breaks find → pre-fill cache variables; missing OHOS_SDK_ROOT → QtPriHelpers TO_CMAKE_PATH error; the QT_FEATURE_fontconfig condition scope can't see Fontconfig_FOUND → patch gui CMakeLists; the output must replace the kit's copy (deploy copies from the kit) |
+| N/A | [runtime-ohos-ime-reset-detach](runtime-ohos-ime-reset-detach.md) | Qt ohos plugin's QOhosInputContext::reset() does Detach/Attach, which collapses the keyboard mid pinyin composition + pollutes the text with pinyin letters; fix = only finalize the preedit; includes the IMF probe troubleshooting method (IMEPROBE) and a three-way check classifying "Chinese search returns no results" (the server doesn't index short Chinese words; not a porting bug) |
+| N/A | [build-fail-configure-exec-bit-crlf](build-fail-configure-exec-bit-crlf.md) | On Linux/macOS, sh configure reports Permission denied / bad interpreter ^M: the open-source mirror's initial import lost the exec bits + CRLF; src-clone now defaults to the POSIX build branch and restores exec bits automatically (QOH037) |
+| N/A | [build-fail-python-not-found](build-fail-python-not-found.md) | qtdeclarative reports `sh: 1: python: not found` / Building QtQml requires Python: Linux has no python alias; the CLI has a built-in .qtsdk/pyshim automatic shim (QOH038) |
+| N/A | [build-fail-qtdbus-deprecated-copy](build-fail-qtdbus-deprecated-copy.md) | qdbusreply.h -Wdeprecated-copy-style warnings are stopped by -Werror: HarmonyOS has no DBus, so configure must use -no-dbus (built into the CLI, QOH039) |
+| N/A | [build-fail-stale-build-state](build-fail-stale-build-state.md) | After switching to -no-dbus / changing the SDK, the ibus plugin still builds and reports unknown type name QDBusArgument: stale module .pri leftovers make qtHaveModule misjudge; the CLI now has a configure fingerprint guard that cleans the directory automatically (QOH040) |
+| N/A | [build-fail-ohos-sdk-api-too-old](build-fail-ohos-sdk-api-too-old.md) | qarkui/input.cpp reports no member named OH_ArkUI_PointerEvent_GetGlobalDisplayX and similar: the SDK API version is too old; OpenHarmony >= 6.1 (API 23) is required (QOH041) |
+| N/A | [runtime-harmonydeployqt-deploy-gaps](runtime-harmonydeployqt-deploy-gaps.md) | A chain of on-device dlopen failures in a signed HAP: the QPA plugin's fontconfig chain isn't deployed, a bottle without a SONAME truncates dependency resolution, libz is outside the namespace, device system libraries sit in non-standard paths, bottles lack unversioned names (QOH042, a 5-item checklist) |
 
 ## By symptom
 
@@ -36,6 +50,9 @@ description: >
 | `"bracket depth exceeded" when compiling a source file that uses magic_enum` | [build-fail-magic-enum-bracket-depth](build-fail-magic-enum-bracket-depth.md) | "bracket depth exceeded" when compiling a source file that uses magic_enum |
 | `A Qt OHOS app whose entry shim uses extern "C" main and which has .qrc resources` | [build-fail-qinitresource-extern-c-main](build-fail-qinitresource-extern-c-main.md) | A Qt OHOS app whose entry shim uses extern "C" main and which has .qrc resources fails to link with undefined symbol: qInitResources_<name> |
 | `unable to find library -licui18n / ICU=no / ures` | [build-fail-qt515-icu-detection](build-fail-qt515-icu-detection.md) | unable to find library -licui18n / ICU=no / ures.h not found / UCNV_FROM_U_CALLBACK_SUBSTITUTE undeclared |
+| `dlopen failed: library "libapp.so" not found` / `undefined reference to main` | [build-qt6-app-must-be-shared](build-qt6-app-must-be-shared.md) | The application target was built as a static library or executable; QAbility's dlopen+dlsym(main) can't get the entry point |
+| `ld.lld: error: undefined symbol: __at_fini` / `ld-musl-aarch64.so.1(find_sym2+568) SIGSEGV` | [build-qt6-no-undefined-symbols](build-qt6-no-undefined-symbols.md) | Unresolved symbols: stopped by --no-undefined at link time, or crashing inside the dynamic linker at runtime |
+| `Qt6CoreTools_DIR ... NOTFOUND` / `Qt6::moc not found` / rcc returns 0 but writes no file | [build-qt6-host-codegen-and-pango](build-qt6-host-codegen-and-pango.md) | Cross-compiling without QT_HOST_PATH; the host rcc can't write the target file |
 | `no member named 'nullptr_t' in the global namesp` | [build-fail-qt6-libcpp-musl-isystem](build-fail-qt6-libcpp-musl-isystem.md) | no member named 'nullptr_t' in the global namespace; use of undeclared identifier '__promote'; call to 'hypot' is ambiguous (libcxx-ohos c++/v1/cstddef, cmath; the injected -isystem sysroot/usr/include makes musl shadow the clang builtins) |
 | `fatal error: 'QtOhosExtras/QOhosAppContext' file` | [build-fail-qtohosextras-camelcase-headers](build-fail-qtohosextras-camelcase-headers.md) | fatal error: 'QtOhosExtras/QOhosAppContext' file not found |
 | `spawn java ENOENT; BuildNativeWithCmake finished` | [build-hvigor-native-skip](build-hvigor-native-skip.md) | spawn java ENOENT; BuildNativeWithCmake finished after 1ms with no .so artifact (DEVECO_SDK_HOME missing) |
@@ -82,7 +99,16 @@ description: >
 | ⬜ blocker | [build-fail-qt6-libcpp-musl-isystem](build-fail-qt6-libcpp-musl-isystem.md) | no member named 'nullptr_t' in the global namespace; use of undeclared identifier '__promote'; call to 'hypot' is ambiguous (libcxx-ohos c++/v1/cstddef, cmath; the injected -isystem sysroot/usr/include makes musl shadow the clang builtins) |
 | 🟡 medium | [build-fail-qtohosextras-camelcase-headers](build-fail-qtohosextras-camelcase-headers.md) | fatal error: 'QtOhosExtras/QOhosAppContext' file not found |
 | 🟠 high | [build-hvigor-native-skip](build-hvigor-native-skip.md) | spawn java ENOENT; BuildNativeWithCmake finished after 1ms with no .so artifact (DEVECO_SDK_HOME missing) |
+| 🔴 critical | [build-app-layer-out-of-tree-prerequisites](build-app-layer-out-of-tree-prerequisites.md) | A large Qt desktop application's app layer can't be cross-compiled directly: 5 implicit prerequisites (precompiled headers / C++20 / API credentials / two code generators / third-party includes) |
+| 🟡 medium | [build-cmake-dedup-include-option](build-cmake-dedup-include-option.md) | CMake option de-duplication merges two -include headers into "-include A B", and clang treats B as an input file → cannot specify -o when generating multiple output files |
+| 🟡 medium | [build-uninitialized-submodule-same-name-header](build-uninitialized-submodule-same-name-header.md) | With the submodule uninitialized, an angle-bracket include resolves to the file itself and is swallowed by pragma once → the type doesn't exist |
+| 🟠 high | [platform-guard-needs-both-ohos-macros](platform-guard-needs-both-ohos-macros.md) | A platform guard written with only Q_OS_OHOS; the Qt 6.x kit only defines Q_OS_HARMONY → the branch silently falls through to the Linux implementation |
+| 🟠 high | [platform-layer-two-dispatch-modes](platform-layer-two-dispatch-modes.md) | The platform layer has two dispatch mechanisms (#ifdef inside headers / the build choosing a .cpp by path); changing only the #ifdef misses half of it |
+| 🟡 medium | [build-local-openharmony-signing-chain](build-local-openharmony-signing-chain.md) | The five-step chain, and its three failure points, for self-signing a HAP with the OpenHarmony local root certificate when you have no developer certificate |
 | 🟡 medium | [build-missing-qt5uitools-ohos](build-missing-qt5uitools-ohos.md) | CMake Error: find_package(Qt5 COMPONENTS Widgets UiTools OpenGL QUIET) fails (the OHOS Qt5 SDK lacks the Qt5UiTools module) |
+| 🟠 high | [build-qt6-app-must-be-shared](build-qt6-app-must-be-shared.md) | The application must be SHARED: QAbility dlopens it and then calls main; a static library/executable exits right at startup |
+| 🟠 high | [build-qt6-no-undefined-symbols](build-qt6-no-undefined-symbols.md) | --no-undefined forces symbol closure; unresolved symbols + GNU-hash-only → find_sym2 SIGSEGV |
+| 🟠 high | [build-qt6-host-codegen-and-pango](build-qt6-host-codegen-and-pango.md) | Host moc/rcc/uic and QT_HOST_PATH; rcc fails silently; pango's long dependency chain |
 
 ### caveat
 
@@ -106,6 +132,9 @@ description: >
 
 | Severity | Problem file | Summary |
 |:--------:|--------------|---------|
+| 🟠 high | [runtime-appspawn-proc-self-exe](runtime-appspawn-proc-self-exe.md) | The application exits right at startup with no logs: modern appspawn re-execs itself, so /proc/self/exe is not an ELF |
+| 🟠 high | [runtime-tray-must-exist-noop](runtime-tray-must-exist-noop.md) | HarmonyOS has no tray API, but Platform::Tray is a member variable: you need a complete no-op surface (14 methods + HasMonochromeSetting) rather than deleting the class |
+| 🟠 high | [runtime-icons-missing-libqico](runtime-icons-missing-libqico.md) | The application icon (.ico) doesn't show: the HAP lacks imageformats/libqico.so, so the Qt runtime has no ICO decoder plugin |
 | 🟠 high | [ohos-mainthread-mismatch](ohos-mainthread-mismatch.md) | Q_ASSERT(receiver->d_func()->threadData.loadAcquire()->thread.loadRelaxed() == mainThread()) in QCoreApplicationPrivate::sendThroughApplicationEventFilters (triggered by a mouse click in a debug build) |
 | 🟠 high | [render-black-rgba8-zink-mipmap](render-black-rgba8-zink-mipmap.md) | Qt3D entity textures render pure black (the cloud shell / Saturn's rings / Uranus's rings) while lighting and shadows are correct; entities using RGB8 JPGs under the same effect look fine; the only distinguishing variable is the texture format, RGBA8 (alpha) vs RGB8 (JPG). |
 | 🟠 high | [runtime-blocked-by-modal-window-no-parent](runtime-blocked-by-modal-window-no-parent.md) | A QDialog won't close and won't scroll (both at once), especially in the matplotlib three-level window scenario |

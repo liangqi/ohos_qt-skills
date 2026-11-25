@@ -7,7 +7,7 @@ created: 2026-08-01
 updated: 2026-08-01
 status: active
 audience: public
-refs: [procedural-qt-bug-report-generation, procedural-framework-issue-analysis]
+refs: [fault-C-0010, procedural-qt-bug-report-generation, procedural-framework-issue-analysis]
 summary: >
   A worked sample (form A): a Qt 5.15 HarmonyOS app crashes when onAcceptWant fires because a bare eval of @ohos.deviceInfo is rejected by the ArkTS runtime;
   triage attributes it to the Qt framework (a stale glue template that never eager-imports the module to register it), and it has been fixed on the Qt side.
@@ -25,7 +25,7 @@ summary: >
 |------|---------|
 | Report number | To be assigned |
 | Report date | 2026-07-23 |
-| Reporter | lzh |
+| Reporter | <REPORTER> |
 | Source | Internal verification |
 | HarmonyOS SDK version | HarmonyOS 6.0.0.29 (for the API level see the reproduction environment table) |
 | Device | HUAWEI MateBook Fold (HPR-W72) / system version 6.0.0.29 / physical device |
@@ -218,7 +218,7 @@ Attribution = **the Qt framework** (not a system problem). The reasoning: ① th
 
 ## Workaround (A+B, optional)
 
-A Qt-side workaround (already applied and verified on a physical device): replace four files with the canonical complete versions from qView-ohos — `OhosExportModules.ts` (26 `@ohos.*` + 13 `@kit.*` eager default imports), `QtUtils.ets` (`getModulesMapForQt()` calls `getOhosExportModules()` to get the objects directly — the objects API), and `QAbilityStage.ets` / `QChildProcess.ets` (`getModulesFactoriesMapForQt()` → `getModulesMapForQt()`, renaming the two call sites; keep QAbilityStage's resourceDir). Then rebuild `build_project(entry@default, debug)` → install → trigger onAcceptWant → no crash and QtWatchdog keeps running = the fix works.
+A Qt-side workaround (already applied and verified on a physical device): replace four files with the canonical complete reference template — `OhosExportModules.ts` (26 `@ohos.*` + 13 `@kit.*` eager default imports), `QtUtils.ets` (`getModulesMapForQt()` calls `getOhosExportModules()` to get the objects directly — the objects API), and `QAbilityStage.ets` / `QChildProcess.ets` (`getModulesFactoriesMapForQt()` → `getModulesMapForQt()`, renaming the two call sites; keep QAbilityStage's resourceDir). Then rebuild `build_project(entry@default, debug)` → install → trigger onAcceptWant → no crash and QtWatchdog keeps running = the fix works.
 
 Side effects and risks: the `@ohos.*` / `@kit.*` list must be derived from the modules this libqohos actually evals, by deduplicating the roots from `strings libqohos.so | grep -E "^@ohos\.|^@kit\."`; after the libqohos generation changes (a rebuild), the list has to be rechecked, or evaluating a newly added module will crash again.
 

@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# pre-push hook — lightweight leak gate (second line of defense on the client side)
+# Install: cp _scripts/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+#
+# Checks only the most critical subset of PRIVATE_PATTERNS (speed first).
+# The full 25-check gate runs on the PR bot side.
+# Bypassing with --no-verify is forbidden.
+
+set -uo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# Fast leak patterns (the most important ones)
+LEAK_PATTERNS=(
+  'C:[\\/]Users[\\/][A-Za-z0-9_.-]+'
+  '/home/[A-Za-z0-9_.-]+/'
+  'codereview\.qtcompany\.cn'
+  'my\.feishu\.cn/'
+  '于宗洋|刘子豪|王志铧|郭嘉伟'  # private personal names (functional: matches Chinese text)
+  'toTqtc|toOhos|toCustomers|fromCustomers'
+  'PRIVATE-TOKEN|oauth2:[A-Za-z0-9]'
+)
+
+ERRORS=0
+
+# Get the list of files about to be pushed
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$local_sha" = "0000000000000000000000000000000000000000" ]; then
+    continue  # delete
+  fi
+
+  if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+    # new branch: check all commits
+    files=$(git diff --name-only --diff-filter=ACMR "$local_sha" 2>/dev/null || git ls-tree -r --name-only "$local_sha")
+  else
+    files=$(git diff --name-only --diff-filter=ACMR "$remote_sha" "$local_sha")
+  fi
+
+  for f in $files; do
+    # Only check .md and .yaml files
+    case "$f" in
+      *.md|*.yaml|*.yml) :;;
+      *) continue;;
+    esac
+    # error_message in problems/ is allowed to contain paths
+    case "$f" in
+      problems/*) continue;;
+    esac
+
+    filepath="$REPO_ROOT/$f"
+    [ -f "$filepath" ] || continue
+
+    for pat in "${LEAK_PATTERNS[@]}"; do
+      if grep -qE "$pat" "$filepath" 2>/dev/null; then
+        printf 'BLOCKED: %s matches private pattern: %s\n' "$f" "$pat" >&2
+        ERRORS=$((ERRORS + 1))
+      fi
+    done
+  done
+done
+
+if [ "$ERRORS" -gt 0 ]; then
+  printf '\nPush BLOCKED: %d private content leak(s) detected.\n' "$ERRORS" >&2
+  printf 'Fix the issues above, or if this is a false positive, contact an editor.\n' >&2
+  printf 'Do NOT use --no-verify to bypass this check.\n' >&2
+  exit 1
+fi
+
+exit 0

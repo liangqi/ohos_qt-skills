@@ -7,7 +7,7 @@ created: 2026-06-09
 updated: 2026-07-13
 status: active
 audience: public
-refs: [semantic-qt-harmonyos-lifecycle]
+refs: [fault-C-0004, semantic-qt-harmonyos-lifecycle]
 summary: >
   Exit deadlock retrospective: <STAKEHOLDER> (<PRODUCT>) hangs for ~2 minutes after qApp->quit().
   Root cause: HarmonyOS doesn't process N-API ThreadSafeFunction callbacks during the Ability destruction phase,

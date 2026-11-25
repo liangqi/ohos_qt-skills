@@ -32,6 +32,23 @@ audience: public
 
 devecocli wraps the DevEco toolchain behind one entry point, unifying signature resolution, artifact location, and error attribution. Calling hdc/hvigor/ohpm directly is still a valid low-level capability, but should be limited to actions the wrapper doesn't cover, maintaining the wrapper, or constructing a minimal diagnostic reproduction. This page describes this knowledge ecosystem's tool-selection policy — don't mistake it for a HarmonyOS platform invariant.
 
+## Tool availability pre-check (mandatory before starting)
+
+Before running any devecocli-related action (build / run / signature / log / emulator), locate and verify devecocli using the table below; **if you can't find it, stop and report to the user what's missing and the install command — never carry on with a guessed path**.
+
+| Order | Check point | How to check |
+|---|---|---|
+| ① | The `DEVECO_CLI` variable in `ENV.local.md` (the absolute path resolved and written by kb-init) | Read the value from the file |
+| ② | Directly available on PATH | PowerShell: `Get-Command devecocli`; bash: `command -v devecocli` |
+| ③ | The npm global install directory | `devecocli{,.cmd,.ps1}` under `npm prefix -g` (Windows default `%APPDATA%\npm`) |
+| ④ | Bundled with DevEco Studio (only some versions) | `<DEVECO_PATH>/tools/devecocli{.bat}` (Windows) / `<DEVECO_PATH>/Contents/tools/devecocli` (macOS) |
+
+**Verify it works**: run `--version` with the resolved path; it only counts as available if it prints a version number. Once found, record the absolute path in `ENV.local.md` as `DEVECO_CLI` (the `--deveco-cli` argument of kb-init Step 5) and reference it directly from then on.
+
+**Source facts**: `devecocli` is provided by the npm package `@deveco/deveco-cli` (source: openharmony-sig/deveco-cli); the bare package name `deveco-cli` **doesn't exist**, and `@deveco-test/deveco-cli` is the test channel — always install with `npm i -g @deveco/deveco-cli` (Node.js ≥ 18). Don't mistake `devecostudio` (the GUI launcher) for it.
+
+**When the pre-check fails**: report "devecocli is unavailable" to the user with the install command `npm i -g @deveco/deveco-cli`, and wait for the user to deal with it before continuing; don't silently carry on with a similar command such as `devecostudio` or `hvigorw` as a substitute.
+
 ## How to apply:
 
 When the workspace has a `build-profile.json5`/`oh-package.json5`, pick a devecocli command from the "capability → scenario mapping table" first. If the wrapper has no corresponding capability, or you're diagnosing the wrapper layer, use a minimal low-level call and note the reason and the devecocli verification you returned to in your operation log. After changing `.ets`/`.ts`/`.cpp` files, run `deveco-mcp check` when the current MCP server is installed and supports them; use `deveco-mcp restart` if the LSP hangs. See [[deveco-mcp-capabilities]].
@@ -73,7 +90,7 @@ When the workspace has a `build-profile.json5`/`oh-package.json5`, pick a deveco
 
 - **From a fresh checkout to the emulator**: `devecocli build` → `devecocli emulator list` → `devecocli emulator start "Name"` → `devecocli run`
 - **Diagnosing a crash**: `devecocli log --crash --bundle-name <bundle>`
-- **First-time signing (entirely from the CLI, no DevEco Studio IDE needed)**: `devecocli auth login` (in the user's own terminal) → `devecocli signature generate --product default` (generates p12/csr/cer/profile, writes `signingConfigs`, and links `product.signingConfig`, with the material stored in `~/.ohos/config/`) → `devecocli build` → `devecocli run`. Equivalent to ticking "Automatically generate signature" in the GUI, but doable in an agent/script with no GUI. Independently verified twice: NeoHtop (first test 2026-08-03) and open-pencil (re-test 2026-08-06); framework-specific pitfalls (such as Tauri's daemon env caching / `TAURI_OHOS_SKIP_DEVECO_SCRIPT`) are on each domain KB's deployment page.
+- **First-time signing (entirely from the CLI, no DevEco Studio IDE needed)**: `devecocli auth login` (in the user's own terminal) → `devecocli signature generate --product default` (generates p12/csr/cer/profile, writes `signingConfigs`, and links `product.signingConfig`, with the material stored in `~/.ohos/config/`) → `devecocli build` → `devecocli run`. Equivalent to ticking "Automatically generate signature" in the GUI, but doable in an agent/script with no GUI. Verified by two independent projects (first test 2026-08-03 / re-test 2026-08-06); framework-specific pitfalls (such as Tauri's daemon env caching / `TAURI_OHOS_SKIP_DEVECO_SCRIPT`) are on each domain KB's deployment page.
 - **Iterating on UI properties**: `devecocli run` (first time) → change `.fontColor` → write `.hvigor/changes.txt` → `devecocli run --hotreload-apply changes.txt` (the UI updates immediately without restarting)
 
 ## Boundaries (what devecocli doesn't replace)
@@ -119,7 +136,7 @@ If the logs say `hvigorw not found`, `java not found`, or "`hvigorw` / `java` no
 
 ## Prerequisites
 
-- `devecocli` on PATH: `npm i -g @deveco-test/deveco-cli`
+- `devecocli` is available (see "Tool availability pre-check" above for locating and verifying it): `npm i -g @deveco/deveco-cli`
 - Install the skill into your AI agent: `devecocli init --skill` (or `--mcp` to configure the deveco-mcp server)
 - DevEco Studio ≥ 6.1.0 (`--apply` needs ≥ 6.1.1 for hvigor's `assembleDevHqf`)
 - Under zsh, the version numbers for `check compat` must be quoted

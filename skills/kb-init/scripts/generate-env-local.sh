@@ -4,12 +4,16 @@
 # Usage: bash skills/kb-init/scripts/generate-env-local.sh [OPTIONS]
 # Options:
 #   --deveco-path=PATH         DevEco Studio path
+#   --deveco-cli=PATH          devecocli executable path (as resolved from PATH / npm global / the DevEco bundle)
 #   --qt5-12-src=PATH          Qt 5.12 source path
 #   --qt5-15-src=PATH          Qt 5.15 source path
 #   --qt-build-root=PATH       Qt build output root directory
 #   --qt5-12-ohos-sdk=PATH     Qt 5.12 OHOS SDK path
 #   --qt5-15-ohos-sdk=PATH     Qt 5.15 OHOS SDK path
+#   --qt6-ohos-sdk=PATH        Qt 6 OHOS SDK path (prebuilt installer, e.g. 6.12.0/harmonyos_arm64_v8a)
+#   --qt6-host-sdk=PATH        Qt 6 host SDK path (e.g. 6.12.0/mingw_64)
 #   --ohos-sdk-native=PATH     OHOS SDK native path
+#   --my-name=NAME             contributor name (used by kb-sediment.sh when contributing knowledge; written as MY_NAME=)
 # Output: writes ENV.local.md into the knowledge base root
 # Exit codes: 0=success
 
@@ -20,24 +24,32 @@ KB_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 OUTPUT="$KB_ROOT/ENV.local.md"
 
 DEVECO_PATH=""
+DEVECO_CLI=""
 QT5_12_SRC=""
 QT5_15_SRC=""
 QT_BUILD_ROOT=""
 QT5_12_OHOS_SDK=""
 QT5_15_OHOS_SDK=""
+QT6_OHOS_SDK=""
+QT6_HOST_SDK=""
 OHOS_SDK_NATIVE=""
 OHOS_TEMPLATE_SRC=""
+MY_NAME=""
 
 for arg in "$@"; do
   case "$arg" in
     --deveco-path=*) DEVECO_PATH="${arg#*=}";;
+    --deveco-cli=*) DEVECO_CLI="${arg#*=}";;
     --qt5-12-src=*) QT5_12_SRC="${arg#*=}";;
     --qt5-15-src=*) QT5_15_SRC="${arg#*=}";;
     --qt-build-root=*) QT_BUILD_ROOT="${arg#*=}";;
     --qt5-12-ohos-sdk=*) QT5_12_OHOS_SDK="${arg#*=}";;
     --qt5-15-ohos-sdk=*) QT5_15_OHOS_SDK="${arg#*=}";;
+    --qt6-ohos-sdk=*) QT6_OHOS_SDK="${arg#*=}";;
+    --qt6-host-sdk=*) QT6_HOST_SDK="${arg#*=}";;
     --ohos-sdk-native=*) OHOS_SDK_NATIVE="${arg#*=}";;
     --ohos-template-src=*) OHOS_TEMPLATE_SRC="${arg#*=}";;
+    --my-name=*) MY_NAME="${arg#*=}";;
     *) echo "Unknown option: $arg" >&2; exit 2;;
   esac
 done
@@ -61,6 +73,7 @@ echo "" >> "$OUTPUT"
 echo "| Variable | Your value |" >> "$OUTPUT"
 echo "|----------|------------|" >> "$OUTPUT"
 [ -n "$DEVECO_PATH" ] && echo "| \`DEVECO_PATH\` | \`$DEVECO_PATH\` |" >> "$OUTPUT"
+[ -n "$DEVECO_CLI" ] && echo "| \`DEVECO_CLI\` | \`$DEVECO_CLI\` |" >> "$OUTPUT"
 [ -n "$OHOS_SDK_NATIVE" ] && echo "| \`OHOS_SDK_NATIVE\` | \`$OHOS_SDK_NATIVE\` |" >> "$OUTPUT"
 echo "" >> "$OUTPUT"
 
@@ -111,6 +124,34 @@ echo "|----------|------------|" >> "$OUTPUT"
 [ -n "$QT_BUILD_ROOT" ] && echo "| \`QT_BUILD_ROOT\` | \`$QT_BUILD_ROOT\` |" >> "$OUTPUT"
 [ -n "$QT5_12_OHOS_SDK" ] && echo "| \`QT5_12_OHOS_SDK\` | \`$QT5_12_OHOS_SDK\` |" >> "$OUTPUT"
 [ -n "$QT5_15_OHOS_SDK" ] && echo "| \`QT5_15_OHOS_SDK\` | \`$QT5_15_OHOS_SDK\` |" >> "$OUTPUT"
+[ -n "$QT6_OHOS_SDK" ] && echo "| \`QT6_OHOS_SDK\` | \`$QT6_OHOS_SDK\` |" >> "$OUTPUT"
+[ -n "$QT6_HOST_SDK" ] && echo "| \`QT6_HOST_SDK\` | \`$QT6_HOST_SDK\` |" >> "$OUTPUT"
 echo "" >> "$OUTPUT"
+
+# Qt6 template (shipped with the prebuilt installer)
+if [ -n "$QT6_OHOS_SDK" ]; then
+  _qt6_tpl="$QT6_OHOS_SDK/src/harmonyos/templates"
+  if [ -d "$_qt6_tpl" ] && [ ! -n "$OHOS_TEMPLATE_SRC" ]; then
+    OHOS_TEMPLATE_SRC="$_qt6_tpl"
+  fi
+fi
+if [ -n "$OHOS_TEMPLATE_SRC" ]; then
+  echo "## Templates" >> "$OUTPUT"
+  echo "" >> "$OUTPUT"
+  echo "| Variable | Your value |" >> "$OUTPUT"
+  echo "|----------|------------|" >> "$OUTPUT"
+  echo "| \`OHOS_TEMPLATE_SRC\` | \`$OHOS_TEMPLATE_SRC\` |" >> "$OUTPUT"
+  echo "" >> "$OUTPUT"
+fi
+
+# Contributor name (read by kb-sediment.sh; a plain line, not a table)
+if [ -n "$MY_NAME" ]; then
+  echo "## Contribution identity" >> "$OUTPUT"
+  echo "" >> "$OUTPUT"
+  echo '```' >> "$OUTPUT"
+  echo "MY_NAME=$MY_NAME" >> "$OUTPUT"
+  echo '```' >> "$OUTPUT"
+  echo "" >> "$OUTPUT"
+fi
 
 echo "ENV.local.md generated: $OUTPUT"

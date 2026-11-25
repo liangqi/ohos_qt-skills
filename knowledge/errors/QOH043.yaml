@@ -1,0 +1,26 @@
+id: QOH043
+name: platform_guard_single_macro
+stage: [build]
+severity: high
+patterns:
+  - "fatal error: 'gio/gio.h' file not found"
+  - "fatal error: 'xcb/xcb.h' file not found"
+  - "fatal error: 'glibmm.h' file not found"
+  - "re:undefined symbol: (Platform|Ui|base)::[A-Za-z_]+\("
+  - "re:unknown platform type"
+root_causes:
+  - platform dispatch guarded only by Q_OS_OHOS while Qt 6.x kits define Q_OS_HARMONY only
+  - the branch therefore falls through to the Linux implementation (glib/D-Bus/X11)
+  - manual -DQ_OS_OHOS cannot help - Q_OS_WIN sits first in the dispatch chain
+diagnosis:
+  - run tools/ohos-platform-audit.py on SourceFiles/platform and read the header-dispatch table
+  - probe the include tree with clang++ --target=... -H (a probe without --target shows the host triple)
+solutions:
+  - write "#if defined Q_OS_OHOS || defined Q_OS_HARMONY" in every dispatch chain
+  - remove -DQ_OS_OHOS from the build script; the kit fact must come from qsystemdetection.h
+  - for source-dispatch files add an ohos/ implementation instead of editing the header
+refs:
+  problems: [problems/platform-guard-needs-both-ohos-macros.md]
+  kb:
+    - semantic/qt-harmonyos-golden-rules.md
+    - semantic/qt-harmonyos-porting-workflow.md

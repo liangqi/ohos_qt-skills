@@ -21,7 +21,7 @@ symptoms: "Loading a .so plugin at runtime fails, dlopen returns EINVAL, and the
 
 # ====== Problem details ======
 environment: "Qt 5.12/5.15 for HarmonyOS, real device"
-refs: [semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-third-party-libs, semantic-qt-harmonyos-golden-rules]
+refs: [fault-C-0012, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-third-party-libs, semantic-qt-harmonyos-golden-rules]
 related_problems: [problem-runtime-qpa-plugin-not-found]
 ---
 

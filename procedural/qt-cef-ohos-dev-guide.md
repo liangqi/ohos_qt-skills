@@ -111,7 +111,7 @@ A CEF component package = **the CEF engine layer**, de-versioned, independent of
 | `cmake/` | `FindCEF.cmake` + `cef_macros` + `cef_variables` (the `find_package(CEF)` pattern) |
 | The OHOS adapter `.so` | The CEF↔OHOS adaptation bridge (its name varies with the CEF component version, see §5.2) |
 | `tests/cefsimple` (optional) | A reference example |
-| `tools/kb-cef-graft.py` + `tools/kb-cef-graft.config.example.json` (bundled) | The grafting script + its config: grafts CEF onto a Qt OHOS template project (§2.3 one-command grafting; `--run` does signing + install + launch + a crash check; it lives under the external knowledge base's `tools/` and is renamed to `tools/graft_cef.py` when the CEF component package is stripped) |
+| `tools/kb-cef-graft.py` + `tools/kb-cef-graft.config.example.json` | The grafting script + its config: grafts CEF onto a Qt OHOS template project (§2.3 one-command grafting; `--run` does signing + install + launch + a crash check) — shipped in this repo; renamed to `tools/graft_cef.py` when packed into the CEF component package |
 
 > What **de-versioned** means: the version is labelled in the **package/directory name** (e.g. `cef-component-ohos-cef114/`) while the **contents are a version-neutral engine layer** — no Qt, application or glue code mixed in. The integration method (`find_package(CEF)` + `CEF_ROOT`) is the same across versions. Whichever version you download, you use that version's API (by reading its `include/`).
 
@@ -136,9 +136,9 @@ cp -r include cmake libcef_dll $PKG/                         # the API + cmake +
 cp -r tests/cefsimple $PKG/                                   # the reference example (optional)
 # The prebuilt engine (from the build output or from a prebuilt binary distribution):
 cp <libcef.so + the OHOS adapter .so + the dependency .so files (icu/freetype/fontconfig/expat/brotli/jpeg/png)> $PKG/libs/arm64-v8a/
-# 4. Bundle the grafting tool (kb-cef-graft.py, shipped with the component package; the maintainer takes it from the KB repo's _scripts/)
+# 4. Bundle the grafting tool (this repo's tools/kb-cef-graft.py; renamed to graft_cef.py when packed into the component package)
 mkdir -p $PKG/tools
-cp <the KB repo>/_scripts/kb-cef-graft.py $PKG/tools/graft_cef.py
+cp <this repo>/tools/kb-cef-graft.py $PKG/tools/graft_cef.py
 # → $PKG/ is now the "de-versioned CEF component package": the version is in the directory name and the contents are a version-neutral engine layer + the bundled grafting tool
 ```
 
@@ -154,7 +154,7 @@ cp <the KB repo>/_scripts/kb-cef-graft.py $PKG/tools/graft_cef.py
 
 - **Option A (recommended, maintainer-distributed)**: download `cef-component-ohos-<ver>/` from the maintainer's location → extract it → point `CEF_ROOT` at it.
   - Download URL: `<the CEF component package download URL provided by the maintainer (fill this in before release)>`
-  - **One-command grafting**: use the grafting script to graft CEF onto your Qt OHOS template project (the right way round: graft onto the template, don't modify a CEF demo). The script is in the **external knowledge base at `tools/kb-cef-graft.py`** (renamed to `tools/graft_cef.py` when the CEF component package is stripped) with the config `tools/kb-cef-graft.config.example.json`:
+  - **One-command grafting**: use the grafting script to graft CEF onto your Qt OHOS template project (the right way round: graft onto the template, don't modify a CEF demo). The script is in this repo at `tools/kb-cef-graft.py` (renamed to `tools/graft_cef.py` when packed into the CEF component package) with the config `tools/kb-cef-graft.config.example.json`:
     ```bash
     # 1. Copy the config and edit the values (deveco/device/qt_libs etc.; see the _comment fields)
     cp tools/kb-cef-graft.config.example.json .config.json  # edit the values inside

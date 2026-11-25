@@ -7,7 +7,7 @@ created: 2026-06-05
 updated: 2026-06-05
 status: active
 audience: public
-refs: [semantic-qt-harmonyos-window-model]
+refs: [fault-C-0014, semantic-qt-harmonyos-window-model]
 summary: >
   Analysis of the ToolWindow cross-screen flicker system issue: moveWindowToGlobalDisplay conflicts with resizeAsync during cross-screen dragging,
   screenIdChanged only fires when the drag ends, and Qt traced the full call chain to the root cause and attributed it to the HarmonyOS system interface.

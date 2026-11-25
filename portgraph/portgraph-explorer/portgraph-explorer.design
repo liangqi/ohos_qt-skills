@@ -1,0 +1,42 @@
+{
+  "data": [
+    {
+      "id": "page-index",
+      "title": "HarmonyOS Portability Graph",
+      "type": "page",
+      "version": 2,
+      "createdAt": 1725762160000,
+      "canvasData": {
+        "x": 0,
+        "y": 0,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-491ed0fb",
+          "measuredAt": 1789200873489
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/index.html",
+        "interactions": []
+      }
+    }
+  ],
+  "config": {
+    "autoLayout": true,
+    "deviceType": "desktop",
+    "projectName": "HarmonyOS Portability Graph",
+    "designLibrary": {
+      "name": "Apple",
+      "id": "dl_builtin_apple",
+      "version": "",
+      "scope": "built-in-global",
+      "path": "~/.trae-cn\\design_libraries\\dl_builtin_apple",
+      "versionSource": "metadata.json"
+    },
+    "visualEditorEnabled": true,
+    "showEdge": true
+  }
+}

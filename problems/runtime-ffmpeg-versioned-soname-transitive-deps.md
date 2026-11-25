@@ -18,7 +18,7 @@ leader_summary: >
   Captured a complete transitive-dependency deployment approach for prebuilt FFmpeg bottles on OHOS, avoiding cascading dlopen failures.
 impact: [Migration efficiency, Build troubleshooting, Runtime troubleshooting]
 deliverables: [problem record, HAP]
-evidence: [QCTools running on device, devecocli run logs]
+evidence: [A video inspection tool running on device, devecocli run logs]
 
 error_message: >
   dlopen() failed to open library 'libOhosApp.so': Error loading shared library libavcodec.so.63
@@ -113,8 +113,8 @@ Scan the UND symbols of every FFmpeg `.so` with `llvm-readelf --dyn-syms`, group
 |-------|---------|
 | Leadership summary | Captured a complete transitive-dependency deployment approach for prebuilt FFmpeg bottles on OHOS, solving cascading dlopen failures |
 | Scope of impact | Every Qt OHOS application migration that depends on FFmpeg |
-| Deliverables | problem record, QCTools HAP running on a device |
-| Evidence | QCTools running on a device with a live PID, and hilog free of dlopen errors |
+| Deliverables | problem record, application HAP running on a device |
+| Evidence | The application running on a device with a live PID, and hilog free of dlopen errors |
 | How to reuse | Match against this page whenever you hit `dlopen failed` together with an FFmpeg-related error |
 
 ## Related

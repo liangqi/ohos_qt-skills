@@ -1,0 +1,172 @@
+# faults/_data/symptoms.yaml — source of truth for symptoms (S)
+#
+# Entity: symptom = application-layer behavior a developer can observe (the lookup entry; a thin record).
+# Field spec in faults/_index.md §5; this file is the single source of truth;
+# _graph.yaml / _registry.md are rebuilt by `python tools/faults-build.py build` -- don't edit the derived artifacts by hand.
+#
+# Fields:
+#   id          S-XXXX (append-only, never reused)
+#   title       the symptom in one sentence (lookup anchor; use the words a developer would say)
+#   domain      build/deploy/runtime/render/api/input/lifecycle/toolchain/filesystem
+#   severity    blocker/critical/high/medium/low
+#   status      active (still hit when no workaround is applied) / mitigated (gone with the workaround) / resolved (gone after the root cause is fixed)
+#   causes      cause edges (S→C); with multiple causes, set cause_relation
+#   cause_relation  any_of (default: removing any one cause makes the symptom go away) / all_of (the causes only combine to produce it)
+#   first_seen  date first seen
+#   refs        ids of related knowledge pages
+
+schema: 1
+symptoms:
+  - id: S-0001
+    title: "QML platform guard silently fails (Qt.platform.os returns \"linux\" instead of \"ohos\")"
+    domain: api
+    severity: high
+    status: mitigated
+    causes: [C-0001]
+    first_seen: 2026-08-06
+    refs: [semantic-qt-harmonyos-api, semantic-qt-harmonyos-platform-limits]
+
+  - id: S-0002
+    title: "Pinyin composition input breaks: the keyboard closes mid-input + pinyin letters pollute the committed text"
+    domain: input
+    severity: high
+    status: mitigated
+    causes: [C-0002]
+    first_seen: 2026-09-12
+    refs: [problem-runtime-ohos-ime-reset-detach]
+
+  - id: S-0003
+    title: "First character occasionally lost after switching focus between input fields"
+    domain: input
+    severity: medium
+    status: active
+    causes: [C-0003]
+    first_seen: 2026-09-12
+    refs: [problem-runtime-ohos-ime-reset-detach]
+
+  - id: S-0004
+    title: "App hangs for about 2 minutes after qApp->quit() (the Ability destroy Promise never resolves)"
+    domain: lifecycle
+    severity: critical
+    status: mitigated
+    causes: [C-0004]
+    first_seen: 2026-06-05
+    refs: [episodic-quit-deadlock-tsfn]
+
+  - id: S-0005
+    title: "Qt6 OHOS target build fails in a cascade (nullptr_t / __promote / hypot ambiguous)"
+    domain: build
+    severity: blocker
+    status: mitigated
+    causes: [C-0005, C-0006]
+    cause_relation: all_of
+    first_seen: 2026-06-25
+    refs: [problem-build-fail-qt6-libcpp-musl-isystem]
+
+  - id: S-0006
+    title: "SURFACE-type XComponent native render surface is on the deprecation track (deprecated since API 20)"
+    domain: api
+    severity: medium
+    status: active
+    causes: [C-0007]
+    first_seen: 2026-06-02
+    refs: [semantic-qt-harmonyos-platform-limits]
+
+  - id: S-0007
+    title: "chmod / symlink fails at runtime (QFile::setPermissions / QFile::link return failure)"
+    domain: filesystem
+    severity: medium
+    status: mitigated
+    causes: [C-0008]
+    first_seen: 2026-06-02
+    refs: [semantic-qt-harmonyos-platform-limits]
+
+  - id: S-0008
+    title: "A QDialog without a parent cannot be closed and ignores the mouse wheel (blockedByModalWindow=1 intercepts close/wheel)"
+    domain: runtime
+    severity: high
+    status: mitigated
+    causes: [C-0009]
+    first_seen: 2026-08-04
+    refs: [problem-runtime-blocked-by-modal-window-no-parent, episodic-ohostemplate-blockedbymodal-patch]
+
+  - id: S-0009
+    title: "Qt5 HarmonyOS app crashes when onAcceptWant fires: Napi::Error global expression doesn't start with known module path: '@ohos.deviceInfo'"
+    domain: runtime
+    severity: critical
+    status: mitigated
+    causes: [C-0010]
+    first_seen: 2026-07-23
+    refs: [problem-runtime-crash-ohos-deviceinfo-global-expression, procedural-qt-bug-report-sample]
+
+  - id: S-0010
+    title: "QWidget app Debug build crashes on mouse click: sendThroughApplicationEventFilters Q_ASSERT (theMainThread mismatch)"
+    domain: runtime
+    severity: high
+    status: active
+    causes: [C-0011]
+    first_seen: 2026-06-13
+    refs: [problem-ohos-mainthread-mismatch]
+
+  - id: S-0011
+    title: "Runtime dlopen of a .so from a writable path fails (errno=22 EINVAL / QPluginLoader fails to load the plugin)"
+    domain: runtime
+    severity: high
+    status: mitigated
+    causes: [C-0012]
+    first_seen: 2026-06-03
+    refs: [problem-runtime-fail-dlopen-writable-path, semantic-qt-harmonyos-platform-limits]
+
+  - id: S-0012
+    title: "App crashes with SIGABRT a few seconds after startup (exit(1); the stack points at a failed config/log file write)"
+    domain: runtime
+    severity: critical
+    status: mitigated
+    causes: [C-0013]
+    first_seen: 2026-07-09
+    refs: [problem-runtime-crash-sandbox-readonly-path]
+
+  - id: S-0013
+    title: "Qt::Tool child windows flicker when dragging the MainWindow across screens in a multi-screen setup"
+    domain: render
+    severity: medium
+    status: active
+    causes: [C-0014]
+    first_seen: 2026-06-05
+    refs: [episodic-toolwindow-crossscreen-flicker]
+
+  - id: S-0014
+    title: "HAP packaged by the hvigor CLI (--mode module) crashes at startup (handleAbilityStageOnCreate of undefined); DevEco IDE Run works"
+    domain: deploy
+    severity: medium
+    status: mitigated
+    causes: [C-0015]
+    first_seen: 2026-08-06
+    refs: [problem-deploy-fail-hvigor-cli-hap-crash]
+
+  - id: S-0015
+    title: "Mistakenly adding a Q_OS_OHOS alternative branch for QFileDialog (the guard conflicts with the platform plugin's built-in native support)"
+    domain: api
+    severity: low
+    status: resolved
+    causes: [C-0016]
+    first_seen: 2026-07-29
+    refs: [problem-ohos-qfiledialog-native-support]
+
+  - id: S-0016
+    title: "curl request body Chinese text garbled under Windows Git Bash (API returns 200/201 but Chinese fields turn into Cyrillic/Latin-1)"
+    domain: toolchain
+    severity: medium
+    status: mitigated
+    causes: [C-0017]
+    first_seen: 2026-06-10
+    refs: [runtime-curl-chinese-garbled]
+
+  - id: S-0017
+    title: "Qt3D entities textured with alpha PNGs (RGBA8) render solid black (lighting OK, RGB8 JPG OK, no GL errors)"
+    domain: render
+    severity: high
+    status: mitigated
+    causes: [C-0018]
+    first_seen: 2026-07-14
+    refs: [problem-render-black-rgba8-zink-mipmap, semantic-qt-harmonyos-platform-limits]

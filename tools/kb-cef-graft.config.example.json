@@ -1,0 +1,22 @@
+{
+  "_comment": "kb-cef-graft config file - agents change the environment configuration here, not the script itself. Copy to kb-cef-graft.config.json, edit the values, then: python kb-cef-graft.py --config <path> --template <Qt template> --qt-sdk <SDK> --ohqtcef-glue <OpenQtCef> --output <out> --run",
+  "_cli_overrides": "The --deveco/--device/--ohos-ndk CLI arguments override the corresponding entries in this file",
+
+  "deveco": "C:/Program Files/Huawei/DevEco Studio",
+  "devecocli": null,
+  "device": "46G0225208000016",
+
+  "compatible_sdk_version": "5.0.5(17)",
+  "compatible_sdk_version_stage": "release",
+  "_sdk_note": "OpenQtCef web_engine uses lazy import, which needs API17; when switching OpenQtCef versions, follow the compatibleSdkVersion in its build-profile",
+
+  "qt_libs": ["libQt5Core.so", "libQt5Gui.so", "libQt5Widgets.so"],
+  "_qt_libs_note": "Qt5 uses libQt5*; for Qt6 change to [\"libQt6Core.so\",\"libQt6Gui.so\",\"libQt6Widgets.so\"]",
+  "libqohos_glob": "plugins/platforms/libqohos.so",
+  "libqohosstyle_glob": "plugins/styles/libqohosstyle.so",
+
+  "bundle": "com.example.qtcefdemo",
+  "app_name": "qtcefdemo",
+  "ohos_ndk": null,
+  "cef_version": null
+}

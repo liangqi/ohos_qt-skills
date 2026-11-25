@@ -1,0 +1,22 @@
+{
+  "reclassify": [
+    {
+      "oracle": "breakpad",
+      "from": "readme-stale",
+      "to": "missed-dep",
+      "reason": "The main integration lives in the cmake/ (cmake_helpers) submodule: on Linux it is wrapped by external_crash_reports (CMakeLists.txt:97); the main repo has only target_link_frameworks(corpus-a PRIVATE Breakpad) in the macstore section (:2381, inside a platform guard). The submodule is now initialized, but breakpad/crashpad are vendored sources added via add_subdirectory inside cmake/external/crash_reports (built with the project), so portgraph correctly does not detect them as external packages; the README listing them as external runtime dependencies is inaccurate"
+    },
+    {
+      "oracle": "crashpad",
+      "from": "readme-stale",
+      "to": "missed-dep",
+      "reason": "The main integration lives in the cmake/ (cmake_helpers) submodule: on Linux it is wrapped by external_crash_reports (CMakeLists.txt:97); the main repo has only target_link_frameworks(corpus-a PRIVATE Breakpad) in the macstore section (:2381, inside a platform guard). The submodule is now initialized, but breakpad/crashpad are vendored sources added via add_subdirectory inside cmake/external/crash_reports (built with the project), so portgraph correctly does not detect them as external packages; the README listing them as external runtime dependencies is inaccurate"
+    }
+  ],
+  "notes": [
+    "Fixed in this round (corpus-a deps-test): the scanner now parses ns::external_<name> imported target names in target_link_libraries (prefix stripped -> raw_libs ext_target) and adds edges/creates ghosts, so openal/xxhash/webrtc/ada/qr-code-generator and similar no longer need manual reclassification",
+    "gsl/range-v3/hunspell and similar are bundled .gitmodules submodules (vendored, built with the project); the harness now classifies them as vendored automatically based on .gitmodules evidence",
+    "Root cause of the remaining breakpad/crashpad gap: the shallow clone did not initialize submodules (cmake/ is cmake_helpers), so the find_package/breakpad-cp selection logic inside it is invisible; a complete fix needs 'clone --recurse-submodules' or degraded handling of the missing paths hinted by .gitmodules, see the residual items in TEST-REPORT",
+    "lzma-sdk/liblzma/opus: the main repo's build files indeed have no reference (liblzma/opus come in via cmake_helpers' external prebuilt Libraries directory or the tg_owt stack); the readme-stale classification matches the facts within the current scan scope"
+  ]
+}

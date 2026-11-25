@@ -7,7 +7,7 @@ created: 2026-06-02
 updated: 2026-08-15
 status: active
 audience: public
-refs: [semantic-qt-harmonyos-overview, semantic-qt-harmonyos-api]
+refs: [fault-C-0001, fault-C-0007, fault-C-0008, fault-C-0012, fault-C-0018, semantic-qt-harmonyos-overview, semantic-qt-harmonyos-api]
 summary: >
   The Qt/QPA/QML adapter for HarmonyOS platform limitations: records the observable symptoms, Qt workarounds, and QTBUGs for
   QFile/QStandardPaths/QPluginLoader/QTimeZone, fonts, XComponent, ZINK, and Qt.platform; the platform status and underlying causes are maintained in the common knowledge base.

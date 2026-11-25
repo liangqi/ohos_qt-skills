@@ -1,28 +1,45 @@
-# RELEASE-MANIFEST.yaml - Qt External Edition v2.2.1
-# Generated: 2026-08-29 by gen-release-manifest.sh (builder v2, schema v1)
-# root_commit is left empty; filled by kb-publish.ps1 -Release at push time (the manifest cannot
-# describe its own commit SHA - self-reference paradox; the release commit is identified by the vX.Y.Z tag).
-# content_tree_sha256 excludes this file (avoid loop), and excludes .git/ + _scripts/ gate artifacts.
-# ASCII-only comments so Windows PS 5.1 Get-Content (GBK codepage) does not corrupt line boundaries.
+# RELEASE-MANIFEST.yaml - ohos_qt-skills trunk v3.0.0
+# Purpose: records a content snapshot of one release, so it can be reproduced and reconciled.
+# content_tree_sha256 = sha256 over sorted("<relpath>\0<sha256(file)>\n"), covering all checked-in files,
+# excluding this file itself (to avoid self-reference). For the generator command and implementation see _scripts/ (a gen-manifest subcommand can be added if scripting is needed).
+# Note: this file uses ASCII comments, to avoid breaking line boundaries when read by Windows PowerShell 5.1 (GBK code page).
 
-release_version: v2.2.1
-released_at: "2026-08-29"
+release_version: v3.0.0
+status: trunk-candidate        # changed to released and tagged after passing Windows end-to-end testing
+released_at: "2026-11-04"
 target:
   id: ohos_qt-skills
-  type: kb
+  type: repo                   # v2.x was kb (pure knowledge base); from v3 on it's a knowledge + tools engineering repo
   kb_id: ohos-qt-kb
-root_commit: "abb12cad8dff027110a23546c368ccc33e558429"
-source_kbs:
+root_commit: ""                # backfilled when the release is tagged (the manifest can't describe its own commit SHA)
+
+# Lineage (this release was merged from the following branches)
+lineage:
+  content_base: main@e3f6903            # v2.2.1 content baseline
+  capability_base: bitfun-release@746bf56   # execution layer/machine layer/fault graph/templates
+  governance_base: trunk-flip-v3        # reference for the contract and gate design (code not merged directly)
+
+source_kbs:                    # historical embedded sources (v2.x records, kept for traceability)
   ohos-qt-kb: 019821769e474a61eac8f57fa4231e08fb431b4b
   ohos-common-kb: e6cfba1041585bfde97db02d06e4a554cae68e70
 embedded_dependencies:
   ohos-common-kb-public:
     source_sha: e6cfba1041585bfde97db02d06e4a554cae68e70
     content_tree_sha256: 5b9a8681c77d6831ac3fc952b0e4c662c9eab9283840f1c0995ab64da939daaf
-builder_version: 2
-publication_schema_version: 1
-content_tree_sha256: 0e45255560440fbe77d59d412cebc01099a5e07d6b3d1771dc4449f518999f91
-built_at: "2026-08-29T16:20:03+08:00"
-skills: ["kb-init"]
+
+builder_version: 3
+publication_schema_version: 2
+content_tree_sha256: 96dc20aa4d7fda4100b54627ad44241a6b8e7fa481c9355b30a5f925fa3d4266
+built_at: "2026-11-18T18:07:09+08:00"
+
+skills: ["kb-init", "qt-app-porting", "qt-sdk-forge", "qt-community-to-official", "task-dispatcher", "kb-iterator"]
 common_pages_count: 27
-qt_pages_count: 82
+qt_pages_count: 108             # semantic 26 + procedural 15 + episodic 8 + problems 59 (excluding _index/_lookup)
+
+# Validation status (must be all green before release; add Windows end-to-end testing before the official release)
+validation:
+  verify_sh: PASS              # _scripts/verify.sh: 0 error / 5 warning (artifact directories, P4 cleanup)
+  unittests: 287               # engine 66 + consistency 25 + cpp20 scan 9 + portgraph 127
+  faults_build_check: PASS     # source of truth ↔ derived artifacts consistent
+  cli_contract: PASS           # qt-ohos-run 25 / qt-sdk-run 24 / portgraph 10 subcommands
+  windows_e2e_porting: PENDING # pending real-device verification in a new environment (see the trunk delivery notes)

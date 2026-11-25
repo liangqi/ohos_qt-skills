@@ -7,7 +7,7 @@ created: 2026-06-02
 updated: 2026-08-14
 status: active
 audience: public
-refs: [semantic-qt-harmonyos-api, semantic-qt-ohos-extras, semantic-qt-harmonyos-code-patterns, episodic-ohostemplate-blockedbymodal-patch, problem-runtime-blocked-by-modal-window-no-parent]
+refs: [fault-C-0009, fault-C-0014, semantic-qt-harmonyos-api, semantic-qt-ohos-extras, semantic-qt-harmonyos-code-patterns, episodic-ohostemplate-blockedbymodal-patch, problem-runtime-blocked-by-modal-window-no-parent]
 summary: >
   The Qt QPA adapter for ArkUI Window/XComponent: MainWindow (has a Dock/task icon and an independent lifecycle) vs.
   Subwindow (no Dock icon, belongs to the main window, and closes/minimizes/restores with it). The core rules:

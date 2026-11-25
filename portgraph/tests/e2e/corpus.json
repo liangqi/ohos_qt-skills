@@ -1,0 +1,33 @@
+{
+  "_comment": "portgraph E2E dependency reconciliation test corpus. The mapping between corpus codenames and clone sources is not checked in (to keep regressions from taking shortcuts); oracle_files are tried in priority order to extract the dependency section.",
+  "projects": [
+    {
+      "name": "corpus-a",
+      "url": "https://github.com/telegramdesktop/tdesktop",
+      "tier": "C",
+      "oracle_files": ["README.md"],
+      "notes": "Corpus A, CMake, huge dependency tree; already cloned in workspace"
+    },
+    {
+      "name": "corpus-b",
+      "url": "https://github.com/musescore/MuseScore",
+      "tier": "C",
+      "oracle_files": ["INSTALL.md", "README.md"],
+      "notes": "Corpus B, large CMake application; the dependency manifest lives in the in-project dependency-engine submodule (cloner shallow-initializes it automatically)"
+    },
+    {
+      "name": "corpus-c",
+      "url": "https://github.com/keepassxreboot/keepassxc",
+      "tier": "B",
+      "oracle_files": ["INSTALL.md", "README.md"],
+      "notes": "Corpus C, CMake, well-formed dependency list in INSTALL.md; needs a fresh clone"
+    },
+    {
+      "name": "corpus-d",
+      "url": "https://github.com/qbittorrent/qBittorrent",
+      "tier": "B",
+      "oracle_files": ["README.md", "INSTALL"],
+      "notes": "Corpus D, CMake/qmake, README has a Dependencies section; needs a fresh clone"
+    }
+  ]
+}

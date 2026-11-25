@@ -62,7 +62,7 @@ The precursor logs are not the direct root cause; they're the framework querying
 
 ## Solution (preferred: align the versions)
 
-**Preferred**: rebuild using a Qt OHOS SDK matching your .ets template version. For a 5.12 .ets template (passing modulesFactories), use `${QT5_15_OHOS_SDK}` (the older libqohos reads modulesFactories, matching the template; the same combination qView runs on):
+**Preferred**: rebuild using a Qt OHOS SDK matching your .ets template version. For a 5.12 .ets template (passing modulesFactories), use `${QT5_15_OHOS_SDK}` (the older libqohos reads modulesFactories, matching the template; the same combination the reference implementation runs on):
 ```json5
 // externalNativeOptions.arguments in entry/build-profile.json5
 "-DCMAKE_PREFIX_PATH=${QT5_15_OHOS_SDK}"   // not ${QT5_15_OHOS_SDK_FULL}
@@ -73,7 +73,7 @@ After the change, rebuild with `node hvigorw.js assembleHap --no-daemon` (it re-
 
 ## Key diagnostic signals
 
-- qView (the reference implementation) uses ${QT5_15_OHOS_SDK} + the 5.12 template → consistent → it runs.
+- The reference implementation uses ${QT5_15_OHOS_SDK} + the 5.12 template → consistent → it runs.
 - In a batch port, if the port agent mistakenly uses ${QT5_15_OHOS_SDK_FULL} + the 5.12 template → **every HAP crashes at runtime with the same error** (a successful build ≠ a working app).
 - So after "the build produces a HAP", you must run it on a device once (see [[qt-ohos-run-test]]) to confirm this crash isn't present.
 

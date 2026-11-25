@@ -1,0 +1,98 @@
+# knowledge/adaptation/checklist.yaml — the must-adapt checklist for porting an app to HarmonyOS (machine-readable)
+#
+# Sources: the phase-zero pre-check in procedural/qt-app-harmonyos-migration.md + the must-level golden-rules entries
+#     + the high-frequency items in semantic/qt-harmonyos-code-patterns.md
+# Consumer: qt-ohos-run.py assess (matched items go into the report's must-adapt section)
+# severity: critical=fails for sure if skipped / high=very likely to fail / medium=needs verification
+# trigger: English canonical values matched by tools/qt_ohos/assessor.py (_checklist_hits);
+#     the legacy Chinese spellings are still accepted there as aliases.
+
+schema: 1
+updated: 2026-09-08
+source: procedural/qt-app-harmonyos-migration.md
+
+items:
+  - id: AC01
+    title: Create the HarmonyOS shell project (entry module + CMake glue + QAbility glue)
+    trigger: always
+    severity: critical
+    how: "Create it from templates/qt-ohos-app or OHOS_TEMPLATE_SRC (qtbase/src/harmonyos/templates); the business code is compiled into libXxx.so"
+    ref: semantic/qt-harmonyos-project-structure.md
+  - id: AC02
+    title: Wire up CMake cross-compilation (CMAKE_FIND_ROOT_PATH ONLY + absolute paths)
+    trigger: build_system contains cmake
+    severity: critical
+    how: "golden rule B1: in find_root_path only mode, every path must be absolute"
+    ref: semantic/qt-harmonyos-golden-rules.md
+  - id: AC03
+    title: Link the QPA platform plugin libqohos (for Qt6, the libqohos QPA + HarmonyExtras)
+    trigger: always
+    severity: critical
+    how: "golden rule B2; for Qt6, note that HarmonyExtras's public headers are only stubs"
+    ref: semantic/qt-harmonyos-golden-rules.md
+  - id: AC04
+    title: Append :!ohos to qmake unix scopes
+    trigger: build_system contains qmake
+    severity: high
+    how: "golden rule B9: unix(:!android:!macx) needs :!ohos added, otherwise the Linux path gets compiled by mistake"
+    ref: semantic/qt-harmonyos-golden-rules.md
+  - id: AC05
+    title: Enable CMAKE_AUTORCC (qrc resources)
+    trigger: .qrc files present
+    severity: high
+    how: "golden rule B10"
+    ref: semantic/qt-harmonyos-golden-rules.md
+  - id: AC06
+    title: Deploy the Qt runtime and third-party .so files to entry/libs/arm64-v8a/
+    trigger: always
+    severity: critical
+    how: "golden rule B7: the read-only sandbox can't dlopen from writable paths; .so files must be packaged into libs/arm64-v8a/ (the same goes for the styles/ subdirectory)"
+    ref: semantic/qt-harmonyos-golden-rules.md
+  - id: AC07
+    title: Adapt to the window model (first window = main window; tagging later windows must happen before show/winId)
+    trigger: multiple windows or dialogs
+    severity: high
+    how: "Tag standalone dialogs as sub-windows using the window-model tagging mechanism (QOhosFunctions; for the QtOhosExtras window APIs see qohoswindowutils.h); tag before show/winId"
+    ref: semantic/qt-harmonyos-window-model.md
+  - id: AC08
+    title: Review Q_OS_LINUX guards (Q_OS_OHOS implies Q_OS_LINUX)
+    trigger: source contains Q_OS_LINUX
+    severity: high
+    how: "Don't blindly widen guards; confirm one by one that each Linux branch is correct on HarmonyOS"
+    ref: semantic/qt-harmonyos-golden-rules.md
+  - id: AC09
+    title: Handle platform-bound code (X11/xcb/Win32/Cocoa/Wayland)
+    trigger: source contains platform API calls
+    severity: high
+    how: "If core functionality depends on it, it's a blocker (CONCEPT-MISMATCH/PLATFORM-FEATURE-UNSUPPORTED); for non-core code, trim it with #ifndef Q_OS_OHOS + stub + feature flag"
+    ref: semantic/qt-harmonyos-platform-limits.md
+  - id: AC10
+    title: Adapt dlopen/file paths (read-only sandbox + Data directory)
+    trigger: source contains dlopen or writes files at absolute paths
+    severity: high
+    how: "Load .so files from libs/; writable data goes in the app sandbox's Data directory (QStandardPaths differences)"
+    ref: semantic/qt-harmonyos-platform-limits.md
+  - id: AC11
+    title: Keep the signing configuration consistent with bundleName (bound to the .p7b profile)
+    trigger: always
+    severity: critical
+    how: "The bundleName in AppScope/app.json5 must match the signing profile; signing materials are never checked in"
+    ref: procedural/qt-ohos-run-test.md
+  - id: AC12
+    title: Rework child-process and external-program launches
+    trigger: source contains QProcess/system/popen
+    severity: medium
+    how: "Headless QProcess works; for Qt programs with a UI use startAppProcess; for non-Qt programs with a UI use startAbility"
+    ref: semantic/qt-harmonyos-api-mapping.md
+  - id: AC13
+    title: Check the foreach macro and C++ standard compatibility
+    trigger: legacy Qt5 code
+    severity: medium
+    how: "foreach semantics and warnings under Qt 5.12/5.15 OHOS; C++17 syntax differences"
+    ref: semantic/qt515-vs-qt512-api-diff.md
+  - id: AC14
+    title: OHOS cross-compilation feasibility of third-party dependencies
+    trigger: third-party dependencies present
+    severity: high
+    how: "Prefer prebuilt Harmonybrew bottles; without a bottle, assess cross-compiling (musl/OHOS Clang pitfalls) or switching libraries"
+    ref: semantic/qt-harmonyos-third-party-libs.md

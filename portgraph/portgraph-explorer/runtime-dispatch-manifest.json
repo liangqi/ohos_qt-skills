@@ -1,0 +1,124 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-09-12T07:06:37.381Z",
+  "source": "build-page-dispatch-manifest.mjs",
+  "mode": "existing-edit",
+  "summary_path": "runtime-orchestration-summary.json",
+  "skillProvenance": {
+    "name": "solo-design",
+    "version": "2026.08.06.19.15.08",
+    "version_source": "skill-release-manifest.json"
+  },
+  "dispatchPreflightManifest": [
+    {
+      "recorded_at": "2026-09-12T07:06:37.376Z",
+      "generatedBy": "build-page-dispatch-manifest.mjs",
+      "packetType": "LibraryBoundPagePacket",
+      "laneContract": {
+        "resolvedLane": "library_bound",
+        "packetType": "LibraryBoundPagePacket",
+        "pageRuntimeGuide": "intent-workflows/intent-page-library-bound/library-bound-page-runtime.md",
+        "dispatchContract": "intent-workflows/intent-page-library-bound/dispatch-contract.md"
+      },
+      "taskLinePresent": true,
+      "outputPathPresent": true,
+      "sharedTemplate": "intent-workflows/intent-page-library-bound/library-bound-page-runtime.md",
+      "nodeId": "page-index",
+      "htmlSrc": "pages/index.html",
+      "supplementaryReads": [],
+      "allowedWritePaths": [
+        "pages/index.html",
+        "assets/"
+      ],
+      "forbiddenWriteRoots": [
+        "*.design",
+        "runtime-orchestration-summary.json",
+        "validation-report.json",
+        "finish-readiness-report.json",
+        "restore-contract-report.json",
+        "page-generation-summary.json"
+      ],
+      "toolPolicy": {
+        "todoWriteAllowed": false,
+        "validationScriptsAllowed": false,
+        "previewAllowed": false,
+        "helperScriptsAllowed": false,
+        "designFileWriteAllowed": false,
+        "allowedWritePaths": [
+          "pages/index.html",
+          "assets/"
+        ]
+      },
+      "skillRuntime": {
+        "skillDir": "~/.trae-cn\\builtin\\design\\default\\skills\\solo-design",
+        "deterministicToolDir": "~/.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling",
+        "toolPaths": {
+          "applyHtmlHeadContract": "~/.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\apply-html-head-contract.mjs",
+          "recordDispatchCompletion": "~/.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\record-dispatch-completion.mjs",
+          "buildPageDispatchManifest": "~/.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\build-page-dispatch-manifest.mjs",
+          "validateDesignWorkspace": "~/.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\validate-design-workspace.mjs",
+          "validateFinishReadiness": "~/.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\validate-finish-readiness.mjs",
+          "validateRestoreContract": "~/.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\validate-restore-contract.mjs"
+        },
+        "requiredForPageSubAgent": [
+          "applyHtmlHeadContract",
+          "recordDispatchCompletion"
+        ],
+        "pathInjection": "absolute",
+        "pathContract": "Do not use {SKILL_DIR} placeholders inside Page Sub-Agent packets; use toolPaths.* absolute paths.",
+        "commandTemplates": {
+          "recordDispatchCompletion": "node \"~/.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\record-dispatch-completion.mjs\" \"./portgraph\\portgraph-explorer\" --node-id=\"page-index\" --html-src=\"pages/index.html\" --status=completed --changed-files=<comma-separated-project-relative-files> --trace-digest=<main-agent-runtime-trace-digest> --tool-ledger-json=<tool-ledger-json-or-file>"
+        }
+      },
+      "cssFilePath": "./portgraph\\portgraph-explorer\\colors_and_type.css",
+      "htmlFilePath": "./portgraph\\portgraph-explorer\\pages\\index.html",
+      "brandPrefix": "brand",
+      "aestheticsMode": "library-bound",
+      "toolDisciplineBlockPresent": true,
+      "fillHtmlHeadCommand": "node \"~/.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\apply-html-head-contract.mjs\" \"./portgraph\\portgraph-explorer\\colors_and_type.css\" \"./portgraph\\portgraph-explorer\\pages\\index.html\" --title=\"HarmonyOS Portability Graph\" --lang=\"en\" --prefix=\"brand\" --replace-head",
+      "headFillMode": "replace-head-after-body",
+      "viewportMode": null,
+      "completionSchemaExpected": "full",
+      "restoreFields": null,
+      "restoreContractStatus": null,
+      "restoreCompactPacket": null,
+      "deterministicCommands": null,
+      "sourceAuthorityLock": null,
+      "preDispatchFileHashes": {
+        "portgraph-explorer.design": "f3aee90fa8eefe374915d93603e1deb1563c63436ce65e62997ab7f59dd1e2e3"
+      },
+      "contextPreflight": {
+        "workflowPath": "intent-workflows/intent-page-library-bound/INTENT_WORKFLOW.md",
+        "requiredContextFiles": [
+          "shared-runtime/runtime-boundaries/lane-runtime-contracts.md",
+          "shared-runtime/agent-dispatch-runtime/lane-dispatch-index.md",
+          "delivery-quality/page-rendering-quality-gate.md",
+          "delivery-quality/design-artifact-validation.md",
+          "delivery-quality/delivery-evidence-contract.md"
+        ],
+        "optionalContextFiles": [
+          "visual-experience/visual-experience-guidelines.md"
+        ],
+        "passed": true
+      },
+      "pageSliceOnly": true,
+      "requiredFieldsPresent": true,
+      "missingFields": [],
+      "fillHtmlHeadCommandValid": true,
+      "mobileNavigation": {
+        "required": false,
+        "appliesToThisPage": false,
+        "canonicalHtmlIncluded": false,
+        "missingFields": []
+      },
+      "persistedToSummary": true,
+      "taskQueryAudited": true,
+      "proofSource": "task-query-file",
+      "taskQueryHash": "14f4e2204446263ca3e0afed0fbf146a07c385df42ee52cb84c19beee7ca49ee",
+      "largeWorkflowFilesInTaskQuery": []
+    }
+  ],
+  "deterministicCommandsByPage": {
+    "pages/index.html": {}
+  }
+}

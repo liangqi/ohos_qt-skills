@@ -21,7 +21,7 @@ symptoms: "Chinese characters in a curl POST/PATCH request body show up garbled 
 
 # ====== Problem details ======
 environment: "Windows 10/11 + Git Bash (MSYS2) + curl 7.x/8.x"
-refs: []
+refs: [fault-C-0017]
 related_problems: []
 ---
 

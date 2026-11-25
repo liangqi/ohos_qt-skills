@@ -11,7 +11,7 @@ summary: "The Qt6 OHOS target build is blocked by libc++/musl incompatibility (a
 severity: blocker
 domain: build
 error_message: "no member named 'nullptr_t' in the global namespace; use of undeclared identifier '__promote'; call to 'hypot' is ambiguous (libcxx-ohos c++/v1/cstddef, cmath; the injected -isystem sysroot/usr/include makes musl shadow the clang builtins)"
-refs: [semantic-qt-harmonyos-qt6-status]
+refs: [fault-C-0005, fault-C-0006, semantic-qt-harmonyos-qt6-status]
 ---
 
 # The Qt6 for OHOS target build is blocked by libc++/musl incompatibility

@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HarmonyOS Portability Graph</title>
+    <style id="theme-vars">
+/*
+ * Pinguo design tokens (Apple-inspired) — project-local extension
+ * Source: Design Library "Apple" (dl_builtin_apple)
+ * Added: radius-sm / radius-md / radius-lg semantic aliases derived
+ * from the Library's own --radius scale (1.2rem), so the Tailwind
+ * semantic bridge can be built without inventing new values.
+ *
+ * Theme mode: light-dark
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  /* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff; /* @primary */
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759; /* @primary */
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30; /* @primary */
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS — Library base + semantic aliases for the Tailwind bridge */
+  --radius: 1.2rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.2rem;
+  --radius-xl: 1.5rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04); /* Hairline */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04); /* Subtle */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05); /* Card */
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05); /* Raised */
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05); /* Card Hover */
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05); /* Float */
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06); /* Overlay */
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12); /* Modal */
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+
+/* ===== SEMANTIC ROLES - dark (primitive palette inherited) ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --chart-1: var(--state-success-dark);
+  --chart-2: var(--brand-400);
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #bf5af2;
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --radius-sm: var(--radius-sm);
+    --radius-md: var(--radius-md);
+    --radius-lg: var(--radius-lg);
+    --radius-xl: var(--radius-xl);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--background); }
+      .text-background { color: var(--background); }
+      .border-background { border-color: var(--background); }
+      .ring-background { --tw-ring-color: var(--background); }
+      .bg-foreground { background-color: var(--foreground); }
+      .text-foreground { color: var(--foreground); }
+      .border-foreground { border-color: var(--foreground); }
+      .ring-foreground { --tw-ring-color: var(--foreground); }
+      .bg-card { background-color: var(--card); }
+      .text-card { color: var(--card); }
+      .border-card { border-color: var(--card); }
+      .ring-card { --tw-ring-color: var(--card); }
+      .bg-card-foreground { background-color: var(--card-foreground); }
+      .text-card-foreground { color: var(--card-foreground); }
+      .border-card-foreground { border-color: var(--card-foreground); }
+      .ring-card-foreground { --tw-ring-color: var(--card-foreground); }
+      .bg-popover { background-color: var(--popover); }
+      .text-popover { color: var(--popover); }
+      .border-popover { border-color: var(--popover); }
+      .ring-popover { --tw-ring-color: var(--popover); }
+      .bg-popover-foreground { background-color: var(--popover-foreground); }
+      .text-popover-foreground { color: var(--popover-foreground); }
+      .border-popover-foreground { border-color: var(--popover-foreground); }
+      .ring-popover-foreground { --tw-ring-color: var(--popover-foreground); }
+      .bg-primary { background-color: var(--primary); }
+      .text-primary { color: var(--primary); }
+      .border-primary { border-color: var(--primary); }
+      .ring-primary { --tw-ring-color: var(--primary); }
+      .bg-primary-foreground { background-color: var(--primary-foreground); }
+      .text-primary-foreground { color: var(--primary-foreground); }
+      .border-primary-foreground { border-color: var(--primary-foreground); }
+      .ring-primary-foreground { --tw-ring-color: var(--primary-foreground); }
+      .bg-secondary { background-color: var(--secondary); }
+      .text-secondary { color: var(--secondary); }
+      .border-secondary { border-color: var(--secondary); }
+      .ring-secondary { --tw-ring-color: var(--secondary); }
+      .bg-secondary-foreground { background-color: var(--secondary-foreground); }
+      .text-secondary-foreground { color: var(--secondary-foreground); }
+      .border-secondary-foreground { border-color: var(--secondary-foreground); }
+      .ring-secondary-foreground { --tw-ring-color: var(--secondary-foreground); }
+      .bg-muted { background-color: var(--muted); }
+      .text-muted { color: var(--muted); }
+      .border-muted { border-color: var(--muted); }
+      .ring-muted { --tw-ring-color: var(--muted); }
+      .bg-muted-foreground { background-color: var(--muted-foreground); }
+      .text-muted-foreground { color: var(--muted-foreground); }
+      .border-muted-foreground { border-color: var(--muted-foreground); }
+      .ring-muted-foreground { --tw-ring-color: var(--muted-foreground); }
+      .bg-accent { background-color: var(--accent); }
+      .text-accent { color: var(--accent); }
+      .border-accent { border-color: var(--accent); }
+      .ring-accent { --tw-ring-color: var(--accent); }
+      .bg-accent-foreground { background-color: var(--accent-foreground); }
+      .text-accent-foreground { color: var(--accent-foreground); }
+      .border-accent-foreground { border-color: var(--accent-foreground); }
+      .ring-accent-foreground { --tw-ring-color: var(--accent-foreground); }
+      .bg-destructive { background-color: var(--destructive); }
+      .text-destructive { color: var(--destructive); }
+      .border-destructive { border-color: var(--destructive); }
+      .ring-destructive { --tw-ring-color: var(--destructive); }
+      .bg-destructive-foreground { background-color: var(--destructive-foreground); }
+      .text-destructive-foreground { color: var(--destructive-foreground); }
+      .border-destructive-foreground { border-color: var(--destructive-foreground); }
+      .ring-destructive-foreground { --tw-ring-color: var(--destructive-foreground); }
+      .bg-border { background-color: var(--border); }
+      .text-border { color: var(--border); }
+      .border-border { border-color: var(--border); }
+      .ring-border { --tw-ring-color: var(--border); }
+      .bg-input { background-color: var(--input); }
+      .text-input { color: var(--input); }
+      .border-input { border-color: var(--input); }
+      .ring-input { --tw-ring-color: var(--input); }
+      .bg-ring { background-color: var(--ring); }
+      .text-ring { color: var(--ring); }
+      .border-ring { border-color: var(--ring); }
+      .ring-ring { --tw-ring-color: var(--ring); }
+      .bg-chart-1 { background-color: var(--chart-1); }
+      .text-chart-1 { color: var(--chart-1); }
+      .border-chart-1 { border-color: var(--chart-1); }
+      .ring-chart-1 { --tw-ring-color: var(--chart-1); }
+      .bg-chart-2 { background-color: var(--chart-2); }
+      .text-chart-2 { color: var(--chart-2); }
+      .border-chart-2 { border-color: var(--chart-2); }
+      .ring-chart-2 { --tw-ring-color: var(--chart-2); }
+      .bg-chart-3 { background-color: var(--chart-3); }
+      .text-chart-3 { color: var(--chart-3); }
+      .border-chart-3 { border-color: var(--chart-3); }
+      .ring-chart-3 { --tw-ring-color: var(--chart-3); }
+      .bg-chart-4 { background-color: var(--chart-4); }
+      .text-chart-4 { color: var(--chart-4); }
+      .border-chart-4 { border-color: var(--chart-4); }
+      .ring-chart-4 { --tw-ring-color: var(--chart-4); }
+      .bg-chart-5 { background-color: var(--chart-5); }
+      .text-chart-5 { color: var(--chart-5); }
+      .border-chart-5 { border-color: var(--chart-5); }
+      .ring-chart-5 { --tw-ring-color: var(--chart-5); }
+      .bg-sidebar { background-color: var(--sidebar); }
+      .text-sidebar { color: var(--sidebar); }
+      .border-sidebar { border-color: var(--sidebar); }
+      .ring-sidebar { --tw-ring-color: var(--sidebar); }
+      .bg-sidebar-foreground { background-color: var(--sidebar-foreground); }
+      .text-sidebar-foreground { color: var(--sidebar-foreground); }
+      .border-sidebar-foreground { border-color: var(--sidebar-foreground); }
+      .ring-sidebar-foreground { --tw-ring-color: var(--sidebar-foreground); }
+      .bg-sidebar-primary { background-color: var(--sidebar-primary); }
+      .text-sidebar-primary { color: var(--sidebar-primary); }
+      .border-sidebar-primary { border-color: var(--sidebar-primary); }
+      .ring-sidebar-primary { --tw-ring-color: var(--sidebar-primary); }
+      .bg-sidebar-primary-foreground { background-color: var(--sidebar-primary-foreground); }
+      .text-sidebar-primary-foreground { color: var(--sidebar-primary-foreground); }
+      .border-sidebar-primary-foreground { border-color: var(--sidebar-primary-foreground); }
+      .ring-sidebar-primary-foreground { --tw-ring-color: var(--sidebar-primary-foreground); }
+      .bg-sidebar-accent { background-color: var(--sidebar-accent); }
+      .text-sidebar-accent { color: var(--sidebar-accent); }
+      .border-sidebar-accent { border-color: var(--sidebar-accent); }
+      .ring-sidebar-accent { --tw-ring-color: var(--sidebar-accent); }
+      .bg-sidebar-accent-foreground { background-color: var(--sidebar-accent-foreground); }
+      .text-sidebar-accent-foreground { color: var(--sidebar-accent-foreground); }
+      .border-sidebar-accent-foreground { border-color: var(--sidebar-accent-foreground); }
+      .ring-sidebar-accent-foreground { --tw-ring-color: var(--sidebar-accent-foreground); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+    
+</head>
+<body>
+  <div class="explorer-app" data-viewport-mode="app-shell">
+
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div class="brand-title">
+          <h1>HarmonyOS Portability Graph</h1>
+          <p>Qt app × HarmonyOS dependency topology analysis</p>
+        </div>
+      </div>
+      <div class="controls">
+        <label>Target app
+          <span class="select-wrap">
+            <select id="app-select">
+              <option value="corpus-a" selected>corpus-a 5.3.2</option>
+              <option value="krdc">krdc 23.08</option>
+              <option value="filelight">filelight 23.08</option>
+              <option value="corpus-b">corpus-b 4.5</option>
+            </select>
+            <i class="chev" data-icon aria-hidden="true"></i>
+          </span>
+        </label>
+        <label>Layout
+          <span class="select-wrap">
+            <select id="layout-select">
+              <option value="dagre" selected>Horizontal hierarchy</option>
+              <option value="force">Force-directed</option>
+              <option value="circular">Circular</option>
+            </select>
+            <i class="chev" data-icon aria-hidden="true"></i>
+          </span>
+        </label>
+        <input id="search-input" type="search" placeholder="Search node name, Enter to locate">
+        <button id="add-app-btn" class="btn secondary" data-dom-id="add-app-btn" type="button">Add analysis</button>
+        <button id="reload-btn" class="btn primary" type="button">Re-analyze</button>
+        <span id="verdict-badge" class="badge bad">Has blockers</span>
+      </div>
+    </header>
+
+    <div class="legend">
+      <span class="legend-item"><i class="dot dot-app"></i>Target app</span>
+      <span class="legend-item"><i class="dot dot-ok"></i>Ported</span>
+      <span class="legend-item"><i class="dot dot-bad"></i>Blocked</span>
+      <span class="legend-item"><i class="dot dot-unknown"></i>Unknown</span>
+      <span class="legend-item"><i class="dot dot-uncertain"></i>To confirm</span>
+      <span class="legend-item combo-legend"><i class="combo-chip"></i>Qt module cluster (click to expand/collapse)</span>
+      <span id="graph-stats" class="graph-stats">10 nodes / 9 edges</span>
+    </div>
+
+    <main class="layout">
+      <div id="graph-container">
+        <svg class="topo" viewBox="0 0 1110 800" preserveAspectRatio="xMidYMid meet" role="img" aria-label="corpus-a dependency topology: Qt module cluster (expanded) and external dependencies">
+          <defs>
+            <pattern id="dotgrid" width="22" height="22" patternUnits="userSpaceOnUse">
+              <circle class="dot-grid-dot" cx="2" cy="2" r="1.5"></circle>
+            </pattern>
+            <marker id="arrow-strong" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path class="mk-strong" d="M0 0 L10 5 L0 10 Z"></path>
+            </marker>
+            <marker id="arrow-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path class="mk-muted" d="M0 0 L10 5 L0 10 Z"></path>
+            </marker>
+          </defs>
+
+          <rect x="0" y="0" width="1110" height="800" fill="url(#dotgrid)" aria-hidden="true"></rect>
+
+          <!-- Qt module cluster (expanded: the state after clicking the cluster circle in the real app) -->
+          <circle class="combo-ring" cx="400" cy="400" r="165"></circle>
+          <text class="lbl-combo" x="400" y="212" text-anchor="middle">Qt module cluster</text>
+          <text class="lbl-combo-sub" x="400" y="229" text-anchor="middle"><tspan class="t-ok">3</tspan> supported · <tspan class="t-bad">1</tspan> blocked</text>
+
+          <!-- Dependency edges: corpus-a → Qt modules (uses-module) -->
+          <path class="edge-strong" d="M 140 384 C 185 350 260 310 345 273" marker-end="url(#arrow-strong)"></path>
+          <path class="edge-strong" d="M 145 395 C 230 375 330 355 424 332" marker-end="url(#arrow-strong)"></path>
+          <path class="edge-strong" d="M 146 402 C 205 410 260 425 314 433" marker-end="url(#arrow-strong)"></path>
+          <path class="edge-strong" d="M 143 412 C 220 450 320 490 413 510" marker-end="url(#arrow-strong)"></path>
+
+          <!-- Dependency edges: corpus-a → external dependencies (runtime; libsecret is a platform-conditional edge) -->
+          <path class="edge-muted" d="M 143 388 C 170 210 330 85 716 129" marker-end="url(#arrow-muted)"></path>
+          <path class="edge-muted" d="M 144 391 C 200 190 480 88 825 264" marker-end="url(#arrow-muted)"></path>
+          <path class="edge-muted" d="M 146 398 C 290 390 500 396 690 400" marker-end="url(#arrow-muted)"></path>
+          <path class="edge-muted edge-dash" d="M 145 405 C 285 590 530 660 840 523" marker-end="url(#arrow-muted)"></path>
+          <path class="edge-muted" d="M 144 409 C 320 660 640 715 940 647" marker-end="url(#arrow-muted)"></path>
+
+          <!-- Target app node -->
+          <g class="gnode">
+            <circle class="n-app" cx="120" cy="400" r="26"></circle>
+            <text class="lbl-app-name" x="120" y="452" text-anchor="middle">corpus-a</text>
+            <text class="lbl-app-meta" x="120" y="466" text-anchor="middle">v5.3.2 · app</text>
+          </g>
+
+          <!-- Qt module nodes (inside the cluster) -->
+          <g class="gnode">
+            <circle class="n-success" cx="355" cy="268" r="11"></circle>
+            <text class="lbl-node" x="355" y="296" text-anchor="middle">qtbase</text>
+          </g>
+          <g class="gnode">
+            <circle class="n-success" cx="435" cy="330" r="11"></circle>
+            <text class="lbl-node" x="435" y="358" text-anchor="middle">qt5compat</text>
+          </g>
+          <g class="gnode">
+            <circle class="n-success" cx="325" cy="435" r="11"></circle>
+            <text class="lbl-node" x="325" y="463" text-anchor="middle">qtsvg</text>
+          </g>
+          <g class="gnode">
+            <circle class="n-error" cx="425" cy="515" r="13"></circle>
+            <text class="lbl-node-strong" x="425" y="545" text-anchor="middle">qtwebengine</text>
+          </g>
+
+          <!-- External dependency nodes -->
+          <g class="gnode">
+            <circle class="n-success" cx="725" cy="125" r="10"></circle>
+            <text class="lbl-node" x="725" y="153" text-anchor="middle">zlib</text>
+          </g>
+          <g class="gnode">
+            <circle class="n-success" cx="835" cy="262" r="10"></circle>
+            <text class="lbl-node" x="835" y="290" text-anchor="middle">openssl@3</text>
+          </g>
+          <g class="gnode">
+            <circle class="n-success" cx="700" cy="400" r="10"></circle>
+            <text class="lbl-node" x="700" y="428" text-anchor="middle">ffmpeg</text>
+          </g>
+          <g class="gnode">
+            <circle class="n-success" cx="850" cy="525" r="10"></circle>
+            <text class="lbl-node" x="850" y="553" text-anchor="middle">libsecret</text>
+          </g>
+          <g class="gnode">
+            <circle class="n-uncertain" cx="950" cy="650" r="10"></circle>
+            <text class="lbl-node-strong" x="950" y="678" text-anchor="middle">libexif</text>
+          </g>
+        </svg>
+      </div>
+
+      <aside class="side-panel">
+        <section id="blocker-panel" class="panel">
+          <h2>Blockers <span id="blocker-count" class="count">2</span></h2>
+          <div class="filter-row" id="risk-filter">
+            <button class="filter-btn active" type="button" data-risk="all">All</button>
+            <button class="filter-btn" type="button" data-risk="high">High risk</button>
+            <button class="filter-btn" type="button" data-risk="medium">Medium risk</button>
+            <button class="filter-btn" type="button" data-risk="low">Low risk</button>
+          </div>
+          <ul id="blocker-list">
+            <li class="risk-high">
+              <div class="b-kind">Unsupported platform interface <span class="risk-chip risk-high">High risk</span></div>
+              <div class="b-node">app:corpus-a</div>
+              <div class="b-reason">Uses the platform interface macOS Cocoa / AppKit, which HarmonyOS does not support; 4 unconditionally compiled hits will take part in the HarmonyOS build, and 212 file-level hits are already excluded by platform.</div>
+              <div class="b-path">app:corpus-a → platform interface → macOS Cocoa / AppKit</div>
+            </li>
+            <li class="risk-medium">
+              <div class="b-kind">Unsupported Qt module <span class="risk-chip risk-medium">Medium risk</span></div>
+              <div class="b-node">qt-module:qtwebengine</div>
+              <div class="b-reason">Qt WebEngine depends on Chromium and has no official HarmonyOS port; consider using the system WebView capability instead.</div>
+              <div class="b-guard">guard: uses-module</div>
+              <div class="b-alt">HarmonyOS alternative: <span class="alt-chip st-convertible">OHOS WebView</span></div>
+              <div class="b-path">app:corpus-a → qt-module:qtwebengine</div>
+            </li>
+          </ul>
+          <h2>Platform-excluded items (not compiled)<span id="excluded-count" class="count">3</span></h2>
+          <p class="panel-hint">Wrapped in conditional-compilation guards for non-HarmonyOS platforms, so they are not compiled in a HarmonyOS build; the HarmonyOS alternative interfaces for their functional category are listed.</p>
+          <ul id="excluded-list" class="excluded">
+            <li class="excluded-item">
+              <div class="b-kind">X11 (window system)</div>
+              <div class="b-node">guard: #ifdef Q_OS_LINUX</div>
+              <div class="b-reason">Under the platform/unix path, only enabled in Linux/X11 builds; not compiled in a HarmonyOS build.</div>
+              <div class="b-alt">HarmonyOS alternative: <span class="alt-chip st-supported">OHOS WindowManager</span></div>
+            </li>
+            <li class="excluded-item">
+              <div class="b-kind">ALSA (audio)</div>
+              <div class="b-node">guard: #ifdef Q_OS_LINUX</div>
+              <div class="b-reason">The audio backend is only conditionally compiled on Linux; HarmonyOS uses the system audio framework.</div>
+              <div class="b-alt">HarmonyOS alternative: <span class="alt-chip st-supported">OHOS AudioFramework</span></div>
+            </li>
+            <li class="excluded-item">
+              <div class="b-kind">Win32 / GDI (window drawing)</div>
+              <div class="b-node">guard: #ifdef Q_OS_WIN</div>
+              <div class="b-reason">Windows-only implementation file; not compiled in a HarmonyOS build.</div>
+              <div class="b-alt">HarmonyOS alternative: <span class="no-alt">No alternative in the same category; implement it yourself</span></div>
+            </li>
+          </ul>
+          <h2>Items to confirm <span id="unknown-count" class="count">1</span></h2>
+          <ul id="unknown-list" class="secondary">
+            <li class="unknown">
+              <div class="b-kind">Unknown package (no port record)</div>
+              <div class="b-node">libexif</div>
+              <div class="b-reason">Neither Harmonybrew nor cmd-pkgs has a record of this package; confirm the port source manually.</div>
+            </li>
+          </ul>
+        </section>
+
+        <section id="detail-panel" class="panel hidden">
+          <div class="detail-head">
+            <h2 id="detail-name"></h2>
+            <button id="detail-close" class="btn ghost" type="button" aria-label="Close details">×</button>
+          </div>
+          <div id="detail-body"></div>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <div id="clone-modal" class="modal hidden">
+    <div class="modal-card">
+      <h2>Add analysis target</h2>
+      <p class="panel-hint">Enter a GitHub repository URL; the backend will shallow clone it into
+        <code>workspace/</code> and scan and analyze it automatically. The job runs in the background; you can close this or refresh to check at any time.</p>
+      <input id="clone-url" type="url" placeholder="https://github.com/owner/repo">
+      <div id="clone-progress" class="progress hidden">
+        <div class="progress-bar"><div id="clone-fill" class="progress-fill"></div></div>
+        <div class="progress-meta">
+          <span id="clone-pct">0%</span><span id="clone-msg">Waiting for the job to start…</span>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="clone-cancel" class="btn ghost" type="button">Cancel</button>
+        <button id="clone-bg" class="btn ghost hidden" type="button">Run in background</button>
+        <button id="clone-submit" class="btn primary" type="button">Clone and analyze</button>
+      </div>
+      <p id="clone-status" class="clone-status"></p>
+    </div>
+  </div>
+
+  <button id="job-chip" class="job-chip hidden" type="button" title="Click to view progress">
+    <span class="job-chip-fill" aria-hidden="true"></span><span id="job-chip-text">0%</span>
+  </button>
+
+  <style id="critical-layout">
+      /* =============================================================
+         Full-bleed app-shell layout (critical layout)
+         zero max-width / zero centered containers / zero horizontal margins;
+         if the Tailwind CDN fails to load, this block alone carries all structural layout.
+         ============================================================= */
+      :root { --ease: cubic-bezier(0.32, 0.72, 0, 1); }
+
+      *, *::before, *::after { box-sizing: border-box; }
+
+      html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+      body {
+        background: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-sans);
+        font-size: 13px;
+        line-height: 1.45;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .hidden { display: none !important; }
+
+      .explorer-app {
+        width: 100%;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* ---------------- Top bar ---------------- */
+      .topbar {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        min-height: 52px;
+        padding: 6px 16px;
+        background: color-mix(in srgb, var(--muted) 88%, transparent);
+        -webkit-backdrop-filter: saturate(180%) blur(20px);
+        backdrop-filter: saturate(180%) blur(20px);
+        border-bottom: 1px solid var(--border);
+      }
+      .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+      .brand-mark {
+        width: 28px; height: 28px; flex: 0 0 auto;
+        border-radius: 9px;
+        background: radial-gradient(circle at 32% 30%, var(--brand-300), var(--primary) 58%, var(--brand-600));
+        box-shadow: var(--shadow-sm);
+      }
+      .brand-title h1 { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.25; color: var(--foreground); white-space: nowrap; }
+      .brand-title p { margin: 1px 0 0; font-size: 11px; line-height: 1.3; color: var(--muted-foreground); white-space: nowrap; }
+
+      .controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; }
+      .controls label {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 11px; color: var(--muted-foreground); white-space: nowrap;
+      }
+      .select-wrap { position: relative; display: inline-flex; }
+      select {
+        appearance: none; -webkit-appearance: none;
+        height: 30px; padding: 0 26px 0 10px;
+        font-family: var(--font-sans); font-size: 12px; line-height: 1;
+        color: var(--foreground);
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: border-color .16s var(--ease), box-shadow .16s var(--ease);
+      }
+      select:hover { border-color: var(--muted-foreground); }
+      select:focus-visible { outline: none; border-color: var(--ring); box-shadow: 0 0 0 3px var(--brand-200); }
+      .chev {
+        position: absolute; right: 8px; top: 50%;
+        width: 13px; height: 13px;
+        transform: translateY(-50%);
+        color: var(--muted-foreground);
+        pointer-events: none;
+        -webkit-mask-image: url("../assets/icons/dl_builtin_apple/chevron-down.svg");
+        mask-image: url("../assets/icons/dl_builtin_apple/chevron-down.svg");
+      }
+
+      input[type="search"] {
+        width: 220px; height: 30px; padding: 0 10px;
+        font-family: var(--font-sans); font-size: 12px; line-height: 1;
+        color: var(--foreground);
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        outline: none;
+        transition: border-color .16s var(--ease), box-shadow .16s var(--ease);
+      }
+      input[type="search"]::placeholder { color: var(--muted-foreground); }
+      input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }
+      input[type="search"]:hover { border-color: var(--input); }
+      input[type="search"]:focus-visible { border-color: var(--ring); box-shadow: 0 0 0 3px var(--brand-200); }
+
+      /* ---------------- Buttons (30px pills) ---------------- */
+      .btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        height: 30px; padding: 0 14px;
+        font-family: var(--font-sans); font-size: 12px; font-weight: 500; line-height: 1;
+        white-space: nowrap; cursor: pointer;
+        transition: background-color .16s var(--ease), border-color .16s var(--ease),
+                    color .16s var(--ease), opacity .16s var(--ease),
+                    transform .16s var(--ease), box-shadow .16s var(--ease);
+      }
+      .btn.secondary { background: var(--card); border: 1px solid var(--border); color: var(--foreground); }
+      .btn.secondary:hover { background: var(--muted); }
+      .btn.primary { background: var(--primary); border: 1px solid var(--primary); color: var(--primary-foreground); }
+      .btn.primary:hover { opacity: .88; }
+      .btn.ghost { background: transparent; border: 1px solid transparent; color: var(--muted-foreground); }
+      .btn.ghost:hover { background: var(--muted); color: var(--foreground); }
+      .btn:active { transform: scale(0.97); }
+      .btn:focus-visible { outline: none; border-color: var(--ring); box-shadow: 0 0 0 3px var(--brand-200); }
+
+      .badge {
+        display: inline-flex; align-items: center;
+        height: 26px; padding: 0 12px;
+        border-radius: 999px;
+        font-size: 11px; font-weight: 500; line-height: 1; white-space: nowrap;
+      }
+      .badge.bad { color: var(--state-error); border: 1px solid var(--state-error); background: var(--state-error-surface); }
+
+      /* ---------------- Legend bar ---------------- */
+      .legend {
+        flex: 0 0 auto;
+        display: flex; align-items: center; flex-wrap: wrap;
+        gap: 6px 16px;
+        min-height: 38px;
+        padding: 4px 16px;
+        background: var(--card);
+        border-bottom: 1px solid var(--border);
+        font-size: 11px; color: var(--muted-foreground);
+      }
+      .legend-item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+      .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+      .dot-app { background: var(--primary); }
+      .dot-ok { background: var(--state-success); }
+      .dot-bad { background: var(--state-error); }
+      .dot-unknown { background: var(--muted-foreground); }
+      .dot-uncertain { background: var(--chart-3); }
+      .combo-chip {
+        width: 15px; height: 11px; flex: 0 0 auto;
+        border-radius: 5px;
+        border: 1.5px dashed var(--primary);
+      }
+      .graph-stats {
+        margin-left: auto;
+        font-family: var(--font-mono); font-size: 11px;
+        font-variant-numeric: tabular-nums;
+        color: var(--muted-foreground); white-space: nowrap;
+      }
+
+      /* ---------------- Workspace (canvas + side panel) ---------------- */
+      .layout { flex: 1 1 auto; min-height: 0; display: flex; }
+      #graph-container { flex: 1 1 auto; min-width: 0; position: relative; background: var(--background); }
+      .topo {
+        position: absolute; inset: 0;
+        width: 100%; height: 100%;
+        display: block;
+        cursor: grab;
+      }
+
+      /* ---------------- Side panel ---------------- */
+      .side-panel {
+        flex: 0 0 330px;
+        width: 330px; min-width: 280px;
+        display: flex; flex-direction: column;
+        background: var(--card);
+        border-left: 1px solid var(--border);
+        overflow-y: auto;
+      }
+      .side-panel::-webkit-scrollbar { width: 8px; }
+      .side-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+
+      .panel { padding: 14px 16px; }
+      .panel h2 {
+        display: flex; align-items: center; gap: 6px;
+        margin: 16px 0 8px;
+        font-size: 13px; font-weight: 600; line-height: 1.3;
+        color: var(--foreground);
+      }
+      .panel h2:first-child { margin-top: 0; }
+      .count {
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: var(--muted);
+        color: var(--muted-foreground);
+        font-size: 10px; font-weight: 500; line-height: 1.3;
+      }
+      .panel-hint { margin: -2px 0 10px; font-size: 11px; line-height: 1.55; color: var(--muted-foreground); }
+
+      .filter-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 10px; }
+      .filter-btn {
+        height: 24px; padding: 0 12px;
+        border-radius: 999px;
+        font-family: var(--font-sans); font-size: 11px; line-height: 1;
+        color: var(--muted-foreground);
+        background: var(--card);
+        border: 1px solid var(--border);
+        cursor: pointer;
+        transition: background-color .16s var(--ease), border-color .16s var(--ease),
+                    color .16s var(--ease), transform .16s var(--ease), box-shadow .16s var(--ease);
+      }
+      .filter-btn:hover { border-color: var(--muted-foreground); color: var(--foreground); }
+      .filter-btn:active { transform: scale(0.97); }
+      .filter-btn:focus-visible { outline: none; border-color: var(--ring); box-shadow: 0 0 0 3px var(--brand-200); }
+      .filter-btn.active { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+
+      #blocker-list, #unknown-list, #excluded-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+      #blocker-list li, #unknown-list li, .excluded-item {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-left-width: 3px;
+        border-radius: var(--radius-md);
+        padding: 10px 12px;
+        transition: transform .16s var(--ease), box-shadow .16s var(--ease), border-color .16s var(--ease);
+      }
+      #blocker-list li, #unknown-list li { cursor: pointer; }
+      #blocker-list li:hover, #unknown-list li:hover, .excluded-item:hover {
+        transform: translateX(3px);
+        box-shadow: var(--shadow-md);
+      }
+      #blocker-list li.risk-high { border-left-color: var(--state-error); }
+      #blocker-list li.risk-medium { border-left-color: var(--chart-3); }
+      #unknown-list li.unknown { border-left-color: var(--muted-foreground); }
+      .excluded-item { border-left-color: var(--text-400); }
+
+      .b-kind { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11px; line-height: 1.5; color: var(--muted-foreground); }
+      .b-node { margin: 3px 0 2px; font-family: var(--font-mono); font-size: 12px; font-weight: 600; line-height: 1.45; color: var(--foreground); word-break: break-all; }
+      .b-reason { font-size: 11px; line-height: 1.55; color: var(--muted-foreground); }
+      .b-guard {
+        display: inline-block; margin-top: 5px; padding: 2px 8px;
+        border-radius: 6px;
+        font-family: var(--font-mono); font-size: 10px; line-height: 1.4;
+        color: var(--muted-foreground); background: var(--muted);
+      }
+      .b-alt { margin-top: 6px; font-size: 11px; line-height: 1.6; color: var(--muted-foreground); }
+      .b-path {
+        margin-top: 6px; padding-top: 6px;
+        border-top: 1px dashed var(--border);
+        font-family: var(--font-mono); font-size: 10px; line-height: 1.5;
+        color: var(--primary); word-break: break-all;
+      }
+
+      .risk-chip {
+        display: inline-flex; align-items: center;
+        height: 16px; padding: 0 7px;
+        border-radius: 999px;
+        font-size: 10px; font-weight: 600; line-height: 1;
+      }
+      .risk-chip.risk-high { background: var(--state-error-surface); color: var(--state-error); }
+      .risk-chip.risk-medium { background: color-mix(in srgb, var(--chart-3) 16%, var(--card)); color: var(--chart-3); }
+
+      .alt-chip {
+        display: inline-flex; align-items: center;
+        height: 18px; padding: 0 8px; margin: 2px 4px 0 0;
+        border-radius: 999px;
+        font-size: 10px; line-height: 1;
+        background: var(--muted); color: var(--muted-foreground);
+        border: 1px solid var(--border);
+      }
+      .alt-chip.st-supported { background: var(--state-success-surface); color: var(--state-success); border-color: var(--state-success); }
+      .alt-chip.st-convertible { background: color-mix(in srgb, var(--chart-3) 14%, var(--card)); color: var(--chart-3); border-color: var(--chart-3); }
+      .no-alt {
+        display: inline-block; padding: 2px 8px; border-radius: 999px;
+        background: var(--state-error-surface); color: var(--state-error);
+        font-size: 10px; line-height: 1.4;
+      }
+
+      /* ---------------- Node details (hidden by default) ---------------- */
+      .detail-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .detail-head h2 { margin: 0; }
+      #detail-close { width: 26px; height: 26px; padding: 0; font-size: 15px; }
+
+      /* ---------------- Add-analysis modal (hidden by default) ---------------- */
+      .modal {
+        position: fixed; inset: 0; z-index: 50;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(0, 0, 0, 0.38);
+        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(8px);
+      }
+      .modal-card {
+        width: min(460px, 92vw);
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 22px 24px;
+        box-shadow: var(--shadow-2xl);
+      }
+      .modal-card h2 { margin: 0 0 8px; font-size: 15px; font-weight: 600; line-height: 1.3; color: var(--foreground); }
+      .modal-card .panel-hint { margin-bottom: 12px; }
+      .modal-card code { font-family: var(--font-mono); font-size: 10.5px; color: var(--primary); }
+      #clone-url {
+        width: 100%; height: 38px; padding: 0 12px;
+        font-family: var(--font-mono); font-size: 12px; line-height: 1;
+        color: var(--foreground);
+        background: var(--background);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        outline: none;
+        transition: border-color .16s var(--ease), box-shadow .16s var(--ease);
+      }
+      #clone-url::placeholder { color: var(--muted-foreground); }
+      #clone-url:focus { border-color: var(--ring); box-shadow: 0 0 0 3px var(--brand-200); }
+      .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+      .clone-status { margin: 10px 0 0; min-height: 16px; font-size: 11px; line-height: 1.5; color: var(--muted-foreground); word-break: break-all; }
+
+      .progress { margin-top: 14px; }
+      .progress-bar { height: 6px; border-radius: 999px; background: var(--muted); overflow: hidden; }
+      .progress-fill { height: 100%; width: 0%; border-radius: 999px; background: var(--primary); transition: width .4s var(--ease); }
+      .progress-meta { display: flex; align-items: baseline; gap: 10px; margin-top: 6px; font-size: 11px; color: var(--muted-foreground); }
+      #clone-pct { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--primary); min-width: 34px; }
+      #clone-msg { font-size: 11px; line-height: 1.5; }
+
+      /* ---------------- Floating background-job chip (hidden by default) ---------------- */
+      .job-chip {
+        position: fixed; right: 18px; bottom: 18px; z-index: 60;
+        display: inline-flex; align-items: center; gap: 8px;
+        height: 32px; padding: 0 14px;
+        border-radius: 999px;
+        background: var(--card); color: var(--foreground);
+        border: 1px solid var(--primary);
+        box-shadow: var(--shadow-lg);
+        font-family: var(--font-sans); font-size: 12px; line-height: 1;
+        cursor: pointer;
+        transition: background-color .16s var(--ease), transform .16s var(--ease), box-shadow .16s var(--ease);
+      }
+      .job-chip:hover { background: var(--muted); }
+      .job-chip:active { transform: scale(0.97); }
+      .job-chip:focus-visible { outline: none; border-color: var(--ring); box-shadow: var(--shadow-lg), 0 0 0 3px var(--brand-200); }
+      .job-chip-fill {
+        position: relative; width: 26px; height: 6px;
+        border-radius: 999px; background: var(--muted); overflow: hidden;
+      }
+      .job-chip-fill::after {
+        content: ""; position: absolute; inset: 0; width: 40%;
+        border-radius: 999px; background: var(--primary);
+        animation: chip-slide 1.1s linear infinite;
+      }
+      @keyframes chip-slide {
+        from { transform: translateX(-100%); }
+        to { transform: translateX(260%); }
+      }
+
+      /* ---------------- Topology graph (all colors reference semantic tokens via CSS classes) ---------------- */
+      .dot-grid-dot { fill: var(--border); }
+      .combo-ring {
+        fill: var(--primary); fill-opacity: 0.04;
+        stroke: var(--primary); stroke-width: 1.4;
+        stroke-dasharray: 5 4; stroke-opacity: 0.55;
+      }
+      .edge-strong { fill: none; stroke: var(--primary); stroke-width: 1.4; opacity: 0.9; }
+      .edge-muted { fill: none; stroke: var(--border); stroke-width: 1.2; opacity: 0.85; }
+      .edge-dash { stroke-dasharray: 4 4; }
+      .mk-strong { fill: var(--primary); }
+      .mk-muted { fill: var(--border); }
+      .n-app { fill: var(--primary); stroke: var(--brand-600); stroke-width: 3; }
+      .n-success { fill: var(--state-success); stroke: var(--card); stroke-width: 2; }
+      .n-error { fill: var(--state-error); }
+      .n-uncertain { fill: var(--chart-3); }
+      .gnode { cursor: pointer; }
+      .gnode circle { transition: stroke .15s var(--ease), stroke-width .15s var(--ease); }
+      .gnode:hover circle { stroke: var(--primary); stroke-width: 2.5; }
+      .lbl-app-name { font-family: var(--font-mono); font-size: 11px; font-weight: 600; fill: var(--foreground); }
+      .lbl-app-meta { font-family: var(--font-mono); font-size: 9px; fill: var(--muted-foreground); }
+      .lbl-node { font-family: var(--font-mono); font-size: 10px; font-weight: 600; fill: var(--foreground); }
+      .lbl-node-strong { font-family: var(--font-mono); font-size: 10px; font-weight: 600; fill: var(--text-700); }
+      .lbl-combo { font-family: var(--font-sans); font-size: 12px; font-weight: 600; fill: var(--primary); }
+      .lbl-combo-sub { font-family: var(--font-sans); font-size: 10px; fill: var(--muted-foreground); }
+      .t-ok { fill: var(--state-success); }
+      .t-bad { fill: var(--state-error); }
+
+      /* ---------------- Responsive fallback (real app behavior) ---------------- */
+      @media (max-width: 900px) {
+        .layout { flex-direction: column; }
+        .side-panel {
+          width: 100%; min-width: 0; flex: 0 0 auto;
+          max-height: 40%;
+          border-left: none; border-top: 1px solid var(--border);
+        }
+        input[type="search"] { width: 160px; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          transition-duration: 0.01ms !important;
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+        }
+      }
+    </style>
+
+  <script>lucide.createIcons();</script>
+</body>
+</html>

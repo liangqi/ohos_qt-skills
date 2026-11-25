@@ -2,22 +2,22 @@
 id: problem-runtime-crash-ohos-deviceinfo-global-expression
 type: problem
 domain: runtime
-tags: [runtime, crash, @ohos.deviceInfo, global-expression, ArkTS, bare-eval, known-module-path, OhosExportModules, QtUtils, demo-gen, stale-template, objects-api, qView]
+tags: [runtime, crash, @ohos.deviceInfo, global-expression, ArkTS, bare-eval, known-module-path, OhosExportModules, QtUtils, demo-gen, stale-template, objects-api, reference-template]
 created: 2026-07-23
 updated: 2026-07-23
 status: solved
 severity: critical
 audience: public
-refs: [problem-runtime-crash-libqohos-libqt5core-version-mismatch, procedural-demo-generation, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-build-run-workflow]
+refs: [fault-C-0010, problem-runtime-crash-libqohos-libqt5core-version-mismatch, procedural-demo-generation, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-build-run-workflow]
 summary: >
   A Qt5 HarmonyOS application crashes at runtime with the Napi::Error "global expression doesn't start with known module path: '@ohos.deviceInfo'".
   Root cause: at startup, libqohos (the 515 generation) does a bare global-expression eval of jsState.eval("@ohos.deviceInfo"), and the ArkTS runtime rejects bare @ohos.* evals
   unless that module path has been registered as "known" by an eager import. Demos generated from the Qt source tree template (qtbase/src/harmonyos/templates)
   ship a stale, minimal OhosExportModules.ts (only 5 @kit.* lazy imports + the factories API) with no @ohos.* imports at all
-  → deviceInfo isn't registered → the bare eval is rejected → crash. Fix: replace it with the full OhosExportModules.ts + QtUtils.ets from qView-ohos
+  → deviceInfo isn't registered → the bare eval is rejected → crash. Fix: replace it with the OhosExportModules.ts + QtUtils.ets from the canonical full reference template
   (26 @ohos.* + 13 @kit.* eager default-imports + the objects API + getModulesMapForQt).
 leader_summary: >
-  Captured the root cause and fix for "a stale glue template makes the bare @ohos.deviceInfo eval crash" when generating Qt HarmonyOS demos (aligning with qView-ohos's full version),
+  Captured the root cause and fix for "a stale glue template makes the bare @ohos.deviceInfo eval crash" when generating Qt HarmonyOS demos (aligning with the full reference template),
   completing the @ohos.deviceInfo crash family with its other generational error (the 515 bare eval vs. the 7/14 napi_get_named_property).
 impact: [Migration efficiency, Framework support, Demo generation]
 deliverables: [problem record, the qapp-recreate-test fix (4 files), running successfully on a device]
@@ -36,7 +36,7 @@ error_message: >
   The .so files at the bottom of the stack: libqohos.so (the 515 generation, with no qohosplugincore.cpp fallback) + libQt5Core.so + libark_jsruntime.so
   Precursor: the process survives for minutes and only crashes later (or when a recreate / second construction triggers onAcceptWant) — not an immediate startup crash.
 error_code: ""
-keywords: [global expression doesn't start with known module path, @ohos.deviceInfo, Napi::Error, bare eval, known module path, ArkTS runtime, OhosExportModules, getOhosExportModulesFactories, getModulesMapForQt, objects api vs factories api, stale template, demo generation, qView-ohos, eager default-import, onAcceptWant, initQtAppContextImpl, setupQtApplication]
+keywords: [global expression doesn't start with known module path, @ohos.deviceInfo, Napi::Error, bare eval, known module path, ArkTS runtime, OhosExportModules, getOhosExportModulesFactories, getModulesMapForQt, objects api vs factories api, stale template, demo generation, reference-template, eager default-import, onAcceptWant, initQtAppContextImpl, setupQtApplication]
 symptoms: >
   The signed HAP installs successfully and the application launches after aa start (the Qt window appears and QtWatchdog runs), but the process crashes when onAcceptWant fires
   (multi-instance / window recreate / a second QApplication construction); the faultlog's LAST_FATAL_MESSAGE is the Napi::Error above.
@@ -115,17 +115,17 @@ The two are **the same class of problem (@ohos.* resolution failure) with the sa
 
 ## Solution
 
-**Replace 4 files with qView-ohos's canonical full versions** (the KB's canonical reference implementation; [[problem-runtime-crash-libqohos-libqt5core-version-mismatch]] points at the same fix):
+**Replace 4 files with the canonical full reference template** (the KB's canonical reference implementation; [[problem-runtime-crash-libqohos-libqt5core-version-mismatch]] points at the same fix):
 
-1. `entry/src/main/ets/qability/OhosExportModules.ts` ← the qView-ohos version:
+1. `entry/src/main/ets/qability/OhosExportModules.ts` ← the full reference template:
    - 26 `import __ohos__X from '@ohos.X'` statements (eager default-imports, covering deviceInfo/display/window/font/resourceManager/i18n/intl/settings/abilityAccessCtrl/bundle.bundleManager/...)
    - 13 `import { Y as __kit__... } from '@kit.Z'` statements (eager, covering the @kit.* roots the `.so` actually evaluates)
    - `export function getOhosExportModules(): object` returning **the objects directly** (not arrow factories)
-2. `entry/src/main/ets/qability/QtUtils.ets` ← the qView-ohos version: `getModulesMapForQt()` calls `getOhosExportModules()` + `getLocalStorageTsInterface()` + `getQEmbeddedComponentCreatorTsInterface()` (**calling them to get objects**, not storing functions)
+2. `entry/src/main/ets/qability/QtUtils.ets` ← the full reference template: `getModulesMapForQt()` calls `getOhosExportModules()` + `getLocalStorageTsInterface()` + `getQEmbeddedComponentCreatorTsInterface()` (**calling them to get objects**, not storing functions)
 3. `QAbilityStage.ets` / `QChildProcess.ets`: rename `getModulesFactoriesMapForQt()` → `getModulesMapForQt()` (2 call sites; keep QAbilityStage's resourceDir)
 4. Rebuild with `build_project(entry@default, debug)` → install → trigger onAcceptWant → no crash and QtWatchdog keeps running = the fix works
 
-> **Where the @ohos.* / @kit.* list comes from**: use `strings libqohos.so | grep -E "^@ohos\.|^@kit\."` to get the module roots this libqohos actually evaluates (deduplicated) and make sure each one has an eager import. qView-ohos's 26+13 is a verified superset you can adopt as-is.
+> **Where the @ohos.* / @kit.* list comes from**: use `strings libqohos.so | grep -E "^@ohos\.|^@kit\."` to get the module roots this libqohos actually evaluates (deduplicated) and make sure each one has an eager import. The full reference template's 26+13 is a verified superset you can adopt as-is.
 
 ## Key diagnostic signals
 
@@ -139,4 +139,4 @@ The two are **the same class of problem (@ohos.* resolution failure) with the sa
 - [[problem-runtime-crash-libqohos-libqt5core-version-mismatch]] — The newer 7/14 branch of the @ohos.deviceInfo crash family ("object has no property named 'deviceType'"); the same eager-import fix.
 - [[procedural-demo-generation]] phase three, 3.2 — The source tree template pitfall checkpoint (added because of this).
 - [[semantic-qt-harmonyos-project-structure]] — Where the HarmonyOS project template comes from.
-- qView-ohos (the reference implementation; see the path in ENV.local) — The canonical full OhosExportModules.ts/QtUtils.ets reference implementation.
+- The canonical full reference template (local path in ENV.local) — OhosExportModules.ts/QtUtils.ets reference implementation.

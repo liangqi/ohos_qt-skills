@@ -1,0 +1,473 @@
+{
+ "schema": "portgraph-e2e-report/1",
+ "app": {
+  "key": "corpus-d",
+  "app_id": "app:corpus-d",
+  "name": "corpus-d",
+  "url": "https://github.com/corpus-d/corpus-d",
+  "tier": "B",
+  "build_system": "cmake",
+  "sources": 710,
+  "repo_path": "workspace/corpus-d"
+ },
+ "generated_at": "2026-09-19T15:12:49Z",
+ "verdict": "blocked",
+ "blockers": [
+  {
+   "kind": "unsupported-interface",
+   "node": "app:corpus-d",
+   "reason": "uses platform interface macOS Cocoa/AppKit unsupported on HarmonyOS (os-api) macOS-only UI/system framework; HarmonyOS alternative interfaces in the same category: dlopen dynamic loading, glib event loop, macOS system library binding, POSIX/musl C library, pthread multithreading [evidence: [HarmonyOS/generic guard (compiled)] guard=ohos-active (19 unconditional / 0 OHOS-compilable / 0 macro-guard excluded / 0 file-level excluded) | src/gui/macutilities.mm:31[unconditional] #import <Cocoa/Cocoa.h>; src/gui/macutilities.mm:32[unconditional] #import <Foundation/Foundation.h>; src/gui/macutilities.mm:69[unconditional] NSApplication *appInst = [NSApplication sharedApplication];]"
+  },
+  {
+   "kind": "unsupported-interface",
+   "node": "app:corpus-d",
+   "reason": "uses platform interface D-Bus IPC unsupported on HarmonyOS (ipc) HarmonyOS has no D-Bus (the Qt D-Bus module is out of scope); switch to system services/IPC; HarmonyOS alternative interfaces in the same category: HarmonyOS IPC/system service capabilities [evidence: [HarmonyOS/generic guard (compiled)] guard=ohos-active (10 unconditional / 11 OHOS-compilable / 0 macro-guard excluded / 0 file-level excluded) | src/gui/utils.cpp:56[ohos-active] #include <QDBusConnection>; src/gui/utils.cpp:268[ohos-active] , u\"org.freedesktop.FileManager1\"_s, QDBusConnection::sessionBus()};; src/gui/powermanagement/inhibitordbus.cpp:32[unconditional] #include <QDBusConnection>]"
+  },
+  {
+   "kind": "unsupported-interface",
+   "node": "app:corpus-d",
+   "reason": "uses platform interface Win32 API unsupported on HarmonyOS (os-api) Windows-only system interface; HarmonyOS alternative interfaces in the same category: dlopen dynamic loading, glib event loop, macOS system library binding, POSIX/musl C library, pthread multithreading [evidence: [HarmonyOS/generic guard (compiled)] guard=ohos-active (3 unconditional / 2 OHOS-compilable / 20 macro-guard excluded / 0 file-level excluded) | src/gui/utils.cpp:36[platform-excluded] #include <shlobj.h>; src/gui/utils.cpp:37[platform-excluded] #include <shellapi.h>; src/gui/powermanagement/inhibitorwindows.cpp:32[unconditional] #include <windows.h>]"
+  },
+  {
+   "kind": "unsupported-module",
+   "node": "qtmod:dbus",
+   "reason": "Qt for HarmonyOS module support table: unsupported - HarmonyOS has no D-Bus"
+  }
+ ],
+ "unknowns": [
+  {
+   "kind": "unknown-package",
+   "node": "pkg-unknown:libtorrent-rasterbar",
+   "reason": "no HarmonyOS prebuilt artifact, must be cross-compiled and ported yourself; not in the Harmonybrew/cmd-pkgs known list"
+  }
+ ],
+ "platform_excluded": [],
+ "closure": {
+  "size": 19,
+  "summary": {
+   "target": 1,
+   "provided": 8,
+   "would_download": 8,
+   "need_port": 1,
+   "cmd_only": 1
+  },
+  "need_port": [
+   {
+    "id": "pkg-unknown:libtorrent-rasterbar",
+    "name": "libtorrent-rasterbar",
+    "version": null,
+    "source_url": null,
+    "repo_url": null
+   }
+  ],
+  "cmd_only": [
+   {
+    "id": "hb:ca-certificates",
+    "name": "ca-certificates",
+    "artifact_cmd": "brew install ca-certificates"
+   }
+  ],
+  "would_download": [
+   "boost",
+   "openssl@3",
+   "zlib",
+   "icu4c@78",
+   "xz",
+   "zstd",
+   "zlib-ng-compat",
+   "lz4"
+  ]
+ },
+ "direct_deps": [
+  {
+   "id": "hb:boost",
+   "name": "boost",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "pkg-unknown:libtorrent-rasterbar",
+   "name": "libtorrent-rasterbar",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "unknown",
+   "depth": 1
+  },
+  {
+   "id": "hb:openssl@3",
+   "name": "openssl@3",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "hb:zlib",
+   "name": "zlib",
+   "kind": "package",
+   "edge": "runtime",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:core",
+   "name": "Qt Core",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:dbus",
+   "name": "Qt D-Bus",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "blocked",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:network",
+   "name": "Qt Network",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:sql",
+   "name": "Qt SQL",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:svg",
+   "name": "Qt SVG",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:test",
+   "name": "Qt Test",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:widgets",
+   "name": "Qt Widgets",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  },
+  {
+   "id": "qtmod:xml",
+   "name": "Qt XML",
+   "kind": "qt-module",
+   "edge": "uses-module",
+   "port_status": "ported",
+   "depth": 1
+  }
+ ],
+ "oracle": {
+  "app": "corpus-d",
+  "source": "INSTALL",
+  "source_note": "Written by hand: the dependency list is in the INSTALL file at the repository root (no extension; corpus oracle_files was misconfigured as INSTALL.md; and it is a plain-text numbered list, not markdown headings, so the automatic extractor cannot parse it). Reviewed entry by entry against the original INSTALL text.",
+  "reviewed": true,
+  "deps": [
+   {
+    "name": "boost",
+    "display": "Boost >= 1.76",
+    "type": "runtime",
+    "raw": "Boost >= 1.76"
+   },
+   {
+    "name": "libtorrent-rasterbar",
+    "display": "libtorrent-rasterbar 1.2.19 - 1.2.x || 2.0.10 - 2.0.x",
+    "type": "runtime",
+    "raw": "libtorrent-rasterbar 1.2.19 - 1.2.x || 2.0.10 - 2.0.x"
+   },
+   {
+    "name": "openssl",
+    "display": "OpenSSL >= 3.0.2",
+    "type": "runtime",
+    "raw": "OpenSSL >= 3.0.2"
+   },
+   {
+    "name": "qt",
+    "display": "Qt 6.6.0 - 6.x",
+    "type": "runtime",
+    "raw": "Qt 6.6.0 - 6.x"
+   },
+   {
+    "name": "zlib",
+    "display": "zlib >= 1.2.11",
+    "type": "runtime",
+    "raw": "zlib >= 1.2.11"
+   },
+   {
+    "name": "cmake",
+    "display": "CMake >= 3.16",
+    "type": "build",
+    "raw": "CMake >= 3.16 (Compile-time only)"
+   },
+   {
+    "name": "python",
+    "display": "Python >= 3.13.0",
+    "type": "optional",
+    "raw": "Python >= 3.13.0 (Optional, run-time only; used by the bundled search engine)"
+   }
+  ]
+ },
+ "diffs": [
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "boost",
+   "oracle_type": "runtime",
+   "pg_id": "hb:boost",
+   "pg_name": "boost",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "libtorrent-rasterbar",
+   "oracle_type": "runtime",
+   "pg_id": "pkg-unknown:libtorrent-rasterbar",
+   "pg_name": "libtorrent-rasterbar",
+   "pg_kind": "package",
+   "pg_status": "unknown",
+   "depth": 1,
+   "evidence": {
+    "note": "matched a ghost node: real external dependency with no known HarmonyOS package (fetch-deps reports need_port/needs a source port; detection correct)"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "openssl",
+   "oracle_type": "runtime",
+   "pg_id": "hb:openssl@3",
+   "pg_name": "openssl@3",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "qt",
+   "oracle_type": "runtime",
+   "pg_id": "qtmod:core",
+   "pg_name": "Qt Core",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "matched",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "zlib",
+   "oracle_type": "runtime",
+   "pg_id": "hb:zlib",
+   "pg_name": "zlib",
+   "pg_kind": "package",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": null,
+   "agent_note": null
+  },
+  {
+   "class": "build-only",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "cmake",
+   "oracle_type": "build",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "build tool; fetch-deps does not collect build edges"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "optional-not-built",
+   "side": "oracle",
+   "by_design": true,
+   "oracle_name": "python",
+   "oracle_type": "optional",
+   "pg_id": null,
+   "pg_name": null,
+   "pg_kind": null,
+   "pg_status": null,
+   "depth": null,
+   "evidence": {
+    "note": "optional dependency, not enabled in the default build"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:dbus",
+   "pg_name": "Qt D-Bus",
+   "pg_kind": "qt-module",
+   "pg_status": "blocked",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:network",
+   "pg_name": "Qt Network",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:sql",
+   "pg_name": "Qt SQL",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:svg",
+   "pg_name": "Qt SVG",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:test",
+   "pg_name": "Qt Test",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:widgets",
+   "pg_name": "Qt Widgets",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  },
+  {
+   "class": "qt-granularity",
+   "side": "pg",
+   "by_design": true,
+   "oracle_name": null,
+   "oracle_type": null,
+   "pg_id": "qtmod:xml",
+   "pg_name": "Qt XML",
+   "pg_kind": "qt-module",
+   "pg_status": "ported",
+   "depth": 1,
+   "evidence": {
+    "note": "Qt module granularity: README usually just says 'Qt'"
+   },
+   "agent_note": null
+  }
+ ],
+ "metrics": {
+  "oracle_runtime": 5,
+  "oracle_optional": 1,
+  "matched": 5,
+  "matched_optional": 0,
+  "recall": "100%",
+  "precision": "100%",
+  "bug_candidates": 0,
+  "bug_by_class": {
+   "false-positive": 0,
+   "missed-dep": 0,
+   "resolution-gap": 0
+  },
+  "class_counts": {
+   "build-only": 1,
+   "matched": 5,
+   "optional-not-built": 1,
+   "qt-granularity": 7
+  }
+ },
+ "agent_notes": [
+  "Second-round review (worker3-deps-test, baseline f98a2e7): the root causes of both first-round resolution-gaps (libtorrentrasterbar / systemd) were confirmed and fixed. 1) The libtorrentrasterbar ghost node = find_package(LibtorrentRasterbar) (CheckPackages.cmake:6, flattened CamelCase name) and pkg_check_modules(libtorrent-rasterbar) (same file L9, hyphenated name), the same library under different names, were not merged -- fix: project_scanner._link_third_party groups and merges by separator-stripped key + kb_seed.build_dashless_index fallback resolution (flattened CamelCase name -> known hyphenated package name, key length >= 6 to avoid collisions). libtorrent-rasterbar is indeed not in hb-core/cmd-pkgs (cmd-pkgs only has the different library libtorrent-rakshasa, whose dashless key differs, so no false mapping); keeping a single pkg-unknown:libtorrent-rasterbar ghost node is the correct conclusion (need_port); its version constraint >= 2.0.10 cannot be statically resolved because of the CMake macro argument ${version} (residual item).",
+  "2) The systemd ghost node = find_package(Systemd) (dist/unix/CMakeLists.txt:3) is guarded by if (SYSTEMD), while SYSTEMD is declared via feature_option_dependent(... OFF \"NOT GUI\" OFF) and defaults to OFF (GUI defaults to ON), and that find_package only probes the service-file install directory (no linking) -- fix: qt_scanner gained CMake option-guard analysis (collecting option/feature_option[_dependent]/cmake_dependent_option defaults + line-by-line if-stack tracking + Find<Name>.cmake modules inheriting the caller's guard); declarations inside a guard get optional edges; optional edges do not enter the runtime closure/portability analysis/fetch-deps. Underlying root cause: the dist directory was excluded by EXCLUDE_DIRS, losing the guard context (corpus-d's add_subdirectory(dist) is a real build subdirectory); that exclusion has been removed.",
+  "The harness evidence-gathering defect left over from the previous round is fixed: name_variants appends a stripped variant for node names containing @version (openssl@3), so a failed grep for find_package(OpenSSL) no longer causes a false-positive verdict.",
+  "Oracle notes (carried over from the first round): the dependency list is in the INSTALL file at the repository root (a plain-text numbered list; corpus oracle_files was once misconfigured as INSTALL.md); this oracle was written by hand by an agent, checked entry by entry against the original INSTALL text (7 entries: 5 runtime + 1 build + 1 optional), and has been reviewed."
+ ]
+}

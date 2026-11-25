@@ -456,7 +456,7 @@ The limitations themselves and the evidence for them live in the common platform
 
 For the known behavior of the Qt APIs, the alternative idioms and the QTBUG tracking, see [[qt-harmonyos-platform-limits]] — don't duplicate the platform conclusions in this pipeline.
 
-**Qt6-specific**: a `Q_OS_LINUX` guard isn't trustworthy — Qt6 OHOS defines both `Q_OS_OHOS` and `Q_OS_LINUX`, so a bare `#ifdef Q_OS_LINUX` guarding desktop-only functionality fires on OHOS too; the correct form is `#if defined(Q_OS_LINUX) && !defined(Q_OS_OHOS)`.
+**Qt6-specific**: a `Q_OS_LINUX` guard isn't trustworthy — Qt6 OHOS defines both `Q_OS_HARMONY` and `Q_OS_LINUX` (it does **not** define `Q_OS_OHOS`, which is the Qt5 kit's macro), so a bare `#ifdef Q_OS_LINUX` guarding desktop-only functionality fires on OHOS too. The correct form is `#if defined(Q_OS_LINUX) && !defined(__OHOS__)`; writing `&& !defined(Q_OS_OHOS)` is always true on Qt6, so it guards nothing.
 
 #### 3.9 Build system adaptation (step 6)
 Source: `qt-harmonyos-porting-workflow` / `qt-harmonyos-project-structure` / `qt-ohos-concrete-build-recipe`

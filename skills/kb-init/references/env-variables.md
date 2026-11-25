@@ -7,6 +7,7 @@ This file explains what each variable in `ENV.local.md` means and what it's for.
 | Variable | Meaning | Example value |
 |----------|---------|---------------|
 | `DEVECO_PATH` | DevEco Studio installation path | macOS: `/Applications/DevEco-Studio.app`<br>Windows: `C:\Program Files\Huawei\DevEco Studio` |
+| `DEVECO_CLI` | Absolute path of the devecocli executable (kb-init resolves it via PATH → npm global → DevEco bundle and writes it here) | Windows: `C:\Users\<u>\AppData\Roaming\npm\devecocli.ps1` |
 | `OHOS_SDK_NATIVE` | OHOS SDK native toolchain path (contains clang/sysroot) | macOS: `/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native` |
 
 ## Tools bundled with DevEco
@@ -18,7 +19,7 @@ The tools below are installed with DevEco Studio; you don't need to install them
 
 | Tool | Windows/Linux path | macOS path | Purpose | References |
 |------|--------------------|------------|---------|------------|
-| **devecocli** | `<DEVECO>/tools/devecocli.bat` | `<DEVECO>/Contents/tools/devecocli` | The DevEco command-line tool (build, install, logs) | 13× |
+| **devecocli** | npm global (`npm prefix -g`) `devecocli{,.cmd,.ps1}`; or `<DEVECO>/tools/devecocli.bat` (bundled with some versions) | `<DEVECO>/Contents/tools/devecocli` (bundled with some versions) | The DevEco command-line tool (build, install, logs); install with `npm i -g @deveco/deveco-cli` | 13× |
 | **hvigorw** | `<DEVECO>/tools/hvigor/bin/hvigorw.js` | `<DEVECO>/Contents/tools/hvigor/bin/hvigorw.js` | The HarmonyOS project build tool (similar to Gradle) | 41× |
 | **ohpm** | `<DEVECO>/sdk/default/openharmony/ohpm/bin/ohpm` | `<DEVECO>/Contents/sdk/default/openharmony/ohpm/bin/ohpm` | The HarmonyOS package manager (installing dependencies) | 3× |
 | **hdc** | `<DEVECO>/sdk/default/openharmony/toolchains/hdc.exe` | `<DEVECO>/Contents/sdk/default/openharmony/toolchains/hdc` | The device connector (installing apps, logs, debugging) | 95× |

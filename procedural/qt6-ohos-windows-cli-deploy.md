@@ -84,6 +84,15 @@ mklink /J C:\DevecoStudio "C:\Program Files\Huawei\DevEco Studio"
 
 ## 2. Environment variables
 
+> **Settle two things on the host side first** (measured on 2026-11-16 on Windows 10.0.26300 + the Qt 6.12.0 prebuilt kit):
+> First, **the generator** — in a restricted session (a CI sandbox, a non-interactive service account), `-G Ninja` spins
+> at 0 CPU and never returns; switching to `-G "MinGW Makefiles"` (the kit ships `mingw_64/bin/mingw32-make.exe`) works fine.
+> Second, **whether the bundled scripts are real** — the kit's `qmake.bat` is often a build-machine artifact (its content points to
+> `/home/qt/work/install/bin\qmake6.exe`) and is unusable on Windows; judge whether the kit is usable by
+> `qt-cmake.bat`, `bin/moc.exe`, and `harmonydeployqt6.exe`.
+> Also, PowerShell's `>` redirection outputs UTF-16LE with a BOM by default; before handing a log to `analyze-log`, pipe it through
+> `| Out-File -Encoding utf8`, or no QOH pattern will match.
+
 ### 2.1 Build time (for qt-cmake + cmake --build)
 
 ```cmd
@@ -271,6 +280,9 @@ harmonydeployqt6 --input ... --output ... --hvigor ... ^
 | `Could not find toolchain file` (though the file exists) | (In the Qt Creator case) the initial configuration value has leading/trailing `"` + `:UNINITIALIZED` → cmake receives a path with literal quotes | With quotes on the CLI, cmake parses it correctly; this pitfall only exists in Qt Creator's kit configuration table |
 | Can't find `harmonydeployqt6.exe` (looking in `harmonyos_arm64_v8a/bin`) | It's a host tool and isn't in the cross target | Use `mingw_64/bin/harmonydeployqt6.exe` |
 | `Failed to start hvigorw` | A relative path was passed to `--hvigor` | `--hvigor` must be absolute, or set the `QT_HARMONYOS_HVIGOR` env var |
+| `Warning: No hvigor path specified, skipping build` (**exit code 0**) | `QT_HARMONYOS_HVIGOR` is missing, so packaging is silently skipped | Set an absolute path; scripts that judge success by exit code must also match this line |
+| `EPERM ... symlink ... node_modules\@ohos\hvigor` | A non-administrator can't create symlinks; hvigor deletes and recreates them every time, so copying them in beforehand doesn't help | Pre-create the two junctions with `mklink /J`, or use an administrator session |
+| `Invalid custom userhome hvigor data dir` | `HVIGOR_USER_HOME` was given a relative path and silently fell back | Pass an absolute, writable path |
 | harmonydeployqt6 spawns `java` with ENOENT | hvigorw's node workers spawn `java` (to run app_packing_tool.jar) and lose the environment | Confirm `JAVA_HOME` + `jbr/bin` are on PATH; §2.2 covers this |
 | Deployment says `libgallery.so` is missing | You only configured, never built | Run `cmake --build build` first |
 | A DevEco path with spaces → assorted mysterious failures | The wiki already warns that whitespace makes hvigor's spawn fail | Use the whitespace-free junction alias `${DEVECO_STUDIO}` from §1.1 |

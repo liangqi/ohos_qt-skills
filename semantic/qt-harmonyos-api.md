@@ -7,7 +7,7 @@ created: 2026-06-02
 updated: 2026-08-06
 status: active
 audience: public
-refs: [semantic-qt-harmonyos-overview, semantic-qt-ohos-extras]
+refs: [fault-C-0001, semantic-qt-harmonyos-overview, semantic-qt-ohos-extras]
 summary: >
   Key Qt API compatibility points for HarmonyOS porting: argv differences; choosing a child-process approach per scenario (headless can use QProcess / a Qt UI uses startAppProcess / a non-Qt UI uses startAbility);
   window model differences (QDialog/Popup are subwindows);

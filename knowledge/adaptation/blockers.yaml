@@ -1,0 +1,79 @@
+# knowledge/adaptation/blockers.yaml — blocking root-cause taxonomy (machine-readable, adapted for public release)
+#
+# Source: the internal scaffolding repository's semantic/qt-harmonyos-blocking-cause-taxonomy.md (distilled, with internal project-intake routing stripped)
+# Human page: semantic/qt-harmonyos-blocking-taxonomy.md
+# Consumer: qt-ohos-run.py assess (the verdict follows this taxonomy's boundary table)
+#
+# Principle: only classify something as blocking after confirming its root cause can't be solved by "adaptable" means.
+# Anything that adaptation can solve (see the boundary section) is not a blocker.
+
+schema: 1
+updated: 2026-09-08
+source: semantic/qt-harmonyos-blocking-taxonomy.md
+
+# The boundary between adaptable and non-adaptable (check here first, before talking about blockers)
+boundary:
+  - means: "QtOhosExtras wrapper APIs"
+    covers: "child process launch, inter-app communication, sub-window tagging, graded lifecycle closeEvent, screenshot prevention, dark mode"
+    apis: "startAppProcess / startNewAbilityInstance / startAbility(want) / setBundledAbilityAndQWindowBindingKeyForQWindow (sub-window binding) / getCloseEventRootCause / QOhosAppContext"
+  - means: "code guard #ifndef Q_OS_OHOS"
+    covers: "chmod/symlink/pthread_cancel/platform conditional branches that wrongly hit Linux (note that Q_OS_OHOS implies Q_OS_LINUX)"
+    apis: "the 8 categories on the platform limitations page"
+  - means: "adjust the .so deployment path"
+    covers: "dlopen EINVAL (can't load from a read-only path) — package the .so into entry/libs/arm64-v8a/"
+    apis: ""
+  - means: "feature flag OFF / trim non-core features"
+    covers: "direct X11/HWND/Cocoa/Wayland calls, optional platform integrations"
+    apis: "#ifndef Q_OS_OHOS + stub + CMake switch"
+  - means: "shim header / disable the accelerated path"
+    covers: "symbols missing from musl, missing Clang intrinsics"
+    apis: "inline-function shim, --disable-modules software implementation"
+
+# Blocking root-cause categories (precondition: confirmed that adaptation can't fix it)
+categories:
+  - code: LIB-MISSING
+    title: Third-party library not ported to HarmonyOS
+    verdict_impact: uncertain
+    signals: "find_package(X REQUIRED) can't find it, undefined reference, no Harmonybrew bottle and no cross-compilation recipe"
+    action: "Dedicated project: third-party library (or switch to an equivalent library/backend); if it's an entire framework stack (e.g. KDE Frameworks >=5 modules), treat it as a large framework-stack instance"
+  - code: MODULE-OUT-OF-SCOPE
+    title: Qt module unsupported on the platform and a core dependency
+    verdict_impact: blocked
+    signals: "marked out-of-scope in the matrix (webengine/dbus/remoteobjects, etc.); find_package(Qt5/6 <Module> REQUIRED) fails"
+    action: "Fill in the Qt module, or use an alternative (webengine→CEF); if it can be trimmed, it isn't a blocker"
+  - code: PLATFORM-FEATURE-UNSUPPORTED
+    title: The platform simply doesn't provide the capability
+    verdict_impact: blocked
+    signals: "the native API/framework has no corresponding header/library in the OHOS SDK (not a missing library, not a sandbox permission)"
+    action: "System requirement"
+  - code: ABI-PERFORMANCE
+    title: ABI/compiler mismatch with no workaround
+    verdict_impact: uncertain
+    signals: "undefined symbol intrinsic, symbols missing from musl, W^X forbids JIT, ARMv8 performance problems; shims/disabling acceleration all fail"
+    action: "Dedicated project: third-party library (rewrite/choose a different backend)"
+  - code: CONCEPT-MISMATCH
+    title: The problem domain has no mobile counterpart
+    verdict_impact: blocked
+    signals: "the app's core problem domain is a desktop/system-management capability whose resources the sandbox doesn't expose; once trimmed, the core functionality no longer exists"
+    action: "Don't invest"
+  - code: OTHER
+    title: Other, pending classification
+    verdict_impact: uncertain
+    signals: ""
+    action: "Assess further"
+
+# Special case for large framework-stack instances: KDE Frameworks (ECM + multiple KF modules + PolkitQt)
+kde_framework_stack:
+  detect: "find_package(KF5/KF6 ...) with >= 5 components, or a combination of ECM + multiple KF modules"
+  verdict: blocked
+  note: "Several person-years of work, and some submodules have no platform counterpart — don't open a project; verdict: don't invest. The category is still recorded as LIB-MISSING, noted as a large framework-stack instance"
+
+# Effort reference dimensions from the 229-app survey (cited by the assessment report)
+effort_dimensions:
+  - qt_version_fit
+  - qt_module_availability
+  - deps_ohos_difficulty
+  - platform_specific_code
+  - build_system
+  - hardware_deps
+  - architecture_fit

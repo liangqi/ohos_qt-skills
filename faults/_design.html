@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fault Base Design Overview — Qt for HarmonyOS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=ZCOOL+QingKe+HuangYou&family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A1220; --bg2:#0D1728;
+    --panel:rgba(15,27,46,.78); --panel2:rgba(19,33,55,.9);
+    --line:rgba(125,165,215,.22); --line2:rgba(125,165,215,.4);
+    --ink:#D9E4F5; --dim:#8FA3BF; --faint:#5D7191;
+    --qt:#4FC3F7;      /* Qt issue */
+    --sys:#FF7A6B;     /* System issue */
+    --must:#FFB84D;    /* Must adapt for HarmonyOS */
+    --app:#6BD98F;     /* Application usage issue / W workaround */
+    --third:#B69CFF;   /* Third-party library issue */
+    --undet:#93A4BD;   /* Pending classification */
+    --tk:#6FA8FF;      /* T tracking ticket */
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+    --sans:'Noto Sans SC',sans-serif;
+    --disp:'ZCOOL QingKe HuangYou','Noto Sans SC',sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--sans);
+    font-weight:300; line-height:1.7; overflow-x:hidden;
+  }
+  /* ── blueprint background ─────────────────────────── */
+  .grid-bg{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:
+      linear-gradient(rgba(79,195,247,.045) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(79,195,247,.045) 1px,transparent 1px),
+      linear-gradient(rgba(79,195,247,.025) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(79,195,247,.025) 1px,transparent 1px);
+    background-size:120px 120px,120px 120px,24px 24px,24px 24px;
+  }
+  .vignette{
+    position:fixed; inset:0; z-index:1; pointer-events:none;
+    background:radial-gradient(ellipse 90% 70% at 50% 20%,transparent 55%,rgba(4,9,18,.55) 100%);
+  }
+  .noise{
+    position:fixed; inset:0; z-index:1; pointer-events:none; opacity:.05;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
+  }
+  main,header,footer{position:relative;z-index:2}
+  .wrap{max-width:1200px;margin:0 auto;padding:0 32px}
+
+  /* ── entrance animation ─────────────────────────── */
+  @keyframes rise{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+  .reveal{animation:rise .8s cubic-bezier(.22,1,.36,1) both}
+  .d1{animation-delay:.08s}.d2{animation-delay:.18s}.d3{animation-delay:.3s}
+  .d4{animation-delay:.42s}.d5{animation-delay:.54s}.d6{animation-delay:.66s}.d7{animation-delay:.78s}
+
+  /* ── header ─────────────────────────── */
+  header{padding:76px 0 44px;border-bottom:1px solid var(--line)}
+  .kicker{
+    font-family:var(--mono);font-size:12px;letter-spacing:.32em;color:var(--qt);
+    text-transform:uppercase;margin-bottom:18px;
+  }
+  .kicker::before{content:"";display:inline-block;width:34px;height:1px;background:var(--qt);vertical-align:middle;margin-right:14px}
+  h1{
+    font-family:var(--disp);font-weight:400;font-size:clamp(44px,6.5vw,76px);
+    letter-spacing:.04em;line-height:1.12;
+  }
+  h1 em{font-style:normal;color:var(--qt);text-shadow:0 0 32px rgba(79,195,247,.35)}
+  .subtitle{margin-top:14px;color:var(--dim);font-size:16px;letter-spacing:.06em}
+  .subtitle b{color:var(--ink);font-weight:500}
+  /* division of labor between the two bases */
+  .duality{
+    margin-top:34px;display:grid;grid-template-columns:1fr 44px 1fr;align-items:stretch;gap:0;
+  }
+  .du-card{
+    border:1px solid var(--line);background:var(--panel);padding:18px 22px;position:relative;
+  }
+  .du-card::before,.du-card::after{
+    content:"";position:absolute;width:9px;height:9px;border-color:var(--line2);border-style:solid;
+  }
+  .du-card::before{top:-1px;left:-1px;border-width:1px 0 0 1px}
+  .du-card::after{bottom:-1px;right:-1px;border-width:0 1px 1px 0}
+  .du-card .tag{font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--faint);display:block;margin-bottom:6px}
+  .du-card p{font-size:15px;color:var(--dim)}
+  .du-card p b{color:var(--ink);font-weight:500}
+  .du-card.focus{border-color:rgba(79,195,247,.45)}
+  .du-card.focus .tag{color:var(--qt)}
+  .du-mid{display:flex;align-items:center;justify-content:center;color:var(--faint);font-family:var(--mono);font-size:12px}
+  /* stats bar */
+  .stats{
+    margin-top:26px;display:flex;flex-wrap:wrap;gap:12px;
+  }
+  .stat{
+    border:1px solid var(--line);background:var(--panel);padding:12px 20px;min-width:130px;
+  }
+  .stat .num{font-family:var(--mono);font-size:30px;font-weight:600;line-height:1.1}
+  .stat .lbl{font-size:12px;color:var(--dim);letter-spacing:.1em}
+  .stat.s .num{color:var(--qt)}.stat.c .num{color:var(--must)}
+  .stat.w .num{color:var(--app)}.stat.t .num{color:var(--tk)}
+  .stat.meta{flex:1;min-width:260px;display:flex;flex-direction:column;justify-content:center}
+  .stat.meta .lbl{margin-bottom:6px}
+
+  /* ── sections ─────────────────────────── */
+  section{padding:72px 0 12px}
+  .sec-head{display:flex;align-items:baseline;gap:22px;margin-bottom:10px}
+  .sec-no{
+    font-family:var(--mono);font-size:13px;color:var(--qt);letter-spacing:.2em;
+    border:1px solid rgba(79,195,247,.35);padding:4px 10px;
+  }
+  .sec-head h2{font-family:var(--disp);font-weight:400;font-size:32px;letter-spacing:.05em}
+  .sec-sub{color:var(--dim);font-size:14px;margin-bottom:30px;max-width:860px}
+  .sec-sub b{color:var(--ink);font-weight:500}
+  .hairline{height:1px;background:linear-gradient(90deg,var(--line2),transparent);margin-bottom:34px}
+
+  /* ── generic panel ─────────────────────────── */
+  .panel{
+    border:1px solid var(--line);background:var(--panel);padding:24px;position:relative;
+  }
+  .panel::before{
+    content:attr(data-tag);position:absolute;top:-9px;left:16px;
+    font-family:var(--mono);font-size:10px;letter-spacing:.24em;color:var(--faint);
+    background:var(--bg);padding:0 8px;
+  }
+  .mono{font-family:var(--mono)}
+  .chip{
+    display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.06em;
+    border:1px solid;padding:2px 9px;border-radius:2px;
+  }
+  .c-qt{color:var(--qt);border-color:rgba(79,195,247,.5);background:rgba(79,195,247,.07)}
+  .c-sys{color:var(--sys);border-color:rgba(255,122,107,.5);background:rgba(255,122,107,.07)}
+  .c-must{color:var(--must);border-color:rgba(255,184,77,.5);background:rgba(255,184,77,.07)}
+  .c-app{color:var(--app);border-color:rgba(107,217,143,.5);background:rgba(107,217,143,.07)}
+  .c-third{color:var(--third);border-color:rgba(182,156,255,.5);background:rgba(182,156,255,.07)}
+  .c-undet{color:var(--undet);border-color:rgba(147,164,189,.5);background:rgba(147,164,189,.07)}
+  .c-tk{color:var(--tk);border-color:rgba(111,168,255,.5);background:rgba(111,168,255,.07)}
+
+  /* ── 01 graph model SVG ─────────────────────────── */
+  .graph-caption{
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;
+    font-family:var(--mono);font-size:12px;color:var(--dim);margin-bottom:14px;letter-spacing:.04em;
+  }
+  .graph-caption b{color:var(--ink);font-weight:600}
+  .svgbox{border:1px solid var(--line);background:linear-gradient(180deg,rgba(13,23,40,.85),rgba(10,18,32,.6));padding:18px 8px 8px;overflow-x:auto}
+  svg.graph{width:100%;min-width:1080px;height:auto;display:block}
+  .col-h{font-family:var(--mono);font-size:11px;fill:var(--faint);letter-spacing:.22em}
+  .node rect.box{fill:#0F1B2D;stroke:var(--line2);stroke-width:1;rx:5}
+  .node .strip{rx:2}
+  .node.s .box{stroke:rgba(79,195,247,.4)}
+  .node.s .strip{fill:var(--qt)}
+  .node.c .box{stroke:rgba(255,184,77,.35)}
+  .node.w .box{stroke:rgba(107,217,143,.4)}
+  .node.w .strip{fill:var(--app)}
+  .node.t .box{stroke:rgba(111,168,255,.4);stroke-dasharray:none}
+  .node.t .strip{fill:var(--tk)}
+  .nid{font-family:var(--mono);font-size:11px;font-weight:600;fill:var(--faint);letter-spacing:.08em}
+  .ntitle{font-family:var(--sans);font-size:13.5px;font-weight:500;fill:var(--ink)}
+  .nsub{font-family:var(--sans);font-size:11px;fill:var(--dim)}
+  .nchip{font-family:var(--mono);font-size:10.5px;letter-spacing:.03em}
+  .edge{fill:none;stroke-width:1.4;stroke-dasharray:5 5;animation:flow 26s linear infinite}
+  @keyframes flow{to{stroke-dashoffset:-520}}
+  .e-causes{stroke:rgba(79,195,247,.55)}
+  .e-targets{stroke:rgba(107,217,143,.55)}
+  .e-tracks{stroke:rgba(111,168,255,.6)}
+  .elabel{font-family:var(--mono);font-size:10px;fill:var(--faint);letter-spacing:.06em}
+  .legend{
+    display:flex;flex-wrap:wrap;gap:26px;margin-top:16px;padding:0 10px;
+    font-family:var(--mono);font-size:11.5px;color:var(--dim);
+  }
+  .legend i{display:inline-block;width:26px;height:0;border-top:1.6px dashed;vertical-align:middle;margin-right:8px}
+  .lg-c{border-color:var(--qt)} .lg-t{border-color:var(--app)} .lg-k{border-color:var(--tk)}
+
+  /* ── 02 disposition derivation ─────────────────────────── */
+  .derive-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:22px}
+  .rule{display:flex;gap:14px;align-items:baseline;padding:9px 0;border-bottom:1px dashed var(--line)}
+  .rule:last-child{border-bottom:none}
+  .rule .n{font-family:var(--mono);font-size:11px;color:var(--faint);min-width:26px}
+  .rule .cond{font-family:var(--mono);font-size:12.5px;color:var(--dim);flex:1}
+  .rule .cond b{color:var(--ink);font-weight:600}
+  .dist-bar{display:flex;height:40px;border:1px solid var(--line);overflow:hidden;margin-top:14px}
+  .dist-bar div{
+    display:flex;align-items:center;justify-content:center;font-family:var(--mono);
+    font-size:11px;letter-spacing:.05em;white-space:nowrap;overflow:hidden;
+  }
+  .dist-note{font-size:12px;color:var(--faint);margin-top:10px;font-family:var(--mono)}
+
+  /* ── 03 state machines ─────────────────────────── */
+  .lane{margin-bottom:26px}
+  .lane-title{display:flex;align-items:baseline;gap:14px;margin-bottom:14px}
+  .lane-title .ename{font-family:var(--mono);font-size:15px;font-weight:600}
+  .lane-title .edesc{font-size:12.5px;color:var(--dim)}
+  .lane-title .c-cnt{font-size:11px;color:var(--faint);font-family:var(--mono);margin-left:auto}
+  .track{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+  .st{
+    font-family:var(--mono);font-size:12px;padding:7px 13px;border:1px solid var(--line2);
+    background:var(--panel2);color:var(--ink);letter-spacing:.02em;position:relative;
+  }
+  .st.hot{border-color:rgba(79,195,247,.55);color:var(--qt)}
+  .st.end{border-color:rgba(107,217,143,.5);color:var(--app)}
+  .st.branch{border-style:dashed;color:var(--must);border-color:rgba(255,184,77,.45)}
+  .arrow{color:var(--faint);font-family:var(--mono);font-size:13px;padding:0 2px}
+  .lane-note{font-size:12px;color:var(--faint);margin-top:10px;padding-left:2px}
+  .lane-note b{color:var(--must);font-weight:500}
+
+  /* ── 04 source of truth and evolution ─────────────────────────── */
+  .pipe{display:grid;grid-template-columns:1fr 34px 1.05fr 34px 1fr;gap:0;align-items:stretch}
+  .pipe-arrow{display:flex;align-items:center;justify-content:center;color:var(--faint);font-family:var(--mono);font-size:16px}
+  .src-stack{display:flex;flex-direction:column;gap:10px}
+  .file-card{
+    border:1px solid var(--line);background:var(--panel2);padding:10px 14px;
+    font-family:var(--mono);font-size:12px;
+  }
+  .file-card .fn{color:var(--qt);font-weight:600}
+  .file-card .fd{color:var(--dim);font-size:11px;margin-top:2px;font-family:var(--sans)}
+  .tool-card{border:1px solid rgba(79,195,247,.4);background:var(--panel2);padding:18px;height:100%}
+  .tool-card .tn{font-family:var(--mono);font-size:13px;color:var(--qt);font-weight:600;margin-bottom:10px}
+  .cmd{display:flex;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line);align-items:baseline}
+  .cmd:last-child{border-bottom:none}
+  .cmd .c{font-family:var(--mono);font-size:11.5px;color:var(--ink);white-space:nowrap;font-weight:600}
+  .cmd .m{font-size:11.5px;color:var(--dim)}
+  .derived-stack{display:flex;flex-direction:column;gap:10px}
+  .loop{
+    margin-top:26px;border:1px dashed rgba(255,184,77,.4);background:rgba(255,184,77,.04);
+    padding:18px 22px;
+  }
+  .loop-title{font-family:var(--mono);font-size:11px;letter-spacing:.24em;color:var(--must);margin-bottom:12px}
+  .loop-flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12.5px;color:var(--dim)}
+  .loop-flow b{color:var(--ink);font-weight:500}
+  .loop-flow .mono{font-size:11.5px}
+
+  /* ── 05 evidence gate ─────────────────────────── */
+  .ev-grid{display:grid;grid-template-columns:1.25fr 1fr;gap:22px}
+  table.ev{width:100%;border-collapse:collapse;font-size:12.5px}
+  table.ev th{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;color:var(--faint);
+    text-align:left;padding:8px 10px;border-bottom:1px solid var(--line2);font-weight:400;
+  }
+  table.ev td{padding:9px 10px;border-bottom:1px dashed var(--line);color:var(--dim);vertical-align:top}
+  table.ev td.k{font-family:var(--mono);color:var(--qt);font-weight:600;white-space:nowrap}
+  table.ev td.k.alt{color:var(--must)}
+  table.ev tr:last-child td{border-bottom:none}
+  .rules-list .rule .cond{font-size:12px}
+  .rules-list .rule .cond .warn{color:var(--must)}
+  .principles{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+  .pc{
+    font-size:12px;border:1px solid var(--line);padding:5px 12px;color:var(--dim);background:var(--panel2);
+  }
+  .pc b{color:var(--ink);font-weight:500}
+  .hard-callout{
+    margin-top:20px;border-left:3px solid var(--qt);background:rgba(79,195,247,.06);
+    padding:16px 20px;font-size:13px;color:var(--dim);
+  }
+  .hard-callout b{color:var(--qt);font-weight:600}
+  .hard-callout .hc-t{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--qt);margin-bottom:8px}
+
+  /* ── 06 collaboration flow ─────────────────────────── */
+  .collab-flow{display:grid;grid-template-columns:1fr 30px 1.5fr 30px 1fr;gap:0;align-items:stretch}
+  .draft-card{border:1px dashed var(--line2);background:var(--panel);padding:16px;display:flex;flex-direction:column;justify-content:center}
+  .draft-card .dn{font-family:var(--mono);font-size:12px;color:var(--must);font-weight:600}
+  .draft-card p{font-size:12px;color:var(--dim);margin-top:6px}
+  .gate{border:1px solid rgba(79,195,247,.4);background:var(--panel2);padding:18px}
+  .gate ol{list-style:none;counter-reset:g}
+  .gate li{
+    counter-increment:g;display:flex;gap:12px;padding:7px 0;font-size:12.5px;color:var(--dim);
+    border-bottom:1px dashed var(--line);align-items:baseline;
+  }
+  .gate li:last-child{border-bottom:none}
+  .gate li::before{
+    content:counter(g,decimal-leading-zero);font-family:var(--mono);font-size:10.5px;color:var(--qt);
+    border:1px solid rgba(79,195,247,.4);min-width:24px;text-align:center;padding:1px 0;
+  }
+  .gate li b{color:var(--ink);font-weight:500}
+  .promote-card{border:1px solid rgba(107,217,143,.45);background:rgba(107,217,143,.05);padding:16px;display:flex;flex-direction:column;justify-content:center}
+  .promote-card .pn{font-family:var(--mono);font-size:12px;color:var(--app);font-weight:600}
+  .promote-card p{font-size:12px;color:var(--dim);margin-top:6px}
+  .draft-states{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;font-family:var(--mono);font-size:11.5px}
+  .draft-states .ds{padding:4px 10px;border:1px solid var(--line)}
+  .ds.a{color:var(--must)} .ds.b{color:var(--app)} .ds.r{color:var(--sys);border-style:dashed}
+
+  /* ── footer ─────────────────────────── */
+  footer{margin-top:84px;border-top:1px solid var(--line);padding:36px 0 56px}
+  .paths{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-bottom:26px}
+  .path-card .pt{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--faint);margin-bottom:10px}
+  .path-card p{font-size:13px;color:var(--dim)}
+  .path-card p b{color:var(--ink);font-weight:500;font-family:var(--mono);font-size:12px}
+  .foot-line{
+    display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px;
+    font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.06em;
+  }
+  .foot-line .cmdref{color:var(--qt)}
+
+  @media (max-width:960px){
+    .duality,.derive-grid,.ev-grid,.paths{grid-template-columns:1fr}
+    .du-mid{padding:6px 0}
+    .pipe,.collab-flow{grid-template-columns:1fr}
+    .pipe-arrow,.collab-flow .pipe-arrow{transform:rotate(90deg);padding:8px 0;justify-content:center}
+  }
+</style>
+</head>
+<body>
+<div class="grid-bg"></div><div class="vignette"></div><div class="noise"></div>
+
+<header>
+  <div class="wrap">
+    <div class="kicker reveal d1">QT FOR HARMONYOS · KNOWLEDGE BASE — FAULTS</div>
+    <h1 class="reveal d2">Fault base <em>design overview</em></h1>
+    <p class="subtitle reveal d3"><b>S symptom × C cause × W workaround × T ticket</b> —— a four-entity issue tracking graph · single source of truth, evolving automatically · machine gates</p>
+
+    <div class="duality reveal d4">
+      <div class="du-card">
+        <span class="tag">problems/ — error knowledge base</span>
+        <p>Answers: <b>“how do I fix this error”</b>. Verbatim error → cause → solution steps.</p>
+      </div>
+      <div class="du-mid">×refs×</div>
+      <div class="du-card focus">
+        <span class="tag">faults/ — fault base (this design)</span>
+        <p>Answers: <b>“who owns it · defect or limitation · fixed or not · how to work around it until the permanent fix”</b>.</p>
+      </div>
+    </div>
+
+    <div class="stats reveal d5">
+      <div class="stat s"><div class="num">17</div><div class="lbl">Symptoms S</div></div>
+      <div class="stat c"><div class="num">18</div><div class="lbl">Causes C · defect 11 / limitation 4 / undetermined 3</div></div>
+      <div class="stat w"><div class="num">15</div><div class="lbl">Workarounds W · adopted 13 / proposed 2</div></div>
+      <div class="stat t"><div class="num">5</div><div class="lbl">Tickets T · all tracked</div></div>
+      <div class="stat meta">
+        <div class="lbl">Data snapshot 2026-09-15 · after historical import batch 1</div>
+        <div class="dist-bar">
+          <div style="flex:6;background:rgba(79,195,247,.28);color:var(--qt)">Qt 6</div>
+          <div style="flex:4;background:rgba(255,184,77,.25);color:var(--must)">Adapt 4</div>
+          <div style="flex:3;background:rgba(147,164,189,.22);color:var(--undet)">Pending 3</div>
+          <div style="flex:2;background:rgba(255,122,107,.25);color:var(--sys)">System 2</div>
+          <div style="flex:2;background:rgba(107,217,143,.22);color:var(--app)">App 2</div>
+          <div style="flex:1;background:rgba(182,156,255,.25);color:var(--third)">1</div>
+        </div>
+        <div class="dist-note">Chain closure (18 causes): root-fixed 1 · temporarily resolved 6 · not closed 11 (missing ticket 7 · missing workaround 2 · both missing 2)</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- 01 graph model -->
+  <section id="graph" class="reveal d1">
+    <div class="sec-head"><span class="sec-no">01</span><h2>The four-entity graph model</h2></div>
+    <p class="sec-sub">The problem is essentially a <b>graph</b>: one application-layer behavior can point to several causes (<span class="mono">all_of</span>: they only produce it combined / <span class="mono">any_of</span>: any one is enough); <b>workarounds</b> and <b>upstream tracking tickets</b> hang off the causes. Below is a subset of real data (4 causal chains):</p>
+    <div class="hairline"></div>
+
+    <div class="graph-caption">
+      <span>Symptom S ──causes──▶ Cause C ◀──targets── Workaround W / ◀──tracks── Ticket T</span>
+      <span>Example: <b>S-0005, one symptom with several causes (all_of)</b> · C nodes are colored by disposition</span>
+    </div>
+
+    <div class="svgbox">
+    <svg class="graph" viewBox="0 0 1180 700" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L8,4 L0,8 z" fill="#7FA6D4"/>
+        </marker>
+      </defs>
+
+      <text class="col-h" x="20" y="16">SYMPTOMS — APPLICATION-LAYER BEHAVIOR</text>
+      <text class="col-h" x="445" y="16">CAUSES — NATURE · RESPONSIBILITY</text>
+      <text class="col-h" x="905" y="16">WORKAROUNDS / TICKETS</text>
+
+      <!-- edges -->
+      <path class="edge e-causes" d="M270,109 C340,109 375,96 445,96" marker-end="url(#arr)"/>
+      <path class="edge e-causes" d="M270,109 C340,109 375,224 445,224" marker-end="url(#arr)"/>
+      <path class="edge e-causes" d="M270,265 C340,265 375,376 445,376" marker-end="url(#arr)"/>
+      <path class="edge e-causes" d="M270,421 C340,421 375,528 445,528" marker-end="url(#arr)"/>
+      <path class="edge e-causes" d="M270,577 C340,577 375,656 445,656" marker-end="url(#arr)"/>
+      <path class="edge e-targets" d="M905,97 C820,97 800,96 725,96" marker-end="url(#arr)"/>
+      <path class="edge e-tracks"  d="M905,217 C820,217 800,224 725,224" marker-end="url(#arr)"/>
+      <path class="edge e-targets" d="M905,369 C820,369 800,376 725,376" marker-end="url(#arr)"/>
+      <path class="edge e-targets" d="M905,521 C820,521 800,528 725,528" marker-end="url(#arr)"/>
+      <path class="edge e-targets" d="M905,649 C820,649 800,656 725,656" marker-end="url(#arr)"/>
+
+      <text class="elabel" x="346" y="150">causes·all_of</text>
+      <text class="elabel" x="352" y="314">causes</text>
+      <text class="elabel" x="352" y="466">causes</text>
+      <text class="elabel" x="352" y="610">causes</text>
+      <text class="elabel" x="800" y="84">targets</text>
+      <text class="elabel" x="806" y="206">tracks</text>
+      <text class="elabel" x="800" y="356">targets</text>
+      <text class="elabel" x="800" y="508">targets</text>
+      <text class="elabel" x="800" y="636">targets</text>
+
+      <!-- S nodes -->
+      <g class="node s" transform="translate(20,66)">
+        <rect class="box" width="250" height="86" rx="5"/><rect class="strip" width="3" height="86"/>
+        <text class="nid" x="14" y="22">S-0005</text>
+        <text class="ntitle" x="14" y="44">Qt6 build cascade failure</text>
+        <text class="nsub" x="14" y="66">-isystem × cmath · 904 places</text>
+      </g>
+      <g class="node s" transform="translate(20,222)">
+        <rect class="box" width="250" height="86" rx="5"/><rect class="strip" width="3" height="86"/>
+        <text class="nid" x="14" y="22">S-0002</text>
+        <text class="ntitle" x="14" y="44">Pinyin input breaks</text>
+        <text class="nsub" x="14" y="66">keyboard closes + letter pollution</text>
+      </g>
+      <g class="node s" transform="translate(20,378)">
+        <rect class="box" width="250" height="86" rx="5"/><rect class="strip" width="3" height="86"/>
+        <text class="nid" x="14" y="22">S-0017</text>
+        <text class="ntitle" x="14" y="44">Qt3D RGBA8 textures solid black</text>
+        <text class="nsub" x="14" y="66">lighting OK · RGB8 OK · no GL error</text>
+      </g>
+      <g class="node s" transform="translate(20,534)">
+        <rect class="box" width="250" height="86" rx="5"/><rect class="strip" width="3" height="86"/>
+        <text class="nid" x="14" y="22">S-0007</text>
+        <text class="ntitle" x="14" y="44">chmod / symlink fails</text>
+        <text class="nsub" x="14" y="66">QFile::link returns false</text>
+      </g>
+
+      <!-- C nodes -->
+      <g class="node c" transform="translate(445,46)">
+        <rect class="box" width="280" height="100" rx="5"/><rect width="3" height="100" rx="2" fill="#4FC3F7"/>
+        <text class="nid" x="14" y="22">C-0005 · defect/qt-port</text>
+        <text class="ntitle" x="14" y="44">Qt cmake injects -isystem</text>
+        <text class="nsub" x="14" y="64">third-party include into system header path</text>
+        <text class="nchip" x="14" y="86" fill="#4FC3F7">● disposition → Qt issue</text>
+      </g>
+      <g class="node c" transform="translate(445,174)">
+        <rect class="box" width="280" height="100" rx="5"/><rect width="3" height="100" rx="2" fill="#FF7A6B"/>
+        <text class="nid" x="14" y="22">C-0006 · defect/ohos-ndk</text>
+        <text class="ntitle" x="14" y="44">libcxx-ohos &lt;cmath&gt; lacks include</text>
+        <text class="nsub" x="14" y="64">std::isnan needed by __promote not included</text>
+        <text class="nchip" x="14" y="86" fill="#FF7A6B">● disposition → System issue</text>
+      </g>
+      <g class="node c" transform="translate(445,326)">
+        <rect class="box" width="280" height="100" rx="5"/><rect width="3" height="100" rx="2" fill="#4FC3F7"/>
+        <text class="nid" x="14" y="22">C-0002 · defect/qt-port</text>
+        <text class="ntitle" x="14" y="44">IME reset Detach/Attach</text>
+        <text class="nsub" x="14" y="64">edit area not detached before hiding the IME</text>
+        <text class="nchip" x="14" y="86" fill="#4FC3F7">● disposition → Qt issue</text>
+      </g>
+      <g class="node c" transform="translate(445,478)">
+        <rect class="box" width="280" height="100" rx="5"/><rect width="3" height="100" rx="2" fill="#B69CFF"/>
+        <text class="nid" x="14" y="22">C-0018 · defect/third-party</text>
+        <text class="ntitle" x="14" y="44">ZINK RGBA8 mipmap fails</text>
+        <text class="nsub" x="14" y="64">vkCmdBlitImage fails for formats with alpha</text>
+        <text class="nchip" x="14" y="86" fill="#B69CFF">● disposition → Third-party library issue</text>
+      </g>
+      <g class="node c" transform="translate(445,606)">
+        <rect class="box" width="280" height="100" rx="5"/><rect width="3" height="100" rx="2" fill="#FFB84D"/>
+        <text class="nid" x="14" y="22">C-0008 · limitation/ohos-runtime</text>
+        <text class="ntitle" x="14" y="44">Sandbox bans runtime chmod/symlink</text>
+        <text class="nsub" x="14" y="64">handled by the packaging contract · no runtime API</text>
+        <text class="nchip" x="14" y="86" fill="#FFB84D">● disposition → Must adapt for HarmonyOS</text>
+      </g>
+
+      <!-- W/T nodes -->
+      <g class="node w" transform="translate(905,54)">
+        <rect class="box" width="255" height="86" rx="5"/><rect class="strip" width="3" height="86"/>
+        <text class="nid" x="14" y="22">W-0004 · adopted</text>
+        <text class="ntitle" x="14" y="44">Build script strips -isystem</text>
+        <text class="nsub" x="14" y="66">retire_when: the Qt-side fix arrives</text>
+      </g>
+      <g class="node t" transform="translate(905,174)">
+        <rect class="box" width="255" height="86" rx="5"/><rect class="strip" width="3" height="86"/>
+        <text class="nid" x="14" y="22">T-0004 · qt-bug · submitted</text>
+        <text class="ntitle" x="14" y="44">QTBUG-146621</text>
+        <text class="nsub" x="14" y="66">behavior record · fix_version on release</text>
+      </g>
+      <g class="node w" transform="translate(905,326)">
+        <rect class="box" width="255" height="86" rx="5"/><rect class="strip" width="3" height="86"/>
+        <text class="nid" x="14" y="22">W-0001 · adopted</text>
+        <text class="ntitle" x="14" y="44">Detach/Attach before reset</text>
+        <text class="nsub" x="14" y="66">probe logs verified · retested on device</text>
+      </g>
+      <g class="node w" transform="translate(905,478)">
+        <rect class="box" width="255" height="86" rx="5"/><rect class="strip" width="3" height="86"/>
+        <text class="nid" x="14" y="22">W-0015 · adopted</text>
+        <text class="ntitle" x="14" y="44">Disable mipmaps for alpha PNGs</text>
+        <text class="nsub" x="14" y="66">cost: aliasing on distant textures</text>
+      </g>
+      <g class="node w" transform="translate(905,606)">
+        <rect class="box" width="255" height="86" rx="5"/><rect class="strip" width="3" height="86"/>
+        <text class="nid" x="14" y="22">W-0006 · adopted</text>
+        <text class="ntitle" x="14" y="44">Permissions → packaging contract</text>
+        <text class="nsub" x="14" y="66">not a runtime success condition</text>
+      </g>
+    </svg>
+    </div>
+
+    <div class="legend">
+      <span><i class="lg-c"></i>causes (S→C; multiple causes all_of / any_of)</span>
+      <span><i class="lg-t"></i>targets (W→C; workaround attached to a cause)</span>
+      <span><i class="lg-k"></i>tracks (T→C; upstream ticket attached to a cause)</span>
+      <span><i style="border-color:var(--third)"></i>depends_on (C→C; cross-cause blocking, only connected when evidenced)</span>
+      <span>⬥ Closed loop: a defect (external responsibility) is only temporarily resolved with W(adopted) + T(tracked); limitation/app = W; gaps propagate up to the symptom</span>
+    </div>
+  </section>
+
+  <!-- 02 nature and disposition derivation -->
+  <section id="disposition" class="reveal d1">
+    <div class="sec-head"><span class="sec-no">02</span><h2>The nature watershed × derived disposition</h2></div>
+    <p class="sec-sub"><b>nature (defect or limitation)</b> is the first classification of a cause: a defect gets fixed, a limitation is how the platform works and can only be worked around; <b>disposition</b> answers the developer's "what should I do" -- <b>derived automatically</b> from nature × responsible, <b>not stored in the source of truth, no double-writing</b>.</p>
+    <div class="hairline"></div>
+
+    <div class="derive-grid">
+      <div class="panel" data-tag="DERIVATION RULES — COMPUTED BY faults-build.py">
+        <div class="rule"><span class="n">R1</span><span class="cond"><b>responsible = app</b> → Application usage issue (application misuse, not a framework problem)</span><span class="chip c-app">app-usage</span></div>
+        <div class="rule"><span class="n">R2</span><span class="cond"><b>nature = limitation</b> → Must adapt for HarmonyOS (change your own code, no upstream fix to wait for)</span><span class="chip c-must">must-adapt</span></div>
+        <div class="rule"><span class="n">R3</span><span class="cond">defect × <b>qt-port / qt-upstream</b> → Qt issue (wait for the fix / local patch / file a QTBUG)</span><span class="chip c-qt">qt-defect</span></div>
+        <div class="rule"><span class="n">R4</span><span class="cond">defect × <b>ohos-runtime / ohos-ndk / ohos-toolchain</b> → System issue (wait for a release / file a ticket with Huawei)</span><span class="chip c-sys">system-defect</span></div>
+        <div class="rule"><span class="n">R5</span><span class="cond">defect × <b>third-party</b> → Third-party library issue (wait for a third-party release / switch libraries)</span><span class="chip c-third">third-party</span></div>
+        <div class="rule"><span class="n">R6</span><span class="cond">Everything else (nature = undetermined) → Pending classification; <b>falls into R1–R5 automatically once upstream classifies it</b> (the CID stays the same)</span><span class="chip c-undet">undetermined</span></div>
+      </div>
+      <div class="panel" data-tag="THE NATURE WATERSHED">
+        <div class="rule"><span class="n">D</span><span class="cond"><b>defect (11)</b> —— will be fixed: track fix_version / upstream ticket / review plan</span></div>
+        <div class="rule"><span class="n">L</span><span class="cond"><b>limitation (4)</b> —— by specification: provide an alternative + watch the evolution</span></div>
+        <div class="rule"><span class="n">U</span><span class="cond"><b>undetermined (3)</b> —— awaiting upstream classification: the same state machine, read with two meanings</span></div>
+        <div class="dist-note">// Reclassification path: C-0004 undetermined → (Huawei classifies) → limitation or defect; the CID and history stay the same</div>
+        <div class="dist-note">// Disposition distribution (18 causes): Qt 6 · adapt 4 · pending 3 · system 2 · app 2 · third-party 1</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 state machines -->
+  <section id="states" class="reveal d1">
+    <div class="sec-head"><span class="sec-no">03</span><h2>Three entity types · one state machine each</h2></div>
+    <p class="sec-sub">A status is a record of fact: <b>a fix arriving (T released) automatically prompts advancing C; W is retired only after verification passes; a regression goes back to open with the same CID</b>.</p>
+    <div class="hairline"></div>
+
+    <div class="panel" data-tag="STATE MACHINES">
+      <div class="lane">
+        <div class="lane-title"><span class="ename" style="color:var(--must)">C</span><span class="edesc">Cause · lifecycle</span><span class="c-cnt">regression → open (FID unchanged)</span></div>
+        <div class="track">
+          <span class="st">open</span><span class="arrow">→</span>
+          <span class="st">diagnosed</span><span class="arrow">→</span>
+          <span class="st">workaround</span><span class="arrow">→</span>
+          <span class="st">reported</span><span class="arrow">→</span>
+          <span class="st hot">fix-confirmed</span><span class="arrow">→</span>
+          <span class="st hot">verified</span><span class="arrow">→</span>
+          <span class="st end">closed</span>
+        </div>
+        <div class="lane-note">limitation side path: <span class="mono">diagnosed → watching (watching the evolution) → wontfix (stable end state of the specification)</span>; <b>after verified, the retirement steps must be completed</b> (remove the workaround / annotate related pages / move to resolved) before closed</div>
+      </div>
+      <div class="lane">
+        <div class="lane-title"><span class="ename" style="color:var(--app)">W</span><span class="edesc">Workaround / alternative · usability is independent of the progression status</span></div>
+        <div class="track">
+          <span class="st">proposed</span><span class="arrow">→</span>
+          <span class="st">tested</span><span class="arrow">→</span>
+          <span class="st hot">adopted</span><span class="arrow">→</span>
+          <span class="st end">retired</span>
+        </div>
+        <div class="lane-note">Every W must have <span class="mono">retire_when</span> (retirement condition) -- retired once the fix arrives and is verified, removing the bypass code</div>
+      </div>
+      <div class="lane">
+        <div class="lane-title"><span class="ename" style="color:var(--tk)">T</span><span class="edesc">Tracking ticket · the authoritative source of the fix version (fix_version)</span></div>
+        <div class="track">
+          <span class="st">draft</span><span class="arrow">→</span>
+          <span class="st">submitted</span><span class="arrow">→</span>
+          <span class="st">accepted</span><span class="arrow">→</span>
+          <span class="st">fixed</span><span class="arrow">→</span>
+          <span class="st hot">released</span><span class="arrow">→</span>
+          <span class="st end">closed</span>
+          <span class="st branch" style="margin-left:10px">dup / wontfix</span>
+        </div>
+        <div class="lane-note">tracker ∈ qt-bug (QTBUG-xxx) / ohos-issue / gitee / partner / forum; one C can have several tickets (Qt side + Huawei side)</div>
+      </div>
+
+      <div class="loop" style="margin-top:18px">
+        <div class="loop-title">CHAIN CLOSURE — CHAIN COMPLETENESS (THE CLOSED-LOOP RULE)</div>
+        <div class="loop-flow">
+          <span><b>defect (external responsibility) temporarily resolved = W(adopted) and T(tracked)</b></span>
+          <span class="arrow">|</span>
+          <span>limitation / application issue = W(adopted)</span>
+          <span class="arrow">|</span>
+          <span>undetermined = W (T becomes a hard requirement once classified)</span>
+          <span class="arrow">|</span>
+          <span><b>Gaps propagate upward</b>: missing ticket / missing workaround / both missing</span>
+          <span class="arrow">|</span>
+          <span class="mono">S=resolved with gaps in the chain → ERROR</span>
+        </div>
+        <div class="loop-flow" style="margin-top:10px">
+          <span>Current distribution: root-fixed 1 · temporarily resolved 6 · <b>not closed 11 (missing ticket 7 · missing workaround 2 · both missing 2)</b></span>
+          <span class="arrow">|</span>
+          <span class="mono">review → "Not closed (to be filled)" list</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 source of truth and automatic evolution -->
+  <section id="pipeline" class="reveal d1">
+    <div class="sec-head"><span class="sec-no">04</span><h2>Single source of truth → derived artifacts · automatic evolution</h2></div>
+    <p class="sec-sub">The only sources of truth are <b>_data/*.yaml and the cause pages</b>; the full graph and the registry are all <b>rebuilt by the machine</b> -- reverse-lookup indexes, aggregate overviews and view counts are derived automatically; <b>no two-way sync means no drift</b>.</p>
+    <div class="hairline"></div>
+
+    <div class="pipe">
+      <div class="src-stack">
+        <div class="file-card"><div class="fn">_data/symptoms.yaml</div><div class="fd">S records + causes edges</div></div>
+        <div class="file-card"><div class="fn">_data/workarounds.yaml</div><div class="fd">W records + targets edges + retire_when</div></div>
+        <div class="file-card"><div class="fn">_data/tickets.yaml</div><div class="fd">T records + tracks edges + fix_version</div></div>
+        <div class="file-card"><div class="fn">C-xxxx-slug.md × 18</div><div class="fd">Cause pages: all frontmatter fields + depends_on edges + in-depth body</div></div>
+      </div>
+      <div class="pipe-arrow">▶</div>
+      <div class="tool-card">
+        <div class="tn">tools/faults-build.py</div>
+        <div class="cmd"><span class="c">build</span><span class="m">Validate the sources of truth → rebuild _graph.yaml + _registry.md (refuses to generate on ERROR)</span></div>
+        <div class="cmd"><span class="c">check</span><span class="m">Consistency gate: IDs/enums/edge targets/required fields/dates/refs/evidence rules; exit 1 = has ERRORs</span></div>
+        <div class="cmd"><span class="c">review</span><span class="m">Scan for due reviews + status progression lint + list of drafts awaiting review</span></div>
+        <div class="cmd"><span class="c">lint</span><span class="m">T released → C should advance to fix-confirmed; S mitigated without an adopted W ...</span></div>
+      </div>
+      <div class="pipe-arrow">▶</div>
+      <div class="derived-stack">
+        <div class="file-card" style="border-color:rgba(79,195,247,.4)"><div class="fn">_graph.yaml</div><div class="fd">Machine-readable full graph: nodes + edges + aggregates + manifests reverse lookup —— loaded by AI as one file in one go (yaml_lite)</div></div>
+        <div class="file-card" style="border-color:rgba(79,195,247,.4)"><div class="fn">_registry.md</div><div class="fd">The registry: symptom index (main entry) · by disposition · version baselines · reviews due · pending reminders</div></div>
+      </div>
+    </div>
+
+    <div class="loop">
+      <div class="loop-title">VERSION-DRIVEN EVOLUTION — THE VERSION-DRIVEN AUTOMATIC EVOLUTION LOOP</div>
+      <div class="loop-flow">
+        <b>Qt OHOS SDK / HarmonyOS SDK update</b><span class="arrow">→</span>
+        <span>re-check by <b>version baseline</b> (upgrade checklist)</span><span class="arrow">→</span>
+        <span class="mono">T: released (fix_version settled)</span><span class="arrow">→</span>
+        <span class="mono">lint prompts C to advance to fix-confirmed</span><span class="arrow">→</span>
+        <span>re-verify on a real device</span><span class="arrow">→</span>
+        <span class="mono">W: retired + S: resolved</span><span class="arrow">→</span>
+        <span>if it regresses, C goes back to open with the same CID</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 evidence gate -->
+  <section id="evidence" class="reveal d1">
+    <div class="sec-head"><span class="sec-no">05</span><h2>Problem confirmation · the evidence gate</h2></div>
+    <p class="sec-sub">Hearsay/guesses without evidence <b>may not be classified as Qt framework problems</b> -- declared by the required C page field <span class="mono">evidence_type</span> and machine-enforced by check.</p>
+    <div class="hairline"></div>
+
+    <div class="ev-grid">
+      <div class="panel" data-tag="EVIDENCE TYPES">
+        <table class="ev">
+          <tr><th>TYPE</th><th>FORM</th><th>APPLIES TO</th></tr>
+          <tr><td class="k">demo</td><td>Repro demo (minimal ohos project, seven principles)</td><td>Preferred for runtime behavior anomalies</td></tr>
+          <tr><td class="k">logs</td><td>Debug logs + stack: hilog / cppcrash·jscrash / probes / verbatim build errors</td><td>Required when there is no demo</td></tr>
+          <tr><td class="k">both</td><td>demo + logs</td><td>The strongest evidence</td></tr>
+          <tr><td class="k alt">source</td><td>Source file:line reference chain</td><td>Statically decidable issues only (a Qt-side defect using it gets a WARN)</td></tr>
+          <tr><td class="k alt">docs</td><td>Official documentation / specification links</td><td>limitation only</td></tr>
+        </table>
+        <div class="hard-callout">
+          <div class="hc-t">HARD DEMO REQUIREMENTS FOR QT FRAMEWORK-SIDE ISSUES</div>
+          The repro logic is concentrated in a <b>single main.cpp</b> (the ohos project is only the QAbility glue shell, so it can be pasted straight into a qt-bug) +
+          <b>repro steps numbered down to the action level</b> (expected result per step + expected vs actual) -- <b>without steps it is considered unfinished</b>.
+        </div>
+      </div>
+      <div>
+        <div class="panel rules-list" data-tag="MACHINE RULES — ENFORCED BY check">
+          <div class="rule"><span class="n">E1</span><span class="cond">A defect's evidence_type <span class="warn">may not be docs</span> (a defect may not be classified from documentation alone)</span></div>
+          <div class="rule"><span class="n">E2</span><span class="cond">limitation is restricted to <span class="mono">docs / source / logs</span></span></div>
+          <div class="rule"><span class="n">E3</span><span class="cond">A defect/undetermined cause with a tracked upstream ticket <span class="warn">must have demo/logs/both</span> —— matching the qt-bug-report reproducibility HARD gate: tickets without reproducible material are not filed</span></div>
+        </div>
+        <div class="panel" style="margin-top:22px" data-tag="THE SEVEN DEMO AUTHORING PRINCIPLES">
+          <div class="principles">
+            <span class="pc"><b>①</b> Minimal</span>
+            <span class="pc"><b>②</b> Self-contained and buildable</span>
+            <span class="pc"><b>③</b> Determinism first</span>
+            <span class="pc"><b>④</b> Contrast</span>
+            <span class="pc"><b>⑤</b> Clean root cause</span>
+            <span class="pc"><b>⑥</b> Carry diagnostic output</span>
+            <span class="pc"><b>⑦</b> Record versions</span>
+          </div>
+          <p style="font-size:12px;color:var(--faint);margin-top:14px">Degraded path without a demo: the logs + stack + collection environment triple; the C page states "classified from the logs".</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 collaboration flow -->
+  <section id="collab" class="reveal d1">
+    <div class="sec-head"><span class="sec-no">06</span><h2>Collaborative draft → editor's gate → merge</h2></div>
+    <p class="sec-sub">Contributors submit drafts per the <b>submission checklist</b> (loose format, no ids consumed); the editor's six-step gate leaves a full trace -- <b>the repro demo must be tested; not merged unless reproduced</b>.</p>
+    <div class="hairline"></div>
+
+    <div class="collab-flow">
+      <div class="draft-card">
+        <div class="dn">faults/_drafts/</div>
+        <p>Contributor submission checklist (required):<br>① verbatim symptom (logs not paraphrased)<br>② environment triple<br>③ evidence: repro demo or logs + stack<br>④ duplicate check statement<br><span style="color:var(--faint)">for limitations, an official documentation link can replace the demo</span></p>
+      </div>
+      <div class="pipe-arrow">▶</div>
+      <div class="gate">
+        <ol>
+          <li><b>Duplicate check</b> —— if the S/C exists, turn it into a supplement to the existing node; no duplicate pages</li>
+          <li><b>Repro test</b> —— defect/undetermined: the demo must be tested; limitation: verify the documentation link; <b>not merged unless reproduced</b></li>
+          <li><b>Human verification</b> —— evidence chain / nature classification / responsible layer / facts (leave blank rather than invent) / sanitization</li>
+          <li><b>Repro trace</b> —— the editor's reproduction result is recorded in the first row of the C page's "Version verification log"</li>
+          <li><b>promote</b> —— split into S/C/W/T source-of-truth records, ids assigned by the editor; delete the draft</li>
+          <li><b>build gate</b> —— zero ERRORs + backfill refs in related pages</li>
+        </ol>
+      </div>
+      <div class="pipe-arrow">▶</div>
+      <div class="promote-card">
+        <div class="pn">PROMOTED → SOURCE OF TRUTH</div>
+        <p>S/C/W/T each go in their place, and <span class="mono">build</span> rebuilds the full graph and the registry; review lists drafts awaiting review, and rejected drafts are kept to prevent resubmission.</p>
+      </div>
+    </div>
+
+    <div class="draft-states">
+      <span class="ds a">draft (newly submitted)</span><span class="arrow">→</span>
+      <span class="ds a">in-review (under review)</span><span class="arrow">→</span>
+      <span class="ds b">promoted (merged; file deleted)</span>
+      <span class="ds r">returned (sent back)</span>
+      <span class="ds r">rejected (not accepted; kept)</span>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="paths">
+      <div class="path-card">
+        <div class="pt">AI READING PATH</div>
+        <p><b>_graph.yaml</b>, the single-file machine-readable full graph (nodes · edges · aggregates · reverse lookup) → load C page in-depth records as needed; behavior → cause → nature → workaround routed in one pass.</p>
+      </div>
+      <div class="path-card">
+        <div class="pt">HUMAN READING PATH</div>
+        <p><b>_registry.md</b> §Symptom index (behavior → cause) → cause page (nature / responsibility / workarounds / tickets / review plan); before upgrading, check §By version baseline.</p>
+      </div>
+    </div>
+    <div class="foot-line">
+      <span>TRUE SOURCE: _data/*.yaml + C-XXXX pages · DERIVED: _graph.yaml / _registry.md — REBUILT BY TOOL</span>
+      <span class="cmdref">python tools/faults-build.py build | check | review</span>
+      <span>SNAPSHOT 2026-09-15 · S17 / C18 / W15 / T5 · batch-1 imported</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

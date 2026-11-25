@@ -1,0 +1,164 @@
+# faults/_data/tickets.yaml — source of truth for upstream tracking tickets (T)
+#
+# Entity: tracking ticket = an issue filed upstream (Qt bug tracker / HarmonyOS issue / Gitee / partner deliverable).
+# One cause can have several T (one on the Qt side + one on the Huawei side); a T's fix_version is the authoritative source for the "fix version".
+#
+# Fields:
+#   id          T-XXXX (append-only, never reused)
+#   tracker     qt-bug / ohos-issue / gitee / partner (partner deliverable) / forum
+#   number      ticket number (QTBUG-xxxxxx / Huawei issue number, etc.; may be empty for deliverables)
+#   url         ticket link
+#   tracks      the causes it tracks (T→C edges)
+#   status      draft (draft) → submitted (filed) → accepted (accepted) → fixed (merged)
+#               → released (shipped in a release; fix_version required) → closed;
+#               branches: dup (duplicate) / wontfix (rejected)
+#   filed       filing date (leave empty if not recorded)
+#   fix_version fix version (e.g. "Qt 6.12-beta4", "API 25"; required from released on)
+#   fix_commit  fix commit (optional)
+#   planned_filing planned filing date (draft only): setting it marks the ticket as "scheduled";
+#              the chain still counts as not closed, but check reports INFO instead of WARN (someone owns it)
+#   last_update date of the latest progress (optional)
+#   notes       notes (nature of the ticket, summary of replies, etc.)
+
+schema: 1
+tickets:
+  - id: T-0001
+    tracker: partner
+    number: ""
+    url: ""
+    tracks: [C-0004]
+    status: submitted
+    filed: 2026-06-09
+    fix_version: ""
+    fix_commit: ""
+    last_update: 2026-06-09
+    notes: "Deliverable: ISSUE.md (root cause in Chinese and English) + patch + reproducible demo; awaiting classification by the system side (defect/limitation)"
+
+  - id: T-0002
+    tracker: qt-bug
+    number: "QTBUG-146622"
+    url: "https://bugreports.qt.io/browse/QTBUG-146622"
+    tracks: [C-0007]
+    status: submitted
+    filed: ""
+    fix_version: ""
+    fix_commit: ""
+    last_update: ""
+    notes: "Qt-side tracking of the XComponent SURFACE → ContentSlot migration (ticket number from the official platform limitations page)"
+
+  - id: T-0003
+    tracker: qt-bug
+    number: "QTBUG-146619"
+    url: "https://bugreports.qt.io/browse/QTBUG-146619"
+    tracks: [C-0008]
+    status: submitted
+    filed: ""
+    fix_version: ""
+    fix_commit: ""
+    last_update: ""
+    notes: "Records the QFile::setPermissions platform behavior (registered on the Qt side; not a fix request)"
+
+  - id: T-0004
+    tracker: qt-bug
+    number: "QTBUG-146621"
+    url: "https://bugreports.qt.io/browse/QTBUG-146621"
+    tracks: [C-0008]
+    status: submitted
+    filed: ""
+    fix_version: ""
+    fix_commit: ""
+    last_update: ""
+    notes: "Records the QFile::link platform behavior (registered on the Qt side; not a fix request)"
+
+  - id: T-0007
+    tracker: qt-bug
+    number: "QTBUG-146624"
+    url: "https://bugreports.qt.io/browse/QTBUG-146624"
+    tracks: [C-0012]
+    status: submitted
+    filed: ""
+    fix_version: ""
+    fix_commit: ""
+    last_update: ""
+    notes: "Qt-side record of platform behavior: the QPluginLoader/runtime .so dynamic plugin loading limitation (not a fix request); ticket number from the official platform limitations page"
+
+  # ── Below: placeholder tickets scheduled on 2026-11-02: the gaps are real, nothing has been filed upstream yet ──
+  # status=draft + planned_filing means "scheduled, to be filed as planned"; after filing, set submitted and fill in the number.
+
+  - id: T-0008
+    tracker: qt-bug
+    number: ""
+    url: ""
+    tracks: [C-0001]
+    status: draft
+    filed: ""
+    fix_version: ""
+    fix_commit: ""
+    planned_filing: 2026-11-30
+    last_update: 2026-11-02
+    notes: "qqmlplatform os() #ifdef chain lacks a Q_OS_OHOS branch; current evidence is source only, so first add a minimal repro demo, then file per procedural/qt-bug-report-generation.md"
+
+  - id: T-0009
+    tracker: qt-bug
+    number: ""
+    url: ""
+    tracks: [C-0002]
+    status: draft
+    filed: ""
+    fix_version: ""
+    fix_commit: ""
+    planned_filing: 2026-11-30
+    last_update: 2026-11-02
+    notes: "QOhosInputContext::reset() Detach/Attach closes the IMF panel and commits polluted text; logs evidence is in hand, the ticket can be written directly"
+
+  - id: T-0010
+    tracker: qt-bug
+    number: ""
+    url: ""
+    tracks: [C-0005]
+    status: draft
+    filed: ""
+    fix_version: ""
+    fix_commit: ""
+    planned_filing: 2026-11-30
+    last_update: 2026-11-02
+    notes: "Qt cmake injects -isystem sysroot/usr/include into every CXX command, so the musl headers shadow the clang builtins; logs evidence is in hand; blocker level"
+
+  - id: T-0011
+    tracker: qt-bug
+    number: ""
+    url: ""
+    tracks: [C-0009]
+    status: draft
+    filed: ""
+    fix_version: ""
+    fix_commit: ""
+    planned_filing: 2026-11-30
+    last_update: 2026-11-02
+    notes: "OHOS QPA syntheticParent doesn't write back transientParent, so a QDialog without a parent is wrongly blocked by blockedByModalWindow; logs evidence is in hand"
+
+  - id: T-0012
+    tracker: qt-bug
+    number: ""
+    url: ""
+    tracks: [C-0010]
+    status: draft
+    filed: ""
+    fix_version: ""
+    fix_commit: ""
+    planned_filing: 2026-11-30
+    last_update: 2026-11-02
+    notes: "The stale glue template lacks the @ohos.* eager imports, so libqohos's bare eval is rejected by ArkTS and onAcceptWant crashes; demo+logs evidence complete; critical"
+
+  - id: T-0013
+    tracker: upstream
+    number: ""
+    url: ""
+    tracks: [C-0018]
+    status: draft
+    filed: ""
+    fix_version: ""
+    fix_commit: ""
+    planned_filing: 2026-11-30
+    last_update: 2026-11-02
+    notes: "Mesa ZINK implements glGenerateMipmap via vkCmdBlitImage, which fails for GL_RGBA8 and produces black textures; third-party graphics stack, to be filed on freedesktop GitLab; demo+logs evidence complete"

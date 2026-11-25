@@ -1,0 +1,170 @@
+# faults/_data/workarounds.yaml — source of truth for workarounds (W)
+#
+# Entity: workaround = an actionable bypass before the permanent fix/migration (in a limitation context, the "alternative").
+# One cause can have several W (alternative options); each W tracks its own verification and retirement.
+#
+# Fields:
+#   id          W-XXXX (append-only, never reused)
+#   title       the workaround in one sentence
+#   targets     the causes it acts on (W→C edges)
+#   status      proposed (suggested, not verified) → tested (verified) → adopted (adopted as the main option) → retired (retired)
+#   cost        the cost in one sentence
+#   verified    most recent verification (nested: date + env); may be omitted if there is no record
+#   retire_when retirement condition (what to undo once the official fix/migration lands)
+#   detail      where the detailed steps live (usually a section anchor in the C page)
+#   used_by     who adopted it (application/project; optional)
+
+schema: 1
+workarounds:
+  - id: W-0001
+    title: "In QML, detect the platform with Qt.platform.pluginName (in C++, productType()/#ifdef Q_OS_OHOS)"
+    targets: [C-0001]
+    status: adopted
+    cost: "pluginName depends on the QPA plugin loaded at runtime; the value changes in test environments such as -platform offscreen"
+    verified:
+      date: 2026-08-06
+      env: "Qt 5.15.16 (962aa625) source verification"
+    retire_when: "Once the upstream fix (a Q_OS_OHOS branch in os()) lands in the Qt OHOS SDK in use, switch back to the Qt.platform.os check"
+    detail: "C-0001-qqmlplatform-os-ohos-branch.md §Workarounds"
+
+  - id: W-0002
+    title: "Rebuild libqohos.so (reset only finalizes the preedit, no detach) and replace it in the kit"
+    targets: [C-0002]
+    status: adopted
+    cost: "Every Qt kit update requires re-applying the patch and rebuilding"
+    verified:
+      date: 2026-09-12
+      env: "Qt 6.12-beta3 / HarmonyOS PC (MateBook Pro) real device"
+    retire_when: "Once an upstream release contains this fix, go back to the official kit and drop the local rebuild"
+    detail: "C-0002-ime-reset-detach.md §Workarounds"
+
+  - id: W-0003
+    title: "Exit patch: atomic s_qtAppThreadIdle + polling from a separate thread in parallel, bypassing the TSFN"
+    targets: [C-0004]
+    status: adopted
+    cost: "Intrudes into the glue layer's handleAbilityOnDestroy; plugins that post callbacks during exit need the same defensive approach"
+    verified:
+      date: 2026-06-09
+      env: "Qt 5.12.12 / real device"
+    retire_when: "Once the HarmonyOS version in use is confirmed to handle the TSFN during the destroy window, remove the patch and rerun the exit regression tests"
+    detail: "C-0004-ability-destroy-tsfn.md §Workarounds"
+
+  - id: W-0004
+    title: "Switch the build combination: MinGW g++ 13.1.0 host + API 23 SDK + superbuild path"
+    targets: [C-0005, C-0006]
+    status: adopted
+    cost: "Three variables changed at once, so it was not isolated which one fixed it; the original failing combination (llvm-mingw clang22 + API 24 + per-module qt-cmake) still fails every time -- not a permanent fix"
+    verified:
+      date: 2026-07-13
+      env: "Qt 6.12.0 full build + gallery demo on a real device"
+    retire_when: "Once Qt drops the -isystem injection or the SDK fixes C-0006, return to the standard build combination and rerun the isolation tests"
+    detail: "C-0005-qt-cmake-isystem-injection.md §Workarounds"
+
+  - id: W-0005
+    title: "Expand real files at build/packaging time (instead of runtime symlinks)"
+    targets: [C-0008]
+    status: adopted
+    cost: "Build/packaging scripts need the expansion logic added"
+    retire_when: "Not expected to retire (wontfix: the sandbox specification is stable)"
+    detail: "C-0008-sandbox-chmod-symlink.md §Alternatives"
+
+  - id: W-0006
+    title: "Hand permission requirements to the platform packaging contract; don't make them a runtime success condition for business logic"
+    targets: [C-0008]
+    status: adopted
+    cost: "Code paths that depend on the setPermissions return value need rework"
+    retire_when: "Not expected to retire (wontfix: the sandbox specification is stable)"
+    detail: "C-0008-sandbox-chmod-symlink.md §Alternatives"
+
+  - id: W-0007
+    title: "Rebuild libqohos.so with the transientParent write-back patch (about 8 lines in showImmediate) and replace it in the kit"
+    targets: [C-0009]
+    status: adopted
+    cost: "Every Qt kit update requires re-applying the patch and rebuilding; the application-layer alternative QDialog(self)+WA_DeleteOnClose can't reach QDialogs constructed inside third-party libraries"
+    verified:
+      date: 2026-08-06
+      env: "Qt 5.15.16 / OHOS real device (ohostemplate, hilog 17:39 verification chain)"
+    retire_when: "Once the upstream harmonyos branch merges the transientParent write-back, go back to the official kit, drop the local rebuild and rerun the three-level window close tests"
+    detail: "C-0009-qpa-syntheticparent-no-transientparent.md §Workarounds"
+
+  - id: W-0008
+    title: "Replace the 4 glue files with the designated complete reference template (26+13 eager default-imports + objects API)"
+    targets: [C-0010]
+    status: adopted
+    cost: "After a libqohos generation change, the @ohos.*/@kit.* list must be re-aligned via strings; every project generated from the source-tree template needs the replacement"
+    verified:
+      date: 2026-07-23
+      env: "Qt 5.15.16 (515-generation libqohos 7/17) / HarmonyOS 6.0.0.29 MateBook Fold real device (qapp-recreate-test)"
+    retire_when: "Once the Qt source-tree template is updated in the same batch as libqohos (eager import list aligned), go back to the official template and drop the 4-file replacement"
+    detail: "C-0010-stale-template-ohos-bare-eval.md §Workarounds"
+
+  - id: W-0009
+    title: "main() constraint: QApplication must be the first Qt API call (don't touch QThreadData before it is constructed)"
+    targets: [C-0011]
+    status: proposed
+    cost: "Existing Qt calls before it in main() must be reordered; targets hypothesis ① (root cause undetermined), not guaranteed to work"
+    retire_when: "Once the root cause is confirmed and permanently fixed (or classified as a usage constraint and formally documented), drop the temporary constraint and rerun the Debug build click test"
+    detail: "C-0011-the-mainthread-mismatch.md §Workarounds"
+
+  - id: W-0010
+    title: "Ship plugin .so files in the HAP lib directory (or statically link a fixed set); no runtime download-and-load"
+    targets: [C-0012]
+    status: adopted
+    cost: "Plugins can't be downloaded/hot-updated at runtime; adding a plugin requires repackaging and a new release; logic that must be delivered dynamically moves to ArkTS/JS scripts"
+    retire_when: "Not expected to retire (wontfix: the loader specification is stable); if the platform opens up code loading from writable areas, switch back to runtime download"
+    detail: "C-0012-loader-rejects-writable-path.md §Workarounds"
+
+  - id: W-0011
+    title: "Add a Q_OS_OHOS branch for path lookup: QStandardPaths::writableLocation(AppDataLocation) instead of currentPath/applicationDirPath"
+    targets: [C-0013]
+    status: adopted
+    cost: "Every file write point (config/log/QSettings/temporary files) has to be audited and reworked; cross-platform branches to maintain"
+    verified:
+      date: 2026-07-09
+      env: "Qt 5.15.16 / HarmonyOS 6.0 / HUAWEI MateBook 14 (FRequest commit 8a8ba95, verified on a real device)"
+    retire_when: "Not expected to retire (wontfix: the read-only bundle specification is stable); if the platform allows write semantics for the application directory, go back to the native QDir paths"
+    detail: "C-0013-sandbox-readonly-bundle-path.md §Workarounds"
+
+  - id: W-0012
+    title: "Remove the redundant resize: don't trigger resizeAsync when the size hasn't changed, avoiding cross-screen flicker"
+    targets: [C-0014]
+    status: proposed
+    cost: "Changing the Qt adaptation layer requires rebuilding libqohos.so/the kit and assessing the impact (skipping setSize may leave the initial size wrong); the application-layer option only covers self-managed windows"
+    verified:
+      date: 2026-06-05
+      env: "HUAWEI MateBook Fold dual-screen real device (controlled experiment: flicker disappears with resizeAsync blocked; a pure ArkTS repro reaches the same conclusion)"
+    retire_when: "Once the system guarantees atomic rendering of cross-screen move+resize (or offers an atomic geometry update API), remove the patch and rerun the cross-screen drag test"
+    detail: "C-0014-crossscreen-move-resize-conflict.md §Workarounds"
+
+  - id: W-0013
+    title: "Drop hvigor CLI packaging and deploy with DevEco Studio IDE Run instead"
+    targets: [C-0015]
+    status: adopted
+    cost: "Unusable for CI/CD automation (command-line packaging is a pipeline staple); the daily workflow is tied to the IDE"
+    verified:
+      date: 2026-08-06
+      env: "OHOS + Qt 5.15.16 + DevEco Studio IDE Run (per the source page: the IDE packaging flow works)"
+    retire_when: "Once the hvigor CLI packaging difference is identified and fixed (or the CLI offers configuration equivalent to IDE packaging), return to command-line packaging and rerun the startup test"
+    detail: "C-0015-hvigor-cli-ide-packaging-divergence.md §Workarounds"
+
+  - id: W-0014
+    title: "Write Chinese JSON to a UTF-8 temporary file and reference it with curl -d @file"
+    targets: [C-0017]
+    status: adopted
+    cost: "Each request needs an extra temporary-file write; heredoc content must be UTF-8"
+    verified:
+      date: 2026-06-10
+      env: "Windows 10/11 + Git Bash (MSYS2) + curl 7.x/8.x (creating/editing PRs via the GitCode API in practice)"
+    retire_when: "Once the terminal environment reliably guarantees UTF-8 (chcp 65001 is stable in the Git Bash version in use, or a UTF-8-by-default terminal is used), inline Chinese with -d can be used again"
+    detail: "C-0017-curl-gbk-terminal-mojibake.md §Workarounds"
+
+  - id: W-0015
+    title: "On OHOS, disable mipmaps for alpha-PNG (RGBA8) entities (generateMipMaps:false + minificationFilter:Texture.Linear)"
+    targets: [C-0018]
+    status: adopted
+    cost: "Alpha-PNG entities lose mipmaps (aliasing on distant textures); needs a per-entity switch; the QML guard must use Qt.platform.pluginName (C-0001)"
+    verified:
+      date: 2026-07-14
+      env: "Qt 5.12.12 OHOS SDK / HUAWEI MateBook Fold real device / Mesa ZINK (planets-qml-ohos)"
+    retire_when: "Once Mesa ZINK fixes RGBA8 glGenerateMipmap (the vkCmdBlitImage path) and the fix arrives in the OHOS SDK in use, remove the diffuseGenerateMipMaps switch, restore the upstream mipmap behavior and rerun the verification"
+    detail: "C-0018-zink-rgba8-mipmap-black.md §Workarounds"

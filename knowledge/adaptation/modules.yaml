@@ -1,0 +1,280 @@
+# knowledge/adaptation/modules.yaml — Qt module availability matrix (machine-readable)
+#
+# Single source of truth: semantic/qt-harmonyos-modules.md + semantic/qt-harmonyos-qt6-status.md
+# This file is their machine projection, consumed by qt-ohos-run.py assess / plan; keep it in sync with the human pages when editing.
+# Module names are always lowercase without the version prefix (the scanner's output convention: core/gui/widgets/...).
+#
+# status values:
+#   available    — built into the SDK, usable directly
+#   self-compile — not in the SDK, must be cross-compiled yourself (not necessarily a blocker)
+#   out-of-scope — unsupported on the platform (a blocker if it's a core dependency)
+#   restricted   — partially supported/limited capability, verify item by item
+#
+# Baseline: Qt 5.12.12 (tqtc/harmonyos-5.12.12, 613336de) / Qt 5.15.16 (962aa625)
+#       Qt 6.12.0 prebuilt installer (re-checked 2026-07-25)
+
+schema: 1
+updated: 2026-09-08
+source: semantic/qt-harmonyos-modules.md
+
+versions:
+  qt5_12: "5.12.12"
+  qt5_15: "5.15.16"
+  qt6_12: "6.12.0"
+
+modules:
+  core:
+    qt5_12: available
+    qt5_15: available
+    qt6_12: available
+  gui:
+    qt5_12: available
+    qt5_15: available
+    qt6_12: available
+  widgets:
+    qt5_12: available
+    qt5_15: available
+    qt6_12: available
+  network:
+    qt5_12: available
+    qt5_15: available
+    qt6_12: available
+  sql:
+    qt5_12: available
+    qt5_15: available
+    qt6_12: available
+  concurrent:
+    qt5_12: available
+    qt5_15: available
+    qt6_12: available
+  xml:
+    qt5_12: available
+    qt5_15: available
+    qt6_12: available
+  test:
+    qt5_12: available
+    qt5_15: available
+    qt6_12: available
+  opengl:
+    qt5_12: available
+    qt5_15: available
+    qt6_12: available
+  openglextensions:
+    qt5_12: restricted
+    qt5_15: restricted
+    qt6_12: restricted
+    note: "In most distributions a static/header-only module with no standalone .so (tested 2026-09-09: neither Qt-full 5.15.16 nor Qt6 beta3 has libQt*OpenGLExtensions.so)"
+    ref: semantic/qt-harmonyos-modules.md
+  printsupport:
+    qt5_12: available
+    qt5_15: available
+    qt6_12: available
+  svg:
+    qt5_12: available
+    qt5_15: available
+    qt6_12: available
+  qml:
+    qt5_12: available
+    qt5_15: available
+    qt6_12: available
+  quick:
+    qt5_12: available
+    qt5_15: available
+    qt6_12: available
+  quickwidgets:
+    qt5_12: available
+    qt5_15: available
+    qt6_12: available
+  quickcontrols2:
+    qt5_12: available
+    qt5_15: available
+    qt6_12: available
+  quicktest:
+    qt5_12: available
+    qt5_15: available
+    qt6_12: available
+  ohosextras:
+    qt5_12: available
+    qt5_15: available
+    qt6_12: restricted
+    note: "In Qt6 it is split out again as HarmonyExtras; the public headers are only exports/version stubs, and the functional headers are private _p.h"
+    ref: semantic/qt-ohos-extras.md
+  docgallery:
+    qt5_12: available
+    qt5_15: out-of-scope
+    qt6_12: out-of-scope
+  uitools:
+    qt5_12: self-compile
+    qt5_15: self-compile
+    qt6_12: available
+    note: "The qttools dependency can only be built natively on a HarmonyOS PC (host build); cross-compiling on Windows isn't feasible"
+    ref: problems/build-missing-qt5uitools-ohos.md
+  help:
+    qt5_12: self-compile
+    qt5_15: self-compile
+    qt6_12: available
+    note: "For Qt5, like uitools, it needs a native build on a HarmonyOS PC; Qt6 beta3 tested to include libQt6Help.so (2026-09-09)"
+    ref: problems/build-missing-qt5uitools-ohos.md
+  multimedia:
+    qt5_12: self-compile
+    qt5_15: self-compile
+    qt6_12: available
+    note: "Not in the official Qt5 SDK (modules page); a Qt-full complete build tested to include libQt5Multimedia.so; Qt6 beta3 tested to include it"
+    ref: semantic/qt-harmonyos-modules.md
+  multimediawidgets:
+    qt5_12: self-compile
+    qt5_15: self-compile
+    qt6_12: available
+    ref: semantic/qt-harmonyos-modules.md
+  pdf:
+    qt5_12: out-of-scope
+    qt5_15: restricted
+    qt6_12: out-of-scope
+    note: "Only partially supported in 5.15; not in the Qt6 prebuilt"
+    ref: semantic/qt-harmonyos-modules.md
+  quicktimeline:
+    qt5_12: out-of-scope
+    qt5_15: restricted
+    qt6_12: available
+    note: "Qt6 beta3 tested to include libQt6QuickTimeline.so (2026-09-09)"
+    ref: semantic/qt-harmonyos-qt6-status.md
+  webengine:
+    qt5_12: out-of-scope
+    qt5_15: out-of-scope
+    qt6_12: out-of-scope
+    substitute: "CEF for OpenHarmony (chromium_cef, full Chromium engine)"
+    ref: procedural/qt-cef-ohos-dev-guide.md
+  webenginecore:
+    qt5_12: out-of-scope
+    qt5_15: out-of-scope
+    qt6_12: out-of-scope
+    substitute: "CEF for OpenHarmony"
+    ref: procedural/qt-cef-ohos-dev-guide.md
+  webenginewidgets:
+    qt5_12: out-of-scope
+    qt5_15: out-of-scope
+    qt6_12: out-of-scope
+    substitute: "CEF for OpenHarmony"
+    ref: procedural/qt-cef-ohos-dev-guide.md
+  webkit:
+    qt5_12: out-of-scope
+    qt5_15: out-of-scope
+    qt6_12: out-of-scope
+    substitute: "CEF for OpenHarmony"
+    ref: procedural/qt-cef-ohos-dev-guide.md
+  webview:
+    qt5_12: restricted
+    qt5_15: restricted
+    qt6_12: out-of-scope
+    note: "A Qt-full complete build tested to include libQt5WebView.so; status in the official SDK to be confirmed. Use a native bridge for lightweight display; use CEF for a full engine"
+    ref: procedural/qt-cef-ohos-dev-guide.md
+  dbus:
+    qt5_12: out-of-scope
+    qt5_15: out-of-scope
+    qt6_12: out-of-scope
+    note: "HarmonyOS has no D-Bus; replace it with SoftBus/the Ability mechanism"
+    ref: problems/runtime-fail-libqtdbus-missing.md
+  remoteobjects:
+    qt5_12: out-of-scope
+    qt5_15: out-of-scope
+    qt6_12: available
+    note: "Qt6 beta3 tested to include libQt6RemoteObjects.so (2026-09-09); not in Qt5"
+    ref: semantic/qt-harmonyos-qt6-status.md
+  serialbus:
+    qt5_12: out-of-scope
+    qt5_15: out-of-scope
+    qt6_12: available
+    note: "Already included in the Qt 6.12 prebuilt"
+    ref: semantic/qt-harmonyos-qt6-status.md
+  wayland:
+    qt5_12: out-of-scope
+    qt5_15: out-of-scope
+    qt6_12: out-of-scope
+    ref: semantic/qt-harmonyos-qt6-status.md
+  script:
+    qt5_12: out-of-scope
+    qt5_15: out-of-scope
+    qt6_12: out-of-scope
+    ref: semantic/qt-harmonyos-qt6-status.md
+  serialport:
+    qt5_12: restricted
+    qt5_15: restricted
+    qt6_12: restricted
+    ref: semantic/qt-harmonyos-modules.md
+  bluetooth:
+    qt5_12: restricted
+    qt5_15: restricted
+    qt6_12: available
+    ref: semantic/qt-harmonyos-qt6-status.md
+  nfc:
+    qt5_12: restricted
+    qt5_15: restricted
+    qt6_12: restricted
+    ref: semantic/qt-harmonyos-modules.md
+  positioning:
+    qt5_12: restricted
+    qt5_15: restricted
+    qt6_12: available
+    ref: semantic/qt-harmonyos-modules.md
+  location:
+    qt5_12: restricted
+    qt5_15: restricted
+    qt6_12: available
+    ref: semantic/qt-harmonyos-qt6-status.md
+  sensors:
+    qt5_12: restricted
+    qt5_15: restricted
+    qt6_12: available
+    ref: semantic/qt-harmonyos-qt6-status.md
+  charts:
+    qt5_12: restricted
+    qt5_15: restricted
+    qt6_12: restricted
+    note: "A Qt-full 5.15.16 complete build tested to include libQt5Charts.so; missing from the local Qt6 beta3 installation (contradicts the qt6-status claim 'Charts is all there'; the installer's component selection is authoritative — checked 2026-09-09)"
+    ref: semantic/qt-harmonyos-qt6-status.md
+  datavisualization:
+    qt5_12: out-of-scope
+    qt5_15: out-of-scope
+    qt6_12: restricted
+    note: "Missing from the local Qt6 beta3 installation (contradicts the qt6-status claim 'DataVisualization is all there' — checked 2026-09-09); when depending on Charts-type components, first confirm what the kit actually contains"
+    ref: semantic/qt-harmonyos-qt6-status.md
+  core5compat:
+    qt5_12: out-of-scope
+    qt5_15: out-of-scope
+    qt6_12: available
+    ref: semantic/qt-harmonyos-qt6-status.md
+
+# Alias normalization: spellings the scanner/build system may produce -> the modules keys above
+aliases:
+  qtwebengine: webengine
+  webenginequick: webengine
+  qtdbus: dbus
+  dbusextended: dbus
+  qtquickcontrols2: quickcontrols2
+  quickcontrols: quickcontrols2
+  qtuitools: uitools
+  qtmultimedia: multimedia
+  qtsvg: svg
+  qtnetwork: network
+  qtsql: sql
+  qtconcurrent: concurrent
+  qtxml: xml
+  qttest: test
+  qtopengl: opengl
+  qtprintsupport: printsupport
+  qtwebsockets: websockets
+  qtwebchannel: webchannel
+  qtserialport: serialport
+  qtbluetooth: bluetooth
+  qtnfc: nfc
+  qtpositioning: positioning
+  qtlocation: location
+  qtsensors: sensors
+  qtcharts: charts
+  qtdatavisualization: datavisualization
+  qtdocgallery: docgallery
+  qtquicktimeline: quicktimeline
+  qtpdf: pdf
+  qthelp: help
+  designer: uitools
+  assistant: help

@@ -4,7 +4,7 @@ type: procedural
 domain: workflow
 tags: [qt, harmonyos, device, verification, hdc, hvigor, signing, cli, build, deploy, run, troubleshoot, rendering, lifecycle, window, platform-limits, input-event, run-test, cli-build]
 created: 2026-07-08
-updated: 2026-08-14
+updated: 2026-09-29
 status: active
 audience: public
 refs: [semantic-qt-harmonyos-build-run-workflow, semantic-qt-harmonyos-project-structure, semantic-qt-harmonyos-golden-rules, semantic-qt-harmonyos-platform-limits, semantic-qt-harmonyos-window-model, semantic-qt-harmonyos-lifecycle, problem-render-black-rgba8-zink-mipmap, problem-ohos-mainthread-mismatch, problem-runtime-qpa-plugin-not-found, problem-runtime-fail-libqtdbus-missing, problem-runtime-sqlite-open-database, problem-runtime-dlopen-writable-path, problem-runtime-crash-sandbox-readonly-path, problem-runtime-crash-null-pointer-entry-shim, problem-surfaceholder-nativexcomponent-incompatibility, episodic-quit-deadlock-tsfn, episodic-wa-nativewindow-leave-bug, episodic-toolwindow-crossscreen-flicker, procedural-qt-app-harmonyos-completion, problem-runtime-crash-libqohos-modules-mismatch]
@@ -227,7 +227,7 @@ Copy-Item "$env:QT5_15_OHOS_SDK\qml" -Destination "entry\src\main\resources\resf
 | `${QT5_15_SRC}` (labelled 5.15 in ENV but actually a dirty 5.12 tree) | `modulesFactories` | `${QT5_15_OHOS_SDK}` (the old SDK, whose libqohos reads modulesFactories) |
 | A 5.15 template (not in the source tree; obtain it separately) | `modules` | `${QT5_15_OHOS_SDK_FULL}` (the full SDK, whose libqohos reads modules) |
 
-**The rule of thumb**: qView (the reference implementation) uses `${QT5_15_OHOS_SDK}` + the 5.12 template → consistent → it runs. If a port agent mistakenly uses `${QT5_15_OHOS_SDK_FULL}` + the 5.12 template → it builds but crashes at runtime. **Producing a HAP ≠ being able to run it**; you must verify on a device in §4.
+**The rule of thumb**: the reference implementation uses `${QT5_15_OHOS_SDK}` + the 5.12 template → consistent → it runs. If a port agent mistakenly uses `${QT5_15_OHOS_SDK_FULL}` + the 5.12 template → it builds but crashes at runtime. **Producing a HAP ≠ being able to run it**; you must verify on a device in §4.
 
 ### Loop exit conditions (all must hold)
 
@@ -427,6 +427,21 @@ deveco-mcp_perform_ui_action(actionType="screenshot", hvd="<device name>", local
 | Leave events | Move the mouse out of the window | The Leave event fires | The unresponsive-Leave dual blind spot (an "event convergence point" fix; 5 methodology points in episodic-wa-nativewindow-leave-bug) |
 
 > **How to verify**: perform the action and watch the event sequence in `hilog` at the same time to confirm the event delivery path is intact.
+
+### 4.5.1 UI injection in practice (CLI automated verification, distilled from hands-on work in 2026-09)
+
+> **⚠️ Meta-lesson (clicking an occluding window by mistake)**: before injecting a click, you must first get the target window's rect with `hidumper -s WindowManagerService -a '-a'` **and confirm it's the application window with the highest Z order**. In practice, a leftover test application's window (with a higher ZOrd) happened to cover the target point, so the injected click landed on the occluding window and sent the application under test into recent tasks, requiring manual intervention by the owner. **Force-stop unrelated third-party test applications before starting the test**, and before injecting, check that the target point falls only inside the window under test.
+
+| Injection need | Command | Key points |
+|---------|------|------|
+| Key press | `hdc shell "uitest uiInput keyEvent <keyID>"` | OHOS key codes: digits 0-9 = 2000-2009, letters start at A=2017 and increase (R=2034, E=2021); click the center of the target window to focus it before injecting |
+| Click | `uitest uiInput click <x> <y>` | Absolute coordinates; check the window rect and Z order first (see the meta-lesson above) |
+| PC window edge resize | `uitest uiInput drag <corner x> <corner y> <x2> <y2> 200` | **A touch drag from the midpoint of an edge doesn't trigger a PC resize; only a corner drag works**; after a window resize the remembered normal geometry changes, so re-read the rect before dragging |
+| Relative mouse movement | `uinput -M -m <dx> <dy>` | **Affected by acceleration, so unusable for absolute positioning** (and -q doesn't report coordinates either); don't use it |
+| Judging stepped vs. continuous resize | Sample the rect with `hidumper` in a loop during the drag | Keyframe strategy on = holds for ~interval and then jumps; off = continuous small steps at every sample point; the two time series can be told apart objectively, without relying on eyeballing |
+
+- **hilog buffer**: on a device producing lots of logs, the default ring buffer flushes out the verification logs in ~1 min; for long sessions first enlarge it with `hdc shell "hilog -G 16M"`, and save to disk separately per scenario (`hilog -x > logs/hilog-s<n>.log`).
+- Background streaming capture (`hdc shell hilog -x > file &`) is interrupted when the host shell exits, so don't rely on it; use per-scenario snapshots instead.
 
 ### 4.6 Platform limitation regression checklist
 

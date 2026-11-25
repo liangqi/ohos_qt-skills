@@ -1,0 +1,50 @@
+{
+ "app": "corpus-d",
+ "source": "INSTALL",
+ "source_note": "Written by hand: the dependency list is in the INSTALL file at the repository root (no extension; corpus oracle_files was misconfigured as INSTALL.md; and it is a plain-text numbered list, not markdown headings, so the automatic extractor cannot parse it). Reviewed entry by entry against the original INSTALL text.",
+ "reviewed": true,
+ "deps": [
+  {
+   "name": "boost",
+   "display": "Boost >= 1.76",
+   "type": "runtime",
+   "raw": "Boost >= 1.76"
+  },
+  {
+   "name": "libtorrent-rasterbar",
+   "display": "libtorrent-rasterbar 1.2.19 - 1.2.x || 2.0.10 - 2.0.x",
+   "type": "runtime",
+   "raw": "libtorrent-rasterbar 1.2.19 - 1.2.x || 2.0.10 - 2.0.x"
+  },
+  {
+   "name": "openssl",
+   "display": "OpenSSL >= 3.0.2",
+   "type": "runtime",
+   "raw": "OpenSSL >= 3.0.2"
+  },
+  {
+   "name": "qt",
+   "display": "Qt 6.6.0 - 6.x",
+   "type": "runtime",
+   "raw": "Qt 6.6.0 - 6.x"
+  },
+  {
+   "name": "zlib",
+   "display": "zlib >= 1.2.11",
+   "type": "runtime",
+   "raw": "zlib >= 1.2.11"
+  },
+  {
+   "name": "cmake",
+   "display": "CMake >= 3.16",
+   "type": "build",
+   "raw": "CMake >= 3.16 (Compile-time only)"
+  },
+  {
+   "name": "python",
+   "display": "Python >= 3.13.0",
+   "type": "optional",
+   "raw": "Python >= 3.13.0 (Optional, run-time only; used by the bundled search engine)"
+  }
+ ]
+}

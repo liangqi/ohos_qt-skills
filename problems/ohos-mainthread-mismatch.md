@@ -9,7 +9,7 @@ status: open
 audience: public
 severity: high
 error_message: "Q_ASSERT(receiver->d_func()->threadData.loadAcquire()->thread.loadRelaxed() == mainThread()) in QCoreApplicationPrivate::sendThroughApplicationEventFilters (triggered by a mouse click in a debug build)"
-refs: [semantic-qt-harmonyos-overview]
+refs: [fault-C-0011, semantic-qt-harmonyos-overview]
 summary: >
   A mouse click on OHOS crashes on the Q_ASSERT in QCoreApplication::sendThroughApplicationEventFilters,
   because theMainThread and QCoreApplication::instance()->thread() point at different QThread objects.

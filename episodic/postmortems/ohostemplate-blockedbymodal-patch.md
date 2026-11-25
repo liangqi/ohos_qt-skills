@@ -7,7 +7,7 @@ created: 2026-08-06
 updated: 2026-08-06
 status: active
 audience: public
-refs: [semantic-qt-harmonyos-window-model, problem-runtime-blocked-by-modal-window-no-parent]
+refs: [fault-C-0009, semantic-qt-harmonyos-window-model, problem-runtime-blocked-by-modal-window-no-parent]
 summary: >
   In ohostemplate, matplotlib's third-level window (Configure subplots -> Export values) can't be closed. Root cause: a parentless QDialog is
   classified as a SubWindow through the syntheticParent fallback, but the OHOS QPA never calls setTransientParent() to write that back to the Qt layer,
